@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -28,7 +30,8 @@ fun MarketScreen(navController: NavController) {
     val viewModel: MarketViewModel = viewModel()
 
     val uiState by viewModel.uiState.collectAsState()
-    val tokens by viewModel.combinedTokens.collectAsState()
+    val tokens by viewModel.filteredTokens.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val isWebSocketConnected by viewModel.isWebSocketConnected.collectAsState()
 
@@ -36,15 +39,23 @@ fun MarketScreen(navController: NavController) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Market")
-                        Spacer(modifier = Modifier.width(8.dp))
-                        LiveIndicator(isConnected = isWebSocketConnected)
+            Column {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Market")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            LiveIndicator(isConnected = isWebSocketConnected)
+                        }
                     }
-                }
-            )
+                )
+                
+                MarketSearchBar(
+                    query = searchQuery,
+                    onQueryChange = viewModel::updateSearchQuery,
+                    onClear = viewModel::clearSearch
+                )
+            }
         }
     ) { padding ->
         PullToRefreshBox(
@@ -56,9 +67,7 @@ fun MarketScreen(navController: NavController) {
                 .padding(padding)
         ) {
             when (uiState) {
-                MarketUiState.Loading -> {
-                    LoadingView()
-                }
+                MarketUiState.Loading -> LoadingView()
 
                 is MarketUiState.Error -> {
                     ErrorView(
@@ -68,12 +77,59 @@ fun MarketScreen(navController: NavController) {
                 }
 
                 is MarketUiState.Success -> {
-                    MarketList(tokens = tokens)
+                    if (tokens.isEmpty()) {
+                        EmptySearchResult()
+                    } else {
+                        MarketList(tokens = tokens)
+                    }
                 }
             }
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MarketSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClear: () -> Unit
+) {
+    TextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        placeholder = { Text("Search by name or symbol") },
+        singleLine = true,
+        trailingIcon = {
+            if (query.isNotBlank()) {
+                IconButton(onClick = onClear) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Clear search"
+                    )
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun EmptySearchResult() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "No matching coins found",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
 
 
 @Composable
