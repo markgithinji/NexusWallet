@@ -222,9 +222,12 @@ private fun saveWalletAndNavigate(navController: NavController, wallet: CryptoWa
     val walletDataManager = NexusWalletApplication.instance.walletDataManager
     walletDataManager.saveWallet(wallet)
 
-    // Navigate to dashboard
-    navController.navigate("dashboard") {
-        popUpTo("createWallet") { inclusive = true }
+    // Navigate to Main tab screen
+    navController.navigate("main") {
+        // Clear back stack including createWallet screen
+        popUpTo("main") {
+            inclusive = false
+        }
     }
 }
 
