@@ -66,6 +66,25 @@ dependencies {
     // Image Loading
     implementation("io.coil-kt:coil-compose:2.5.0")
 
+    // BitcoinJ for BIP32/BIP39 and Bitcoin wallets
+    implementation("org.bitcoinj:bitcoinj-core:0.16.3") {
+        exclude(group = "org.bouncycastle")  // ADD THIS LINE
+    }
+    // Web3j for Ethereum wallets and smart contracts
+    implementation("org.web3j:core:4.10.1")
+
+//    // Add Protobuf
+//    implementation("com.google.protobuf:protobuf-java:3.25.1")
+
+    // Biometric authentication
+    implementation("androidx.biometric:biometric-ktx:1.2.0-alpha05")
+
+    // Secure storage
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.startup.runtime)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
