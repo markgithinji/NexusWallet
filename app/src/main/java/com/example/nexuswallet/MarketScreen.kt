@@ -27,9 +27,11 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MarketScreen(navController: NavController) {
+fun MarketScreen(
+    navController: NavController,
+    padding: PaddingValues
+) {
     val viewModel: MarketViewModel = viewModel()
-
     val uiState by viewModel.uiState.collectAsState()
     val tokens by viewModel.filteredTokens.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -38,57 +40,34 @@ fun MarketScreen(navController: NavController) {
 
     val pullToRefreshState = rememberPullToRefreshState()
 
-    Scaffold(
-        topBar = {
-            Column {
-                TopAppBar(
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Market")
-                            Spacer(modifier = Modifier.width(8.dp))
-                            LiveIndicator(isConnected = isWebSocketConnected)
-                        }
-                    }
-                )
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = { viewModel.refreshData() },
+        state = pullToRefreshState,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+    ) {
+        when (uiState) {
+            MarketUiState.Loading -> LoadingView()
 
-                MarketSearchBar(
-                    query = searchQuery,
-                    onQueryChange = viewModel::updateSearchQuery,
-                    onClear = viewModel::clearSearch
+            is MarketUiState.Error -> {
+                ErrorView(
+                    message = (uiState as MarketUiState.Error).message,
+                    onRetry = { viewModel.refreshData() }
                 )
             }
-        }
-    ) { padding ->
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh = { viewModel.refreshData() },
-            state = pullToRefreshState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            when (uiState) {
-                MarketUiState.Loading -> LoadingView()
 
-                is MarketUiState.Error -> {
-                    ErrorView(
-                        message = (uiState as MarketUiState.Error).message,
-                        onRetry = { viewModel.refreshData() }
+            is MarketUiState.Success -> {
+                if (tokens.isEmpty()) {
+                    EmptySearchResult()
+                } else {
+                    MarketList(
+                        tokens = tokens,
+                        onTokenClick = { token ->
+                            navController.navigate("token/${token.id}")
+                        }
                     )
-                }
-
-                is MarketUiState.Success -> {
-                    if (tokens.isEmpty()) {
-                        EmptySearchResult()
-                    } else {
-                        MarketList(
-                            tokens = tokens,
-                            onTokenClick = { token ->
-                                // Navigate to token detail screen
-                                navController.navigate("token/${token.id}")
-                            }
-                        )
-                    }
                 }
             }
         }
