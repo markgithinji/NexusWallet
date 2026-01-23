@@ -1,10 +1,12 @@
 package com.example.nexuswallet
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -20,33 +22,35 @@ fun Navigation(walletDataManager: WalletDataManager = WalletDataManager.getInsta
     val hasWallets by remember { derivedStateOf { walletDataManager.hasWallets() } }
 
     // Determine start destination
-    val startDestination = if (hasWallets) "dashboard" else "welcome"
+    val startDestination = if (hasWallets) "main" else "welcome"
 
     NavHost(
         navController = navController,
         startDestination = startDestination
     ) {
-        // Welcome Screen (shows first if no wallets)
+        // Welcome Screen
         composable("welcome") {
             WelcomeScreen(
                 onCreateWallet = { navController.navigate("createWallet") },
                 onImportWallet = { /* TODO */ },
-                onSkip = { navController.navigate("dashboard") }
+                onSkip = {
+                    navController.navigate("main") {
+                        popUpTo("welcome") { inclusive = true }
+                    }
+                }
             )
         }
 
-        // Wallet Dashboard
-        composable("dashboard") {
-            val viewModel = viewModel<WalletDashboardViewModel>()
-            WalletDashboardScreen(
-                navController = navController,
-                viewModel = viewModel
-            )
+        // Main App with Tabs
+        composable("main") {
+            MainTabScreen(navController = navController)
         }
 
-        // Market Screen
+        // Market Screen (accessible from tabs)
         composable("market") {
-            MarketScreen(navController = navController)
+            MarketScreen(navController = navController,
+                padding = PaddingValues(0.dp)
+                )
         }
 
         // Wallet Creation
@@ -70,7 +74,6 @@ fun Navigation(walletDataManager: WalletDataManager = WalletDataManager.getInsta
             val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
             val viewModel = viewModel<WalletDetailViewModel>()
 
-            // Load wallet when screen opens
             LaunchedEffect(walletId) {
                 if (walletId.isNotBlank()) {
                     viewModel.loadWallet(walletId)
