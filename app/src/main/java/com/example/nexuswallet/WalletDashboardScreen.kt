@@ -39,85 +39,56 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun WalletDashboardScreen(
     navController: NavController,
-    viewModel: WalletDashboardViewModel = viewModel()
+    viewModel: WalletDashboardViewModel = viewModel(),
+    padding: PaddingValues
 ) {
     val wallets by viewModel.wallets.collectAsState()
     val totalPortfolio by viewModel.totalPortfolioValue.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Nexus Wallet") },
-                actions = {
-                    IconButton(
-                        onClick = { navController.navigate("createWallet") },
-                        enabled = !isLoading
-                    ) {
-                        Icon(Icons.Default.Add, "Create Wallet")
-                    }
-                    IconButton(
-                        onClick = { viewModel.refresh() },
-                        enabled = !isLoading
-                    ) {
-                        Icon(Icons.Default.Refresh, "Refresh")
-                    }
+    if (isLoading) {
+        LoadingScreen()
+        return
+    }
+
+    error?.let {
+        ErrorScreen(
+            message = it,
+            onRetry = { viewModel.refresh() }
+        )
+        return
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+    ) {
+        // Portfolio Summary
+        PortfolioSummaryCard(
+            totalPortfolio = totalPortfolio,
+            walletCount = wallets.size
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Wallets Section
+        if (wallets.isEmpty()) {
+            EmptyWalletsView(
+                onCreateWallet = { navController.navigate("createWallet") }
+            )
+        } else {
+            WalletsList(
+                wallets = wallets,
+                balances = viewModel.balances.collectAsState().value,
+                onWalletClick = { wallet ->
+                    navController.navigate("walletDetail/${wallet.id}")
+                },
+                onDeleteWallet = { walletId ->
+                    viewModel.deleteWallet(walletId)
                 }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate("createWallet") },
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(Icons.Default.Add, "Create New Wallet")
-            }
-        }
-    ) { padding ->
-        if (isLoading) {
-            LoadingScreen()
-            return@Scaffold
-        }
-
-        error?.let {
-            ErrorScreen(
-                message = it,
-                onRetry = { viewModel.refresh() }
-            )
-            return@Scaffold
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            // Portfolio Summary
-            PortfolioSummaryCard(
-                totalPortfolio = totalPortfolio,
-                walletCount = wallets.size
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Wallets Section
-            if (wallets.isEmpty()) {
-                EmptyWalletsView(
-                    onCreateWallet = { navController.navigate("createWallet") }
-                )
-            } else {
-                WalletsList(
-                    wallets = wallets,
-                    balances = viewModel.balances.collectAsState().value,
-                    onWalletClick = { wallet ->
-                        navController.navigate("walletDetail/${wallet.id}")
-                    },
-                    onDeleteWallet = { walletId ->
-                        viewModel.deleteWallet(walletId)
-                    }
-                )
-            }
         }
     }
 }
