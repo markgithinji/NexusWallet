@@ -2,6 +2,7 @@ package com.example.nexuswallet
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -49,7 +50,7 @@ fun MarketScreen(navController: NavController) {
                         }
                     }
                 )
-                
+
                 MarketSearchBar(
                     query = searchQuery,
                     onQueryChange = viewModel::updateSearchQuery,
@@ -80,7 +81,13 @@ fun MarketScreen(navController: NavController) {
                     if (tokens.isEmpty()) {
                         EmptySearchResult()
                     } else {
-                        MarketList(tokens = tokens)
+                        MarketList(
+                            tokens = tokens,
+                            onTokenClick = { token ->
+                                // Navigate to token detail screen
+                                navController.navigate("token/${token.id}")
+                            }
+                        )
                     }
                 }
             }
@@ -222,20 +229,23 @@ fun ErrorView(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-fun MarketList(tokens: List<Token>) {
+fun MarketList(tokens: List<Token>, onTokenClick: (Token) -> Unit = {}) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(tokens) { token ->
-            TokenItem(token = token)
+            TokenItem(
+                token = token,
+                onClick = onTokenClick
+            )
         }
     }
 }
 
 @Composable
-fun TokenItem(token: Token) {
+fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
     var pulseScale by remember { mutableStateOf(1f) }
 
     LaunchedEffect(token.currentPrice) {
@@ -256,7 +266,8 @@ fun TokenItem(token: Token) {
             .graphicsLayer {
                 scaleX = pulseScale
                 scaleY = pulseScale
-            },
+            }
+            .clickable { onClick(token) },
         shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -301,7 +312,7 @@ fun TokenItem(token: Token) {
                     fontWeight = FontWeight.Bold
                 )
 
-                val priceChange = token.priceChangePercentage24h
+                val priceChange = token.priceChangePercentage24h ?: 0.0
                 val changeColor = if (priceChange >= 0) {
                     MaterialTheme.colorScheme.primary
                 } else {
