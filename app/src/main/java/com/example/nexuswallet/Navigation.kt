@@ -101,5 +101,17 @@ fun Navigation(walletDataManager: WalletDataManager = WalletDataManager.getInsta
                 tokenId = tokenId
             )
         }
+
+        composable("securitySettings") {
+            SecuritySettingsScreen(
+                navController = navController
+            )
+        }
+
+        composable("settings") {
+            SettingsScreen(
+                navController = navController
+            )
+        }
     }
 }
