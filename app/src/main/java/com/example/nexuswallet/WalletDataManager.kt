@@ -11,7 +11,10 @@ import com.example.nexuswallet.data.model.Transaction
 import com.example.nexuswallet.data.model.WalletBalance
 import com.example.nexuswallet.data.model.WalletSettings
 import com.example.nexuswallet.data.repository.WalletRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 
 class WalletDataManager(context: Context) {
@@ -20,6 +23,7 @@ class WalletDataManager(context: Context) {
     val walletManager = WalletManager(appContext)
     val repository = WalletRepository()
     val storage = WalletStorage(appContext)
+    val securityManager = NexusWalletApplication.instance.securityManager
 
     init {
         loadDataFromStorage()
@@ -63,16 +67,6 @@ class WalletDataManager(context: Context) {
 
     fun validateMnemonic(mnemonic: List<String>): Boolean {
         return walletManager.validateMnemonic(mnemonic)
-    }
-
-    // WALLET CREATION
-    fun createBitcoinWallet(
-        mnemonic: List<String>,
-        name: String
-    ): BitcoinWallet {
-        val wallet = walletManager.createBitcoinWallet(mnemonic, name)
-        saveWallet(wallet)
-        return wallet
     }
 
     fun createEthereumWallet(
@@ -182,5 +176,33 @@ class WalletDataManager(context: Context) {
 
     fun convertToDecimal(balanceStr: String, decimals: Int): String {
         return repository.convertToDecimal(balanceStr, decimals)
+    }
+
+    fun createBitcoinWallet(
+        mnemonic: List<String>,
+        name: String
+    ): BitcoinWallet {
+        val wallet = walletManager.createBitcoinWallet(mnemonic, name)
+
+        // Secure the mnemonic
+        CoroutineScope(Dispatchers.IO).launch {
+            securityManager.secureMnemonic(wallet.id, mnemonic)
+        }
+
+        saveWallet(wallet)
+        return wallet
+    }
+
+    suspend fun getMnemonic(walletId: String): List<String>? {
+        return securityManager.retrieveMnemonic(walletId)
+    }
+
+    suspend fun createBackup(walletId: String): BackupResult {
+        val wallet = getWallet(walletId)
+        return if (wallet != null) {
+            securityManager.createEncryptedBackup(walletId, wallet)
+        } else {
+            BackupResult.Error(IllegalArgumentException("Wallet not found"))
+        }
     }
 }
