@@ -109,10 +109,9 @@ fun MainTabScreen(navController: NavController) {
                 navController = navController,
                 padding = padding
             )
-//            2 -> SettingsScreen(
-//                navController = navController,
-//                padding = padding
-//            )
+            2 -> SettingsScreen(
+                navController = navController,
+            )
         }
     }
 }
