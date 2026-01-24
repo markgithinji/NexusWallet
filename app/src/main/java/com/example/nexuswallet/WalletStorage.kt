@@ -8,6 +8,7 @@ import com.example.nexuswallet.data.model.EthereumWallet
 import com.example.nexuswallet.data.model.MultiChainWallet
 import com.example.nexuswallet.data.model.SolanaWallet
 import com.example.nexuswallet.data.model.Transaction
+import com.example.nexuswallet.data.model.WalletBackup
 import com.example.nexuswallet.data.model.WalletBalance
 import com.example.nexuswallet.data.model.WalletSettings
 import kotlinx.serialization.json.Json
@@ -116,6 +117,24 @@ class WalletStorage(context: Context) {
             .remove("tx_$walletId")
             .remove("settings_$walletId")
             .apply()
+    }
+
+    fun saveBackupMetadata(backup: WalletBackup) {
+        val jsonStr = Json.encodeToString(backup)
+        prefs.edit().putString("backup_${backup.walletId}", jsonStr).apply()
+    }
+
+    fun loadBackupMetadata(walletId: String): WalletBackup? {
+        val jsonStr = prefs.getString("backup_$walletId", null) ?: return null
+        return try {
+            Json.decodeFromString<WalletBackup>(jsonStr)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun deleteBackupMetadata(walletId: String) {
+        prefs.edit().remove("backup_$walletId").apply()
     }
 
     fun clearAll() {
