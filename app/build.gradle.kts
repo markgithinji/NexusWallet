@@ -68,16 +68,18 @@ dependencies {
 
     // BitcoinJ for BIP32/BIP39 and Bitcoin wallets
     implementation("org.bitcoinj:bitcoinj-core:0.16.3") {
-        exclude(group = "org.bouncycastle")  // ADD THIS LINE
+        exclude(group = "org.bouncycastle")
     }
     // Web3j for Ethereum wallets and smart contracts
     implementation("org.web3j:core:4.10.1")
 
-//    // Add Protobuf
-//    implementation("com.google.protobuf:protobuf-java:3.25.1")
-
-    // Biometric authentication
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("androidx.biometric:biometric-ktx:1.2.0-alpha05")
+
+    // DataStore
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.datastore:datastore-preferences-core:1.0.0")
+
 
     // Secure storage
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
