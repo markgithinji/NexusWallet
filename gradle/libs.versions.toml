@@ -1,5 +1,8 @@
 [versions]
 agp = "9.0.0"
+biometricKtx = "1.2.0-alpha05"
+coilCompose = "2.5.0"
+datastorePreferences = "1.0.0"
 kotlin = "2.3.0"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -8,6 +11,9 @@ espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.12.2"
 composeBom = "2024.09.00"
+material = "1.10.1"
+materialIconsExtended = "1.5.4"
+navigationCompose = "2.7.5"
 retrofit = "3.0.0"
 okhttp = "5.3.2"
 kotlinxSerialization = "1.10.0"
@@ -15,11 +21,23 @@ navigation = "2.8.8"
 coil = "2.7.0"
 foundation = "1.10.1"
 runtime = "1.10.1"
+securityCrypto = "1.1.0-alpha06"
+securityCryptoVersion = "1.1.0"
 startupRuntime = "1.2.0"
 uiText = "1.10.1"
+bitcoinj = "0.16.3"
+web3j = "4.10.1"
 
 [libraries]
+androidx-biometric-ktx = { module = "androidx.biometric:biometric-ktx", version.ref = "biometricKtx" }
+androidx-compose-material = { module = "androidx.compose.material:material", version.ref = "material" }
+androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
+androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastorePreferences" }
+androidx-navigation-compose-v275 = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+androidx-security-crypto-v110alpha06 = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
+coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -44,6 +62,9 @@ androidx-compose-foundation = { group = "androidx.compose.foundation", name = "f
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
 androidx-startup-runtime = { group = "androidx.startup", name = "startup-runtime", version.ref = "startupRuntime" }
 androidx-compose-ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiText" }
+security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCryptoVersion" }
+bitcoinj-core = { module = "org.bitcoinj:bitcoinj-core", version.ref = "bitcoinj" }
+web3j-core = { module = "org.web3j:core", version.ref = "web3j" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

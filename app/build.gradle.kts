@@ -52,9 +52,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    implementation("androidx.navigation:navigation-compose:2.7.5")
-    implementation("androidx.compose.material:material:1.10.1")
-    implementation("androidx.compose.material:material-icons-extended:1.5.4")
+    implementation(libs.androidx.navigation.compose.v275)
+    implementation(libs.androidx.compose.material)
+    implementation(libs.androidx.compose.material.icons.extended)
 
     // Retrofit & OkHttp
     implementation(libs.retrofit)
@@ -64,25 +64,25 @@ dependencies {
     implementation(libs.okhttp.logging)
 
     // Image Loading
-    implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation(libs.coil.compose)
 
     // BitcoinJ for BIP32/BIP39 and Bitcoin wallets
-    implementation("org.bitcoinj:bitcoinj-core:0.16.3") {
+    implementation(libs.bitcoinj.core) {
         exclude(group = "org.bouncycastle")
     }
     // Web3j for Ethereum wallets and smart contracts
-    implementation("org.web3j:core:4.10.1")
+    implementation(libs.web3j.core)
 
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
-    implementation("androidx.biometric:biometric-ktx:1.2.0-alpha05")
+    implementation(libs.androidx.security.crypto.v110alpha06)
+    implementation(libs.androidx.biometric.ktx)
 
     // DataStore
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
-    implementation("androidx.datastore:datastore-preferences-core:1.0.0")
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.datastore.preferences.core)
 
 
     // Secure storage
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation(libs.security.crypto)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.startup.runtime)
