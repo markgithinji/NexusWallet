@@ -1,10 +1,10 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.market.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.data.repository.CoinGeckoRepository
-import com.example.nexuswallet.data.repository.WebSocketRepository
-import com.example.nexuswallet.domain.Token
+import com.example.nexuswallet.feature.market.data.repository.CoinGeckoRepository
+import com.example.nexuswallet.feature.market.data.repository.WebSocketRepository
+import com.example.nexuswallet.feature.market.domain.Token
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

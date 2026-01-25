@@ -1,4 +1,4 @@
-package com.example.nexuswallet.domain
+package com.example.nexuswallet.feature.market.domain
 
 data class Token(
     val id: String,

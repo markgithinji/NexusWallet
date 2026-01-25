@@ -1,6 +1,7 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.market.ui
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.nexuswallet.domain.Token
+import com.example.nexuswallet.feature.market.domain.Token
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -235,7 +236,7 @@ fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
 
     val animatedPrice by animateFloatAsState(
         targetValue = token.currentPrice.toFloat(),
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300),
+        animationSpec = tween(durationMillis = 300),
         label = "priceAnimation"
     )
 

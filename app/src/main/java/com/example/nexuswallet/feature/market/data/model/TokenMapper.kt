@@ -1,9 +1,7 @@
-package com.example.nexuswallet.data.mapper
+package com.example.nexuswallet.feature.market.data.model
 
-import com.example.nexuswallet.data.model.CoinGeckoTokenDto
-import com.example.nexuswallet.data.model.SparklineDto
-import com.example.nexuswallet.domain.SparklineData
-import com.example.nexuswallet.domain.Token
+import com.example.nexuswallet.feature.market.domain.SparklineData
+import com.example.nexuswallet.feature.market.domain.Token
 
 fun CoinGeckoTokenDto.toToken(): Token {
     return Token(

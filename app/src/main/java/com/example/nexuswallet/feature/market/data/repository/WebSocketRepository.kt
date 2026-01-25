@@ -1,7 +1,6 @@
-package com.example.nexuswallet.data.repository
+package com.example.nexuswallet.feature.market.data.repository
 
-import com.example.nexuswallet.data.remote.CoinCapWebSocket
-import com.example.nexuswallet.data.remote.CryptoWebSocket
+import com.example.nexuswallet.feature.market.data.remote.CryptoWebSocket
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 

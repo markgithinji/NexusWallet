@@ -1,9 +1,9 @@
-package com.example.nexuswallet.data.repository
+package com.example.nexuswallet.feature.market.data.repository
 
-import com.example.nexuswallet.data.mapper.toToken
-import com.example.nexuswallet.data.remote.CoinGeckoApi
-import com.example.nexuswallet.data.remote.RetrofitClient
-import com.example.nexuswallet.domain.Token
+import com.example.nexuswallet.feature.market.data.model.toToken
+import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
+import com.example.nexuswallet.feature.market.data.remote.RetrofitClient
+import com.example.nexuswallet.feature.market.domain.Token
 
 class CoinGeckoRepository(
     private val coinGeckoApi: CoinGeckoApi = RetrofitClient.coinGeckoApi

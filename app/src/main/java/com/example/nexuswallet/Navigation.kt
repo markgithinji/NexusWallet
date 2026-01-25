@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.nexuswallet.feature.market.ui.MarketScreen
 
 @Composable
 fun Navigation(walletDataManager: WalletDataManager = WalletDataManager.getInstance()) {

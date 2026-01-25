@@ -1,6 +1,6 @@
-package com.example.nexuswallet.data.remote
+package com.example.nexuswallet.feature.market.data.remote
 
-import com.example.nexuswallet.data.model.CoinGeckoTokenDto
+import com.example.nexuswallet.feature.market.data.model.CoinGeckoTokenDto
 import retrofit2.http.GET
 import retrofit2.http.Query
 

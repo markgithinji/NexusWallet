@@ -1,4 +1,4 @@
-package com.example.nexuswallet.data.remote
+package com.example.nexuswallet.feature.market.data.remote
 
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
