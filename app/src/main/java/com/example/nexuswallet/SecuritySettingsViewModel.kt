@@ -45,9 +45,6 @@ class SecuritySettingsViewModel : ViewModel() {
         viewModelScope.launch {
             securityManager.setBiometricEnabled(enabled)
             _isBiometricEnabled.value = enabled
-            if (enabled) {
-                securityManager.recordAuthentication()
-            }
         }
     }
 
@@ -95,7 +92,6 @@ class SecuritySettingsViewModel : ViewModel() {
             if (success) {
                 _isPinSet.value = true
                 _showPinSetupDialog.value = false
-                securityManager.recordAuthentication()
             }
             success
         } catch (e: Exception) {
