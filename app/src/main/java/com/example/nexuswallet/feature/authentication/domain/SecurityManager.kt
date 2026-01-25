@@ -4,7 +4,6 @@ import com.example.nexuswallet.data.model.WalletBackup
 import kotlinx.serialization.json.Json
 import android.content.Context
 import android.util.Log
-import com.example.nexuswallet.KeyStoreEncryption
 import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.data.model.CryptoWallet
 import kotlinx.coroutines.CoroutineScope
