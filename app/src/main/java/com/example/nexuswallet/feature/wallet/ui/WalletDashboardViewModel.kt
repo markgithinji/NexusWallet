@@ -14,8 +14,9 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 
 class WalletDashboardViewModel() : ViewModel() {
-    private val walletDataManager = NexusWalletApplication.Companion.instance.walletDataManager
-    // Wallets list
+    private val walletDataManager = NexusWalletApplication.instance.walletDataManager
+
+    // Wallets list - observe from WalletDataManager's Flow
     private val _wallets = MutableStateFlow<List<CryptoWallet>>(emptyList())
     val wallets: StateFlow<List<CryptoWallet>> = _wallets
 
@@ -31,18 +32,14 @@ class WalletDashboardViewModel() : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    // Selected wallet
-    private val _selectedWallet = MutableStateFlow<CryptoWallet?>(null)
-    val selectedWallet: StateFlow<CryptoWallet?> = _selectedWallet
-
     // Error state
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
     init {
-        // Observe wallets from data manager
+        // Observe wallets from WalletDataManager
         viewModelScope.launch {
-            walletDataManager.getWalletsFlow().collectLatest { walletsList ->
+            walletDataManager.walletsFlow.collectLatest { walletsList ->
                 _wallets.value = walletsList
                 calculateTotalPortfolio()
             }
@@ -56,9 +53,11 @@ class WalletDashboardViewModel() : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
+                // Get wallets from persistent storage
                 val walletsList = walletDataManager.getAllWallets()
                 _wallets.value = walletsList
 
+                // Load balances for each wallet
                 val balancesMap = mutableMapOf<String, WalletBalance>()
                 walletsList.forEach { wallet ->
                     val balance = walletDataManager.getWalletBalance(wallet.id)
@@ -90,16 +89,13 @@ class WalletDashboardViewModel() : ViewModel() {
         return _balances.value[walletId]
     }
 
-    fun selectWallet(wallet: CryptoWallet) {
-        _selectedWallet.value = wallet
-    }
-
     fun deleteWallet(walletId: String) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
+                // Delete from persistent storage
                 walletDataManager.deleteWallet(walletId)
-                loadWallets()
+                // The Flow will automatically update, triggering a refresh
                 _error.value = null
             } catch (e: Exception) {
                 _error.value = "Failed to delete wallet: ${e.message}"
