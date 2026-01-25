@@ -1,5 +1,6 @@
 package com.example.nexuswallet
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CurrencyBitcoin
@@ -46,7 +48,7 @@ import com.example.nexuswallet.data.model.Transaction
 import com.example.nexuswallet.data.model.TransactionStatus
 import com.example.nexuswallet.data.model.WalletBalance
 import com.example.nexuswallet.data.model.WalletType
-
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +60,10 @@ fun WalletDetailScreen(
     val balance by viewModel.balance.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
+
+    // Track if we've checked authentication
+    var hasCheckedAuth by remember { mutableStateOf(false) }
+    val securityManager = NexusWalletApplication.instance.securityManager
 
     Scaffold(
         topBar = {
@@ -85,6 +91,23 @@ fun WalletDetailScreen(
             )
         }
     ) { padding ->
+        LaunchedEffect(wallet?.id) {
+            if (wallet?.id != null && !hasCheckedAuth) {
+                Log.d("WalletDetail", " Checking auth for wallet ${wallet!!.id}")
+
+                val isAuthRequired = securityManager.isAuthenticationRequired(AuthAction.VIEW_WALLET)
+                Log.d("WalletDetail", " Auth required: $isAuthRequired")
+
+                if (isAuthRequired) {
+                    Log.d("WalletDetail", " Navigating to auth screen")
+                    navController.navigate("authenticate/walletDetail/${wallet!!.id}")
+                } else {
+                    Log.d("WalletDetail", " No auth required, showing wallet")
+                }
+                hasCheckedAuth = true
+            }
+        }
+
         if (isLoading) {
             LoadingScreen()
             return@Scaffold
@@ -102,6 +125,7 @@ fun WalletDetailScreen(
             WalletDetailContent(
                 wallet = currentWallet,
                 balance = balance,
+                navController = navController,
                 viewModel = viewModel,
                 padding = padding
             )
@@ -117,6 +141,7 @@ fun WalletDetailScreen(
 fun WalletDetailContent(
     wallet: CryptoWallet,
     balance: WalletBalance?,
+    navController: NavController,
     viewModel: WalletDetailViewModel,
     padding: PaddingValues
 ) {
@@ -133,12 +158,23 @@ fun WalletDetailContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Actions
         WalletActionsCard(
             wallet = wallet,
-            onReceive = { /* TODO */ },
-            onSend = { /* TODO */ },
-            onAddSampleTransaction = { viewModel.addSampleTransaction() }
+            onReceive = {
+                // Show receive screen (no auth needed)
+                navController.navigate("receive/${wallet.id}")
+            },
+            onSend = {
+                // Navigate directly to authentication for send
+                navController.navigate("authenticate/send/${wallet.id}?action=SEND_TRANSACTION")
+            },
+            onBackup = {
+                // Navigate directly to authentication for backup
+                navController.navigate("authenticate/backup/${wallet.id}?action=BACKUP_WALLET")
+            },
+            onAddSampleTransaction = {
+                viewModel.addSampleTransaction()
+            }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -218,6 +254,7 @@ fun WalletActionsCard(
     wallet: CryptoWallet,
     onReceive: () -> Unit,
     onSend: () -> Unit,
+    onBackup:  () -> Unit,
     onAddSampleTransaction: () -> Unit
 ) {
     Card(
@@ -243,9 +280,9 @@ fun WalletActionsCard(
             )
 
             ActionButton(
-                icon = Icons.Default.QrCode,
-                label = "QR",
-                onClick = { /* TODO */ }
+                icon = Icons.Default.Backup,
+                label = "Backup",
+                onClick = onBackup
             )
 
             ActionButton(
