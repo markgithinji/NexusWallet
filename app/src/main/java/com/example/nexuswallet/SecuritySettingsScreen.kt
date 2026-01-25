@@ -1,6 +1,7 @@
 package com.example.nexuswallet
 
 
+import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,6 +37,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import coil.compose.AsyncImage
 import com.example.nexuswallet.domain.Token
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +49,37 @@ fun SecuritySettingsScreen(
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
     val isPinSet by viewModel.isPinSet.collectAsState()
     val isBackupAvailable by viewModel.isBackupAvailable.collectAsState()
+
+    val showPinSetupDialog by viewModel.showPinSetupDialog.collectAsState()
+    val showPinChangeDialog by viewModel.showPinChangeDialog.collectAsState()
+    val pinSetupError by viewModel.pinSetupError.collectAsState()
+
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+            val securityManager = NexusWalletApplication.instance.securityManager
+            Log.d("SecurityDebug", "PIN set: ${securityManager.isPinSet()}")
+            Log.d("SecurityDebug", "Biometric enabled: ${securityManager.isBiometricEnabled()}")
+    }
+
+    // Show PIN Setup Dialog
+    if (showPinSetupDialog || showPinChangeDialog) {
+        PinSetupDialog(
+            showDialog = true,
+            title = if (showPinSetupDialog) "Setup PIN" else "Change PIN",
+            subtitle = "Enter a 4-6 digit PIN",
+            onPinSet = { pin ->
+                coroutineScope.launch {
+                    val success = viewModel.setNewPin(pin)
+                    if (!success) {
+                        // Error will be shown in the dialog
+                    }
+                }
+            },
+            onDismiss = { viewModel.cancelPinSetup() },
+            errorMessage = pinSetupError
+        )
+    }
 
     Scaffold(
         topBar = {
