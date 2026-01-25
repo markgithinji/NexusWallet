@@ -238,6 +238,30 @@ class SecureStorage(private val context: Context) {
         return getEncryptedMnemonic(walletId) != null
     }
 
+    suspend fun saveSessionTimeout(seconds: Int) {
+        val key = stringPreferencesKey("session_timeout")
+        context.encryptedDataStore.edit { preferences ->
+            preferences[key] = seconds.toString()
+        }
+    }
+
+    suspend fun getSessionTimeout(): Int {
+        val key = stringPreferencesKey("session_timeout")
+        return try {
+            val preferences = context.encryptedDataStore.data.first()
+            preferences[key]?.toInt() ?: 300 // Default 5 minutes
+        } catch (e: Exception) {
+            300
+        }
+    }
+
+    suspend fun clearPinHash() {
+        context.encryptedDataStore.edit { preferences ->
+            preferences.remove(stringPreferencesKey("pin_hash"))
+        }
+    }
+
+
     // Helper methods for storing backup metadata in regular storage
     private suspend fun storeBackupMetadata(walletId: String, backupData: WalletBackup) {
         val storage = WalletStorage(context)
