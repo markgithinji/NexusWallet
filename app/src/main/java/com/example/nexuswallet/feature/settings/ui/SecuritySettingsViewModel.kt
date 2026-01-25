@@ -1,14 +1,15 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.settings.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.authentication.domain.SecurityState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class SecuritySettingsViewModel : ViewModel() {
-    private val securityManager = NexusWalletApplication.instance.securityManager
+    private val securityManager = NexusWalletApplication.Companion.instance.securityManager
 
     private val _securityState = MutableStateFlow<SecurityState>(SecurityState.IDLE)
     val securityState: StateFlow<SecurityState> = _securityState

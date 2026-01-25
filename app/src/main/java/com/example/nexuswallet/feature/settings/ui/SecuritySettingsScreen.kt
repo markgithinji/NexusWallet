@@ -1,4 +1,4 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.settings.ui
 
 
 import android.util.Log
@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.authentication.domain.SecurityState
 import com.example.nexuswallet.feature.authentication.ui.PinSetupDialog
 import kotlinx.coroutines.launch
@@ -42,7 +43,7 @@ fun SecuritySettingsScreen(
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-            val securityManager = NexusWalletApplication.instance.securityManager
+            val securityManager = NexusWalletApplication.Companion.instance.securityManager
             Log.d("SecurityDebug", "PIN set: ${securityManager.isPinSet()}")
             Log.d("SecurityDebug", "Biometric enabled: ${securityManager.isBiometricEnabled()}")
     }
