@@ -1,4 +1,4 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.authentication.ui
 
 import android.util.Log
 import androidx.compose.foundation.background

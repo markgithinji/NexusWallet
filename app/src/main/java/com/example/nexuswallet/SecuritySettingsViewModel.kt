@@ -2,6 +2,7 @@ package com.example.nexuswallet
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.authentication.domain.SecurityState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch

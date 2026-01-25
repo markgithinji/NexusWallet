@@ -1,16 +1,21 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.authentication.domain
 
 import com.example.nexuswallet.data.model.WalletBackup
 import kotlinx.serialization.json.Json
 import android.content.Context
 import android.util.Log
+import com.example.nexuswallet.KeyStoreEncryption
+import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.data.model.CryptoWallet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
+import java.security.MessageDigest
 import java.security.SecureRandom
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.max
 
 /**
@@ -21,7 +26,7 @@ class SecurityManager(private val context: Context) {
 
     private val scope = CoroutineScope(Dispatchers.IO)
     private val keyStoreEncryption = KeyStoreEncryption(context)
-    private val secureStorage: SecureStorage = NexusWalletApplication.instance.secureStorage
+    private val secureStorage: SecureStorage = NexusWalletApplication.Companion.instance.secureStorage
 
     private val _securityState = MutableStateFlow<SecurityState>(SecurityState.IDLE)
     val securityState: StateFlow<SecurityState> = _securityState
@@ -366,7 +371,7 @@ class SecurityManager(private val context: Context) {
         val message = "$pin${salt.toHex()}"
         Log.d("SECURITY_HASH", "Message to hash: '$message'")
 
-        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val digest = MessageDigest.getInstance("SHA-256")
         val hash = digest.digest(message.toByteArray())
 
         val result = "${hash.toHex()}:${salt.toHex()}"
@@ -403,7 +408,7 @@ class SecurityManager(private val context: Context) {
         val message = "$inputPin$saltHex"
         Log.d("SECURITY_HASH", "Message to hash: '$message'")
 
-        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val digest = MessageDigest.getInstance("SHA-256")
         val hash = digest.digest(message.toByteArray())
         val inputHashHex = hash.toHex()
 
@@ -492,8 +497,8 @@ class SecurityManager(private val context: Context) {
         return if (timestamp == Long.MIN_VALUE) {
             "Never"
         } else {
-            val sdf = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault())
-            sdf.format(java.util.Date(timestamp))
+            val sdf = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
+            sdf.format(Date(timestamp))
         }
     }
 

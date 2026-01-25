@@ -1,18 +1,20 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.authentication.ui
 
-import android.app.Activity
 import android.util.Log
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.NexusWalletApplication
+import com.example.nexuswallet.feature.authentication.domain.AuthenticationManager
+import com.example.nexuswallet.feature.authentication.domain.AuthenticationResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class AuthenticationViewModel : ViewModel() {
 
-    private val authenticationManager = AuthenticationManager(NexusWalletApplication.instance)
-    private val securityManager = NexusWalletApplication.instance.securityManager
+    private val authenticationManager = AuthenticationManager(NexusWalletApplication.Companion.instance)
+    private val securityManager = NexusWalletApplication.Companion.instance.securityManager
 
     private val _authenticationState = MutableStateFlow<AuthenticationResult?>(null)
     val authenticationState: StateFlow<AuthenticationResult?> = _authenticationState

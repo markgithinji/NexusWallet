@@ -1,4 +1,4 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.authentication.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -10,8 +10,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.nexuswallet.NexusWalletApplication
+import com.example.nexuswallet.feature.authentication.domain.AuthenticationManager
+import com.example.nexuswallet.feature.authentication.domain.AuthenticationResult
+import com.example.nexuswallet.getFragmentActivity
 import kotlinx.coroutines.launch
 
 @Composable
@@ -24,7 +29,7 @@ fun AuthenticationRequiredScreen(
     val context = LocalContext.current
     val authenticationManager = remember { AuthenticationManager(context) }
     val viewModel: AuthenticationViewModel = viewModel()
-    val securityManager = NexusWalletApplication.instance.securityManager
+    val securityManager = NexusWalletApplication.Companion.instance.securityManager
 
     val authenticationState by viewModel.authenticationState.collectAsState()
     val showPinDialog by viewModel.showPinDialog.collectAsState()
@@ -70,7 +75,7 @@ fun AuthenticationRequiredScreen(
         Text(
             text = title,
             style = MaterialTheme.typography.headlineMedium,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -80,7 +85,7 @@ fun AuthenticationRequiredScreen(
             text = description,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -91,7 +96,7 @@ fun AuthenticationRequiredScreen(
                 text = message,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(16.dp))
         }

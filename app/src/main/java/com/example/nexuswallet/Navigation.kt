@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredScreen
 import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.wallet.domain.WalletDataManager
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
@@ -142,6 +143,7 @@ fun Navigation(walletDataManager: WalletDataManager = WalletDataManager.getInsta
                                 }
                             }
                         }
+
                         "send" -> {
                             navController.navigate("send/$walletId") {
                                 popUpTo("authenticate/{screen}/{walletId}") {
@@ -149,6 +151,7 @@ fun Navigation(walletDataManager: WalletDataManager = WalletDataManager.getInsta
                                 }
                             }
                         }
+
                         "backup" -> {
                             navController.navigate("backup/$walletId") {
                                 popUpTo("authenticate/{screen}/{walletId}") {
@@ -156,6 +159,7 @@ fun Navigation(walletDataManager: WalletDataManager = WalletDataManager.getInsta
                                 }
                             }
                         }
+
                         else -> {
                             // Fallback to main
                             navController.navigate("main") {

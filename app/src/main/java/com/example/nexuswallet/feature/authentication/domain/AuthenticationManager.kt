@@ -1,7 +1,6 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.authentication.domain
 
 import android.content.Context
-import android.os.Build
 import android.util.Log
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt

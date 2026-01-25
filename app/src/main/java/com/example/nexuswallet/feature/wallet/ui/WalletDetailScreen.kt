@@ -28,7 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.nexuswallet.AuthAction
+import com.example.nexuswallet.feature.authentication.domain.AuthAction
 import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.data.model.BitcoinWallet
 import com.example.nexuswallet.data.model.CryptoWallet

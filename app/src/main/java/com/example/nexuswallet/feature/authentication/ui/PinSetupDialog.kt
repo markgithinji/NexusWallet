@@ -1,4 +1,4 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.authentication.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions

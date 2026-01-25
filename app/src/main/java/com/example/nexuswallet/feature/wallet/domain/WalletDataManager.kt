@@ -2,9 +2,8 @@ package com.example.nexuswallet.feature.wallet.domain
 
 
 import android.content.Context
-import com.example.nexuswallet.BackupResult
+import com.example.nexuswallet.feature.authentication.domain.BackupResult
 import com.example.nexuswallet.NexusWalletApplication
-import com.example.nexuswallet.feature.wallet.domain.WalletStorage
 import com.example.nexuswallet.data.model.BitcoinWallet
 import com.example.nexuswallet.data.model.CryptoWallet
 import com.example.nexuswallet.data.model.EthereumNetwork
