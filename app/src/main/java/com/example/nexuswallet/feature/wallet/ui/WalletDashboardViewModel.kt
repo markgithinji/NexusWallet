@@ -1,4 +1,4 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.wallet.ui
 
 import com.example.nexuswallet.data.model.CryptoWallet
 import com.example.nexuswallet.data.model.WalletBalance
@@ -6,6 +6,7 @@ import com.example.nexuswallet.data.model.WalletBalance
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.NexusWalletApplication
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -13,7 +14,7 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 
 class WalletDashboardViewModel() : ViewModel() {
-    private val walletDataManager = NexusWalletApplication.instance.walletDataManager
+    private val walletDataManager = NexusWalletApplication.Companion.instance.walletDataManager
     // Wallets list
     private val _wallets = MutableStateFlow<List<CryptoWallet>>(emptyList())
     val wallets: StateFlow<List<CryptoWallet>> = _wallets

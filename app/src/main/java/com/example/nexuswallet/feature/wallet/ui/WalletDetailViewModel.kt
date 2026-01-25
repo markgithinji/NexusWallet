@@ -1,8 +1,9 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.wallet.ui
 
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.data.model.BitcoinWallet
 import com.example.nexuswallet.data.model.ChainType
 import com.example.nexuswallet.data.model.CryptoWallet
@@ -15,9 +16,12 @@ import com.example.nexuswallet.data.model.WalletBalance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class WalletDetailViewModel() : ViewModel() {
-    private val walletDataManager = NexusWalletApplication.instance.walletDataManager
+    private val walletDataManager = NexusWalletApplication.Companion.instance.walletDataManager
     // Current wallet
     private val _wallet = MutableStateFlow<CryptoWallet?>(null)
     val wallet: StateFlow<CryptoWallet?> = _wallet
@@ -157,8 +161,8 @@ class WalletDetailViewModel() : ViewModel() {
 
     fun getCreationDate(): String {
         _wallet.value?.createdAt?.let {
-            val sdf = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
-            return sdf.format(java.util.Date(it))
+            val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+            return sdf.format(Date(it))
         }
         return "Unknown"
     }

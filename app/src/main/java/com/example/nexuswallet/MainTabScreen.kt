@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.nexuswallet.feature.market.ui.MarketScreen
+import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

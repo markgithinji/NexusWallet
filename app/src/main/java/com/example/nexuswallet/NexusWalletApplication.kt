@@ -3,6 +3,7 @@ package com.example.nexuswallet
 
 import android.app.Application
 import android.util.Log
+import com.example.nexuswallet.feature.wallet.domain.WalletDataManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

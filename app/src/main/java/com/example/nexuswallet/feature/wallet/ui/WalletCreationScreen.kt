@@ -1,25 +1,21 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.wallet.ui
 
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
@@ -27,8 +23,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CurrencyBitcoin
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -44,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.data.model.CryptoWallet
 import com.example.nexuswallet.data.model.WalletType
 
@@ -219,7 +214,7 @@ fun WalletCreationScreen(
 // Helper function to save wallet and navigate
 private fun saveWalletAndNavigate(navController: NavController, wallet: CryptoWallet) {
     // Save wallet to your data manager/storage
-    val walletDataManager = NexusWalletApplication.instance.walletDataManager
+    val walletDataManager = NexusWalletApplication.Companion.instance.walletDataManager
     walletDataManager.saveWallet(wallet)
 
     // Navigate to Main tab screen

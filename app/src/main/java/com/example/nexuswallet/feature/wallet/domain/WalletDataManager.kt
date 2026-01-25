@@ -1,7 +1,10 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.wallet.domain
 
 
 import android.content.Context
+import com.example.nexuswallet.BackupResult
+import com.example.nexuswallet.NexusWalletApplication
+import com.example.nexuswallet.feature.wallet.domain.WalletStorage
 import com.example.nexuswallet.data.model.BitcoinWallet
 import com.example.nexuswallet.data.model.CryptoWallet
 import com.example.nexuswallet.data.model.EthereumNetwork
@@ -10,7 +13,7 @@ import com.example.nexuswallet.data.model.MultiChainWallet
 import com.example.nexuswallet.data.model.Transaction
 import com.example.nexuswallet.data.model.WalletBalance
 import com.example.nexuswallet.data.model.WalletSettings
-import com.example.nexuswallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +26,7 @@ class WalletDataManager(context: Context) {
     val walletManager = WalletManager(appContext)
     val repository = WalletRepository()
     val storage = WalletStorage(appContext)
-    val securityManager = NexusWalletApplication.instance.securityManager
+    val securityManager = NexusWalletApplication.Companion.instance.securityManager
 
     init {
         loadDataFromStorage()

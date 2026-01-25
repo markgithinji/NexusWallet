@@ -1,7 +1,8 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.wallet.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.data.model.CryptoWallet
 import com.example.nexuswallet.data.model.WalletType
 import kotlinx.coroutines.delay
@@ -10,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class WalletCreationViewModel() : ViewModel() {
-    private val walletDataManager = NexusWalletApplication.instance.walletDataManager
+    private val walletDataManager = NexusWalletApplication.Companion.instance.walletDataManager
     // UI State
     private val _uiState = MutableStateFlow<WalletCreationUiState>(WalletCreationUiState.Idle)
     val uiState: StateFlow<WalletCreationUiState> = _uiState

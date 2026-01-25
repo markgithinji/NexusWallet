@@ -1,4 +1,4 @@
-package com.example.nexuswallet.data.repository
+package com.example.nexuswallet.feature.wallet.data.repository
 
 import com.example.nexuswallet.data.model.CryptoWallet
 import com.example.nexuswallet.data.model.Transaction
@@ -9,7 +9,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.math.BigDecimal
 import java.math.BigInteger
-import java.util.*
+import java.util.UUID
+import kotlin.collections.sumOf
 
 class WalletRepository {
 

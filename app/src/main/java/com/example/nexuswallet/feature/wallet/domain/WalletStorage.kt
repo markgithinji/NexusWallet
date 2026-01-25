@@ -1,4 +1,4 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.wallet.domain
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -120,14 +120,14 @@ class WalletStorage(context: Context) {
     }
 
     fun saveBackupMetadata(backup: WalletBackup) {
-        val jsonStr = Json.encodeToString(backup)
+        val jsonStr = Json.Default.encodeToString(backup)
         prefs.edit().putString("backup_${backup.walletId}", jsonStr).apply()
     }
 
     fun loadBackupMetadata(walletId: String): WalletBackup? {
         val jsonStr = prefs.getString("backup_$walletId", null) ?: return null
         return try {
-            Json.decodeFromString<WalletBackup>(jsonStr)
+            Json.Default.decodeFromString<WalletBackup>(jsonStr)
         } catch (e: Exception) {
             null
         }
