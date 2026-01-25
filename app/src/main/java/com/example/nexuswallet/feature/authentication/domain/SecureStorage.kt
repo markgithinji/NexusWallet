@@ -10,7 +10,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.example.nexuswallet.data.model.WalletBackup
+import com.example.nexuswallet.feature.wallet.domain.WalletBackup
 import com.example.nexuswallet.feature.wallet.domain.WalletStorage
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json

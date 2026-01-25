@@ -2,12 +2,6 @@ package com.example.nexuswallet.feature.wallet.domain
 
 
 import android.content.Context
-import com.example.nexuswallet.data.model.BitcoinNetwork
-import com.example.nexuswallet.data.model.BitcoinWallet
-import com.example.nexuswallet.data.model.EthereumNetwork
-import com.example.nexuswallet.data.model.EthereumWallet
-import com.example.nexuswallet.data.model.MultiChainWallet
-import com.example.nexuswallet.data.model.WalletType
 import org.bitcoinj.core.LegacyAddress
 import org.bitcoinj.crypto.MnemonicCode
 import org.bitcoinj.params.MainNetParams

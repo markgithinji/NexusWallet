@@ -4,14 +4,6 @@ package com.example.nexuswallet.feature.wallet.domain
 import android.content.Context
 import com.example.nexuswallet.feature.authentication.domain.BackupResult
 import com.example.nexuswallet.NexusWalletApplication
-import com.example.nexuswallet.data.model.BitcoinWallet
-import com.example.nexuswallet.data.model.CryptoWallet
-import com.example.nexuswallet.data.model.EthereumNetwork
-import com.example.nexuswallet.data.model.EthereumWallet
-import com.example.nexuswallet.data.model.MultiChainWallet
-import com.example.nexuswallet.data.model.Transaction
-import com.example.nexuswallet.data.model.WalletBalance
-import com.example.nexuswallet.data.model.WalletSettings
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

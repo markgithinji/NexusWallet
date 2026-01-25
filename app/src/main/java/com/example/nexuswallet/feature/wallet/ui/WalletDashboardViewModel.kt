@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.wallet.ui
 
-import com.example.nexuswallet.data.model.CryptoWallet
-import com.example.nexuswallet.data.model.WalletBalance
+import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
+import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 
 
 import androidx.lifecycle.ViewModel

@@ -1,4 +1,4 @@
-package com.example.nexuswallet.data.model
+package com.example.nexuswallet.feature.wallet.domain
 
 import kotlinx.serialization.Serializable
 

@@ -1,11 +1,11 @@
 package com.example.nexuswallet.feature.authentication.domain
 
-import com.example.nexuswallet.data.model.WalletBackup
+import com.example.nexuswallet.feature.wallet.domain.WalletBackup
 import kotlinx.serialization.json.Json
 import android.content.Context
 import android.util.Log
 import com.example.nexuswallet.NexusWalletApplication
-import com.example.nexuswallet.data.model.CryptoWallet
+import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

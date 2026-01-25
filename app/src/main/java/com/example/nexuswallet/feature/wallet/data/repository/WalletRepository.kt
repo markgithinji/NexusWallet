@@ -1,9 +1,9 @@
 package com.example.nexuswallet.feature.wallet.data.repository
 
-import com.example.nexuswallet.data.model.CryptoWallet
-import com.example.nexuswallet.data.model.Transaction
-import com.example.nexuswallet.data.model.WalletBalance
-import com.example.nexuswallet.data.model.WalletType
+import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
+import com.example.nexuswallet.feature.wallet.domain.Transaction
+import com.example.nexuswallet.feature.wallet.domain.WalletBalance
+import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

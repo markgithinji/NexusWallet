@@ -3,8 +3,8 @@ package com.example.nexuswallet.feature.wallet.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.NexusWalletApplication
-import com.example.nexuswallet.data.model.CryptoWallet
-import com.example.nexuswallet.data.model.WalletType
+import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
+import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

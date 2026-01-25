@@ -39,8 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.nexuswallet.NexusWalletApplication
-import com.example.nexuswallet.data.model.CryptoWallet
-import com.example.nexuswallet.data.model.WalletType
+import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
+import com.example.nexuswallet.feature.wallet.domain.WalletType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

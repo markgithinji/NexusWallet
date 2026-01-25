@@ -30,14 +30,14 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.nexuswallet.feature.authentication.domain.AuthAction
 import com.example.nexuswallet.NexusWalletApplication
-import com.example.nexuswallet.data.model.BitcoinWallet
-import com.example.nexuswallet.data.model.CryptoWallet
-import com.example.nexuswallet.data.model.EthereumWallet
-import com.example.nexuswallet.data.model.MultiChainWallet
-import com.example.nexuswallet.data.model.SolanaWallet
-import com.example.nexuswallet.data.model.Transaction
-import com.example.nexuswallet.data.model.TransactionStatus
-import com.example.nexuswallet.data.model.WalletBalance
+import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
+import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
+import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
+import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
+import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
+import com.example.nexuswallet.feature.wallet.domain.Transaction
+import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import com.example.nexuswallet.formatDate
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -2,15 +2,6 @@ package com.example.nexuswallet.feature.wallet.domain
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.example.nexuswallet.data.model.BitcoinWallet
-import com.example.nexuswallet.data.model.CryptoWallet
-import com.example.nexuswallet.data.model.EthereumWallet
-import com.example.nexuswallet.data.model.MultiChainWallet
-import com.example.nexuswallet.data.model.SolanaWallet
-import com.example.nexuswallet.data.model.Transaction
-import com.example.nexuswallet.data.model.WalletBackup
-import com.example.nexuswallet.data.model.WalletBalance
-import com.example.nexuswallet.data.model.WalletSettings
 import kotlinx.serialization.json.Json
 
 class WalletStorage(context: Context) {
