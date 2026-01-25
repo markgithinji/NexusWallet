@@ -20,6 +20,15 @@ class SecuritySettingsViewModel : ViewModel() {
 
     private val _isBackupAvailable = MutableStateFlow(false)
     val isBackupAvailable: StateFlow<Boolean> = _isBackupAvailable
+    private val _showPinSetupDialog = MutableStateFlow(false)
+    val showPinSetupDialog: StateFlow<Boolean> = _showPinSetupDialog
+
+    private val _showPinChangeDialog = MutableStateFlow(false)
+    val showPinChangeDialog: StateFlow<Boolean> = _showPinChangeDialog
+
+    private val _pinSetupError = MutableStateFlow<String?>(null)
+    val pinSetupError: StateFlow<String?> = _pinSetupError
+
 
     init {
         loadSecurityStatus()
@@ -36,28 +45,16 @@ class SecuritySettingsViewModel : ViewModel() {
         viewModelScope.launch {
             securityManager.setBiometricEnabled(enabled)
             _isBiometricEnabled.value = enabled
-        }
-    }
-
-    fun setupPin() {
-        // Show PIN setup dialog
-    }
-
-    fun changePin() {
-        // Show PIN change dialog
-    }
-
-    fun removePin() {
-        viewModelScope.launch {
-            // Remove PIN logic
-            _isPinSet.value = false
+            if (enabled) {
+                securityManager.recordAuthentication()
+            }
         }
     }
 
     fun createBackup() {
         viewModelScope.launch {
             _securityState.value = SecurityState.BACKING_UP
-            // Backup logic
+            // TODO: Backup logic
             _securityState.value = SecurityState.IDLE
             _isBackupAvailable.value = true
         }
@@ -66,14 +63,14 @@ class SecuritySettingsViewModel : ViewModel() {
     fun restoreBackup() {
         viewModelScope.launch {
             _securityState.value = SecurityState.RESTORING
-            // Restore logic
+            // TODO: Restore logic
             _securityState.value = SecurityState.IDLE
         }
     }
 
     fun deleteBackup() {
         viewModelScope.launch {
-            // Delete backup logic
+            // TODO: Delete backup logic
             _isBackupAvailable.value = false
         }
     }
@@ -85,5 +82,43 @@ class SecuritySettingsViewModel : ViewModel() {
             _isPinSet.value = false
             _isBackupAvailable.value = false
         }
+    }
+
+    fun setupPin() {
+        _showPinSetupDialog.value = true
+        _pinSetupError.value = null
+    }
+
+    suspend fun setNewPin(pin: String): Boolean {
+        return try {
+            val success = securityManager.setPin(pin)
+            if (success) {
+                _isPinSet.value = true
+                _showPinSetupDialog.value = false
+                securityManager.recordAuthentication()
+            }
+            success
+        } catch (e: Exception) {
+            _pinSetupError.value = "Failed to set PIN: ${e.message}"
+            false
+        }
+    }
+
+    fun changePin() {
+        _showPinChangeDialog.value = true
+        _pinSetupError.value = null
+    }
+
+    fun removePin() {
+        viewModelScope.launch {
+            securityManager.clearPin()
+            _isPinSet.value = false
+        }
+    }
+
+    fun cancelPinSetup() {
+        _showPinSetupDialog.value = false
+        _showPinChangeDialog.value = false
+        _pinSetupError.value = null
     }
 }
