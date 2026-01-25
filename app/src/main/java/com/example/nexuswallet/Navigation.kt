@@ -48,9 +48,10 @@ fun Navigation(walletDataManager: WalletDataManager = WalletDataManager.getInsta
 
         // Market Screen (accessible from tabs)
         composable("market") {
-            MarketScreen(navController = navController,
+            MarketScreen(
+                navController = navController,
                 padding = PaddingValues(0.dp)
-                )
+            )
         }
 
         // Wallet Creation
@@ -111,6 +112,98 @@ fun Navigation(walletDataManager: WalletDataManager = WalletDataManager.getInsta
         composable("settings") {
             SettingsScreen(
                 navController = navController
+            )
+        }
+
+        composable(
+            route = "authenticate/{screen}/{walletId}",
+            arguments = listOf(
+                navArgument("screen") { type = NavType.StringType },
+                navArgument("walletId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val screen = backStackEntry.arguments?.getString("screen") ?: ""
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+
+            AuthenticationRequiredScreen(
+                onAuthenticated = {
+                    // Navigate to the appropriate screen after authentication
+                    when (screen) {
+                        "walletDetail" -> {
+                            navController.navigate("walletDetail/$walletId") {
+                                popUpTo("authenticate/{screen}/{walletId}") {
+                                    inclusive = true
+                                }
+                            }
+                        }
+                        "send" -> {
+                            navController.navigate("send/$walletId") {
+                                popUpTo("authenticate/{screen}/{walletId}") {
+                                    inclusive = true
+                                }
+                            }
+                        }
+                        "backup" -> {
+                            navController.navigate("backup/$walletId") {
+                                popUpTo("authenticate/{screen}/{walletId}") {
+                                    inclusive = true
+                                }
+                            }
+                        }
+                        else -> {
+                            // Fallback to main
+                            navController.navigate("main") {
+                                popUpTo("authenticate/{screen}/{walletId}") {
+                                    inclusive = true
+                                }
+                            }
+                        }
+                    }
+                },
+                onCancel = {
+                    navController.navigateUp()
+                }
+            )
+        }
+
+        composable(
+            route = "send/{walletId}",
+            arguments = listOf(
+                navArgument("walletId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+            SendScreen(
+                navController = navController,
+                walletId = walletId
+            )
+        }
+
+        // Add backup route (will be protected by authentication)
+        composable(
+            route = "backup/{walletId}",
+            arguments = listOf(
+                navArgument("walletId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+            BackupScreen(
+                navController = navController,
+                walletId = walletId
+            )
+        }
+
+        // Add receive route (no authentication needed)
+        composable(
+            route = "receive/{walletId}",
+            arguments = listOf(
+                navArgument("walletId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+            ReceiveScreen(
+                navController = navController,
+                walletId = walletId
             )
         }
     }
