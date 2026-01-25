@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.security.SecureRandom
+import kotlin.math.max
 
 /**
  * Main security manager that coordinates all security operations
@@ -20,7 +21,7 @@ class SecurityManager(private val context: Context) {
 
     private val scope = CoroutineScope(Dispatchers.IO)
     private val keyStoreEncryption = KeyStoreEncryption(context)
-    private val secureStorage = SecureStorage(context)
+    private val secureStorage: SecureStorage = NexusWalletApplication.instance.secureStorage
 
     private val _securityState = MutableStateFlow<SecurityState>(SecurityState.IDLE)
     val securityState: StateFlow<SecurityState> = _securityState
@@ -432,40 +433,58 @@ class SecurityManager(private val context: Context) {
     }
 
     fun recordAuthentication() {
+        val previousAuthTime = lastAuthenticationTime
         lastAuthenticationTime = System.currentTimeMillis()
-        Log.d("SecurityDebug", " AUTHENTICATION RECORDED at $lastAuthenticationTime")
-        Log.d("SecurityDebug", "Session will be valid for ${sessionTimeout/1000} seconds")
+
+        Log.d(" AUTH_DEBUG", "══════════════════════════════════════════════")
+        Log.d(" AUTH_DEBUG", " AUTHENTICATION RECORDED")
+        Log.d(" AUTH_DEBUG", "══════════════════════════════════════════════")
+        Log.d(" AUTH_DEBUG", " Previous auth time: $previousAuthTime")
+        Log.d(" AUTH_DEBUG", " New auth time: $lastAuthenticationTime")
+        Log.d(" AUTH_DEBUG", " Session will expire in: ${sessionTimeout/1000} seconds")
+        Log.d(" AUTH_DEBUG", "══════════════════════════════════════════════")
     }
 
     /**
      * Check if session is still valid
      */
     fun isSessionValid(): Boolean {
-        // If never authenticated, session is not valid
+        Log.d(" SESSION_DEBUG", "══════════════════════════════════════════════")
+        Log.d(" SESSION_DEBUG", " CHECKING SESSION VALIDITY")
+        Log.d(" SESSION_DEBUG", "══════════════════════════════════════════════")
+
+        Log.d(" SESSION_DEBUG", " Session Details:")
+        Log.d(" SESSION_DEBUG", "    lastAuthenticationTime: $lastAuthenticationTime")
+        Log.d(" SESSION_DEBUG", "    Is MIN_VALUE? ${lastAuthenticationTime == Long.MIN_VALUE}")
+        Log.d(" SESSION_DEBUG", "    sessionTimeout: ${sessionTimeout}ms (${sessionTimeout/1000}s)")
+
         if (lastAuthenticationTime == Long.MIN_VALUE) {
-            Log.d("SecurityDebug", " Session NOT valid: Never authenticated")
+            Log.d(" SESSION_DEBUG", " Session NOT valid: Never authenticated (MIN_VALUE)")
+            Log.d(" SESSION_DEBUG", "══════════════════════════════════════════════")
             return false
         }
 
-        // Check if session has expired
         val currentTime = System.currentTimeMillis()
-
-        // Handle potential overflow (though unlikely with timestamps)
-        if (lastAuthenticationTime > currentTime) {
-            Log.d("SecurityDebug", "⚠ Clock anomaly detected: lastAuth > currentTime")
-            return false
-        }
-
         val timeSinceAuth = currentTime - lastAuthenticationTime
+
+        Log.d(" SESSION_DEBUG", " Time Calculation:")
+        Log.d(" SESSION_DEBUG", "    Current time: $currentTime")
+        Log.d(" SESSION_DEBUG", "    Last auth time: $lastAuthenticationTime")
+        Log.d(" SESSION_DEBUG", "    Time since auth: ${timeSinceAuth}ms (${timeSinceAuth/1000}s)")
+        Log.d(" SESSION_DEBUG", "    Timeout: ${sessionTimeout}ms (${sessionTimeout/1000}s)")
+        Log.d(" SESSION_DEBUG", "    Time remaining: ${max(0, sessionTimeout - timeSinceAuth)}ms")
+
         val isValid = timeSinceAuth < sessionTimeout
 
-        Log.d("SecurityDebug", "Session check:")
-        Log.d("SecurityDebug", "- Last auth: ${formatTime(lastAuthenticationTime)}")
-        Log.d("SecurityDebug", "- Current: ${formatTime(currentTime)}")
-        Log.d("SecurityDebug", "- Time since auth: ${timeSinceAuth / 1000} seconds")
-        Log.d("SecurityDebug", "- Timeout: ${sessionTimeout / 1000} seconds")
-        Log.d("SecurityDebug", "- ${if (isValid) " Session valid" else " Session expired"}")
+        if (isValid) {
+            Log.d(" SESSION_DEBUG", " Session is VALID")
+            Log.d(" SESSION_DEBUG", "    User authenticated ${timeSinceAuth/1000}s ago")
+        } else {
+            Log.d(" SESSION_DEBUG", " Session is EXPIRED")
+            Log.d(" SESSION_DEBUG", "    Authentication expired ${(timeSinceAuth - sessionTimeout)/1000}s ago")
+        }
 
+        Log.d(" SESSION_DEBUG", "══════════════════════════════════════════════")
         return isValid
     }
 
@@ -508,48 +527,40 @@ class SecurityManager(private val context: Context) {
     suspend fun isAuthenticationRequired(
         action: AuthAction = AuthAction.VIEW_WALLET
     ): Boolean {
-        Log.d("SecurityDebug", " === CHECKING AUTHENTICATION ===")
-        Log.d("SecurityDebug", "Action: $action")
+        Log.d(" SECURITY_DEBUG", "══════════════════════════════════════════════")
+        Log.d(" SECURITY_DEBUG", " CHECKING AUTHENTICATION")
+        Log.d(" SECURITY_DEBUG", "══════════════════════════════════════════════")
 
-        // Check session
+        // 1. Check session
         val sessionValid = isSessionValid()
-        Log.d("SecurityDebug", "Session valid: $sessionValid")
-        Log.d("SecurityDebug", "lastAuthenticationTime: $lastAuthenticationTime")
-        Log.d("SecurityDebug", "currentTime: ${System.currentTimeMillis()}")
-        Log.d("SecurityDebug", "timeDiff: ${System.currentTimeMillis() - lastAuthenticationTime}")
-        Log.d("SecurityDebug", "sessionTimeout: $sessionTimeout")
+        Log.d(" SECURITY_DEBUG", " Session valid? $sessionValid")
 
         if (sessionValid) {
-            Log.d("SecurityDebug", " Session valid, NO auth required")
+            Log.d(" SECURITY_DEBUG", " Session valid - NO auth required")
             return false
         }
 
-        // Check if auth methods are set up
+        Log.d("SECURITY_DEBUG", " Session invalid - Checking PIN/Biometric...")
+
+        // 2. Check if auth methods are set up
         val pinSet = isPinSet()
         val biometricEnabled = isBiometricEnabled()
         val hasAuthEnabled = pinSet || biometricEnabled
 
-        Log.d("SecurityDebug", "PIN set: $pinSet")
-        Log.d("SecurityDebug", "Biometric enabled: $biometricEnabled")
-        Log.d("SecurityDebug", "hasAuthEnabled: $hasAuthEnabled")
+        Log.d(" SECURITY_DEBUG", " Auth Methods Status:")
+        Log.d("SECURITY_DEBUG", "   • PIN set? $pinSet")
+        Log.d(" SECURITY_DEBUG", "   • Biometric enabled? $biometricEnabled")
+        Log.d(" SECURITY_DEBUG", "   • Any auth enabled? $hasAuthEnabled")
 
         if (!hasAuthEnabled) {
-            Log.d("SecurityDebug", " No auth methods enabled, NO auth required")
+            Log.d(" SECURITY_DEBUG", "⚠ No auth methods enabled - allowing access")
+            Log.d(" SECURITY_DEBUG", " User needs to set up PIN/biometric in Security Settings")
             return false
         }
 
-        // Check based on action
-        val requiresAuth = when (action) {
-            AuthAction.VIEW_WALLET -> true
-            AuthAction.SEND_TRANSACTION -> true
-            AuthAction.VIEW_PRIVATE_KEY -> true
-            AuthAction.BACKUP_WALLET -> true
-        }
-
-        Log.d("SecurityDebug", "requiresAuth for $action: $requiresAuth")
-        Log.d("SecurityDebug", " === RESULT: ${if (requiresAuth) "AUTH REQUIRED" else "NO AUTH"} ===")
-
-        return requiresAuth
+        Log.d(" SECURITY_DEBUG", " AUTHENTICATION REQUIRED!")
+        Log.d(" SECURITY_DEBUG", " Reason: AuthEnabled=true + SessionInvalid=true")
+        return true
     }
     /**
      * Get available authentication methods for user
