@@ -1,4 +1,4 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.authentication.domain
 
 
 import android.content.Context
