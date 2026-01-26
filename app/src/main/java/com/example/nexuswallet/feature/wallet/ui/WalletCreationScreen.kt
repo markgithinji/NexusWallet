@@ -59,6 +59,19 @@ fun WalletCreationScreen(
     // Track if user has seen the mnemonic warning
     var hasSeenSecurityWarning by remember { mutableStateOf(false) }
 
+    // Handle navigation when wallet is created
+    LaunchedEffect(uiState) {
+        if (uiState is WalletCreationUiState.WalletCreated) {
+            // Navigate after wallet is created
+            navController.navigate("main") {
+                // Clear back stack including createWallet screen
+                popUpTo("main") {
+                    inclusive = false
+                }
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -177,8 +190,7 @@ fun WalletCreationScreen(
                                 WalletSuccessStep(
                                     wallet = wallet,
                                     onFinish = {
-                                        // Save wallet to storage and navigate
-                                        saveWalletAndNavigate(navController, wallet)
+                                        // Navigation is handled by LaunchedEffect above
                                     }
                                 )
                             }
@@ -209,19 +221,6 @@ fun WalletCreationScreen(
                 }
             }
         )
-    }
-}
-
-private fun saveWalletAndNavigate(navController: NavController, wallet: CryptoWallet) {
-    val walletRepository = WalletRepository.getInstance()
-    walletRepository.saveWallet(wallet)
-
-    // Navigate to Main tab screen
-    navController.navigate("main") {
-        // Clear back stack including createWallet screen
-        popUpTo("main") {
-            inclusive = false
-        }
     }
 }
 
