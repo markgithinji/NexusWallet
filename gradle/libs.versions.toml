@@ -27,6 +27,8 @@ startupRuntime = "1.2.0"
 uiText = "1.10.1"
 bitcoinj = "0.16.3"
 web3j = "4.10.1"
+room = "2.8.4"
+ksp = "2.2.10-2.0.2"
 
 [libraries]
 androidx-biometric-ktx = { module = "androidx.biometric:biometric-ktx", version.ref = "biometricKtx" }
@@ -65,9 +67,13 @@ androidx-compose-ui-text = { group = "androidx.compose.ui", name = "ui-text", ve
 security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCryptoVersion" }
 bitcoinj-core = { module = "org.bitcoinj:bitcoinj-core", version.ref = "bitcoinj" }
 web3j-core = { module = "org.web3j:core", version.ref = "web3j" }
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
