@@ -5,11 +5,11 @@ import android.content.SharedPreferences
 import kotlinx.serialization.json.Json
 
 class WalletStorage(context: Context) {
-
     private val prefs: SharedPreferences =
         context.getSharedPreferences("nexus_wallet_v2", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true }
 
+    // Wallet operations
     fun saveWallet(wallet: CryptoWallet) {
         val key = "wallet_${wallet.id}"
         val jsonStr = when (wallet) {
@@ -24,24 +24,7 @@ class WalletStorage(context: Context) {
 
     fun loadWallet(walletId: String): CryptoWallet? {
         val jsonStr = prefs.getString("wallet_$walletId", null) ?: return null
-
-        return try {
-            json.decodeFromString<BitcoinWallet>(jsonStr)
-        } catch (e: Exception) {
-            try {
-                json.decodeFromString<EthereumWallet>(jsonStr)
-            } catch (e: Exception) {
-                try {
-                    json.decodeFromString<MultiChainWallet>(jsonStr)
-                } catch (e: Exception) {
-                    try {
-                        json.decodeFromString<SolanaWallet>(jsonStr)
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-            }
-        }
+        return tryDeserializeWallet(jsonStr)
     }
 
     fun loadAllWallets(): List<CryptoWallet> {
@@ -50,14 +33,18 @@ class WalletStorage(context: Context) {
             .mapNotNull { loadWallet(it.removePrefix("wallet_")) }
     }
 
-    fun saveEncryptedMnemonic(walletId: String, encryptedData: String) {
-        prefs.edit().putString("mnemonic_$walletId", encryptedData).apply()
+    fun deleteWallet(walletId: String) {
+        prefs.edit()
+            .remove("wallet_$walletId")
+            .remove("mnemonic_$walletId")
+            .remove("balance_$walletId")
+            .remove("tx_$walletId")
+            .remove("settings_$walletId")
+            .remove("backup_$walletId")
+            .apply()
     }
 
-    fun loadEncryptedMnemonic(walletId: String): String? {
-        return prefs.getString("mnemonic_$walletId", null)
-    }
-
+    // Balance operations
     fun saveWalletBalance(balance: WalletBalance) {
         val jsonStr = json.encodeToString(balance)
         prefs.edit().putString("balance_${balance.walletId}", jsonStr).apply()
@@ -72,6 +59,7 @@ class WalletStorage(context: Context) {
         }
     }
 
+    // Transaction operations
     fun saveTransactions(walletId: String, transactions: List<Transaction>) {
         val jsonStr = json.encodeToString(transactions)
         prefs.edit().putString("tx_$walletId", jsonStr).apply()
@@ -86,6 +74,7 @@ class WalletStorage(context: Context) {
         }
     }
 
+    // Settings operations
     fun saveSettings(settings: WalletSettings) {
         val jsonStr = json.encodeToString(settings)
         prefs.edit().putString("settings_${settings.walletId}", jsonStr).apply()
@@ -100,16 +89,16 @@ class WalletStorage(context: Context) {
         }
     }
 
-    fun deleteWallet(walletId: String) {
-        prefs.edit()
-            .remove("wallet_$walletId")
-            .remove("mnemonic_$walletId")
-            .remove("balance_$walletId")
-            .remove("tx_$walletId")
-            .remove("settings_$walletId")
-            .apply()
+    // Mnemonic operations
+    fun saveEncryptedMnemonic(walletId: String, encryptedData: String) {
+        prefs.edit().putString("mnemonic_$walletId", encryptedData).apply()
     }
 
+    fun loadEncryptedMnemonic(walletId: String): String? {
+        return prefs.getString("mnemonic_$walletId", null)
+    }
+
+    // Backup operations
     fun saveBackupMetadata(backup: WalletBackup) {
         val jsonStr = Json.Default.encodeToString(backup)
         prefs.edit().putString("backup_${backup.walletId}", jsonStr).apply()
@@ -124,10 +113,7 @@ class WalletStorage(context: Context) {
         }
     }
 
-    fun deleteBackupMetadata(walletId: String) {
-        prefs.edit().remove("backup_$walletId").apply()
-    }
-
+    // Helper methods
     fun clearAll() {
         prefs.edit().clear().apply()
     }
@@ -140,5 +126,14 @@ class WalletStorage(context: Context) {
         return prefs.all.keys
             .filter { it.startsWith("wallet_") }
             .map { it.removePrefix("wallet_") }
+    }
+
+    private fun tryDeserializeWallet(jsonStr: String): CryptoWallet? {
+        return listOf(
+            { json.decodeFromString<BitcoinWallet>(jsonStr) },
+            { json.decodeFromString<EthereumWallet>(jsonStr) },
+            { json.decodeFromString<MultiChainWallet>(jsonStr) },
+            { json.decodeFromString<SolanaWallet>(jsonStr) }
+        ).firstNotNullOfOrNull { runCatching { it() }.getOrNull() }
     }
 }
