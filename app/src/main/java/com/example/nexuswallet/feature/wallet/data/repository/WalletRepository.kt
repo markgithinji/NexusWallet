@@ -1,125 +1,206 @@
 package com.example.nexuswallet.feature.wallet.data.repository
 
+import android.content.Context
+import com.example.nexuswallet.NexusWalletApplication
+import com.example.nexuswallet.feature.authentication.domain.BackupResult
+import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
+import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
+import com.example.nexuswallet.feature.wallet.domain.WalletManager
+import com.example.nexuswallet.feature.wallet.domain.WalletSettings
+import com.example.nexuswallet.feature.wallet.domain.WalletStorage
 import com.example.nexuswallet.feature.wallet.domain.WalletType
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.util.UUID
 import kotlin.collections.sumOf
 
-class WalletRepository {
+class WalletRepository(context: Context) {
+    private val appContext = context.applicationContext
+    private val storage = WalletStorage(appContext)
+    private val walletManager = WalletManager(appContext)
+    private val securityManager = NexusWalletApplication.instance.securityManager
 
-    // Store wallets by ID
-    private val wallets = mutableMapOf<String, CryptoWallet>()
+    // Create a Flow for reactive UI updates
     private val _walletsFlow = MutableStateFlow<List<CryptoWallet>>(emptyList())
-    val walletsFlow: StateFlow<List<CryptoWallet>> = _walletsFlow.asStateFlow()
+    val walletsFlow: StateFlow<List<CryptoWallet>> = _walletsFlow
 
-    // Store balances by wallet ID
-    private val balances = mutableMapOf<String, WalletBalance>()
-
-    // Store transactions by wallet ID
-    private val transactions = mutableMapOf<String, List<Transaction>>()
-
-    // Simple ID generator
-    fun generateWalletId(): String = "wallet_${UUID.randomUUID().toString().take(8)}"
-
-    // WALLET MANAGEMENT
-    fun createWallet(wallet: CryptoWallet) {
-        wallets[wallet.id] = wallet
-        _walletsFlow.value = wallets.values.toList()
+    init {
+        loadInitialData()
     }
 
-    fun getWallet(walletId: String): CryptoWallet? = wallets[walletId]
+    private fun loadInitialData() {
+        val wallets = storage.loadAllWallets()
+        _walletsFlow.value = wallets
+    }
 
-    fun getAllWallets(): List<CryptoWallet> = wallets.values.toList()
+    // Wallet CRUD operations
+    fun saveWallet(wallet: CryptoWallet) {
+        storage.saveWallet(wallet)
+        updateWalletsFlow(wallet)
+    }
+
+    fun getWallet(walletId: String): CryptoWallet? {
+        return storage.loadWallet(walletId)
+    }
+
+    fun getAllWallets(): List<CryptoWallet> {
+        return storage.loadAllWallets()
+    }
 
     fun deleteWallet(walletId: String) {
-        wallets.remove(walletId)
-        balances.remove(walletId)
-        transactions.remove(walletId)
-        _walletsFlow.value = wallets.values.toList()
+        storage.deleteWallet(walletId)
+        removeWalletFromFlow(walletId)
     }
 
-    fun updateWallet(wallet: CryptoWallet) {
-        wallets[wallet.id] = wallet
-        _walletsFlow.value = wallets.values.toList()
+    // Balance operations
+    fun saveWalletBalance(balance: WalletBalance) {
+        storage.saveWalletBalance(balance)
     }
 
-    // BALANCE MANAGEMENT
-    fun setWalletBalance(balance: WalletBalance) {
-        balances[balance.walletId] = balance
+    fun getWalletBalance(walletId: String): WalletBalance? {
+        return storage.loadWalletBalance(walletId)
     }
 
-    fun getWalletBalance(walletId: String): WalletBalance? = balances[walletId]
-
-    fun getAllBalances(): Map<String, WalletBalance> = balances
-
-    fun calculateTotalPortfolioValue(): BigDecimal {
-        return balances.values.sumOf { balance ->
-            BigDecimal(balance.usdValue.toString())
-        }
-    }
-
-    // TRANSACTION MANAGEMENT
-    fun addTransaction(walletId: String, transaction: Transaction) {
-        val current = transactions[walletId]?.toMutableList() ?: mutableListOf()
-        current.add(transaction)
-        transactions[walletId] = current
+    // Transaction operations
+    fun saveTransactions(walletId: String, transactions: List<Transaction>) {
+        storage.saveTransactions(walletId, transactions)
     }
 
     fun getTransactions(walletId: String): List<Transaction> {
-        return transactions[walletId] ?: emptyList()
+        return storage.loadTransactions(walletId)
     }
 
-    fun getRecentTransactions(limit: Int = 10): List<Transaction> {
-        return transactions.values.flatten()
-            .sortedByDescending { it.timestamp }
-            .take(limit)
+    // Settings operations
+    fun saveSettings(settings: WalletSettings) {
+        storage.saveSettings(settings)
     }
 
-    // HELPER METHODS
-    fun getWalletsByType(type: WalletType): List<CryptoWallet> {
-        return wallets.values.filter { it.walletType == type }
+    fun getSettings(walletId: String): WalletSettings? {
+        return storage.loadSettings(walletId)
     }
 
-    fun hasWallet(walletId: String): Boolean = wallets.containsKey(walletId)
+    // Mnemonic operations
+    suspend fun getMnemonic(walletId: String): List<String>? {
+        return securityManager.retrieveMnemonic(walletId)
+    }
 
-    fun getWalletCount(): Int = wallets.size
-
-    fun hasWallets(): Boolean = wallets.isNotEmpty()
-
-    // Balance formatting helpers
-    fun formatBalance(balanceStr: String, decimals: Int): String {
-        return try {
-            val bigInt = BigInteger(balanceStr)
-            val divisor = BigInteger.TEN.pow(decimals)
-            val integerPart = bigInt.divide(divisor)
-            val fractionalPart = bigInt.mod(divisor)
-
-            if (fractionalPart == BigInteger.ZERO) {
-                integerPart.toString()
-            } else {
-                val fractionalStr = fractionalPart.toString().padStart(decimals, '0')
-                    .trimEnd('0')
-                "$integerPart.$fractionalStr"
-            }
-        } catch (e: Exception) {
-            "0"
+    suspend fun createBackup(walletId: String): BackupResult {
+        val wallet = getWallet(walletId)
+        return if (wallet != null) {
+            securityManager.createEncryptedBackup(walletId, wallet)
+        } else {
+            BackupResult.Error(IllegalArgumentException("Wallet not found"))
         }
     }
 
+    // Helper queries
+    fun hasWallets(): Boolean {
+        return getAllWallets().isNotEmpty()
+    }
+
+    fun getWalletCount(): Int {
+        return getAllWallets().size
+    }
+
+    fun calculateTotalPortfolioValue(): BigDecimal {
+        val wallets = getAllWallets()
+        var total = BigDecimal.ZERO
+
+        wallets.forEach { wallet ->
+            val balance = getWalletBalance(wallet.id)
+            if (balance != null) {
+                total = total.add(BigDecimal(balance.usdValue.toString()))
+            }
+        }
+
+        return total
+    }
+
+    // Create helper methods (delegate to WalletManager)
+    fun generateNewMnemonic(wordCount: Int = 12): List<String> {
+        return walletManager.generateMnemonic(wordCount)
+    }
+
+    fun validateMnemonic(mnemonic: List<String>): Boolean {
+        return walletManager.validateMnemonic(mnemonic)
+    }
+
+    fun createBitcoinWallet(mnemonic: List<String>, name: String): BitcoinWallet {
+        val wallet = walletManager.createBitcoinWallet(mnemonic, name)
+
+        // Secure the mnemonic
+        CoroutineScope(Dispatchers.IO).launch {
+            securityManager.secureMnemonic(wallet.id, mnemonic)
+        }
+
+        return wallet
+    }
+
+    fun createEthereumWallet(
+        mnemonic: List<String>,
+        name: String,
+        network: EthereumNetwork = EthereumNetwork.MAINNET
+    ): EthereumWallet {
+        return walletManager.createEthereumWallet(mnemonic, name, network)
+    }
+
+    fun createMultiChainWallet(
+        mnemonic: List<String>,
+        name: String
+    ): MultiChainWallet {
+        return walletManager.createMultiChainWallet(mnemonic, name)
+    }
+
+    // Formatting helpers
+    fun formatBalance(balanceStr: String, decimals: Int): String {
+        return walletManager.formatBalance(balanceStr, decimals)
+    }
+
     fun convertToDecimal(balanceStr: String, decimals: Int): String {
-        return try {
-            val bigInt = BigInteger(balanceStr)
-            val divisor = BigDecimal(BigInteger.TEN.pow(decimals))
-            BigDecimal(bigInt).divide(divisor).toString()
-        } catch (e: Exception) {
-            "0"
+        return walletManager.convertToDecimal(balanceStr, decimals)
+    }
+
+    // Flow update helpers
+    private fun updateWalletsFlow(wallet: CryptoWallet) {
+        val currentWallets = _walletsFlow.value.toMutableList()
+        val existingIndex = currentWallets.indexOfFirst { it.id == wallet.id }
+
+        if (existingIndex >= 0) {
+            currentWallets[existingIndex] = wallet
+        } else {
+            currentWallets.add(wallet)
+        }
+
+        _walletsFlow.value = currentWallets
+    }
+
+    private fun removeWalletFromFlow(walletId: String) {
+        val currentWallets = _walletsFlow.value.toMutableList()
+        currentWallets.removeAll { it.id == walletId }
+        _walletsFlow.value = currentWallets
+    }
+
+    companion object {
+        @Volatile
+        private var INSTANCE: WalletRepository? = null
+
+        fun initialize(context: Context) {
+            INSTANCE = WalletRepository(context.applicationContext)
+        }
+
+        fun getInstance(): WalletRepository {
+            return INSTANCE ?: throw IllegalStateException("WalletRepository not initialized. Call initialize() first.")
         }
     }
 }
