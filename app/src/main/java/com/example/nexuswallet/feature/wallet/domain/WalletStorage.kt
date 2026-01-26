@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.wallet.domain
 import android.content.Context
 import android.content.SharedPreferences
 import android.media.CamcorderProfile.getAll
+import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.model.BackupEntity
 import com.example.nexuswallet.feature.wallet.data.model.BalanceEntity
@@ -45,8 +46,19 @@ class WalletStorage(context: Context) {
     }
 
     suspend fun loadWallet(walletId: String): CryptoWallet? {
-        val entity = walletDao.get(walletId) ?: return null
-        return tryDeserializeWallet(entity.walletJson)
+        Log.d("WalletStorage", "Loading wallet with ID: $walletId")
+        val entity = walletDao.get(walletId) ?: return null.also {
+            Log.d("WalletStorage", "Wallet not found in database")
+        }
+
+        return try {
+            val wallet = tryDeserializeWallet(entity.walletJson)
+            Log.d("WalletStorage", "Wallet loaded: ${wallet?.name}")
+            wallet
+        } catch (e: Exception) {
+            Log.e("WalletStorage", "Error deserializing wallet: ${e.message}")
+            null
+        }
     }
 
     fun loadAllWallets(): Flow<List<CryptoWallet>> {

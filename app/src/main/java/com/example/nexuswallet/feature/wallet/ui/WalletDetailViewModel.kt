@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.wallet.ui
 
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.NexusWalletApplication
@@ -14,6 +15,8 @@ import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -44,29 +47,46 @@ class WalletDetailViewModel() : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    // Job for collecting transactions flow
+    private var transactionsJob: Job? = null
+
     // Load wallet details
     fun loadWallet(walletId: String) {
         viewModelScope.launch {
             _isLoading.value = true
+            _error.value = null
+
             try {
-                // Load wallet
+                // 1. Load wallet
                 val loadedWallet = walletRepository.getWallet(walletId)
                 _wallet.value = loadedWallet
 
-                // Load balance
-                val loadedBalance = walletRepository.getWalletBalance(walletId)
+                // 2. Load balance (async)
+                val balanceDeferred = async { walletRepository.getWalletBalance(walletId) }
+
+                // 3. Start collecting transactions flow
+                startCollectingTransactions(walletId)
+
+                // 4. Wait for balance and update
+                val loadedBalance = balanceDeferred.await()
                 _balance.value = loadedBalance
 
-                // Load transactions
-                walletRepository.getTransactions(walletId).collect { txList ->
-                    _transactions.value = txList
-                }
-
-                _error.value = null
             } catch (e: Exception) {
                 _error.value = "Failed to load wallet: ${e.message}"
+                Log.e("WalletDetailVM", "Error loading wallet: ${e.message}", e)
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    private fun startCollectingTransactions(walletId: String) {
+        // Cancel previous job if exists
+        transactionsJob?.cancel()
+
+        transactionsJob = viewModelScope.launch {
+            walletRepository.getTransactions(walletId).collect { txList ->
+                _transactions.value = txList
             }
         }
     }
@@ -172,5 +192,10 @@ class WalletDetailViewModel() : ViewModel() {
 
     fun isBackedUp(): Boolean {
         return _wallet.value?.isBackedUp ?: false
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        transactionsJob?.cancel()
     }
 }
