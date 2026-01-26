@@ -2,16 +2,32 @@ package com.example.nexuswallet.feature.wallet.domain
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.media.CamcorderProfile.getAll
+import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
+import com.example.nexuswallet.feature.wallet.data.model.BackupEntity
+import com.example.nexuswallet.feature.wallet.data.model.BalanceEntity
+import com.example.nexuswallet.feature.wallet.data.model.MnemonicEntity
+import com.example.nexuswallet.feature.wallet.data.model.SettingsEntity
+import com.example.nexuswallet.feature.wallet.data.model.TransactionEntity
+import com.example.nexuswallet.feature.wallet.data.model.WalletEntity
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
+import java.nio.file.Files.delete
 
 class WalletStorage(context: Context) {
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences("nexus_wallet_v2", Context.MODE_PRIVATE)
+    private val database = WalletDatabase.getDatabase(context)
+    private val walletDao = database.walletDao()
+    private val balanceDao = database.balanceDao()
+    private val transactionDao = database.transactionDao()
+    private val settingsDao = database.settingsDao()
+    private val backupDao = database.backupDao()
+    private val mnemonicDao = database.mnemonicDao()
     private val json = Json { ignoreUnknownKeys = true }
 
-    // Wallet operations
-    fun saveWallet(wallet: CryptoWallet) {
-        val key = "wallet_${wallet.id}"
+    // === Wallet Operations ===
+    suspend fun saveWallet(wallet: CryptoWallet) {
         val jsonStr = when (wallet) {
             is BitcoinWallet -> json.encodeToString(wallet)
             is EthereumWallet -> json.encodeToString(wallet)
@@ -19,113 +35,153 @@ class WalletStorage(context: Context) {
             is SolanaWallet -> json.encodeToString(wallet)
             else -> throw IllegalArgumentException("Unknown wallet type")
         }
-        prefs.edit().putString(key, jsonStr).apply()
+
+        val entity = WalletEntity(
+            id = wallet.id,
+            walletJson = jsonStr,
+            createdAt = wallet.createdAt
+        )
+        walletDao.insert(entity)
     }
 
-    fun loadWallet(walletId: String): CryptoWallet? {
-        val jsonStr = prefs.getString("wallet_$walletId", null) ?: return null
-        return tryDeserializeWallet(jsonStr)
+    suspend fun loadWallet(walletId: String): CryptoWallet? {
+        val entity = walletDao.get(walletId) ?: return null
+        return tryDeserializeWallet(entity.walletJson)
     }
 
-    fun loadAllWallets(): List<CryptoWallet> {
-        return prefs.all.keys
-            .filter { it.startsWith("wallet_") }
-            .mapNotNull { loadWallet(it.removePrefix("wallet_")) }
+    fun loadAllWallets(): Flow<List<CryptoWallet>> {
+        return walletDao.getAll().map { entities ->
+            entities.mapNotNull { tryDeserializeWallet(it.walletJson) }
+        }
     }
 
-    fun deleteWallet(walletId: String) {
-        prefs.edit()
-            .remove("wallet_$walletId")
-            .remove("mnemonic_$walletId")
-            .remove("balance_$walletId")
-            .remove("tx_$walletId")
-            .remove("settings_$walletId")
-            .remove("backup_$walletId")
-            .apply()
+    suspend fun deleteWallet(walletId: String) {
+        // Delete all related data
+        walletDao.delete(walletId)
+        balanceDao.delete(walletId)
+        transactionDao.delete(walletId)
+        settingsDao.delete(walletId)
+        backupDao.delete(walletId)
+        mnemonicDao.delete(walletId)
     }
 
-    // Balance operations
-    fun saveWalletBalance(balance: WalletBalance) {
+    // === Balance Operations ===
+    suspend fun saveWalletBalance(balance: WalletBalance) {
         val jsonStr = json.encodeToString(balance)
-        prefs.edit().putString("balance_${balance.walletId}", jsonStr).apply()
+        val entity = BalanceEntity(
+            walletId = balance.walletId,
+            balanceJson = jsonStr
+        )
+        balanceDao.insert(entity)
     }
 
-    fun loadWalletBalance(walletId: String): WalletBalance? {
-        val jsonStr = prefs.getString("balance_$walletId", null) ?: return null
+    suspend fun loadWalletBalance(walletId: String): WalletBalance? {
+        val entity = balanceDao.get(walletId) ?: return null
         return try {
-            json.decodeFromString<WalletBalance>(jsonStr)
+            json.decodeFromString<WalletBalance>(entity.balanceJson)
         } catch (e: Exception) {
             null
         }
     }
 
-    // Transaction operations
-    fun saveTransactions(walletId: String, transactions: List<Transaction>) {
+    // === Transaction Operations ===
+    suspend fun saveTransactions(walletId: String, transactions: List<Transaction>) {
         val jsonStr = json.encodeToString(transactions)
-        prefs.edit().putString("tx_$walletId", jsonStr).apply()
+        val entity = TransactionEntity(
+            walletId = walletId,
+            transactionsJson = jsonStr
+        )
+        transactionDao.insert(entity)
     }
 
-    fun loadTransactions(walletId: String): List<Transaction> {
-        val jsonStr = prefs.getString("tx_$walletId", null) ?: return emptyList()
-        return try {
-            json.decodeFromString<List<Transaction>>(jsonStr)
-        } catch (e: Exception) {
-            emptyList()
+    fun loadTransactions(walletId: String): Flow<List<Transaction>> {
+        return transactionDao.getByWallet(walletId).map { entity ->
+            if (entity == null) emptyList() else {
+                try {
+                    json.decodeFromString<List<Transaction>>(entity.transactionsJson)
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            }
         }
     }
 
-    // Settings operations
-    fun saveSettings(settings: WalletSettings) {
+    // === Settings Operations ===
+    suspend fun saveSettings(settings: WalletSettings) {
         val jsonStr = json.encodeToString(settings)
-        prefs.edit().putString("settings_${settings.walletId}", jsonStr).apply()
+        val entity = SettingsEntity(
+            walletId = settings.walletId,
+            settingsJson = jsonStr
+        )
+        settingsDao.insert(entity)
     }
 
-    fun loadSettings(walletId: String): WalletSettings? {
-        val jsonStr = prefs.getString("settings_$walletId", null) ?: return null
+    suspend fun loadSettings(walletId: String): WalletSettings? {
+        val entity = settingsDao.get(walletId) ?: return null
         return try {
-            json.decodeFromString<WalletSettings>(jsonStr)
+            json.decodeFromString<WalletSettings>(entity.settingsJson)
         } catch (e: Exception) {
             null
         }
     }
 
-    // Mnemonic operations
-    fun saveEncryptedMnemonic(walletId: String, encryptedData: String) {
-        prefs.edit().putString("mnemonic_$walletId", encryptedData).apply()
+    // === Mnemonic Operations ===
+    suspend fun saveEncryptedMnemonic(walletId: String, encryptedData: String) {
+        val entity = MnemonicEntity(
+            walletId = walletId,
+            encryptedData = encryptedData
+        )
+        mnemonicDao.insert(entity)
     }
 
-    fun loadEncryptedMnemonic(walletId: String): String? {
-        return prefs.getString("mnemonic_$walletId", null)
+    suspend fun loadEncryptedMnemonic(walletId: String): String? {
+        return mnemonicDao.get(walletId)?.encryptedData
     }
 
-    // Backup operations
-    fun saveBackupMetadata(backup: WalletBackup) {
+    // === Backup Operations ===
+    suspend fun saveBackupMetadata(backup: WalletBackup) {
         val jsonStr = Json.Default.encodeToString(backup)
-        prefs.edit().putString("backup_${backup.walletId}", jsonStr).apply()
+        val entity = BackupEntity(
+            walletId = backup.walletId,
+            backupJson = jsonStr
+        )
+        backupDao.insert(entity)
     }
 
-    fun loadBackupMetadata(walletId: String): WalletBackup? {
-        val jsonStr = prefs.getString("backup_$walletId", null) ?: return null
+    suspend fun loadBackupMetadata(walletId: String): WalletBackup? {
+        val entity = backupDao.get(walletId) ?: return null
         return try {
-            Json.Default.decodeFromString<WalletBackup>(jsonStr)
+            Json.Default.decodeFromString<WalletBackup>(entity.backupJson)
         } catch (e: Exception) {
             null
         }
     }
 
-    // Helper methods
-    fun clearAll() {
-        prefs.edit().clear().apply()
+    suspend fun deleteBackupMetadata(walletId: String) {
+        backupDao.delete(walletId)
     }
 
-    fun walletExists(walletId: String): Boolean {
-        return prefs.contains("wallet_$walletId")
+    // === Helper Methods ===
+    suspend fun clearAll() {
+        database.walletDao().run {
+            getAll().first().forEach { delete(it.id) }
+        }
     }
 
-    fun getAllWalletIds(): List<String> {
-        return prefs.all.keys
-            .filter { it.startsWith("wallet_") }
-            .map { it.removePrefix("wallet_") }
+    suspend fun walletExists(walletId: String): Boolean {
+        return walletDao.exists(walletId)
+    }
+
+    suspend fun getAllWalletIds(): List<String> {
+        return walletDao.getAll().first().map { it.id }
+    }
+
+    suspend fun getWalletCount(): Int {
+        return walletDao.count()
+    }
+
+    suspend fun hasWallets(): Boolean {
+        return walletDao.count() > 0
     }
 
     private fun tryDeserializeWallet(jsonStr: String): CryptoWallet? {
