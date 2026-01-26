@@ -3,6 +3,7 @@ package com.example.nexuswallet
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -29,13 +30,12 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDetailViewModel
 fun Navigation() {
     val navController = rememberNavController()
 
-    // Get the wallet repository
     val walletRepository = WalletRepository.getInstance()
 
-    // Check if user has wallets - using the repository
-    val hasWallets by remember {
-        derivedStateOf { walletRepository.hasWallets() }
-    }
+    val wallets by walletRepository.walletsFlow.collectAsState()
+
+    // Determine if user has wallets
+    val hasWallets = wallets.isNotEmpty()
 
     // Determine start destination
     val startDestination = if (hasWallets) "main" else "welcome"
