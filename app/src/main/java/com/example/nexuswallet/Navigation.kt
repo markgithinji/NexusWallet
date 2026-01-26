@@ -18,18 +18,24 @@ import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
-import com.example.nexuswallet.feature.wallet.domain.WalletDataManager
+import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+//import com.example.nexuswallet.feature.wallet.domain.WalletDataManager
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailViewModel
 
 @Composable
-fun Navigation(walletDataManager: WalletDataManager = WalletDataManager.getInstance()) {
+fun Navigation() {
     val navController = rememberNavController()
 
-    // Check if user has wallets
-    val hasWallets by remember { derivedStateOf { walletDataManager.hasWallets() } }
+    // Get the wallet repository
+    val walletRepository = WalletRepository.getInstance()
+
+    // Check if user has wallets - using the repository
+    val hasWallets by remember {
+        derivedStateOf { walletRepository.hasWallets() }
+    }
 
     // Determine start destination
     val startDestination = if (hasWallets) "main" else "welcome"
