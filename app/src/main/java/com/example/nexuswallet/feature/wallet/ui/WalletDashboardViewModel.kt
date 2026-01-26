@@ -17,7 +17,7 @@ import java.math.BigDecimal
 class WalletDashboardViewModel() : ViewModel() {
     private val walletRepository = WalletRepository.getInstance()
 
-    // Wallets list - observe from WalletDataManager's Flow
+    // Wallets list
     private val _wallets = MutableStateFlow<List<CryptoWallet>>(emptyList())
     val wallets: StateFlow<List<CryptoWallet>> = _wallets
 
@@ -38,29 +38,21 @@ class WalletDashboardViewModel() : ViewModel() {
     val error: StateFlow<String?> = _error
 
     init {
-        // Observe wallets from WalletDataManager
+        // Observe wallets from repository
         viewModelScope.launch {
             walletRepository.walletsFlow.collectLatest { walletsList ->
                 _wallets.value = walletsList
-                calculateTotalPortfolio()
+                loadBalances(walletsList)
             }
         }
-
-        // Load initial data
-        loadWallets()
     }
 
-    fun loadWallets() {
+    private fun loadBalances(wallets: List<CryptoWallet>) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Get wallets from persistent storage
-                val walletsList = walletRepository.getAllWallets()
-                _wallets.value = walletsList
-
-                // Load balances for each wallet
                 val balancesMap = mutableMapOf<String, WalletBalance>()
-                walletsList.forEach { wallet ->
+                wallets.forEach { wallet ->
                     val balance = walletRepository.getWalletBalance(wallet.id)
                     if (balance != null) {
                         balancesMap[wallet.id] = balance
@@ -68,22 +60,13 @@ class WalletDashboardViewModel() : ViewModel() {
                 }
                 _balances.value = balancesMap
 
-                calculateTotalPortfolio()
                 _error.value = null
             } catch (e: Exception) {
-                _error.value = "Failed to load wallets: ${e.message}"
+                _error.value = "Failed to load balances: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
         }
-    }
-
-    private fun calculateTotalPortfolio() {
-        var total = BigDecimal.ZERO
-        _balances.value.values.forEach { balance ->
-            total = total.add(BigDecimal(balance.usdValue.toString()))
-        }
-        _totalPortfolioValue.value = total
     }
 
     fun getWalletBalance(walletId: String): WalletBalance? {
@@ -94,9 +77,7 @@ class WalletDashboardViewModel() : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Delete from persistent storage
                 walletRepository.deleteWallet(walletId)
-                // The Flow will automatically update, triggering a refresh
                 _error.value = null
             } catch (e: Exception) {
                 _error.value = "Failed to delete wallet: ${e.message}"
@@ -107,7 +88,17 @@ class WalletDashboardViewModel() : ViewModel() {
     }
 
     fun refresh() {
-        loadWallets()
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Force refresh by reloading balances
+                loadBalances(_wallets.value)
+            } catch (e: Exception) {
+                _error.value = "Failed to refresh: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     fun clearError() {

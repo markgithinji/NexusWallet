@@ -22,7 +22,7 @@ import java.util.Date
 import java.util.Locale
 
 class WalletDetailViewModel() : ViewModel() {
-    private val walletDataManager = WalletRepository.getInstance()
+    private val walletRepository = WalletRepository.getInstance()
 
     // Current wallet
     private val _wallet = MutableStateFlow<CryptoWallet?>(null)
@@ -50,16 +50,17 @@ class WalletDetailViewModel() : ViewModel() {
             _isLoading.value = true
             try {
                 // Load wallet
-                val loadedWallet = walletDataManager.getWallet(walletId)
+                val loadedWallet = walletRepository.getWallet(walletId)
                 _wallet.value = loadedWallet
 
                 // Load balance
-                val loadedBalance = walletDataManager.getWalletBalance(walletId)
+                val loadedBalance = walletRepository.getWalletBalance(walletId)
                 _balance.value = loadedBalance
 
                 // Load transactions
-                val loadedTransactions = walletDataManager.getTransactions(walletId)
-                _transactions.value = loadedTransactions
+                walletRepository.getTransactions(walletId).collect { txList ->
+                    _transactions.value = txList
+                }
 
                 _error.value = null
             } catch (e: Exception) {
@@ -144,7 +145,7 @@ class WalletDetailViewModel() : ViewModel() {
 
             // Save to data layer
             _wallet.value?.id?.let { walletId ->
-                walletDataManager.saveTransactions(walletId, currentTx)
+                walletRepository.saveTransactions(walletId, currentTx)
             }
         }
     }

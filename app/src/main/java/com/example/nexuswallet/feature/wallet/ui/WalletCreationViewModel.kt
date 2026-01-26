@@ -42,6 +42,7 @@ class WalletCreationViewModel() : ViewModel() {
     private val _isMnemonicGenerated = MutableStateFlow(false)
     val isMnemonicGenerated: StateFlow<Boolean> = _isMnemonicGenerated
 
+
     fun generateMnemonic() {
         viewModelScope.launch {
             _uiState.value = WalletCreationUiState.Loading
@@ -135,27 +136,21 @@ class WalletCreationViewModel() : ViewModel() {
                         mnemonicList,
                         name
                     )
-
                     WalletType.MULTICHAIN -> walletRepository.createMultiChainWallet(
                         mnemonicList,
                         name
                     )
-
                     else -> walletRepository.createMultiChainWallet(mnemonicList, name)
                 }
 
-                // First set the wallet, THEN move to step 4
+                // Save the wallet to repository
+                walletRepository.saveWallet(wallet)
+
+                // Update UI state
                 _uiState.value = WalletCreationUiState.WalletCreated(wallet)
-
-                // Small delay to ensure UI state is updated
-                delay(100)
-
-                // Now move to success screen
-                _currentStep.value = 4
 
             } catch (e: Exception) {
                 _uiState.value = WalletCreationUiState.Error(e.message ?: "Failed to create wallet")
-                // Don't move to step 4 on error
             }
         }
     }
