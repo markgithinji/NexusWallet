@@ -16,6 +16,8 @@ import com.example.nexuswallet.feature.wallet.domain.WalletStorage
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -36,35 +38,34 @@ class WalletRepository(context: Context) {
     private val appContext = context.applicationContext
     private val storage = WalletStorage(appContext)
     private val securityManager = NexusWalletApplication.instance.securityManager
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    // Create a Flow for reactive UI updates
     private val _walletsFlow = MutableStateFlow<List<CryptoWallet>>(emptyList())
     val walletsFlow: StateFlow<List<CryptoWallet>> = _walletsFlow
 
     init {
-        loadInitialData()
-    }
-
-    private fun loadInitialData() {
-        val wallets = storage.loadAllWallets()
-        _walletsFlow.value = wallets
+        scope.launch {
+            storage.loadAllWallets().collect { wallets ->
+                _walletsFlow.value = wallets
+            }
+        }
     }
 
     // === WALLET CRUD OPERATIONS ===
-    fun saveWallet(wallet: CryptoWallet) {
+    suspend fun saveWallet(wallet: CryptoWallet) {
         storage.saveWallet(wallet)
         updateWalletsFlow(wallet)
     }
 
-    fun getWallet(walletId: String): CryptoWallet? {
+    suspend fun getWallet(walletId: String): CryptoWallet? {
         return storage.loadWallet(walletId)
     }
 
-    fun getAllWallets(): List<CryptoWallet> {
+    fun getAllWallets(): Flow<List<CryptoWallet>> {
         return storage.loadAllWallets()
     }
 
-    fun deleteWallet(walletId: String) {
+    suspend fun deleteWallet(walletId: String) {
         storage.deleteWallet(walletId)
         removeWalletFromFlow(walletId)
     }
@@ -134,8 +135,8 @@ class WalletRepository(context: Context) {
             walletType = WalletType.BITCOIN
         )
 
-        // Secure the mnemonic
-        CoroutineScope(Dispatchers.IO).launch {
+        // Secure the mnemonic in background
+        scope.launch {
             securityManager.secureMnemonic(bitcoinWallet.id, mnemonic)
         }
 
@@ -222,11 +223,11 @@ class WalletRepository(context: Context) {
     }
 
     // === BALANCE OPERATIONS ===
-    fun saveWalletBalance(balance: WalletBalance) {
+    suspend fun saveWalletBalance(balance: WalletBalance) {
         storage.saveWalletBalance(balance)
     }
 
-    fun getWalletBalance(walletId: String): WalletBalance? {
+    suspend fun getWalletBalance(walletId: String): WalletBalance? {
         return storage.loadWalletBalance(walletId)
     }
 
@@ -251,20 +252,20 @@ class WalletRepository(context: Context) {
     }
 
     // === TRANSACTION OPERATIONS ===
-    fun saveTransactions(walletId: String, transactions: List<Transaction>) {
+    suspend fun saveTransactions(walletId: String, transactions: List<Transaction>) {
         storage.saveTransactions(walletId, transactions)
     }
 
-    fun getTransactions(walletId: String): List<Transaction> {
+    fun getTransactions(walletId: String): Flow<List<Transaction>> {
         return storage.loadTransactions(walletId)
     }
 
     // === SETTINGS OPERATIONS ===
-    fun saveSettings(settings: WalletSettings) {
+    suspend fun saveSettings(settings: WalletSettings) {
         storage.saveSettings(settings)
     }
 
-    fun getSettings(walletId: String): WalletSettings? {
+    suspend fun getSettings(walletId: String): WalletSettings? {
         return storage.loadSettings(walletId)
     }
 
@@ -283,26 +284,12 @@ class WalletRepository(context: Context) {
     }
 
     // === HELPER QUERIES ===
-    fun hasWallets(): Boolean {
-        return getAllWallets().isNotEmpty()
+    suspend fun hasWallets(): Boolean {
+        return storage.hasWallets()
     }
 
-    fun getWalletCount(): Int {
-        return getAllWallets().size
-    }
-
-    fun calculateTotalPortfolioValue(): BigDecimal {
-        val wallets = getAllWallets()
-        var total = BigDecimal.ZERO
-
-        wallets.forEach { wallet ->
-            val balance = getWalletBalance(wallet.id)
-            if (balance != null) {
-                total = total.add(BigDecimal(balance.usdValue.toString()))
-            }
-        }
-
-        return total
+    suspend fun getWalletCount(): Int {
+        return storage.getWalletCount()
     }
 
     // === FORMATTING HELPERS ===
@@ -336,7 +323,7 @@ class WalletRepository(context: Context) {
     }
 
     // === FLOW MANAGEMENT ===
-    private fun updateWalletsFlow(wallet: CryptoWallet) {
+    private suspend fun updateWalletsFlow(wallet: CryptoWallet) {
         val currentWallets = _walletsFlow.value.toMutableList()
         val existingIndex = currentWallets.indexOfFirst { it.id == wallet.id }
 
@@ -349,7 +336,7 @@ class WalletRepository(context: Context) {
         _walletsFlow.value = currentWallets
     }
 
-    private fun removeWalletFromFlow(walletId: String) {
+    private suspend fun removeWalletFromFlow(walletId: String) {
         val currentWallets = _walletsFlow.value.toMutableList()
         currentWallets.removeAll { it.id == walletId }
         _walletsFlow.value = currentWallets
