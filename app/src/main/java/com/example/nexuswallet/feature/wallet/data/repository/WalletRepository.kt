@@ -12,7 +12,7 @@ import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.WalletSettings
-import com.example.nexuswallet.feature.wallet.domain.WalletStorage
+import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +36,7 @@ import org.bitcoinj.wallet.Wallet as BitcoinJWallet
 
 class WalletRepository(context: Context) {
     private val appContext = context.applicationContext
-    private val storage = WalletStorage(appContext)
+    private val storage = WalletLocalDataSource(appContext)
     private val securityManager = NexusWalletApplication.instance.securityManager
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 

@@ -1,23 +1,28 @@
-package com.example.nexuswallet.feature.wallet.domain
+package com.example.nexuswallet.feature.wallet.data.local
 
 import android.content.Context
-import android.content.SharedPreferences
-import android.media.CamcorderProfile.getAll
 import android.util.Log
-import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.model.BackupEntity
 import com.example.nexuswallet.feature.wallet.data.model.BalanceEntity
 import com.example.nexuswallet.feature.wallet.data.model.MnemonicEntity
 import com.example.nexuswallet.feature.wallet.data.model.SettingsEntity
 import com.example.nexuswallet.feature.wallet.data.model.TransactionEntity
 import com.example.nexuswallet.feature.wallet.data.model.WalletEntity
+import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
+import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
+import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
+import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
+import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
+import com.example.nexuswallet.feature.wallet.domain.Transaction
+import com.example.nexuswallet.feature.wallet.domain.WalletBackup
+import com.example.nexuswallet.feature.wallet.domain.WalletBalance
+import com.example.nexuswallet.feature.wallet.domain.WalletSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
-import java.nio.file.Files.delete
 
-class WalletStorage(context: Context) {
+class WalletLocalDataSource(context: Context) {
     private val database = WalletDatabase.getDatabase(context)
     private val walletDao = database.walletDao()
     private val balanceDao = database.balanceDao()

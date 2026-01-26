@@ -11,7 +11,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.nexuswallet.feature.wallet.domain.WalletBackup
-import com.example.nexuswallet.feature.wallet.domain.WalletStorage
+import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 
@@ -321,7 +321,7 @@ class SecureStorage(private val context: Context) {
 
     // Helper methods for storing backup metadata in regular storage
     private suspend fun storeBackupMetadata(walletId: String, backupData: WalletBackup) {
-        val storage = WalletStorage(context)
+        val storage = WalletLocalDataSource(context)
         storage.saveBackupMetadata(backupData)
     }
 
