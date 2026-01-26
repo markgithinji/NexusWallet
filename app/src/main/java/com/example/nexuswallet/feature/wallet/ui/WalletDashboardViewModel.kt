@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.NexusWalletApplication
+import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -14,7 +15,7 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 
 class WalletDashboardViewModel() : ViewModel() {
-    private val walletDataManager = NexusWalletApplication.instance.walletDataManager
+    private val walletRepository = WalletRepository.getInstance()
 
     // Wallets list - observe from WalletDataManager's Flow
     private val _wallets = MutableStateFlow<List<CryptoWallet>>(emptyList())
@@ -39,7 +40,7 @@ class WalletDashboardViewModel() : ViewModel() {
     init {
         // Observe wallets from WalletDataManager
         viewModelScope.launch {
-            walletDataManager.walletsFlow.collectLatest { walletsList ->
+            walletRepository.walletsFlow.collectLatest { walletsList ->
                 _wallets.value = walletsList
                 calculateTotalPortfolio()
             }
@@ -54,13 +55,13 @@ class WalletDashboardViewModel() : ViewModel() {
             _isLoading.value = true
             try {
                 // Get wallets from persistent storage
-                val walletsList = walletDataManager.getAllWallets()
+                val walletsList = walletRepository.getAllWallets()
                 _wallets.value = walletsList
 
                 // Load balances for each wallet
                 val balancesMap = mutableMapOf<String, WalletBalance>()
                 walletsList.forEach { wallet ->
-                    val balance = walletDataManager.getWalletBalance(wallet.id)
+                    val balance = walletRepository.getWalletBalance(wallet.id)
                     if (balance != null) {
                         balancesMap[wallet.id] = balance
                     }
@@ -94,7 +95,7 @@ class WalletDashboardViewModel() : ViewModel() {
             _isLoading.value = true
             try {
                 // Delete from persistent storage
-                walletDataManager.deleteWallet(walletId)
+                walletRepository.deleteWallet(walletId)
                 // The Flow will automatically update, triggering a refresh
                 _error.value = null
             } catch (e: Exception) {

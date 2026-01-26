@@ -4,6 +4,7 @@ package com.example.nexuswallet.feature.wallet.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.NexusWalletApplication
+import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
@@ -21,7 +22,8 @@ import java.util.Date
 import java.util.Locale
 
 class WalletDetailViewModel() : ViewModel() {
-    private val walletDataManager = NexusWalletApplication.Companion.instance.walletDataManager
+    private val walletDataManager = WalletRepository.getInstance()
+
     // Current wallet
     private val _wallet = MutableStateFlow<CryptoWallet?>(null)
     val wallet: StateFlow<CryptoWallet?> = _wallet

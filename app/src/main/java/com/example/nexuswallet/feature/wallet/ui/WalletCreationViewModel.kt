@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.wallet.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.NexusWalletApplication
+import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.delay
@@ -11,7 +12,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class WalletCreationViewModel() : ViewModel() {
-    private val walletDataManager = NexusWalletApplication.Companion.instance.walletDataManager
+    private val walletRepository = WalletRepository.getInstance()
+
     // UI State
     private val _uiState = MutableStateFlow<WalletCreationUiState>(WalletCreationUiState.Idle)
     val uiState: StateFlow<WalletCreationUiState> = _uiState
@@ -44,7 +46,7 @@ class WalletCreationViewModel() : ViewModel() {
         viewModelScope.launch {
             _uiState.value = WalletCreationUiState.Loading
             try {
-                val newMnemonic = walletDataManager.generateNewMnemonic(12)
+                val newMnemonic = walletRepository.generateNewMnemonic(12)
                 _mnemonic.value = newMnemonic
                 _isMnemonicGenerated.value = true
                 _uiState.value = WalletCreationUiState.MnemonicGenerated
@@ -75,7 +77,7 @@ class WalletCreationViewModel() : ViewModel() {
     }
 
     fun verifyMnemonic(): Boolean {
-        return walletDataManager.validateMnemonic(_enteredWords.value)
+        return walletRepository.validateMnemonic(_enteredWords.value)
     }
 
     fun completeVerificationAndMoveNext(): Boolean {
@@ -128,18 +130,18 @@ class WalletCreationViewModel() : ViewModel() {
                 val name = if (_walletName.value.isBlank()) "My Wallet" else _walletName.value
 
                 val wallet = when (_selectedWalletType.value) {
-                    WalletType.BITCOIN -> walletDataManager.createBitcoinWallet(mnemonicList, name)
-                    WalletType.ETHEREUM -> walletDataManager.createEthereumWallet(
+                    WalletType.BITCOIN -> walletRepository.createBitcoinWallet(mnemonicList, name)
+                    WalletType.ETHEREUM -> walletRepository.createEthereumWallet(
                         mnemonicList,
                         name
                     )
 
-                    WalletType.MULTICHAIN -> walletDataManager.createMultiChainWallet(
+                    WalletType.MULTICHAIN -> walletRepository.createMultiChainWallet(
                         mnemonicList,
                         name
                     )
 
-                    else -> walletDataManager.createMultiChainWallet(mnemonicList, name)
+                    else -> walletRepository.createMultiChainWallet(mnemonicList, name)
                 }
 
                 // First set the wallet, THEN move to step 4
