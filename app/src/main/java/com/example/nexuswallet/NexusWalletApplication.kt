@@ -5,7 +5,8 @@ import android.app.Application
 import android.util.Log
 import com.example.nexuswallet.feature.authentication.domain.SecureStorage
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
-import com.example.nexuswallet.feature.wallet.domain.WalletDataManager
+import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+//import com.example.nexuswallet.feature.wallet.domain.WalletDataManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -16,13 +17,15 @@ class NexusWalletApplication : Application() {
             private set
     }
 
-    val walletDataManager by lazy { WalletDataManager(this) }
+//    val walletDataManager by lazy { WalletDataManager(this) }
     val securityManager by lazy { SecurityManager(this) }
     val secureStorage by lazy { SecureStorage(this) }
 
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        WalletRepository.initialize(this)
 
         // Initialize security
         initializeSecurity()

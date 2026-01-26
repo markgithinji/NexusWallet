@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.nexuswallet.NexusWalletApplication
+import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 
@@ -211,11 +212,9 @@ fun WalletCreationScreen(
     }
 }
 
-// Helper function to save wallet and navigate
 private fun saveWalletAndNavigate(navController: NavController, wallet: CryptoWallet) {
-    // Save wallet to your data manager/storage
-    val walletDataManager = NexusWalletApplication.Companion.instance.walletDataManager
-    walletDataManager.saveWallet(wallet)
+    val walletRepository = WalletRepository.getInstance()
+    walletRepository.saveWallet(wallet)
 
     // Navigate to Main tab screen
     navController.navigate("main") {
