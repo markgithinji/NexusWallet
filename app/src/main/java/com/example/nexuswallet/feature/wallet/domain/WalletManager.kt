@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.wallet.domain
 
-
 import android.content.Context
 import org.bitcoinj.core.LegacyAddress
 import org.bitcoinj.crypto.MnemonicCode
@@ -10,13 +9,14 @@ import org.bitcoinj.wallet.DeterministicSeed
 import org.web3j.crypto.Bip32ECKeyPair
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.MnemonicUtils
+import java.math.BigDecimal
+import java.math.BigInteger
 import java.security.SecureRandom
 import kotlin.collections.map
 import org.bitcoinj.wallet.Wallet as BitcoinJWallet
 
 class WalletManager(private val context: Context) {
 
-    // Generate BIP39 mnemonic
     fun generateMnemonic(wordCount: Int = 12): List<String> {
         val strength = when (wordCount) {
             12 -> 128
@@ -71,7 +71,7 @@ class WalletManager(private val context: Context) {
             name = name,
             address = address,
             publicKey = key.pubKey.toString(),
-            privateKeyEncrypted = "", // Will be encrypted separately
+            privateKeyEncrypted = "",
             network = network,
             derivationPath = "m/44'/0'/0'/0/0",
             xpub = xpub,
@@ -117,7 +117,7 @@ class WalletManager(private val context: Context) {
             name = name,
             address = credentials.address,
             publicKey = derivedKey.publicKeyPoint.getEncoded(false).toHex(),
-            privateKeyEncrypted = "", // Will be encrypted separately
+            privateKeyEncrypted = "",
             network = network,
             derivationPath = derivationPath,
             isSmartContractWallet = false,
@@ -158,6 +158,56 @@ class WalletManager(private val context: Context) {
             createdAt = System.currentTimeMillis(),
             isBackedUp = false,
             walletType = WalletType.MULTICHAIN
+        )
+    }
+
+    // Formatting helpers
+    fun formatBalance(balanceStr: String, decimals: Int): String {
+        return try {
+            val bigInt = BigInteger(balanceStr)
+            val divisor = BigInteger.TEN.pow(decimals)
+            val integerPart = bigInt.divide(divisor)
+            val fractionalPart = bigInt.mod(divisor)
+
+            if (fractionalPart == BigInteger.ZERO) {
+                integerPart.toString()
+            } else {
+                val fractionalStr = fractionalPart.toString().padStart(decimals, '0')
+                    .trimEnd('0')
+                "$integerPart.$fractionalStr"
+            }
+        } catch (e: Exception) {
+            "0"
+        }
+    }
+
+    fun convertToDecimal(balanceStr: String, decimals: Int): String {
+        return try {
+            val bigInt = BigInteger(balanceStr)
+            val divisor = BigDecimal(BigInteger.TEN.pow(decimals))
+            BigDecimal(bigInt).divide(divisor).toString()
+        } catch (e: Exception) {
+            "0"
+        }
+    }
+
+    fun createSampleBalance(walletId: String, address: String): WalletBalance {
+        val nativeBalance = when {
+            address.startsWith("bc1") -> "150000000" // 1.5 BTC in satoshis
+            address.startsWith("0x") -> "2500000000000000000" // 2.5 ETH in wei
+            else -> "0"
+        }
+
+        val nativeDecimal = formatBalance(nativeBalance, 18)
+        val usdValue = if (address.startsWith("bc1")) 45000.0 else 8750.0
+
+        return WalletBalance(
+            walletId = walletId,
+            address = address,
+            nativeBalance = nativeBalance,
+            nativeBalanceDecimal = nativeDecimal,
+            usdValue = usdValue,
+            tokens = emptyList()
         )
     }
 
