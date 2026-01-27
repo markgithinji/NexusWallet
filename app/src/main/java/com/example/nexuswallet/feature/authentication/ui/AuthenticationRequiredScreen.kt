@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.authentication.domain.AuthenticationManager
@@ -28,8 +29,7 @@ fun AuthenticationRequiredScreen(
 ) {
     val context = LocalContext.current
     val authenticationManager = remember { AuthenticationManager(context) }
-    val viewModel: AuthenticationViewModel = viewModel()
-    val securityManager = NexusWalletApplication.Companion.instance.securityManager
+    val viewModel: AuthenticationViewModel = hiltViewModel()
 
     val authenticationState by viewModel.authenticationState.collectAsState()
     val showPinDialog by viewModel.showPinDialog.collectAsState()
@@ -127,7 +127,7 @@ fun AuthenticationRequiredScreen(
     LaunchedEffect(authenticationState) {
         when (authenticationState) {
             is AuthenticationResult.Success -> {
-                securityManager.recordAuthentication()
+
                 onAuthenticated()
             }
             is AuthenticationResult.Error -> {
