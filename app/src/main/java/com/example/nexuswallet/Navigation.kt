@@ -8,6 +8,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -30,12 +31,10 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDetailViewModel
 fun Navigation() {
     val navController = rememberNavController()
 
-    val walletRepository = WalletRepository.getInstance()
-
-    val wallets by walletRepository.walletsFlow.collectAsState()
+    val viewModel: NavigationViewModel = hiltViewModel()
 
     // Determine if user has wallets
-    val hasWallets = wallets.isNotEmpty()
+    val hasWallets by viewModel.hasWallets.collectAsState()
 
     // Determine start destination
     val startDestination = if (hasWallets) "main" else "welcome"
@@ -72,7 +71,7 @@ fun Navigation() {
 
         // Wallet Creation
         composable("createWallet") {
-            val viewModel = viewModel<WalletCreationViewModel>()
+            val viewModel = hiltViewModel<WalletCreationViewModel>()
             WalletCreationScreen(
                 navController = navController,
                 viewModel = viewModel
@@ -89,7 +88,7 @@ fun Navigation() {
             )
         ) { backStackEntry ->
             val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            val viewModel = viewModel<WalletDetailViewModel>()
+            val viewModel = hiltViewModel<WalletDetailViewModel>()
 
             LaunchedEffect(walletId) {
                 if (walletId.isNotBlank()) {
@@ -198,7 +197,7 @@ fun Navigation() {
             )
         }
 
-        // Add backup route (will be protected by authentication)
+        // Add backup route ( TODO: will be protected by authentication)
         composable(
             route = "backup/{walletId}",
             arguments = listOf(
@@ -212,7 +211,7 @@ fun Navigation() {
             )
         }
 
-        // Add receive route (no authentication needed)
+        // Add receive route
         composable(
             route = "receive/{walletId}",
             arguments = listOf(
