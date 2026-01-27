@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.nexuswallet.NexusWalletApplication
@@ -47,7 +48,7 @@ import com.example.nexuswallet.feature.wallet.domain.WalletType
 @Composable
 fun WalletCreationScreen(
     navController: NavController,
-    viewModel: WalletCreationViewModel = viewModel()
+    viewModel: WalletCreationViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currentStep by viewModel.currentStep.collectAsState()
