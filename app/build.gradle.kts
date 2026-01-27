@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -69,7 +70,7 @@ dependencies {
 
     // BitcoinJ for BIP32/BIP39 and Bitcoin wallets
     implementation(libs.bitcoinj.core) {
-        exclude(group = "org.bouncycastle") // Exclude BouncyCastle to avoid conflicts
+        exclude(group = "org.bouncycastle")
     }
     // Web3j for Ethereum wallets and smart contracts
     implementation(libs.web3j.core)
@@ -93,6 +94,11 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
