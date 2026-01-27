@@ -8,14 +8,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import javax.inject.Inject
 
-class WalletDashboardViewModel() : ViewModel() {
-    private val walletRepository = WalletRepository.getInstance()
+@HiltViewModel
+class WalletDashboardViewModel @Inject constructor(
+    private val walletRepository: WalletRepository
+) : ViewModel() {
 
     // Wallets list
     private val _wallets = MutableStateFlow<List<CryptoWallet>>(emptyList())

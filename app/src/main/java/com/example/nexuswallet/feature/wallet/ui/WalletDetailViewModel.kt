@@ -15,6 +15,7 @@ import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,9 +24,12 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 
-class WalletDetailViewModel() : ViewModel() {
-    private val walletRepository = WalletRepository.getInstance()
+@HiltViewModel
+class WalletDetailViewModel @Inject constructor(
+    private val walletRepository: WalletRepository
+) : ViewModel() {
 
     // Current wallet
     private val _wallet = MutableStateFlow<CryptoWallet?>(null)

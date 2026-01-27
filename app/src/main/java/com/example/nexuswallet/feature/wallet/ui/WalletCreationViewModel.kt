@@ -6,13 +6,17 @@ import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletType
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class WalletCreationViewModel() : ViewModel() {
-    private val walletRepository = WalletRepository.getInstance()
+@HiltViewModel
+class WalletCreationViewModel @Inject constructor(
+    private val walletRepository: WalletRepository
+) : ViewModel() {
 
     // UI State
     private val _uiState = MutableStateFlow<WalletCreationUiState>(WalletCreationUiState.Idle)
