@@ -3,13 +3,19 @@ package com.example.nexuswallet.feature.settings.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.NexusWalletApplication
+import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.authentication.domain.SecurityState
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class SecuritySettingsViewModel : ViewModel() {
-    private val securityManager = NexusWalletApplication.Companion.instance.securityManager
+@HiltViewModel
+class SecuritySettingsViewModel @Inject constructor(
+    private val securityManager: SecurityManager  // Inject SecurityManager
+) : ViewModel() {
+    // Remove: private val securityManager = NexusWalletApplication.Companion.instance.securityManager
 
     private val _securityState = MutableStateFlow<SecurityState>(SecurityState.IDLE)
     val securityState: StateFlow<SecurityState> = _securityState
@@ -22,6 +28,7 @@ class SecuritySettingsViewModel : ViewModel() {
 
     private val _isBackupAvailable = MutableStateFlow(false)
     val isBackupAvailable: StateFlow<Boolean> = _isBackupAvailable
+
     private val _showPinSetupDialog = MutableStateFlow(false)
     val showPinSetupDialog: StateFlow<Boolean> = _showPinSetupDialog
 
@@ -53,7 +60,8 @@ class SecuritySettingsViewModel : ViewModel() {
     fun createBackup() {
         viewModelScope.launch {
             _securityState.value = SecurityState.BACKING_UP
-            // TODO: Backup logic
+            // TODO: Implement backup logic using securityManager
+            // For example: securityManager.createEncryptedBackup(walletId, wallet)
             _securityState.value = SecurityState.IDLE
             _isBackupAvailable.value = true
         }
@@ -62,14 +70,15 @@ class SecuritySettingsViewModel : ViewModel() {
     fun restoreBackup() {
         viewModelScope.launch {
             _securityState.value = SecurityState.RESTORING
-            // TODO: Restore logic
+            // TODO: Implement restore logic using securityManager
+            // For example: securityManager.restoreFromBackup(walletId)
             _securityState.value = SecurityState.IDLE
         }
     }
 
     fun deleteBackup() {
         viewModelScope.launch {
-            // TODO: Delete backup logic
+            // TODO: Implement delete backup logic
             _isBackupAvailable.value = false
         }
     }
