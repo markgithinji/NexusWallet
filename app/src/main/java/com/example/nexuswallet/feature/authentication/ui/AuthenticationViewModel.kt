@@ -1,20 +1,29 @@
 package com.example.nexuswallet.feature.authentication.ui
 
+import android.content.Context
 import android.util.Log
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.NexusWalletApplication
+import com.example.nexuswallet.feature.authentication.domain.AuthAction
 import com.example.nexuswallet.feature.authentication.domain.AuthenticationManager
 import com.example.nexuswallet.feature.authentication.domain.AuthenticationResult
+import com.example.nexuswallet.feature.authentication.domain.SecurityManager
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class AuthenticationViewModel : ViewModel() {
+@HiltViewModel
+class AuthenticationViewModel @Inject constructor(
+    private val securityManager: SecurityManager,
+    @ApplicationContext private val context: Context
+) : ViewModel() {
 
-    private val authenticationManager = AuthenticationManager(NexusWalletApplication.Companion.instance)
-    private val securityManager = NexusWalletApplication.Companion.instance.securityManager
+    private val authenticationManager = AuthenticationManager(context)
 
     private val _authenticationState = MutableStateFlow<AuthenticationResult?>(null)
     val authenticationState: StateFlow<AuthenticationResult?> = _authenticationState
@@ -24,6 +33,28 @@ class AuthenticationViewModel : ViewModel() {
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
+
+    private val _authenticationRequired = MutableStateFlow<AuthCheck?>(null)
+    val authenticationRequired: StateFlow<AuthCheck?> = _authenticationRequired
+
+    data class AuthCheck(
+        val required: Boolean,
+        val action: AuthAction,
+        val targetId: String? = null
+    )
+
+    // Check if authentication is required for an action
+    fun checkAuthenticationRequired(action: AuthAction, targetId: String? = null) {
+        viewModelScope.launch {
+            val required = securityManager.isAuthenticationRequired(action)
+            _authenticationRequired.value = AuthCheck(required, action, targetId)
+        }
+    }
+
+    // Clear the authentication required state
+    fun clearAuthCheck() {
+        _authenticationRequired.value = null
+    }
 
     fun showPinDialog() {
         Log.d("AUTH_VM_DEBUG", "🎬 showPinDialog() called - setting to true")
@@ -50,18 +81,26 @@ class AuthenticationViewModel : ViewModel() {
         if (result is AuthenticationResult.Error) {
             Log.d("AUTH_VM_DEBUG", " PIN error: ${result.message}")
             _errorMessage.value = result.message
-            // Should we show the dialog again for wrong PIN?
-            // Maybe we should NOT close the dialog on error?
         } else if (result is AuthenticationResult.Success) {
             Log.d("AUTH_VM_DEBUG", " PIN success!")
             Log.d("AUTH_VM_DEBUG", "Auth type: ${result.authType}")
 
-            // Record the authentication
+            // Record the authentication using the injected securityManager
             securityManager.recordAuthentication()
-            Log.d("AUTH_VM_DEBUG", "Authentication recorded")
+            Log.d("AUTH_VM_DEBUG", "Authentication recorded via securityManager")
+
+            // Clear any pending auth check since we just authenticated
+            clearAuthCheck()
         }
 
         Log.d("AUTH_VM_DEBUG", "=== VERIFY PIN END ===")
+    }
+
+    // Add this method to record biometric authentication
+    fun recordAuthentication() {
+        securityManager.recordAuthentication()
+        // Clear any pending auth check since we just authenticated
+        clearAuthCheck()
     }
 
     fun authenticateWithBiometric(activity: FragmentActivity) {
@@ -74,6 +113,10 @@ class AuthenticationViewModel : ViewModel() {
                     description = "Authentication is required to access this feature"
                 ).collect { result ->
                     _authenticationState.value = result
+
+                    if (result is AuthenticationResult.Success) {
+                        recordAuthentication()
+                    }
                 }
             } catch (e: Exception) {
                 _authenticationState.value = AuthenticationResult.Error("Biometric error: ${e.message}")
