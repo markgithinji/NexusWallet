@@ -1,6 +1,10 @@
 package com.example.nexuswallet.feature.wallet.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,9 +17,12 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,13 +30,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.nexuswallet.feature.authentication.domain.AuthAction
 import com.example.nexuswallet.NexusWalletApplication
+import com.example.nexuswallet.feature.authentication.domain.AuthenticationResult
+import com.example.nexuswallet.feature.authentication.ui.AuthenticationViewModel
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
@@ -39,21 +50,27 @@ import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import com.example.nexuswallet.formatDate
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletDetailScreen(
     navController: NavController,
-    viewModel: WalletDetailViewModel
+    viewModel: WalletDetailViewModel = hiltViewModel(),
+    authViewModel: AuthenticationViewModel = hiltViewModel()
 ) {
     val wallet by viewModel.wallet.collectAsState()
     val balance by viewModel.balance.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
-    // Track if we've checked authentication
-    var hasCheckedAuth by remember { mutableStateOf(false) }
-    val securityManager = NexusWalletApplication.Companion.instance.securityManager
+    // Listen to authentication state
+    val authRequiredState by authViewModel.authenticationRequired.collectAsState()
+    val authState by authViewModel.authenticationState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -81,20 +98,34 @@ fun WalletDetailScreen(
             )
         }
     ) { padding ->
+        // Check authentication when wallet loads
         LaunchedEffect(wallet?.id) {
-            if (wallet?.id != null && !hasCheckedAuth) {
-                Log.d("WalletDetail", " Checking auth for wallet ${wallet!!.id}")
+            wallet?.id?.let { walletId ->
+                authViewModel.checkAuthenticationRequired(
+                    action = AuthAction.VIEW_WALLET,
+                    targetId = walletId
+                )
+            }
+        }
 
-                val isAuthRequired = securityManager.isAuthenticationRequired(AuthAction.VIEW_WALLET)
-                Log.d("WalletDetail", " Auth required: $isAuthRequired")
-
-                if (isAuthRequired) {
-                    Log.d("WalletDetail", " Navigating to auth screen")
-                    navController.navigate("authenticate/walletDetail/${wallet!!.id}")
-                } else {
-                    Log.d("WalletDetail", " No auth required, showing wallet")
+        // Handle authentication required state
+        LaunchedEffect(authRequiredState) {
+            authRequiredState?.let { authCheck ->
+                if (authCheck.required && authCheck.targetId != null) {
+                    Log.d("WalletDetail", "Auth required for wallet: ${authCheck.targetId}")
+                    navController.navigate("authenticate/${authCheck.action.name.lowercase()}/${authCheck.targetId}")
+                } else if (!authCheck.required) {
+                    Log.d("WalletDetail", "No auth required for wallet")
                 }
-                hasCheckedAuth = true
+            }
+        }
+
+        // Handle successful authentication
+        LaunchedEffect(authState) {
+            if (authState is AuthenticationResult.Success) {
+                Log.d("WalletDetail", "Authentication successful")
+                // Clear any pending auth checks
+                authViewModel.clearAuthCheck()
             }
         }
 
@@ -117,6 +148,7 @@ fun WalletDetailScreen(
                 balance = balance,
                 navController = navController,
                 viewModel = viewModel,
+                authViewModel = authViewModel,
                 padding = padding
             )
         } ?: run {
@@ -133,9 +165,11 @@ fun WalletDetailContent(
     balance: WalletBalance?,
     navController: NavController,
     viewModel: WalletDetailViewModel,
+    authViewModel: AuthenticationViewModel,
     padding: PaddingValues
 ) {
     val transactions by viewModel.transactions.collectAsState()
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -151,26 +185,49 @@ fun WalletDetailContent(
         WalletActionsCard(
             wallet = wallet,
             onReceive = {
-                // Show receive screen (no auth needed)
+                // Show receive screen
                 navController.navigate("receive/${wallet.id}")
             },
             onSend = {
-                // Navigate directly to authentication for send
-                navController.navigate("authenticate/send/${wallet.id}?action=SEND_TRANSACTION")
+                // Check authentication for send
+                authViewModel.checkAuthenticationRequired(
+                    action = AuthAction.SEND_TRANSACTION,
+                    targetId = wallet.id
+                )
             },
             onBackup = {
-                // Navigate directly to authentication for backup
-                navController.navigate("authenticate/backup/${wallet.id}?action=BACKUP_WALLET")
+                // Check authentication for backup
+                authViewModel.checkAuthenticationRequired(
+                    action = AuthAction.BACKUP_WALLET,
+                    targetId = wallet.id
+                )
             },
             onAddSampleTransaction = {
                 viewModel.addSampleTransaction()
+            },
+            onViewPrivateKey = {
+                // Check authentication for viewing private key
+                authViewModel.checkAuthenticationRequired(
+                    action = AuthAction.VIEW_PRIVATE_KEY,
+                    targetId = wallet.id
+                )
             }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Address Card
-        AddressCard(address = viewModel.getDisplayAddress())
+        AddressCard(
+            address = viewModel.getDisplayAddress(),
+            onCopy = { address ->
+                // Copy to clipboard
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("Wallet Address", address)
+                clipboard.setPrimaryClip(clip)
+
+                Toast.makeText(context, "Address copied to clipboard", Toast.LENGTH_SHORT).show()
+            }
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -196,7 +253,7 @@ fun WalletHeaderCard(wallet: CryptoWallet, balance: WalletBalance?) {
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                WalletIcon(wallet = wallet)
+                WalletIconDetailScreen(wallet = wallet)
 
                 Spacer(modifier = Modifier.width(12.dp))
 
@@ -244,8 +301,9 @@ fun WalletActionsCard(
     wallet: CryptoWallet,
     onReceive: () -> Unit,
     onSend: () -> Unit,
-    onBackup:  () -> Unit,
-    onAddSampleTransaction: () -> Unit
+    onBackup: () -> Unit,
+    onAddSampleTransaction: () -> Unit,
+    onViewPrivateKey: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -253,33 +311,61 @@ fun WalletActionsCard(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+        Column(
+            modifier = Modifier.padding(16.dp)
         ) {
-            ActionButton(
-                icon = Icons.Default.ArrowDownward,
-                label = "Receive",
-                onClick = onReceive
-            )
+            // Main actions row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                ActionButton(
+                    icon = Icons.Default.ArrowDownward,
+                    label = "Receive",
+                    onClick = onReceive
+                )
 
-            ActionButton(
-                icon = Icons.Default.ArrowUpward,
-                label = "Send",
-                onClick = onSend
-            )
+                ActionButton(
+                    icon = Icons.Default.ArrowUpward,
+                    label = "Send",
+                    onClick = onSend
+                )
 
-            ActionButton(
-                icon = Icons.Default.Backup,
-                label = "Backup",
-                onClick = onBackup
-            )
+                ActionButton(
+                    icon = Icons.Default.Backup,
+                    label = "Backup",
+                    onClick = onBackup
+                )
 
-            ActionButton(
-                icon = Icons.Default.Add,
-                label = "Sample",
-                onClick = onAddSampleTransaction
-            )
+                ActionButton(
+                    icon = Icons.Default.Add,
+                    label = "Sample",
+                    onClick = onAddSampleTransaction
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Security actions row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                ActionButton(
+                    icon = Icons.Default.Key,
+                    label = "Private Key",
+                    onClick = onViewPrivateKey
+                )
+
+                // Add more security actions as needed
+                ActionButton(
+                    icon = Icons.Default.Security,
+                    label = "Security",
+                    onClick = {
+                        // Navigate to security settings
+                    }
+                )
+            }
         }
     }
 }
@@ -318,7 +404,10 @@ fun ActionButton(
 }
 
 @Composable
-fun AddressCard(address: String) {
+fun AddressCard(
+    address: String,
+    onCopy: (String) -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -348,10 +437,16 @@ fun AddressCard(address: String) {
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
-                onClick = { /* Copy to clipboard */ },
+                onClick = { onCopy(address) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp)
             ) {
+                Icon(
+                    imageVector = Icons.Default.ContentCopy,
+                    contentDescription = "Copy",
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text("Copy Address")
             }
         }
@@ -570,4 +665,36 @@ fun getNativeSymbol(wallet: CryptoWallet): String {
         is SolanaWallet -> "SOL"
         else -> "CRYPTO"
     }
+}
+
+@Composable
+fun WalletIconDetailScreen(wallet: CryptoWallet) {
+    val iconSize = 48.dp
+    val backgroundColor = when (wallet) {
+        is BitcoinWallet -> Color(0xFFF7931A) // Bitcoin orange
+        is EthereumWallet -> Color(0xFF627EEA) // Ethereum blue
+        is SolanaWallet -> Color(0xFF00FFA3) // Solana green
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    Box(
+        modifier = Modifier
+            .size(iconSize)
+            .clip(CircleShape)
+            .background(backgroundColor),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = wallet.name.take(1).uppercase(),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+    }
+}
+
+fun formatDate(timestamp: Long): String {
+    val date = Date(timestamp)
+    val format = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
+    return format.format(date)
 }
