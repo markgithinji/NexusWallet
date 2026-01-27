@@ -31,13 +31,14 @@ import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import java.math.BigDecimal
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletDashboardScreen(
     navController: NavController,
-    viewModel: WalletDashboardViewModel = viewModel(),
+    viewModel: WalletDashboardViewModel = hiltViewModel(),
     padding: PaddingValues
 ) {
     val wallets by viewModel.wallets.collectAsState()
