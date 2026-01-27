@@ -21,15 +21,16 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
+import javax.inject.Inject
 
-class WalletLocalDataSource(context: Context) {
-    private val database = WalletDatabase.getDatabase(context)
-    private val walletDao = database.walletDao()
-    private val balanceDao = database.balanceDao()
-    private val transactionDao = database.transactionDao()
-    private val settingsDao = database.settingsDao()
-    private val backupDao = database.backupDao()
-    private val mnemonicDao = database.mnemonicDao()
+class WalletLocalDataSource @Inject constructor(
+    private val walletDao: WalletDao,
+    private val balanceDao: BalanceDao,
+    private val transactionDao: TransactionDao,
+    private val settingsDao: SettingsDao,
+    private val backupDao: BackupDao,
+    private val mnemonicDao: MnemonicDao
+) {
     private val json = Json { ignoreUnknownKeys = true }
 
     // === Wallet Operations ===
@@ -179,11 +180,11 @@ class WalletLocalDataSource(context: Context) {
     }
 
     // === Helper Methods ===
-    suspend fun clearAll() {
-        database.walletDao().run {
-            getAll().first().forEach { delete(it.id) }
-        }
-    }
+//    suspend fun clearAll() {
+//        database.walletDao().run {
+//            getAll().first().forEach { delete(it.id) }
+//        }
+//    }
 
     suspend fun walletExists(walletId: String): Boolean {
         return walletDao.exists(walletId)
