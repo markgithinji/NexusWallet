@@ -6,6 +6,7 @@ import android.content.Context
 import android.util.Log
 import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,17 +16,22 @@ import java.security.SecureRandom
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.math.max
 
 /**
  * Main security manager that coordinates all security operations
  * Uses Android KeyStore for encryption and DataStore for secure storage
  */
-class SecurityManager(private val context: Context) {
+@Singleton
+class SecurityManager @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val secureStorage: SecureStorage
+) {
 
     private val scope = CoroutineScope(Dispatchers.IO)
     private val keyStoreEncryption = KeyStoreEncryption(context)
-    private val secureStorage: SecureStorage = NexusWalletApplication.Companion.instance.secureStorage
 
     private val _securityState = MutableStateFlow<SecurityState>(SecurityState.IDLE)
     val securityState: StateFlow<SecurityState> = _securityState
