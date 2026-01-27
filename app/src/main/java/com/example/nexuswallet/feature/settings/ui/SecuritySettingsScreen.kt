@@ -42,12 +42,6 @@ fun SecuritySettingsScreen(
 
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-            val securityManager = NexusWalletApplication.Companion.instance.securityManager
-            Log.d("SecurityDebug", "PIN set: ${securityManager.isPinSet()}")
-            Log.d("SecurityDebug", "Biometric enabled: ${securityManager.isBiometricEnabled()}")
-    }
-
     // Show PIN Setup Dialog
     if (showPinSetupDialog || showPinChangeDialog) {
         PinSetupDialog(
