@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.wallet.data.repository
 import android.content.Context
 import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.authentication.domain.BackupResult
+import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.bitcoinj.core.LegacyAddress
+import org.bitcoinj.crypto.ChildNumber.HARDENED_BIT
 import org.bitcoinj.crypto.MnemonicCode
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
@@ -32,12 +34,14 @@ import org.web3j.crypto.MnemonicUtils
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.security.SecureRandom
+import javax.inject.Inject
 import org.bitcoinj.wallet.Wallet as BitcoinJWallet
 
-class WalletRepository(context: Context) {
-    private val appContext = context.applicationContext
-    private val storage = WalletLocalDataSource(appContext)
-    private val securityManager = NexusWalletApplication.instance.securityManager
+class WalletRepository @Inject constructor(
+    private val localDataSource: WalletLocalDataSource,
+    private val securityManager: SecurityManager
+) {
+
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val _walletsFlow = MutableStateFlow<List<CryptoWallet>>(emptyList())
@@ -45,7 +49,7 @@ class WalletRepository(context: Context) {
 
     init {
         scope.launch {
-            storage.loadAllWallets().collect { wallets ->
+            localDataSource.loadAllWallets().collect { wallets ->
                 _walletsFlow.value = wallets
             }
         }
@@ -53,20 +57,20 @@ class WalletRepository(context: Context) {
 
     // === WALLET CRUD OPERATIONS ===
     suspend fun saveWallet(wallet: CryptoWallet) {
-        storage.saveWallet(wallet)
+        localDataSource.saveWallet(wallet)
         updateWalletsFlow(wallet)
     }
 
     suspend fun getWallet(walletId: String): CryptoWallet? {
-        return storage.loadWallet(walletId)
+        return localDataSource.loadWallet(walletId)
     }
 
     fun getAllWallets(): Flow<List<CryptoWallet>> {
-        return storage.loadAllWallets()
+        return localDataSource.loadAllWallets()
     }
 
     suspend fun deleteWallet(walletId: String) {
-        storage.deleteWallet(walletId)
+        localDataSource.deleteWallet(walletId)
         removeWalletFromFlow(walletId)
     }
 
@@ -224,11 +228,11 @@ class WalletRepository(context: Context) {
 
     // === BALANCE OPERATIONS ===
     suspend fun saveWalletBalance(balance: WalletBalance) {
-        storage.saveWalletBalance(balance)
+        localDataSource.saveWalletBalance(balance)
     }
 
     suspend fun getWalletBalance(walletId: String): WalletBalance? {
-        return storage.loadWalletBalance(walletId)
+        return localDataSource.loadWalletBalance(walletId)
     }
 
     fun createSampleBalance(walletId: String, address: String): WalletBalance {
@@ -253,20 +257,20 @@ class WalletRepository(context: Context) {
 
     // === TRANSACTION OPERATIONS ===
     suspend fun saveTransactions(walletId: String, transactions: List<Transaction>) {
-        storage.saveTransactions(walletId, transactions)
+        localDataSource.saveTransactions(walletId, transactions)
     }
 
     fun getTransactions(walletId: String): Flow<List<Transaction>> {
-        return storage.loadTransactions(walletId)
+        return localDataSource.loadTransactions(walletId)
     }
 
     // === SETTINGS OPERATIONS ===
     suspend fun saveSettings(settings: WalletSettings) {
-        storage.saveSettings(settings)
+        localDataSource.saveSettings(settings)
     }
 
     suspend fun getSettings(walletId: String): WalletSettings? {
-        return storage.loadSettings(walletId)
+        return localDataSource.loadSettings(walletId)
     }
 
     // === MNEMONIC & SECURITY OPERATIONS ===
@@ -285,11 +289,11 @@ class WalletRepository(context: Context) {
 
     // === HELPER QUERIES ===
     suspend fun hasWallets(): Boolean {
-        return storage.hasWallets()
+        return localDataSource.hasWallets()
     }
 
     suspend fun getWalletCount(): Int {
-        return storage.getWalletCount()
+        return localDataSource.getWalletCount()
     }
 
     // === FORMATTING HELPERS ===
@@ -344,19 +348,4 @@ class WalletRepository(context: Context) {
 
     // Private helper
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
-
-    companion object {
-        private const val HARDENED_BIT = 0x80000000.toInt()
-
-        @Volatile
-        private var INSTANCE: WalletRepository? = null
-
-        fun initialize(context: Context) {
-            INSTANCE = WalletRepository(context.applicationContext)
-        }
-
-        fun getInstance(): WalletRepository {
-            return INSTANCE ?: throw IllegalStateException("WalletRepository not initialized. Call initialize() first.")
-        }
-    }
 }
