@@ -17,6 +17,9 @@ import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
+import com.example.nexuswallet.feature.wallet.ui.ApiDebugScreen
+import com.example.nexuswallet.feature.wallet.ui.BlockchainViewModel
+import com.example.nexuswallet.feature.wallet.ui.FullQrCodeScreen
 //import com.example.nexuswallet.feature.wallet.domain.WalletDataManager
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
@@ -103,18 +106,43 @@ fun Navigation() {
             )
         ) { backStackEntry ->
             val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            val viewModel = hiltViewModel<WalletDetailViewModel>()
+            val walletViewModel = hiltViewModel<WalletDetailViewModel>()
+            val blockchainViewModel = hiltViewModel<BlockchainViewModel>()
 
             LaunchedEffect(walletId) {
                 if (walletId.isNotBlank()) {
-                    viewModel.loadWallet(walletId)
+                    walletViewModel.loadWallet(walletId)
                 }
             }
 
             WalletDetailScreen(
                 navController = navController,
-                viewModel = viewModel
+                walletViewModel = walletViewModel,
+                blockchainViewModel = blockchainViewModel
             )
+        }
+
+        composable(
+            route = "qrCode/{walletId}",
+            arguments = listOf(
+                navArgument("walletId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+            FullQrCodeScreen(
+                navController = navController,
+                walletId = walletId
+            )
+        }
+
+        composable(
+            route = "debug/{walletId}",
+            arguments = listOf(
+                navArgument("walletId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+            ApiDebugScreen(navController, walletId)
         }
 
         // Token Detail
@@ -143,6 +171,11 @@ fun Navigation() {
             SettingsScreen(
                 navController = navController
             )
+        }
+
+        composable("receive/{walletId}") { backStackEntry ->
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+            ReceiveScreen(navController, walletId)
         }
 
         composable(
