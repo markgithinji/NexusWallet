@@ -54,6 +54,9 @@ class WalletDetailViewModel @Inject constructor(
     // Job for collecting transactions flow
     private var transactionsJob: Job? = null
 
+    private val _liveBalance = MutableStateFlow<String?>(null)
+    val liveBalance: StateFlow<String?> = _liveBalance
+
     // Load wallet details
     fun loadWallet(walletId: String) {
         viewModelScope.launch {
@@ -115,6 +118,18 @@ class WalletDetailViewModel @Inject constructor(
             is MultiChainWallet -> wallet.ethereumWallet?.address ?: wallet.bitcoinWallet?.address
             is SolanaWallet -> wallet.address
             else -> null
+        }
+    }
+
+    fun getFullAddress(): String {
+        return when (val wallet = _wallet.value) {
+            is BitcoinWallet -> wallet.address
+            is EthereumWallet -> wallet.address
+            is MultiChainWallet -> wallet.ethereumWallet?.address
+                ?: wallet.bitcoinWallet?.address
+                ?: ""
+            is SolanaWallet -> wallet.address
+            else -> ""
         }
     }
 

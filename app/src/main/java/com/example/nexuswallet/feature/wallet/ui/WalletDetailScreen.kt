@@ -3,9 +3,9 @@ package com.example.nexuswallet.feature.wallet.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -17,12 +17,15 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,10 +42,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.nexuswallet.NavigationViewModel
-import com.example.nexuswallet.feature.authentication.domain.AuthAction
-import com.example.nexuswallet.NexusWalletApplication
-import com.example.nexuswallet.feature.authentication.domain.AuthenticationResult
-import com.example.nexuswallet.feature.authentication.ui.AuthenticationViewModel
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
@@ -51,8 +51,6 @@ import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import com.example.nexuswallet.formatDate
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -61,19 +59,40 @@ import java.util.Locale
 @Composable
 fun WalletDetailScreen(
     navController: NavController,
-    viewModel: WalletDetailViewModel = hiltViewModel(),
+    walletViewModel: WalletDetailViewModel = hiltViewModel(),
+    blockchainViewModel: BlockchainViewModel = hiltViewModel()
 ) {
-    val wallet by viewModel.wallet.collectAsState()
-    val balance by viewModel.balance.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val wallet by walletViewModel.wallet.collectAsState()
+    val balance by walletViewModel.balance.collectAsState()
+    val ethBalance by blockchainViewModel.ethBalance.collectAsState()
+    val btcBalance by blockchainViewModel.btcBalance.collectAsState()
+    val isLoading by blockchainViewModel.isLoading.collectAsState()
+    val error by blockchainViewModel.error.collectAsState()
+
+    LaunchedEffect(wallet) {
+        wallet?.let { blockchainViewModel.fetchWalletData(it) }
+    }
+
+    // Show loading state while fetching blockchain data
+    if (isLoading) {
+        LoadingScreen()
+        return
+    }
+
+    error?.let {
+        ErrorScreen(
+            message = it,
+            onRetry = { wallet?.let { w -> blockchainViewModel.refresh(w) } }
+        )
+        return
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = viewModel.getWalletName(),
+                        text = walletViewModel.getWalletName(),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -85,7 +104,10 @@ fun WalletDetailScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { viewModel.refresh() },
+                        onClick = {
+                            wallet?.let { blockchainViewModel.refresh(it) }
+                            walletViewModel.refresh()
+                        },
                         enabled = !isLoading
                     ) {
                         Icon(Icons.Default.Refresh, "Refresh")
@@ -94,25 +116,13 @@ fun WalletDetailScreen(
             )
         }
     ) { padding ->
-        if (isLoading) {
-            LoadingScreen()
-            return@Scaffold
-        }
-
-        error?.let {
-            ErrorScreen(
-                message = it,
-                onRetry = { viewModel.refresh() }
-            )
-            return@Scaffold
-        }
-
         wallet?.let { currentWallet ->
             WalletDetailContent(
                 wallet = currentWallet,
                 balance = balance,
                 navController = navController,
-                viewModel = viewModel,
+                viewModel = walletViewModel,
+                blockchainViewModel = blockchainViewModel,
                 padding = padding
             )
         } ?: run {
@@ -124,16 +134,31 @@ fun WalletDetailScreen(
 }
 
 @Composable
+fun DebugButton(walletId: String, navController: NavController) {
+
+    Button(
+        onClick = { navController.navigate("debug/$walletId") },
+        shape = RoundedCornerShape(8.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.secondary
+        )
+    ) {
+        Icon(Icons.Default.BugReport, "Debug")
+        Spacer(modifier = Modifier.width(8.dp))
+        Text("API Debug")
+    }
+}
+@Composable
 fun WalletDetailContent(
     wallet: CryptoWallet,
     balance: WalletBalance?,
     navController: NavController,
     viewModel: WalletDetailViewModel,
+    blockchainViewModel: BlockchainViewModel,
     padding: PaddingValues
 ) {
     val transactions by viewModel.transactions.collectAsState()
     val context = LocalContext.current
-    val navigationViewModel: NavigationViewModel = hiltViewModel()
 
     Column(
         modifier = Modifier
@@ -144,42 +169,52 @@ fun WalletDetailContent(
         // Wallet Header
         WalletHeaderCard(wallet = wallet, balance = balance)
 
+        DebugButton(walletId = wallet.id, navController = navController)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        BlockchainDataCard(
+            wallet = wallet,
+            blockchainViewModel = blockchainViewModel,
+//            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
 
         WalletActionsCard(
             wallet = wallet,
             onReceive = {
-                // Show receive screen
                 navController.navigate("receive/${wallet.id}")
             },
             onSend = {
-                // Navigate to authenticate for send
                 navController.navigate("authenticate/send/${wallet.id}")
             },
             onBackup = {
-                // Navigate to authenticate for backup
                 navController.navigate("authenticate/backup/${wallet.id}")
             },
             onAddSampleTransaction = {
                 viewModel.addSampleTransaction()
             },
             onViewPrivateKey = {
-                Toast.makeText(context, "Private key viewing not implemented yet", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Private key viewing requires authentication", Toast.LENGTH_SHORT).show()
             }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Address Card
-        AddressCard(
+        // Address Card with QR Code
+        AddressCardWithQR(
             address = viewModel.getDisplayAddress(),
+            fullAddress = viewModel.getFullAddress(),
             onCopy = { address ->
-                // Copy to clipboard
                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("Wallet Address", address)
                 clipboard.setPrimaryClip(clip)
-
                 Toast.makeText(context, "Address copied to clipboard", Toast.LENGTH_SHORT).show()
+            },
+            onShowFullQR = {
+                // Navigate to full screen QR code
+                navController.navigate("qrCode/${wallet.id}")
             }
         )
 
@@ -188,7 +223,10 @@ fun WalletDetailContent(
         // Recent Transactions
         TransactionsSection(
             transactions = transactions,
-            onViewAll = { /* TODO */ }
+            onViewAll = {
+                // TODO: Navigate to full transactions screen
+                Toast.makeText(context, "View all transactions", Toast.LENGTH_SHORT).show()
+            }
         )
     }
 }
@@ -353,6 +391,110 @@ fun ActionButton(
             text = label,
             style = MaterialTheme.typography.labelSmall
         )
+    }
+}
+
+@Composable
+fun AddressCardWithQR(
+    address: String,
+    fullAddress: String,
+    onCopy: (String) -> Unit,
+    onShowFullQR: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Wallet Address",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // QR Code Preview
+            Box(
+                modifier = Modifier
+                    .size(150.dp)
+                    .clickable { onShowFullQR() }
+                    .clip(RoundedCornerShape(8.dp))
+            ) {
+                QrCodeDisplay(
+                    address = fullAddress,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Overlay for click hint
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.3f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ZoomIn,
+                        contentDescription = "View Full QR",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = address,
+                style = MaterialTheme.typography.bodyMedium,
+                fontFamily = FontFamily.Monospace,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Button(
+                    onClick = { onCopy(fullAddress) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.ContentCopy, "Copy", modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Copy")
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Button(
+                    onClick = onShowFullQR,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Icon(Icons.Default.QrCode2, "QR Code", modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("QR Code")
+                }
+            }
+        }
     }
 }
 
