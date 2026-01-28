@@ -11,6 +11,7 @@ import com.example.nexuswallet.feature.wallet.data.local.TransactionDao
 import com.example.nexuswallet.feature.wallet.data.local.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
+import com.example.nexuswallet.feature.wallet.data.repository.BlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
 import dagger.Provides
@@ -89,9 +90,10 @@ object DatabaseModule {
     @Singleton
     fun provideWalletRepository(
         localDataSource: WalletLocalDataSource,
-        securityManager: SecurityManager
+        securityManager: SecurityManager,
+        blockchainRepository: BlockchainRepository
     ): WalletRepository {
-        return WalletRepository(localDataSource, securityManager)
+        return WalletRepository(localDataSource, securityManager, blockchainRepository)
     }
 
     @Provides
