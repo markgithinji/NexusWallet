@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.nexuswallet.NavigationViewModel
 import com.example.nexuswallet.feature.authentication.domain.AuthAction
 import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.authentication.domain.AuthenticationResult
@@ -61,16 +62,11 @@ import java.util.Locale
 fun WalletDetailScreen(
     navController: NavController,
     viewModel: WalletDetailViewModel = hiltViewModel(),
-    authViewModel: AuthenticationViewModel = hiltViewModel()
 ) {
     val wallet by viewModel.wallet.collectAsState()
     val balance by viewModel.balance.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
-
-    // Listen to authentication state
-    val authRequiredState by authViewModel.authenticationRequired.collectAsState()
-    val authState by authViewModel.authenticationState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -98,37 +94,6 @@ fun WalletDetailScreen(
             )
         }
     ) { padding ->
-        // Check authentication when wallet loads
-        LaunchedEffect(wallet?.id) {
-            wallet?.id?.let { walletId ->
-                authViewModel.checkAuthenticationRequired(
-                    action = AuthAction.VIEW_WALLET,
-                    targetId = walletId
-                )
-            }
-        }
-
-        // Handle authentication required state
-        LaunchedEffect(authRequiredState) {
-            authRequiredState?.let { authCheck ->
-                if (authCheck.required && authCheck.targetId != null) {
-                    Log.d("WalletDetail", "Auth required for wallet: ${authCheck.targetId}")
-                    navController.navigate("authenticate/${authCheck.action.name.lowercase()}/${authCheck.targetId}")
-                } else if (!authCheck.required) {
-                    Log.d("WalletDetail", "No auth required for wallet")
-                }
-            }
-        }
-
-        // Handle successful authentication
-        LaunchedEffect(authState) {
-            if (authState is AuthenticationResult.Success) {
-                Log.d("WalletDetail", "Authentication successful")
-                // Clear any pending auth checks
-                authViewModel.clearAuthCheck()
-            }
-        }
-
         if (isLoading) {
             LoadingScreen()
             return@Scaffold
@@ -148,7 +113,6 @@ fun WalletDetailScreen(
                 balance = balance,
                 navController = navController,
                 viewModel = viewModel,
-                authViewModel = authViewModel,
                 padding = padding
             )
         } ?: run {
@@ -165,11 +129,11 @@ fun WalletDetailContent(
     balance: WalletBalance?,
     navController: NavController,
     viewModel: WalletDetailViewModel,
-    authViewModel: AuthenticationViewModel,
     padding: PaddingValues
 ) {
     val transactions by viewModel.transactions.collectAsState()
     val context = LocalContext.current
+    val navigationViewModel: NavigationViewModel = hiltViewModel()
 
     Column(
         modifier = Modifier
@@ -189,28 +153,18 @@ fun WalletDetailContent(
                 navController.navigate("receive/${wallet.id}")
             },
             onSend = {
-                // Check authentication for send
-                authViewModel.checkAuthenticationRequired(
-                    action = AuthAction.SEND_TRANSACTION,
-                    targetId = wallet.id
-                )
+                // Navigate to authenticate for send
+                navController.navigate("authenticate/send/${wallet.id}")
             },
             onBackup = {
-                // Check authentication for backup
-                authViewModel.checkAuthenticationRequired(
-                    action = AuthAction.BACKUP_WALLET,
-                    targetId = wallet.id
-                )
+                // Navigate to authenticate for backup
+                navController.navigate("authenticate/backup/${wallet.id}")
             },
             onAddSampleTransaction = {
                 viewModel.addSampleTransaction()
             },
             onViewPrivateKey = {
-                // Check authentication for viewing private key
-                authViewModel.checkAuthenticationRequired(
-                    action = AuthAction.VIEW_PRIVATE_KEY,
-                    targetId = wallet.id
-                )
+                Toast.makeText(context, "Private key viewing not implemented yet", Toast.LENGTH_SHORT).show()
             }
         )
 
@@ -357,7 +311,6 @@ fun WalletActionsCard(
                     onClick = onViewPrivateKey
                 )
 
-                // Add more security actions as needed
                 ActionButton(
                     icon = Icons.Default.Security,
                     label = "Security",
