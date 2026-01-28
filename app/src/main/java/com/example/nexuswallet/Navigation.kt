@@ -4,12 +4,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -20,7 +17,6 @@ import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 //import com.example.nexuswallet.feature.wallet.domain.WalletDataManager
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
@@ -30,11 +26,27 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDetailViewModel
 @Composable
 fun Navigation() {
     val navController = rememberNavController()
-
-    val viewModel: NavigationViewModel = hiltViewModel()
+    val navigationViewModel: NavigationViewModel = hiltViewModel()
 
     // Determine if user has wallets
-    val hasWallets by viewModel.hasWallets.collectAsState()
+    val hasWallets by navigationViewModel.hasWallets.collectAsState()
+
+    // Watch for auth navigation requests
+    val shouldNavigateToAuth by navigationViewModel.shouldNavigateToAuth.collectAsState()
+
+    // Handle auth navigation requests
+    LaunchedEffect(shouldNavigateToAuth) {
+        shouldNavigateToAuth?.let { (screen, walletId) ->
+            // Navigate to auth screen first
+            navController.navigate("authenticate/$screen/$walletId") {
+                // Don't add to back stack if already on same screen
+                launchSingleTop = true
+            }
+
+            // Clear the navigation request
+            navigationViewModel.clearAuthNavigation()
+        }
+    }
 
     // Determine start destination
     val startDestination = if (hasWallets) "main" else "welcome"
@@ -58,7 +70,10 @@ fun Navigation() {
 
         // Main App with Tabs
         composable("main") {
-            MainTabScreen(navController = navController)
+            MainTabScreen(
+                navController = navController,
+                navigationViewModel = navigationViewModel
+            )
         }
 
         // Market Screen (accessible from tabs)
@@ -197,7 +212,7 @@ fun Navigation() {
             )
         }
 
-        // Add backup route ( TODO: will be protected by authentication)
+        // Add backup route
         composable(
             route = "backup/{walletId}",
             arguments = listOf(
