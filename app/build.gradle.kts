@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.File
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -19,6 +22,21 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Load API keys from local.properties
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localProperties.load(localPropertiesFile.inputStream())
+        }
+
+        // API Keys - will be empty strings if not found in local.properties
+        val etherscanKey = localProperties.getProperty("ETHERSCAN_API_KEY") ?: ""
+        val covalentKey = localProperties.getProperty("COVALENT_API_KEY") ?: ""
+
+        buildConfigField("String", "ETHERSCAN_API_KEY", "\"$etherscanKey\"")
+        buildConfigField("String", "COVALENT_API_KEY", "\"$covalentKey\"")
+        buildConfigField("Boolean", "IS_DEMO_MODE", "${etherscanKey.isEmpty()}")
     }
 
     buildTypes {
@@ -42,8 +60,10 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -82,7 +102,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.datastore.preferences.core)
 
-
     // Secure storage
     implementation(libs.security.crypto)
     implementation(libs.androidx.compose.foundation)
@@ -99,6 +118,10 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
+
+    // QR Code
+    implementation("com.google.zxing:core:3.5.2")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
