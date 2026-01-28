@@ -1,27 +1,26 @@
 package com.example.nexuswallet.feature.wallet.data.repository
 
-import android.content.Context
-import com.example.nexuswallet.NexusWalletApplication
+
+import android.util.Log
 import com.example.nexuswallet.feature.authentication.domain.BackupResult
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
+import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
+import com.example.nexuswallet.feature.wallet.data.remote.ChainId
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
+import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
+import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
+import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.WalletSettings
-import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.domain.WalletType
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import org.bitcoinj.core.LegacyAddress
 import org.bitcoinj.crypto.ChildNumber.HARDENED_BIT
 import org.bitcoinj.crypto.MnemonicCode
@@ -39,7 +38,8 @@ import org.bitcoinj.wallet.Wallet as BitcoinJWallet
 
 class WalletRepository @Inject constructor(
     private val localDataSource: WalletLocalDataSource,
-    private val securityManager: SecurityManager
+    private val securityManager: SecurityManager,
+    private val blockchainRepository: BlockchainRepository
 ) {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -59,6 +59,10 @@ class WalletRepository @Inject constructor(
     suspend fun saveWallet(wallet: CryptoWallet) {
         localDataSource.saveWallet(wallet)
         updateWalletsFlow(wallet)
+
+        // Create initial sample balance
+        val sampleBalance = createSampleBalance(wallet.id, wallet.address)
+        saveWalletBalance(sampleBalance)
     }
 
     suspend fun getWallet(walletId: String): CryptoWallet? {
@@ -255,6 +259,210 @@ class WalletRepository @Inject constructor(
         )
     }
 
+    // === SYNC WITH BLOCKCHAIN ===
+    suspend fun syncWalletWithBlockchain(walletId: String) {
+        val wallet = getWallet(walletId) ?: return
+
+        Log.d("WalletRepo", "Syncing wallet $walletId with blockchain...")
+
+        when (wallet) {
+            is EthereumWallet -> {
+                syncEthereumWallet(wallet)
+            }
+
+            is BitcoinWallet -> {
+                syncBitcoinWallet(wallet)
+            }
+
+            is MultiChainWallet -> {
+                syncMultiChainWallet(wallet)
+            }
+
+            is SolanaWallet -> {
+                syncSolanaWallet(wallet)
+            }
+        }
+    }
+
+    private suspend fun syncEthereumWallet(wallet: EthereumWallet) {
+        try {
+            // Get real balance from blockchain
+            val ethBalance = blockchainRepository.getEthereumBalance(wallet.address)
+            Log.d("WalletRepo", "ETH Balance for ${wallet.address}: $ethBalance")
+
+            // Get token balances
+            val tokens = blockchainRepository.getTokenBalances(
+                wallet.address,
+                ChainId.ETHEREUM_MAINNET
+            )
+
+            // Get transactions
+            val transactions = blockchainRepository.getEthereumTransactions(wallet.address)
+
+            // Create updated balance
+            val balance = WalletBalance(
+                walletId = wallet.id,
+                address = wallet.address,
+                nativeBalance = (ethBalance * BigDecimal("1000000000000000000")).toPlainString(),
+                nativeBalanceDecimal = ethBalance.toPlainString(),
+                usdValue = calculateUsdValue(ethBalance, "ETH"),
+                tokens = tokens
+            )
+
+            // Save balance
+            saveWalletBalance(balance)
+
+            // Save transactions
+            saveTransactions(wallet.id, transactions)
+
+            Log.d("WalletRepo", "Ethereum wallet synced successfully")
+
+        } catch (e: Exception) {
+            Log.e("WalletRepo", "Error syncing Ethereum wallet: ${e.message}")
+            // Fallback to sample data
+            val fallbackBalance = createSampleBalance(wallet.id, wallet.address)
+            saveWalletBalance(fallbackBalance)
+        }
+    }
+
+    private suspend fun syncBitcoinWallet(wallet: BitcoinWallet) {
+        try {
+            // Get real balance from blockchain
+            val btcBalance = blockchainRepository.getBitcoinBalance(wallet.address)
+            Log.d("WalletRepo", "BTC Balance for ${wallet.address}: $btcBalance")
+
+            // Create updated balance
+            val balance = WalletBalance(
+                walletId = wallet.id,
+                address = wallet.address,
+                nativeBalance = (btcBalance * BigDecimal("100000000")).toPlainString(),
+                nativeBalanceDecimal = btcBalance.toPlainString(),
+                usdValue = calculateUsdValue(btcBalance, "BTC"),
+                tokens = emptyList()
+            )
+
+            // Save balance
+            saveWalletBalance(balance)
+
+            Log.d("WalletRepo", "Bitcoin wallet synced successfully")
+
+        } catch (e: Exception) {
+            Log.e("WalletRepo", "Error syncing Bitcoin wallet: ${e.message}")
+            // Fallback to sample data
+            val fallbackBalance = createSampleBalance(wallet.id, wallet.address)
+            saveWalletBalance(fallbackBalance)
+        }
+    }
+
+    private suspend fun syncMultiChainWallet(wallet: MultiChainWallet) {
+        val allBalances = mutableListOf<WalletBalance>()
+        var totalUsdValue = 0.0
+
+        // Sync Bitcoin if exists
+        wallet.bitcoinWallet?.let { btcWallet ->
+            try {
+                val btcBalance = blockchainRepository.getBitcoinBalance(btcWallet.address)
+                val balance = WalletBalance(
+                    walletId = wallet.id,
+                    address = btcWallet.address,
+                    nativeBalance = (btcBalance * BigDecimal("100000000")).toPlainString(),
+                    nativeBalanceDecimal = btcBalance.toPlainString(),
+                    usdValue = calculateUsdValue(btcBalance, "BTC"),
+                    tokens = emptyList()
+                )
+                allBalances.add(balance)
+                totalUsdValue += balance.usdValue
+            } catch (e: Exception) {
+                Log.e("WalletRepo", "Error syncing BTC in multi-chain: ${e.message}")
+            }
+        }
+
+        // Sync Ethereum if exists
+        wallet.ethereumWallet?.let { ethWallet ->
+            try {
+                val ethBalance = blockchainRepository.getEthereumBalance(ethWallet.address)
+                val tokens = blockchainRepository.getTokenBalances(
+                    ethWallet.address,
+                    ChainId.ETHEREUM_MAINNET
+                )
+
+                val balance = WalletBalance(
+                    walletId = wallet.id,
+                    address = ethWallet.address,
+                    nativeBalance = (ethBalance * BigDecimal("1000000000000000000")).toPlainString(),
+                    nativeBalanceDecimal = ethBalance.toPlainString(),
+                    usdValue = calculateUsdValue(ethBalance, "ETH"),
+                    tokens = tokens
+                )
+                allBalances.add(balance)
+                totalUsdValue += balance.usdValue
+            } catch (e: Exception) {
+                Log.e("WalletRepo", "Error syncing ETH in multi-chain: ${e.message}")
+            }
+        }
+
+        // Save combined balance
+        val combinedBalance = WalletBalance(
+            walletId = wallet.id,
+            address = wallet.address,
+            nativeBalance = allBalances.joinToString("|") { it.nativeBalance },
+            nativeBalanceDecimal = allBalances.joinToString(" + ") { it.nativeBalanceDecimal },
+            usdValue = totalUsdValue,
+            tokens = allBalances.flatMap { it.tokens }
+        )
+
+        saveWalletBalance(combinedBalance)
+        Log.d("WalletRepo", "Multi-chain wallet synced successfully")
+    }
+
+    // Add Solana wallet sync method
+    private suspend fun syncSolanaWallet(wallet: SolanaWallet) {
+        try {
+            Log.d("WalletRepo", "Solana wallet sync not implemented yet, using demo data")
+
+            val solBalance = BigDecimal("5.75") // Demo SOL balance
+            val tokens = listOf(
+                TokenBalance(
+                    tokenId = "demo_sol_usdc",
+                    symbol = "USDC",
+                    name = "USD Coin (Solana)",
+                    contractAddress = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                    balance = "1000000000", // 1000 USDC
+                    balanceDecimal = "1000",
+                    usdPrice = 1.0,
+                    usdValue = 1000.0,
+                    decimals = 6,
+                    chain = ChainType.SOLANA
+                )
+            )
+
+            val balance = WalletBalance(
+                walletId = wallet.id,
+                address = wallet.address,
+                nativeBalance = (solBalance * BigDecimal("1000000000")).toPlainString(), // SOL has 9 decimals
+                nativeBalanceDecimal = solBalance.toPlainString(),
+                usdValue = calculateUsdValue(solBalance, "SOL"),
+                tokens = tokens
+            )
+
+            saveWalletBalance(balance)
+
+            Log.d("WalletRepo", "Solana wallet synced with demo data")
+
+        } catch (e: Exception) {
+            Log.e("WalletRepo", "Error syncing Solana wallet: ${e.message}")
+            val fallbackBalance = createSampleBalance(wallet.id, wallet.address)
+            saveWalletBalance(fallbackBalance)
+        }
+    }
+
+    suspend fun refreshAllWallets() {
+        val wallets = _walletsFlow.value
+        wallets.forEach { wallet ->
+            syncWalletWithBlockchain(wallet.id)
+        }
+    }
+
     // === TRANSACTION OPERATIONS ===
     suspend fun saveTransactions(walletId: String, transactions: List<Transaction>) {
         localDataSource.saveTransactions(walletId, transactions)
@@ -316,6 +524,17 @@ class WalletRepository @Inject constructor(
         }
     }
 
+    private fun calculateUsdValue(amount: BigDecimal, symbol: String): Double {
+        // For demo: use fixed prices
+        val price = when (symbol) {
+            "BTC" -> 45000.0
+            "ETH" -> 3000.0
+            "SOL" -> 30.0
+            else -> 1.0
+        }
+        return (amount.toDouble() * price)
+    }
+
     fun convertToDecimal(balanceStr: String, decimals: Int): String {
         return try {
             val bigInt = BigInteger(balanceStr)
@@ -348,4 +567,18 @@ class WalletRepository @Inject constructor(
 
     // Private helper
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
+
+    // === NEW HELPER METHODS ===
+    suspend fun getLiveGasPrice(): GasPrice {
+        return blockchainRepository.getCurrentGasPrice()
+    }
+
+    fun validateAddress(address: String, walletType: WalletType): Boolean {
+        return when (walletType) {
+            WalletType.BITCOIN -> blockchainRepository.isValidBitcoinAddress(address)
+            WalletType.ETHEREUM -> blockchainRepository.isValidEthereumAddress(address)
+            WalletType.SOLANA -> true // For now, accept any string as Solana address
+            else -> address.isNotBlank()
+        }
+    }
 }
