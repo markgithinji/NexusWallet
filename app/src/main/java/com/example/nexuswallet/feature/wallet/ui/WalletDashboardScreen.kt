@@ -33,15 +33,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.nexuswallet.NavigationViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletDashboardScreen(
     navController: NavController,
-    viewModel: WalletDashboardViewModel = hiltViewModel(),
+    navigationViewModel: NavigationViewModel,
     padding: PaddingValues
 ) {
-    val wallets by viewModel.wallets.collectAsState()
+    val wallets by navigationViewModel.wallets.collectAsState()
+    val viewModel: WalletDashboardViewModel = hiltViewModel()
     val totalPortfolio by viewModel.totalPortfolioValue.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -82,7 +84,8 @@ fun WalletDashboardScreen(
                 wallets = wallets,
                 balances = viewModel.balances.collectAsState().value,
                 onWalletClick = { wallet ->
-                    navController.navigate("walletDetail/${wallet.id}")
+                    // Use NavigationViewModel to check auth before navigating
+                    navigationViewModel.navigateToWalletDetail(wallet.id)
                 },
                 onDeleteWallet = { walletId ->
                     viewModel.deleteWallet(walletId)

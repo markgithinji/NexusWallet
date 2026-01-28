@@ -18,7 +18,10 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainTabScreen(navController: NavController) {
+fun MainTabScreen(
+    navController: NavController,
+    navigationViewModel: NavigationViewModel
+) {
     var selectedTab by remember { mutableIntStateOf(0) }
 
     Scaffold(
@@ -86,7 +89,8 @@ fun MainTabScreen(navController: NavController) {
         when (selectedTab) {
             0 -> WalletDashboardScreen(
                 navController = navController,
-                padding = padding
+                padding = padding,
+                navigationViewModel = navigationViewModel
             )
             1 -> MarketScreen(
                 navController = navController,
