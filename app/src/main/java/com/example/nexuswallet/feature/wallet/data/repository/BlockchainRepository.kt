@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.wallet.data.repository
 
 import android.content.Context
 import android.util.Log
+import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
@@ -20,8 +21,6 @@ import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.RoundingMode
 import javax.inject.Inject
-import com.example.nexuswallet.feature.wallet.data.repository.Config.COVALENT_API_KEY
-import com.example.nexuswallet.feature.wallet.data.repository.Config.ETHERSCAN_API_KEY
 import kotlin.collections.filter
 
 class BlockchainRepository @Inject constructor(
@@ -35,7 +34,7 @@ class BlockchainRepository @Inject constructor(
         return try {
             val response = etherscanApi.getEthereumBalance(
                 address = address,
-                apiKey = ETHERSCAN_API_KEY
+                apiKey = BuildConfig.ETHERSCAN_API_KEY
             )
 
             if (response.status == "1") {
@@ -69,7 +68,7 @@ class BlockchainRepository @Inject constructor(
             val response = covalentApi.getTokenBalances(
                 chainId = chainId.id,
                 address = address,
-                apiKey = COVALENT_API_KEY
+                apiKey = BuildConfig.COVALENT_API_KEY
             )
 
             response.data.items.mapNotNull { token ->
@@ -114,7 +113,7 @@ class BlockchainRepository @Inject constructor(
         return try {
             val response = etherscanApi.getEthereumTransactions(
                 address = address,
-                apiKey = ETHERSCAN_API_KEY
+                apiKey = BuildConfig.ETHERSCAN_API_KEY
             )
 
             if (response.status == "1") {
@@ -193,7 +192,7 @@ class BlockchainRepository @Inject constructor(
     suspend fun getCurrentGasPrice(): GasPrice {
         return try {
             val response = etherscanApi.getGasPrice(
-                apiKey = ETHERSCAN_API_KEY
+                apiKey = BuildConfig.ETHERSCAN_API_KEY
             )
 
             GasPrice(
@@ -300,7 +299,7 @@ class BlockchainRepository @Inject constructor(
         return try {
             val response = etherscanApi.broadcastTransaction(
                 hex = rawTx,
-                apiKey = ETHERSCAN_API_KEY
+                apiKey = BuildConfig.ETHERSCAN_API_KEY
             )
 
             if (response.result.isNotEmpty() && !response.result.startsWith("Error")) {
@@ -378,7 +377,7 @@ class BlockchainRepository @Inject constructor(
         return try {
             val response = etherscanApi.getTransactionCount(
                 address = address,
-                apiKey = ETHERSCAN_API_KEY
+                apiKey = BuildConfig.ETHERSCAN_API_KEY
             )
 
             // JSON-RPC response: just check if result is valid
