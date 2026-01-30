@@ -64,16 +64,17 @@ fun WalletDetailScreen(
 ) {
     val wallet by walletViewModel.wallet.collectAsState()
     val balance by walletViewModel.balance.collectAsState()
-    val ethBalance by blockchainViewModel.ethBalance.collectAsState()
-    val btcBalance by blockchainViewModel.btcBalance.collectAsState()
-    val isLoading by blockchainViewModel.isLoading.collectAsState()
-    val error by blockchainViewModel.error.collectAsState()
+    val isLoading by walletViewModel.isLoading.collectAsState()
+    val error by walletViewModel.error.collectAsState()
 
     LaunchedEffect(wallet) {
-        wallet?.let { blockchainViewModel.fetchWalletData(it) }
+        wallet?.let {
+            // Sync wallet with blockchain when it loads
+            walletViewModel.syncWithBlockchain(it.id)
+        }
     }
 
-    // Show loading state while fetching blockchain data
+    // Show loading state
     if (isLoading) {
         LoadingScreen()
         return
@@ -82,7 +83,7 @@ fun WalletDetailScreen(
     error?.let {
         ErrorScreen(
             message = it,
-            onRetry = { wallet?.let { w -> blockchainViewModel.refresh(w) } }
+            onRetry = { wallet?.let { w -> walletViewModel.loadWallet(w.id) } }
         )
         return
     }
@@ -105,8 +106,7 @@ fun WalletDetailScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            wallet?.let { blockchainViewModel.refresh(it) }
-                            walletViewModel.refresh()
+                            wallet?.let { walletViewModel.refresh() }
                         },
                         enabled = !isLoading
                     ) {
@@ -122,7 +122,6 @@ fun WalletDetailScreen(
                 balance = balance,
                 navController = navController,
                 viewModel = walletViewModel,
-                blockchainViewModel = blockchainViewModel,
                 padding = padding
             )
         } ?: run {
@@ -154,7 +153,6 @@ fun WalletDetailContent(
     balance: WalletBalance?,
     navController: NavController,
     viewModel: WalletDetailViewModel,
-    blockchainViewModel: BlockchainViewModel,
     padding: PaddingValues
 ) {
     val transactions by viewModel.transactions.collectAsState()
@@ -173,21 +171,13 @@ fun WalletDetailContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        BlockchainDataCard(
-            wallet = wallet,
-            blockchainViewModel = blockchainViewModel,
-//            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         WalletActionsCard(
             wallet = wallet,
             onReceive = {
                 navController.navigate("receive/${wallet.id}")
             },
             onSend = {
-                navController.navigate("authenticate/send/${wallet.id}")
+                navController.navigate("send/${wallet.id}")
             },
             onBackup = {
                 navController.navigate("authenticate/backup/${wallet.id}")
