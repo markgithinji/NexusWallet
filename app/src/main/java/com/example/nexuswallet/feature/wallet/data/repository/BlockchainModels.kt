@@ -37,9 +37,9 @@ data class BlockstreamUtxo(
     @SerialName("txid") val txId: String,
     @SerialName("vout") val vout: Int,
     @SerialName("status") val status: BlockstreamStatus,
-    @SerialName("value") val value: Long
+    @SerialName("value") val value: Long,
+    @SerialName("scriptpubkey") val scriptPubKey: String? = null // Add this
 )
-
 @Serializable
 data class BlockstreamStatus(
     @SerialName("confirmed") val confirmed: Boolean,

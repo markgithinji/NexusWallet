@@ -8,10 +8,13 @@ import com.example.nexuswallet.feature.wallet.data.local.BalanceDao
 import com.example.nexuswallet.feature.wallet.data.local.MnemonicDao
 import com.example.nexuswallet.feature.wallet.data.local.SettingsDao
 import com.example.nexuswallet.feature.wallet.data.local.TransactionDao
+import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.local.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
+import com.example.nexuswallet.feature.wallet.data.model.SendTransactionDao
 import com.example.nexuswallet.feature.wallet.data.repository.BlockchainRepository
+import com.example.nexuswallet.feature.wallet.data.repository.TransactionRepository
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
 import dagger.Provides
@@ -68,13 +71,20 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideSendTransactionDao(database: WalletDatabase): SendTransactionDao {
+        return database.sendTransactionDao()
+    }
+
+    @Provides
+    @Singleton
     fun provideWalletLocalDataSource(
         walletDao: WalletDao,
         balanceDao: BalanceDao,
         transactionDao: TransactionDao,
         settingsDao: SettingsDao,
         backupDao: BackupDao,
-        mnemonicDao: MnemonicDao
+        mnemonicDao: MnemonicDao,
+        sendTransactionDao: SendTransactionDao
     ): WalletLocalDataSource {
         return WalletLocalDataSource(
             walletDao = walletDao,
@@ -82,7 +92,21 @@ object DatabaseModule {
             transactionDao = transactionDao,
             settingsDao = settingsDao,
             backupDao = backupDao,
-            mnemonicDao = mnemonicDao
+            mnemonicDao = mnemonicDao,
+            sendTransactionDao = sendTransactionDao
+        )
+    }
+
+    // NEW: Add TransactionLocalDataSource provider
+    @Provides
+    @Singleton
+    fun provideTransactionLocalDataSource(
+        transactionDao: TransactionDao,
+        sendTransactionDao: SendTransactionDao
+    ): TransactionLocalDataSource {
+        return TransactionLocalDataSource(
+            transactionDao = transactionDao,
+            sendTransactionDao = sendTransactionDao
         )
     }
 
@@ -98,6 +122,21 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideTransactionRepository(
+        transactionLocalDataSource: TransactionLocalDataSource,
+        blockchainRepository: BlockchainRepository,
+        walletRepository: WalletRepository,
+        securityManager: SecurityManager
+    ): TransactionRepository {
+        return TransactionRepository(
+            localDataSource = transactionLocalDataSource,
+            blockchainRepository = blockchainRepository,
+            walletRepository = walletRepository
+        )
+    }
+
+    @Provides
+    @Singleton
     fun provideSecureStorage(
         @ApplicationContext context: Context,
         walletLocalDataSource: WalletLocalDataSource
@@ -107,7 +146,7 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideSecurityManager(@ApplicationContext context: Context, secureStorage : SecureStorage): SecurityManager {
+    fun provideSecurityManager(@ApplicationContext context: Context, secureStorage: SecureStorage): SecurityManager {
         return SecurityManager(context, secureStorage)
     }
 }

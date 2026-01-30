@@ -290,38 +290,25 @@ class WalletRepository @Inject constructor(
             val ethBalance = blockchainRepository.getEthereumBalance(wallet.address)
             Log.d("WalletRepo", "ETH Balance for ${wallet.address}: $ethBalance")
 
-            // Get token balances
-            val tokens = blockchainRepository.getTokenBalances(
-                wallet.address,
-                ChainId.ETHEREUM_MAINNET
-            )
-
-            // Get transactions
-            val transactions = blockchainRepository.getEthereumTransactions(wallet.address)
+            // Convert to proper decimal string
+            val nativeBalanceDecimal = ethBalance.toPlainString()
 
             // Create updated balance
             val balance = WalletBalance(
                 walletId = wallet.id,
                 address = wallet.address,
                 nativeBalance = (ethBalance * BigDecimal("1000000000000000000")).toPlainString(),
-                nativeBalanceDecimal = ethBalance.toPlainString(),
-                usdValue = calculateUsdValue(ethBalance, "ETH"),
-                tokens = tokens
+                nativeBalanceDecimal = nativeBalanceDecimal,
+                usdValue = calculateUsdValue(ethBalance, "ETH"), // This should calculate properly
+                tokens = emptyList() // For now, empty
             )
 
             // Save balance
             saveWalletBalance(balance)
-
-            // Save transactions
-            saveTransactions(wallet.id, transactions)
-
-            Log.d("WalletRepo", "Ethereum wallet synced successfully")
+            Log.d("WalletRepo", "Ethereum wallet balance saved: $balance")
 
         } catch (e: Exception) {
             Log.e("WalletRepo", "Error syncing Ethereum wallet: ${e.message}")
-            // Fallback to sample data
-            val fallbackBalance = createSampleBalance(wallet.id, wallet.address)
-            saveWalletBalance(fallbackBalance)
         }
     }
 
@@ -565,10 +552,8 @@ class WalletRepository @Inject constructor(
         _walletsFlow.value = currentWallets
     }
 
-    // Private helper
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 
-    // === NEW HELPER METHODS ===
     suspend fun getLiveGasPrice(): GasPrice {
         return blockchainRepository.getCurrentGasPrice()
     }

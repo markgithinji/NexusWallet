@@ -2,6 +2,11 @@ package com.example.nexuswallet.feature.wallet.data.repository
 
 import android.content.Context
 import android.util.Log
+import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
+import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
+import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
+import com.example.nexuswallet.feature.wallet.data.model.TransactionFee
+import com.example.nexuswallet.feature.wallet.data.model.UTXO
 import com.example.nexuswallet.feature.wallet.data.remote.BlockstreamApiService
 import com.example.nexuswallet.feature.wallet.data.remote.ChainId
 import com.example.nexuswallet.feature.wallet.data.remote.CovalentApiService
@@ -155,7 +160,6 @@ class BlockchainRepository @Inject constructor(
         return BigDecimal.valueOf(simulatedBalance)
     }
 
-    // Helper: Get sample transactions
     fun getSampleTransactions(address: String, chain: ChainType): List<Transaction> {
         return listOf(
             Transaction(
@@ -213,6 +217,284 @@ class BlockchainRepository @Inject constructor(
 
     fun isValidBitcoinAddress(address: String): Boolean {
         return address.matches(Regex("^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,39}\$"))
+    }
+
+    suspend fun getBitcoinFeeEstimates(): TransactionFee {
+        return try {
+            // Using blockstream.info API for fee estimates
+            // For demo, we'll return mock data
+            TransactionFee(
+                chain = ChainType.BITCOIN,
+                slow = FeeEstimate(
+                    feePerByte = "10",
+                    gasPrice = null,
+                    totalFee = "2000",
+                    totalFeeDecimal = "0.00002",
+                    estimatedTime = 3600,
+                    priority = FeeLevel.SLOW
+                ),
+                normal = FeeEstimate(
+                    feePerByte = "25",
+                    gasPrice = null,
+                    totalFee = "5000",
+                    totalFeeDecimal = "0.00005",
+                    estimatedTime = 600,
+                    priority = FeeLevel.NORMAL
+                ),
+                fast = FeeEstimate(
+                    feePerByte = "50",
+                    gasPrice = null,
+                    totalFee = "10000",
+                    totalFeeDecimal = "0.0001",
+                    estimatedTime = 120,
+                    priority = FeeLevel.FAST
+                )
+            )
+        } catch (e: Exception) {
+            Log.e("BlockchainRepo", "Error getting BTC fee estimates: ${e.message}")
+            // Fallback to demo fees
+            getDemoBitcoinFees()
+        }
+    }
+
+    // Ethereum Gas Price
+    suspend fun getEthereumGasPrice(): TransactionFee {
+        return try {
+            val gasPrice = getCurrentGasPrice()
+            TransactionFee(
+                chain = ChainType.ETHEREUM,
+                slow = FeeEstimate(
+                    feePerByte = null,
+                    gasPrice = gasPrice.safe,
+                    totalFee = calculateEthFee(gasPrice.safe, 21000),
+                    totalFeeDecimal = calculateEthFeeDecimal(gasPrice.safe, 21000),
+                    estimatedTime = 900,
+                    priority = FeeLevel.SLOW
+                ),
+                normal = FeeEstimate(
+                    feePerByte = null,
+                    gasPrice = gasPrice.propose,
+                    totalFee = calculateEthFee(gasPrice.propose, 21000),
+                    totalFeeDecimal = calculateEthFeeDecimal(gasPrice.propose, 21000),
+                    estimatedTime = 300,
+                    priority = FeeLevel.NORMAL
+                ),
+                fast = FeeEstimate(
+                    feePerByte = null,
+                    gasPrice = gasPrice.fast,
+                    totalFee = calculateEthFee(gasPrice.fast, 21000),
+                    totalFeeDecimal = calculateEthFeeDecimal(gasPrice.fast, 21000),
+                    estimatedTime = 60,
+                    priority = FeeLevel.FAST
+                )
+            )
+        } catch (e: Exception) {
+            Log.e("BlockchainRepo", "Error getting ETH gas price: ${e.message}")
+            // Fallback to demo fees
+            getDemoEthereumFees()
+        }
+    }
+
+    // Broadcast Ethereum Transaction (using Etherscan)
+    suspend fun broadcastEthereumTransaction(rawTx: String): BroadcastResult {
+        return try {
+            val response = etherscanApi.broadcastTransaction(
+                hex = rawTx,
+                apiKey = ETHERSCAN_API_KEY
+            )
+
+            if (response.result.isNotEmpty() && !response.result.startsWith("Error")) {
+                BroadcastResult(
+                    success = true,
+                    hash = response.result,
+                    chain = ChainType.ETHEREUM
+                )
+            } else {
+                BroadcastResult(
+                    success = false,
+                    error = response.result,
+                    chain = ChainType.ETHEREUM
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("BlockchainRepo", "Error broadcasting ETH transaction: ${e.message}")
+            BroadcastResult(
+                success = false,
+                error = e.message,
+                chain = ChainType.ETHEREUM
+            )
+        }
+    }
+
+    // Broadcast Bitcoin Transaction (using blockstream)
+    suspend fun broadcastBitcoinTransaction(rawTx: String): BroadcastResult {
+        return try {
+            // Note: blockstream.info doesn't have broadcast endpoint in free tier
+            // For demo, we'll return mock success
+            BroadcastResult(
+                success = true,
+                hash = "btc_mock_${System.currentTimeMillis()}",
+                chain = ChainType.BITCOIN
+            )
+        } catch (e: Exception) {
+            Log.e("BlockchainRepo", "Error broadcasting BTC transaction: ${e.message}")
+            BroadcastResult(
+                success = false,
+                error = e.message,
+                chain = ChainType.BITCOIN
+            )
+        }
+    }
+
+    // Get Bitcoin UTXOs (for transaction building)
+    suspend fun getBitcoinUTXOs(address: String): List<UTXO> {
+        return try {
+            val utxos = blockstreamApi.getBitcoinUtxos(address)
+            utxos.map { utxo ->
+                UTXO(
+                    txid = utxo.txId,
+                    vout = utxo.vout,
+                    amount = utxo.value,
+                    scriptPubKey = utxo.scriptPubKey ?: "",
+                    confirmations = calculateConfirmations(utxo.status)
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("BlockchainRepo", "Error getting BTC UTXOs: ${e.message}")
+            // Return mock UTXOs for demo
+            getMockUTXOs(address)
+        }
+    }
+
+    private fun calculateConfirmations(status: BlockstreamStatus?): Int {
+        if (status == null || !status.confirmed) return 0
+
+        // For demo purposes, we'll return a fixed number
+        // In production, you'd get current block height from API
+        return 3
+    }
+    // Get Ethereum Nonce
+    suspend fun getEthereumNonce(address: String): Int {
+        return try {
+            val response = etherscanApi.getTransactionCount(
+                address = address,
+                apiKey = ETHERSCAN_API_KEY
+            )
+
+            // JSON-RPC response: just check if result is valid
+            if (response.result.isNotEmpty() && response.result != "0x") {
+                // Convert hex to decimal (remove "0x" prefix)
+                val hexResult = if (response.result.startsWith("0x")) {
+                    response.result.substring(2)
+                } else {
+                    response.result
+                }
+
+                if (hexResult.isNotEmpty()) {
+                    hexResult.toInt(16)
+                } else {
+                    0
+                }
+            } else {
+                0
+            }
+        } catch (e: Exception) {
+            Log.e("BlockchainRepo", "Error getting ETH nonce: ${e.message}")
+            0 // Return 0 for demo
+        }
+    }
+
+    // Validation with chain parameter
+    suspend fun validateAddress(address: String, chain: ChainType): Boolean {
+        return when (chain) {
+            ChainType.BITCOIN -> isValidBitcoinAddress(address)
+            ChainType.ETHEREUM -> isValidEthereumAddress(address)
+            else -> true // Accept all other chains for demo
+        }
+    }
+
+    // === HELPER METHODS ===
+
+    private fun getDemoBitcoinFees(): TransactionFee {
+        return TransactionFee(
+            chain = ChainType.BITCOIN,
+            slow = FeeEstimate(
+                feePerByte = "10",
+                gasPrice = null,
+                totalFee = "2000",
+                totalFeeDecimal = "0.00002",
+                estimatedTime = 3600,
+                priority = FeeLevel.SLOW
+            ),
+            normal = FeeEstimate(
+                feePerByte = "25",
+                gasPrice = null,
+                totalFee = "5000",
+                totalFeeDecimal = "0.00005",
+                estimatedTime = 600,
+                priority = FeeLevel.NORMAL
+            ),
+            fast = FeeEstimate(
+                feePerByte = "50",
+                gasPrice = null,
+                totalFee = "10000",
+                totalFeeDecimal = "0.0001",
+                estimatedTime = 120,
+                priority = FeeLevel.FAST
+            )
+        )
+    }
+
+    private fun getDemoEthereumFees(): TransactionFee {
+        return TransactionFee(
+            chain = ChainType.ETHEREUM,
+            slow = FeeEstimate(
+                feePerByte = null,
+                gasPrice = "20",
+                totalFee = "420000000000000",
+                totalFeeDecimal = "0.00042",
+                estimatedTime = 900,
+                priority = FeeLevel.SLOW
+            ),
+            normal = FeeEstimate(
+                feePerByte = null,
+                gasPrice = "30",
+                totalFee = "630000000000000",
+                totalFeeDecimal = "0.00063",
+                estimatedTime = 300,
+                priority = FeeLevel.NORMAL
+            ),
+            fast = FeeEstimate(
+                feePerByte = null,
+                gasPrice = "50",
+                totalFee = "1050000000000000",
+                totalFeeDecimal = "0.00105",
+                estimatedTime = 60,
+                priority = FeeLevel.FAST
+            )
+        )
+    }
+
+    private fun getMockUTXOs(address: String): List<UTXO> {
+        return listOf(
+            UTXO(
+                txid = "mock_txid_${System.currentTimeMillis()}",
+                vout = 0,
+                amount = 100000000, // 1 BTC in satoshis
+                scriptPubKey = "0014${address.takeLast(40)}",
+                confirmations = 3
+            )
+        )
+    }
+
+    private fun calculateEthFee(gasPrice: String, gasLimit: Int): String {
+        val gasPriceWei = BigDecimal(gasPrice).multiply(BigDecimal("1000000000"))
+        return gasPriceWei.multiply(BigDecimal(gasLimit)).toPlainString()
+    }
+
+    private fun calculateEthFeeDecimal(gasPrice: String, gasLimit: Int): String {
+        val feeWei = calculateEthFee(gasPrice, gasLimit).toBigDecimal()
+        return feeWei.divide(BigDecimal("1000000000000000000"), 8, RoundingMode.HALF_UP).toPlainString()
     }
 }
 
