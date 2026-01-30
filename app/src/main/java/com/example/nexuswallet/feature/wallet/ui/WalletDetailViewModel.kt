@@ -151,12 +151,38 @@ class WalletDetailViewModel @Inject constructor(
         }
     }
 
-    fun refresh() {
-        _wallet.value?.let { wallet ->
-            loadWallet(wallet.id)
+    suspend fun syncWithBlockchain(walletId: String) {
+        viewModelScope.launch {
+            try {
+                // This will update the wallet balance in database
+                walletRepository.syncWalletWithBlockchain(walletId)
+
+                // Reload the wallet to get updated balance
+                loadWallet(walletId)
+            } catch (e: Exception) {
+                Log.e("WalletDetailVM", "Error syncing with blockchain: ${e.message}")
+            }
         }
     }
 
+    // Also update the refresh method
+    fun refresh() {
+        _wallet.value?.let { wallet ->
+            viewModelScope.launch {
+                _isLoading.value = true
+                try {
+                    // Sync with blockchain first
+                    walletRepository.syncWalletWithBlockchain(wallet.id)
+                    // Then reload
+                    loadWallet(wallet.id)
+                } catch (e: Exception) {
+                    _error.value = "Refresh failed: ${e.message}"
+                } finally {
+                    _isLoading.value = false
+                }
+            }
+        }
+    }
     fun createSampleTransaction(): Transaction {
         val fromAddress = getWalletAddress() ?: ""
 
