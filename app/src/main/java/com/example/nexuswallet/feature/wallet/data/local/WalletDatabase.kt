@@ -7,6 +7,8 @@ import androidx.room.RoomDatabase
 import com.example.nexuswallet.feature.wallet.data.model.BackupEntity
 import com.example.nexuswallet.feature.wallet.data.model.BalanceEntity
 import com.example.nexuswallet.feature.wallet.data.model.MnemonicEntity
+import com.example.nexuswallet.feature.wallet.data.model.SendTransactionDao
+import com.example.nexuswallet.feature.wallet.data.model.SendTransactionEntity
 import com.example.nexuswallet.feature.wallet.data.model.SettingsEntity
 import com.example.nexuswallet.feature.wallet.data.model.TransactionEntity
 import com.example.nexuswallet.feature.wallet.data.model.WalletEntity
@@ -18,9 +20,10 @@ import com.example.nexuswallet.feature.wallet.data.model.WalletEntity
         TransactionEntity::class,
         SettingsEntity::class,
         BackupEntity::class,
-        MnemonicEntity::class
+        MnemonicEntity::class,
+        SendTransactionEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class WalletDatabase : RoomDatabase() {
@@ -30,6 +33,7 @@ abstract class WalletDatabase : RoomDatabase() {
     abstract fun settingsDao(): SettingsDao
     abstract fun backupDao(): BackupDao
     abstract fun mnemonicDao(): MnemonicDao
+    abstract fun sendTransactionDao(): SendTransactionDao
 
     companion object {
         @Volatile
@@ -42,7 +46,7 @@ abstract class WalletDatabase : RoomDatabase() {
                     WalletDatabase::class.java,
                     "wallet_database"
                 )
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration() // This will delete old data on upgrade
                     .build()
                 INSTANCE = instance
                 instance

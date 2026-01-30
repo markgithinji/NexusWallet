@@ -5,6 +5,7 @@ import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.model.BackupEntity
 import com.example.nexuswallet.feature.wallet.data.model.BalanceEntity
 import com.example.nexuswallet.feature.wallet.data.model.MnemonicEntity
+import com.example.nexuswallet.feature.wallet.data.model.SendTransactionDao
 import com.example.nexuswallet.feature.wallet.data.model.SettingsEntity
 import com.example.nexuswallet.feature.wallet.data.model.TransactionEntity
 import com.example.nexuswallet.feature.wallet.data.model.WalletEntity
@@ -29,7 +30,8 @@ class WalletLocalDataSource @Inject constructor(
     private val transactionDao: TransactionDao,
     private val settingsDao: SettingsDao,
     private val backupDao: BackupDao,
-    private val mnemonicDao: MnemonicDao
+    private val mnemonicDao: MnemonicDao,
+    private val sendTransactionDao: SendTransactionDao
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -200,6 +202,16 @@ class WalletLocalDataSource @Inject constructor(
 
     suspend fun hasWallets(): Boolean {
         return walletDao.count() > 0
+    }
+
+    private val transactionLocalDataSource = TransactionLocalDataSource(
+        transactionDao = transactionDao,
+        sendTransactionDao = sendTransactionDao
+    )
+
+    // Add this method to get transaction data source
+    fun getTransactionDataSource(): TransactionLocalDataSource {
+        return transactionLocalDataSource
     }
 
     private fun tryDeserializeWallet(jsonStr: String): CryptoWallet? {
