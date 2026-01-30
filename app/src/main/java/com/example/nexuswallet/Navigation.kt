@@ -20,6 +20,9 @@ import com.example.nexuswallet.feature.settings.ui.SettingsScreen
 import com.example.nexuswallet.feature.wallet.ui.ApiDebugScreen
 import com.example.nexuswallet.feature.wallet.ui.BlockchainViewModel
 import com.example.nexuswallet.feature.wallet.ui.FullQrCodeScreen
+import com.example.nexuswallet.feature.wallet.ui.SendScreen
+import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
+import com.example.nexuswallet.feature.wallet.ui.TransactionStatusScreen
 //import com.example.nexuswallet.feature.wallet.domain.WalletDataManager
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
@@ -201,6 +204,7 @@ fun Navigation() {
                         }
 
                         "send" -> {
+                            // Navigate directly to send screen after auth
                             navController.navigate("send/$walletId") {
                                 popUpTo("authenticate/{screen}/{walletId}") {
                                     inclusive = true
@@ -232,19 +236,6 @@ fun Navigation() {
             )
         }
 
-        composable(
-            route = "send/{walletId}",
-            arguments = listOf(
-                navArgument("walletId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            SendScreen(
-                navController = navController,
-                walletId = walletId
-            )
-        }
-
         // Add backup route
         composable(
             route = "backup/{walletId}",
@@ -270,6 +261,50 @@ fun Navigation() {
             ReceiveScreen(
                 navController = navController,
                 walletId = walletId
+            )
+        }
+
+        // ===== SEND FLOW SCREENS =====
+
+        // Send Screen (Address & Amount Input)
+        composable(
+            route = "send/{walletId}",
+            arguments = listOf(
+                navArgument("walletId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+            SendScreen(  // This is your proper SendScreen
+                navController = navController,
+                walletId = walletId
+            )
+        }
+
+        // Transaction Review Screen
+        composable(
+            route = "review/{transactionId}",
+            arguments = listOf(
+                navArgument("transactionId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
+            TransactionReviewScreen(
+                navController = navController,
+                transactionId = transactionId
+            )
+        }
+
+        // Transaction Status Screen
+        composable(
+            route = "status/{transactionId}",
+            arguments = listOf(
+                navArgument("transactionId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
+            TransactionStatusScreen(
+                navController = navController,
+                transactionId = transactionId
             )
         }
     }
