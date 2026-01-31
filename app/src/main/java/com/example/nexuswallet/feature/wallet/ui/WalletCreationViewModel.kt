@@ -134,18 +134,53 @@ class WalletCreationViewModel @Inject constructor(
                 val mnemonicList = _mnemonic.value
                 val name = if (_walletName.value.isBlank()) "My Wallet" else _walletName.value
 
-                val wallet = when (_selectedWalletType.value) {
-                    WalletType.BITCOIN -> walletRepository.createBitcoinWallet(mnemonicList, name)
-                    WalletType.ETHEREUM -> walletRepository.createEthereumWallet(
-                        mnemonicList,
-                        name
-                    )
-                    WalletType.MULTICHAIN -> walletRepository.createMultiChainWallet(
-                        mnemonicList,
-                        name
-                    )
-                    else -> walletRepository.createMultiChainWallet(mnemonicList, name)
+                // FIXED: Handle Result types from repository methods
+                val walletResult: Result<CryptoWallet> = when (_selectedWalletType.value) {
+                    WalletType.BITCOIN -> {
+                        val bitcoinWallet = walletRepository.createBitcoinWallet(mnemonicList, name)
+                        Result.success(bitcoinWallet) // This returns directly
+                    }
+
+                    WalletType.ETHEREUM -> {
+                        val ethereumResult = walletRepository.createEthereumWallet(mnemonicList, name)
+                        if (ethereumResult.isSuccess) {
+                            Result.success(ethereumResult.getOrThrow())
+                        } else {
+                            Result.failure(ethereumResult.exceptionOrNull() ?:
+                            IllegalStateException("Failed to create Ethereum wallet"))
+                        }
+                    }
+
+                    WalletType.MULTICHAIN -> {
+                        val multiChainResult = walletRepository.createMultiChainWallet(mnemonicList, name)
+                        if (multiChainResult.isSuccess) {
+                            Result.success(multiChainResult.getOrThrow())
+                        } else {
+                            Result.failure(multiChainResult.exceptionOrNull() ?:
+                            IllegalStateException("Failed to create MultiChain wallet"))
+                        }
+                    }
+
+                    else -> {
+                        val multiChainResult = walletRepository.createMultiChainWallet(mnemonicList, name)
+                        if (multiChainResult.isSuccess) {
+                            Result.success(multiChainResult.getOrThrow())
+                        } else {
+                            Result.failure(multiChainResult.exceptionOrNull() ?:
+                            IllegalStateException("Failed to create wallet"))
+                        }
+                    }
                 }
+
+                if (walletResult.isFailure) {
+                    val error = walletResult.exceptionOrNull()
+                    _uiState.value = WalletCreationUiState.Error(
+                        error?.message ?: "Failed to create wallet"
+                    )
+                    return@launch
+                }
+
+                val wallet = walletResult.getOrThrow()
 
                 // Save the wallet to repository
                 walletRepository.saveWallet(wallet)

@@ -40,20 +40,13 @@ class TransactionReviewViewModel @Inject constructor(
         object ClearError : ReviewEvent()
     }
 
-    private val _signingMode = MutableStateFlow(SigningMode.REAL_ETHEREUM)
-    val signingMode: StateFlow<SigningMode> = _signingMode
-
-    // Update signTransaction method
     private suspend fun signTransaction() {
         val transaction = _uiState.value.transaction ?: return
 
         _uiState.update { it.copy(isSigning = true, error = null) }
 
         try {
-            val result = transactionRepository.signTransaction(
-                transaction.id,
-                _signingMode.value
-            )
+            val result = transactionRepository.signTransaction(transaction.id)
 
             if (result.isSuccess) {
                 _uiState.update {
@@ -64,9 +57,7 @@ class TransactionReviewViewModel @Inject constructor(
                     )
                 }
 
-                // Log success with mode
-                Log.d("TransactionReview",
-                    "Transaction signed successfully (mode: ${_signingMode.value})")
+                Log.d("TransactionReview", "Transaction signed successfully")
 
             } else {
                 _uiState.update {
@@ -83,15 +74,6 @@ class TransactionReviewViewModel @Inject constructor(
                     error = "Signing error: ${e.message}"
                 )
             }
-        }
-    }
-
-    // Add method to toggle signing mode
-    fun toggleSigningMode() {
-        _signingMode.value = when (_signingMode.value) {
-            SigningMode.MOCK -> SigningMode.REAL_ETHEREUM
-            SigningMode.REAL_ETHEREUM -> SigningMode.MOCK
-            else -> SigningMode.MOCK
         }
     }
 
@@ -138,39 +120,6 @@ class TransactionReviewViewModel @Inject constructor(
             }
         }
     }
-
-//    private suspend fun signTransaction() {
-//        val transaction = _uiState.value.transaction ?: return
-//
-//        _uiState.update { it.copy(isSigning = true, error = null) }
-//
-//        try {
-//            val result = transactionRepository.signTransaction(transaction.id)
-//
-//            if (result.isSuccess) {
-//                _uiState.update {
-//                    it.copy(
-//                        isSigning = false,
-//                        signedTransaction = result.getOrNull()
-//                    )
-//                }
-//            } else {
-//                _uiState.update {
-//                    it.copy(
-//                        isSigning = false,
-//                        error = result.exceptionOrNull()?.message ?: "Failed to sign transaction"
-//                    )
-//                }
-//            }
-//        } catch (e: Exception) {
-//            _uiState.update {
-//                it.copy(
-//                    isSigning = false,
-//                    error = "Signing error: ${e.message}"
-//                )
-//            }
-//        }
-//    }
 
     private suspend fun broadcastTransaction() {
         val transaction = _uiState.value.transaction ?: return
