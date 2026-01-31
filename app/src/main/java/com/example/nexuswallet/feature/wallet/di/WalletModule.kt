@@ -14,6 +14,7 @@ import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.model.SendTransactionDao
 import com.example.nexuswallet.feature.wallet.data.repository.BlockchainRepository
+import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.TransactionRepository
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
@@ -21,6 +22,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import org.web3j.protocol.Web3j
+import org.web3j.protocol.http.HttpService
 import javax.inject.Singleton
 
 @Module
@@ -97,7 +100,6 @@ object DatabaseModule {
         )
     }
 
-    // NEW: Add TransactionLocalDataSource provider
     @Provides
     @Singleton
     fun provideTransactionLocalDataSource(
@@ -126,12 +128,13 @@ object DatabaseModule {
         transactionLocalDataSource: TransactionLocalDataSource,
         blockchainRepository: BlockchainRepository,
         walletRepository: WalletRepository,
-        securityManager: SecurityManager
+        keyManager: KeyManager
     ): TransactionRepository {
         return TransactionRepository(
             localDataSource = transactionLocalDataSource,
             blockchainRepository = blockchainRepository,
-            walletRepository = walletRepository
+            walletRepository = walletRepository,
+            keyManager = keyManager
         )
     }
 
@@ -148,5 +151,21 @@ object DatabaseModule {
     @Singleton
     fun provideSecurityManager(@ApplicationContext context: Context, secureStorage: SecureStorage): SecurityManager {
         return SecurityManager(context, secureStorage)
+    }
+
+    @Provides
+    @Singleton
+    fun provideKeyManager(
+        walletRepository: WalletRepository
+    ): KeyManager {
+        return KeyManager(walletRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideWeb3j(): Web3j {
+        return Web3j.build(
+            HttpService("https://mainnet.infura.io/v3/demo") // TODO: Use key
+        )
     }
 }
