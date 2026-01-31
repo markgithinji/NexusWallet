@@ -25,7 +25,8 @@ data class SendTransaction(
     val gasPrice: String? = null, // For Ethereum
     val gasLimit: String? = null, // For Ethereum
     val nonce: Int? = null, // For Ethereum
-    val signedHex: String? = null
+    val signedHex: String? = null,
+    val feeLevel: FeeLevel = FeeLevel.NORMAL
 )
 
 @Serializable
@@ -62,9 +63,6 @@ data class BroadcastResult(
     val chain: ChainType
 )
 
-// Transaction builder data classes
-
-
 @Serializable
 data class BitcoinOutput(
     val address: String,
@@ -81,3 +79,27 @@ data class EthereumTransactionData(
     val data: String = "0x",
     val chainId: Long
 )
+
+@Serializable
+data class EthereumTransactionParams(
+    val nonce: String,           // Hex string "0x1"
+    val gasPrice: String,        // Hex string "0x..."
+    val gasLimit: String,        // Hex string "0x5208" (21000)
+    val to: String,             // Address "0x..."
+    val value: String,          // Hex string "0x..."
+    val data: String = "0x",    // Hex string
+    val chainId: Long = 1L      // 1=Mainnet, 5=Goerli
+)
+
+@Serializable
+data class SigningResult(
+    val success: Boolean,
+    val signedTransaction: SignedTransaction? = null,
+    val error: String? = null
+)
+
+enum class SigningMode {
+    MOCK,           // For demo/portfolio
+    REAL_ETHEREUM,  // Real Ethereum signing
+    REAL_BITCOIN    // Real Bitcoin signing
+}

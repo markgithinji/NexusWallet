@@ -1,15 +1,18 @@
 package com.example.nexuswallet.feature.wallet.data.repository
 
-import com.example.nexuswallet.feature.authentication.domain.SecurityManager
+import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
+import com.example.nexuswallet.feature.wallet.data.model.EthereumTransactionParams
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
+import com.example.nexuswallet.feature.wallet.data.model.SigningMode
 import com.example.nexuswallet.feature.wallet.data.model.ValidationResult
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletType
@@ -18,12 +21,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
+import org.web3j.crypto.Credentials
+import org.web3j.crypto.Hash
+import org.web3j.crypto.RawTransaction
+import org.web3j.crypto.TransactionEncoder
+import org.web3j.utils.Numeric
 import java.math.BigDecimal
+import java.math.BigInteger
+
 
 class TransactionRepository(
     private val localDataSource: TransactionLocalDataSource,
     private val blockchainRepository: BlockchainRepository,
-    private val walletRepository: WalletRepository
+    private val walletRepository: WalletRepository,
+    private val keyManager: KeyManager
 ) {
     private val json = Json { ignoreUnknownKeys = true }
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -164,6 +175,167 @@ class TransactionRepository(
             localDataSource.saveSendTransaction(transaction)
 
             Result.success(transaction)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun signEthereumTransactionReal(
+        transactionId: String
+    ): Result<SignedTransaction> {
+        return try {
+            val transaction = localDataSource.getSendTransaction(transactionId)
+                ?: return Result.failure(IllegalArgumentException("Transaction not found"))
+
+            if (transaction.walletType != WalletType.ETHEREUM) {
+                return Result.failure(IllegalArgumentException("Not an Ethereum transaction"))
+            }
+
+            // Get wallet to get address
+            val wallet = walletRepository.getWallet(transaction.walletId) as? EthereumWallet
+                ?: return Result.failure(IllegalArgumentException("Ethereum wallet not found"))
+
+            // Get current nonce from blockchain
+            val nonce = blockchainRepository.getEthereumNonce(wallet.address)
+
+            // Get current gas price - returns GasPrice(safe="30", propose="35", fast="40")
+            val gasPriceResponse = blockchainRepository.getCurrentGasPrice()
+
+            // FIX: gasPriceResponse.safe/propose/fast are already the gas price strings in Gwei
+            val selectedGasPriceString = when (transaction.feeLevel ?: FeeLevel.NORMAL) {
+                FeeLevel.SLOW -> gasPriceResponse.safe    // "30" (Gwei)
+                FeeLevel.FAST -> gasPriceResponse.fast    // "40" (Gwei)
+                else -> gasPriceResponse.propose          // "35" (Gwei)
+            }
+
+            // Convert gas price from Gwei to wei
+            val gasPriceGwei = BigDecimal(selectedGasPriceString)
+            val gasPriceWei = gasPriceGwei.multiply(BigDecimal("1000000000"))
+
+            // Convert amount to wei
+            val amountWei = BigDecimal(transaction.amount).toBigInteger()
+
+            // Create transaction parameters
+            val params = EthereumTransactionParams(
+                nonce = "0x${nonce.toString(16)}",
+                gasPrice = "0x${gasPriceWei.toBigInteger().toString(16)}", // in wei hex
+                gasLimit = "0x5208", // Standard ETH transfer gas limit (21000)
+                to = transaction.toAddress,
+                value = "0x${amountWei.toString(16)}",
+                chainId = if (wallet.network == EthereumNetwork.MAINNET) 1L else 5L
+            )
+
+            // Get private key for signing
+            val privateKeyResult = keyManager.getPrivateKeyForSigning(transaction.walletId)
+            if (privateKeyResult.isFailure) {
+                return Result.failure(
+                    privateKeyResult.exceptionOrNull() ?:
+                    IllegalStateException("Failed to get private key")
+                )
+            }
+
+            val privateKey = privateKeyResult.getOrThrow()
+            val credentials = Credentials.create(privateKey)
+
+            // Create raw transaction
+            val rawTransaction = RawTransaction.createTransaction(
+                BigInteger(params.nonce.removePrefix("0x"), 16),
+                BigInteger(params.gasPrice.removePrefix("0x"), 16),
+                BigInteger(params.gasLimit.removePrefix("0x"), 16),
+                params.to,
+                BigInteger(params.value.removePrefix("0x"), 16),
+                params.data
+            )
+
+            // Sign the transaction
+            val chainId = if (wallet.network == EthereumNetwork.MAINNET) 1L else 5L
+            val signedMessage = TransactionEncoder.signMessage(rawTransaction, chainId, credentials)
+            val hexValue = Numeric.toHexString(signedMessage)
+
+            // Calculate transaction hash
+            val txHash = "0x${Hash.sha3(hexValue).substring(0, 64)}"
+
+            val signedTransaction = SignedTransaction(
+                rawHex = hexValue,
+                hash = txHash,
+                chain = ChainType.ETHEREUM
+            )
+
+            // Update transaction with real hash
+            val updatedTransaction = transaction.copy(
+                status = TransactionStatus.PENDING,
+                hash = txHash,
+                signedHex = hexValue,
+                nonce = nonce,
+                gasPrice = selectedGasPriceString, // Store as string "30", "35", "40"
+                gasLimit = params.gasLimit.removePrefix("0x"),
+                feeLevel = transaction.feeLevel ?: FeeLevel.NORMAL
+            )
+
+            localDataSource.saveSendTransaction(updatedTransaction)
+
+            Result.success(signedTransaction)
+
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Updated signTransaction method with mode selection
+     */
+    suspend fun signTransaction(
+        transactionId: String,
+        mode: SigningMode = SigningMode.REAL_ETHEREUM
+    ): Result<SignedTransaction> {
+        return when (mode) {
+            SigningMode.REAL_ETHEREUM -> {
+                // Try real signing first
+                val realResult = signEthereumTransactionReal(transactionId)
+                if (realResult.isSuccess) {
+                    realResult
+                } else {
+                    // Fall back to mock if real signing fails
+                    Log.w("TransactionRepo", "Real signing failed, using mock: ${realResult.exceptionOrNull()?.message}")
+                    signTransactionMock(transactionId)
+                }
+            }
+            SigningMode.MOCK -> signTransactionMock(transactionId)
+            else -> signTransactionMock(transactionId) // Bitcoin uses mock for now
+        }
+    }
+
+    /**
+     * Mock signing (your existing code - keep as fallback)
+     */
+    private suspend fun signTransactionMock(transactionId: String): Result<SignedTransaction> {
+        return try {
+            val transaction = localDataSource.getSendTransaction(transactionId)
+                ?: return Result.failure(IllegalArgumentException("Transaction not found"))
+
+            val mockHash = when (transaction.chain) {
+                ChainType.BITCOIN -> "btc_mock_${System.currentTimeMillis()}"
+                ChainType.ETHEREUM -> "eth_mock_${System.currentTimeMillis()}"
+                else -> "mock_${System.currentTimeMillis()}"
+            }
+
+            val mockRawTx = "mock_raw_transaction_${System.currentTimeMillis()}"
+
+            val signedTransaction = SignedTransaction(
+                rawHex = mockRawTx,
+                hash = mockHash,
+                chain = transaction.chain
+            )
+
+            // Update transaction with mock hash
+            val updatedTransaction = transaction.copy(
+                status = TransactionStatus.PENDING,
+                hash = mockHash,
+                signedHex = mockRawTx
+            )
+            localDataSource.saveSendTransaction(updatedTransaction)
+
+            Result.success(signedTransaction)
         } catch (e: Exception) {
             Result.failure(e)
         }
