@@ -34,7 +34,9 @@ import androidx.navigation.NavController
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
+import com.example.nexuswallet.feature.wallet.data.model.SigningMode
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -50,6 +52,8 @@ fun TransactionReviewScreen(
     val uiState by viewModel.uiState.collectAsState()
     val transaction = uiState.transaction
 
+    val signingMode by viewModel.signingMode.collectAsState()
+
     // Handle navigation when broadcast is successful
     LaunchedEffect(uiState.broadcastResult) {
         uiState.broadcastResult?.let { result ->
@@ -61,9 +65,15 @@ fun TransactionReviewScreen(
         }
     }
 
-    // Initialize once
     LaunchedEffect(Unit) {
         viewModel.initialize(transactionId)
+    }
+
+    if (uiState.transaction?.walletType == WalletType.ETHEREUM) {
+        SigningModeIndicator(
+            mode = signingMode,
+            onToggle = { viewModel.toggleSigningMode() }
+        )
     }
 
     Scaffold(
@@ -156,6 +166,64 @@ fun TransactionReviewScreen(
             } ?: run {
                 // No transaction found
                 EmptyTransactionView()
+            }
+        }
+    }
+}
+
+@Composable
+fun SigningModeIndicator(
+    mode: SigningMode,
+    onToggle: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = when (mode) {
+                SigningMode.REAL_ETHEREUM -> Color.Green.copy(alpha = 0.1f)
+                else -> Color.Yellow.copy(alpha = 0.1f)
+            }
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "Signing Mode",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = when (mode) {
+                        SigningMode.REAL_ETHEREUM -> "🔐 Real Signing (Web3j)"
+                        SigningMode.MOCK -> "🎭 Mock Signing (Demo)"
+                        else -> "🎭 Demo Mode"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = when (mode) {
+                        SigningMode.REAL_ETHEREUM -> Color.Green
+                        else -> Color.Yellow
+                    }
+                )
+            }
+
+            Button(
+                onClick = onToggle,
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary
+                )
+            ) {
+                Text("Toggle Mode")
             }
         }
     }
