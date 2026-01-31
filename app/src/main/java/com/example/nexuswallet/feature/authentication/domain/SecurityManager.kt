@@ -74,6 +74,99 @@ class SecurityManager @Inject constructor(
         }
     }
 
+    suspend fun encryptAndStorePrivateKey(
+        walletId: String,
+        privateKey: String,
+        keyType: String = "ETH_PRIVATE_KEY"
+    ): EncryptionResult {
+        return try {
+            _securityState.value = SecurityState.ENCRYPTING
+
+            Log.d("SecurityManager", "Encrypting private key for wallet: $walletId")
+
+            // Encrypt the private key
+            val (encryptedHex, ivHex) = keyStoreEncryption.encryptString(privateKey)
+
+            // Store in secure storage WITH keyType
+            secureStorage.storeEncryptedPrivateKey(
+                walletId = walletId,
+                keyType = keyType,  // ADD this
+                encryptedKey = encryptedHex,
+                iv = hexToBytes(ivHex)
+            )
+
+            Log.d("SecurityManager", "Private key encrypted and stored successfully")
+            _securityState.value = SecurityState.IDLE
+            EncryptionResult.Success(encryptedHex)
+
+        } catch (e: Exception) {
+            Log.e("SecurityManager", "Failed to encrypt private key", e)
+            _securityState.value = SecurityState.ERROR(e.message ?: "Private key encryption failed")
+            EncryptionResult.Error(e)
+        }
+    }
+
+
+    /**
+     * Retrieve and decrypt private key for signing
+     * Requires authentication (PIN/Biometric) for sensitive operations
+     */
+    suspend fun getPrivateKeyForSigning(
+        walletId: String,
+        requireAuth: Boolean = true,
+        keyType: String = "ETH_PRIVATE_KEY"  // ADD this parameter
+    ): Result<String> {
+        return try {
+            _securityState.value = SecurityState.DECRYPTING
+
+            // Check authentication for sensitive operations
+            if (requireAuth) {
+                val authRequired = isAuthenticationRequired(AuthAction.SEND_TRANSACTION)
+                if (authRequired) {
+                    throw SecurityException("Authentication required for private key access")
+                }
+            }
+
+            // Get encrypted private key from storage WITH keyType
+            val encryptedData = secureStorage.getEncryptedPrivateKey(walletId, keyType)  // ADD keyType
+            if (encryptedData == null) {
+                Log.e("SecurityManager", "No private key found for wallet: $walletId")
+                return Result.failure(IllegalStateException("Private key not found"))
+            }
+
+            val (encryptedHex, iv) = encryptedData
+
+            // Decrypt using KeyStore
+            Log.d("SecurityManager", "Decrypting private key for wallet: $walletId")
+            val privateKey = keyStoreEncryption.decryptString(encryptedHex, iv.toHex())
+
+            // Record authentication time for session management
+            recordAuthentication()
+
+            Log.d("SecurityManager", "Private key retrieved successfully")
+            _securityState.value = SecurityState.IDLE
+            Result.success(privateKey)
+
+        } catch (e: SecurityException) {
+            Log.e("SecurityManager", "Authentication required: ${e.message}")
+            Result.failure(e)
+        } catch (e: Exception) {
+            Log.e("SecurityManager", "Failed to retrieve private key", e)
+            _securityState.value = SecurityState.ERROR(e.message ?: "Private key decryption failed")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Check if private key exists for a wallet
+     */
+    suspend fun hasPrivateKey(
+        walletId: String,
+        keyType: String = "ETH_PRIVATE_KEY"  // ADD this parameter
+    ): Boolean {
+        return secureStorage.getEncryptedPrivateKey(walletId, keyType) != null  // ADD keyType
+    }
+
     /**
      * Retrieve and decrypt mnemonic phrase
      */
@@ -639,4 +732,10 @@ sealed class SecurityState {
     object BACKING_UP : SecurityState()
     object RESTORING : SecurityState()
     data class ERROR(val message: String) : SecurityState()
+}
+
+sealed class PrivateKeyResult {
+    data class Success(val privateKey: String) : PrivateKeyResult()
+    data class Error(val exception: Exception? = null) : PrivateKeyResult()
+    object AuthenticationRequired : PrivateKeyResult()
 }
