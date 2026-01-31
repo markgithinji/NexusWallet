@@ -294,7 +294,6 @@ class BlockchainRepository @Inject constructor(
         }
     }
 
-    // Broadcast Ethereum Transaction (using Etherscan)
     suspend fun broadcastEthereumTransaction(rawTx: String): BroadcastResult {
         return try {
             val response = etherscanApi.broadcastTransaction(

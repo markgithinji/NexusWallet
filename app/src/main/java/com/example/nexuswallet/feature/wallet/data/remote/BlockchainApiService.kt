@@ -77,6 +77,7 @@ data class EtherscanBroadcastResponse(
 @Serializable
 data class EtherscanBalanceResponse(
     @SerialName("status") val status: String,
+    @SerialName("message") val message: String,
     @SerialName("result") val result: String
 )
 

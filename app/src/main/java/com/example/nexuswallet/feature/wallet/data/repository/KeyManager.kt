@@ -1,6 +1,10 @@
 package com.example.nexuswallet.feature.wallet.data.repository
 
 import android.content.Context
+import android.util.Log
+import com.example.nexuswallet.feature.authentication.domain.AuthAction
+import com.example.nexuswallet.feature.authentication.domain.EncryptionResult
+import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.wallet.data.model.EthereumTransactionParams
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SigningResult
@@ -23,135 +27,134 @@ import javax.inject.Singleton
 
 @Singleton
 class KeyManager @Inject constructor(
-    private val walletRepository: WalletRepository
+    private val securityManager: SecurityManager
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
 
     /**
-     * Get private key for signing - SECURE VERSION
-     * Only decrypts key when needed, clears from memory after use
+     * Get private key for signing - REAL VERSION
+     * Uses your SecurityManager to retrieve real private keys
      */
-    suspend fun getPrivateKeyForSigning(
-        walletId: String
-    ): Result<String> {
+    suspend fun getPrivateKeyForSigning(walletId: String): Result<String> {
         return try {
-            // For portfolio: Use mock keys for demo
-            // In production, you'd retrieve from secure storage
+            Log.d("KeyManager", "Requesting private key for wallet: $walletId")
 
-            val wallet = walletRepository.getWallet(walletId)
-            if (wallet is EthereumWallet) {
-                // Generate deterministic mock key from wallet address (for demo)
-                val mockKey = generateMockPrivateKey(wallet.address)
-                Result.success(mockKey)
-            } else if (wallet is BitcoinWallet) {
-                val mockKey = generateMockPrivateKey(wallet.address)
-                Result.success(mockKey)
-            } else {
-                Result.failure(IllegalArgumentException("Unsupported wallet type"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+            // Get private key from SecurityManager
+            val privateKeyResult = securityManager.getPrivateKeyForSigning(walletId, requireAuth = false)
 
-    /**
-     * Generate deterministic mock private key for demo
-     * NEVER USE THIS IN PRODUCTION!
-     */
-    private fun generateMockPrivateKey(address: String): String {
-        // Hash the address to create a deterministic mock key
-        val hash = MessageDigest.getInstance("SHA-256")
-            .digest(address.toByteArray())
-            .toHex()
-
-        // Ensure it's 64 chars (32 bytes) for Ethereum private key
-        return hash.take(64).padEnd(64, '0')
-    }
-
-    /**
-     * Securely clear key from memory
-     */
-    private fun clearKeyFromMemory(key: String) {
-        // This is a basic attempt to clear the key from memory
-        // In real apps, you'd use SecureString or similar
-        key.toCharArray().fill('0')
-    }
-
-    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
-}
-
-// For real implementation, you'd add:
-@Singleton
-class Web3jSigner @Inject constructor(
-    private val keyManager: KeyManager
-) {
-    private val web3j = Web3j.build(HttpService("https://mainnet.infura.io/v3/YOUR_KEY"))
-
-    suspend fun signEthereumTransaction(
-        walletId: String,
-        params: EthereumTransactionParams,
-        context: Context
-    ): SigningResult {
-        return try {
-            // Get private key
-            val privateKeyResult = keyManager.getPrivateKeyForSigning(walletId)
             if (privateKeyResult.isFailure) {
-                return SigningResult(
-                    success = false,
-                    error = "Failed to get private key: ${privateKeyResult.exceptionOrNull()?.message}"
+                Log.e("KeyManager", "Failed to get private key: ${privateKeyResult.exceptionOrNull()?.message}")
+                return Result.failure(
+                    privateKeyResult.exceptionOrNull() ?:
+                    IllegalStateException("Failed to retrieve private key")
                 )
             }
 
             val privateKey = privateKeyResult.getOrThrow()
 
-            // Create credentials
-            val credentials = Credentials.create(privateKey)
-
-            // Validate parameters
-            if (!params.to.startsWith("0x") || params.to.length != 42) {
-                return SigningResult(
-                    success = false,
-                    error = "Invalid recipient address"
-                )
+            // Validate private key format
+            if (!isValidEthereumPrivateKey(privateKey)) {
+                Log.e("KeyManager", "Invalid Ethereum private key format")
+                return Result.failure(IllegalArgumentException("Invalid private key format"))
             }
 
-            // Create and sign transaction
-            val rawTransaction = RawTransaction.createTransaction(
-                BigInteger(params.nonce.removePrefix("0x"), 16),
-                BigInteger(params.gasPrice.removePrefix("0x"), 16),
-                BigInteger(params.gasLimit.removePrefix("0x"), 16),
-                params.to,
-                BigInteger(params.value.removePrefix("0x"), 16),
-                params.data
-            )
-
-            val signedMessage = TransactionEncoder.signMessage(
-                rawTransaction,
-                params.chainId,
-                credentials
-            )
-
-            val hexValue = Numeric.toHexString(signedMessage)
-
-            // Calculate transaction hash
-            val txHash = Keys.getAddress(credentials.address)
-
-            val signedTransaction = SignedTransaction(
-                rawHex = hexValue,
-                hash = "0x${txHash}",
-                chain = ChainType.ETHEREUM
-            )
-
-            SigningResult(
-                success = true,
-                signedTransaction = signedTransaction
-            )
+            Log.d("KeyManager", "Private key retrieved successfully")
+            Result.success(privateKey)
 
         } catch (e: Exception) {
-            SigningResult(
-                success = false,
-                error = "Signing failed: ${e.message}"
-            )
+            Log.e("KeyManager", "Unexpected error: ${e.message}", e)
+            Result.failure(e)
         }
     }
+
+    /**
+     * Store private key during wallet creation
+     */
+    suspend fun storePrivateKey(
+        walletId: String,
+        privateKey: String,
+        keyType: String = "ETH_PRIVATE_KEY"
+    ): Result<Unit> {
+        return try {
+            Log.d("KeyManager", "Storing private key for wallet: $walletId")
+
+            // Validate private key format before storing
+            if (!isValidEthereumPrivateKey(privateKey)) {
+                Log.e("KeyManager", "Invalid private key format")
+                return Result.failure(IllegalArgumentException("Invalid private key format"))
+            }
+
+            val result = securityManager.encryptAndStorePrivateKey(
+                walletId = walletId,
+                privateKey = privateKey,
+                keyType = keyType
+            )
+
+            when (result) {
+                is EncryptionResult.Success -> {
+                    Log.d("KeyManager", "Private key stored successfully")
+                    Result.success(Unit)
+                }
+                is EncryptionResult.Error -> {
+                    Log.e("KeyManager", "Failed to store private key: ${result.exception?.message}")
+                    Result.failure(result.exception)
+                }
+            }
+
+        } catch (e: Exception) {
+            Log.e("KeyManager", "Error storing private key: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Validate Ethereum private key format
+     */
+    fun isValidEthereumPrivateKey(privateKey: String): Boolean {
+        return try {
+            // Remove 0x prefix if present
+            val key = if (privateKey.startsWith("0x")) {
+                privateKey.substring(2)
+            } else {
+                privateKey
+            }
+
+            // Should be 64 hex characters (32 bytes)
+            if (key.length != 64) {
+                Log.d("KeyManager", "Invalid length: ${key.length} (expected 64)")
+                return false
+            }
+
+            // Should be valid hex
+            key.toBigInteger(16)
+            Log.d("KeyManager", "Valid Ethereum private key format")
+            true
+
+        } catch (e: Exception) {
+            Log.e("KeyManager", "Invalid hex format: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Check if wallet has private key stored
+     */
+    suspend fun hasPrivateKey(walletId: String): Boolean {
+        return securityManager.hasPrivateKey(walletId)
+    }
+
+    /**
+     * Clear private key from memory (security best practice)
+     */
+    private fun clearKeyFromMemory(key: String) {
+        try {
+            val chars = key.toCharArray()
+            chars.fill('0')
+            Log.d("KeyManager", "Cleared private key from memory")
+        } catch (e: Exception) {
+            Log.e("KeyManager", "Failed to clear key from memory: ${e.message}")
+        }
+    }
+
+    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 }
