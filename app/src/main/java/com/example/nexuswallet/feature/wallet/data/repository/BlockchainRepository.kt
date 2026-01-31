@@ -8,6 +8,7 @@ import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.model.TransactionFee
 import com.example.nexuswallet.feature.wallet.data.model.UTXO
+import com.example.nexuswallet.feature.wallet.data.remote.BitcoinBroadcastApiService
 import com.example.nexuswallet.feature.wallet.data.remote.BlockstreamApiService
 import com.example.nexuswallet.feature.wallet.data.remote.ChainId
 import com.example.nexuswallet.feature.wallet.data.remote.CovalentApiService
@@ -26,7 +27,8 @@ import kotlin.collections.filter
 class BlockchainRepository @Inject constructor(
     private val etherscanApi: EtherscanApiService,
     private val blockstreamApi: BlockstreamApiService,
-    private val covalentApi: CovalentApiService
+    private val covalentApi: CovalentApiService,
+    private val bitcoinBroadcastApi: BitcoinBroadcastApiService
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -324,25 +326,93 @@ class BlockchainRepository @Inject constructor(
         }
     }
 
-    suspend fun broadcastBitcoinTransaction(rawTx: String): BroadcastResult {
+    suspend fun broadcastBitcoinTransactionReal(rawTx: String): BroadcastResult {
         return try {
-            // Note: Blockstream.info doesn't have free broadcast endpoint
-            // For now, we'll keep it mock
-            Log.d("BlockchainRepo", "Bitcoin broadcast would use different API")
+            Log.d("BlockchainRepo", "Broadcasting Bitcoin transaction...")
+            Log.d("BlockchainRepo", "Raw TX (first 100 chars): ${rawTx.take(100)}...")
 
-            BroadcastResult(
-                success = true,
-                hash = "btc_real_${System.currentTimeMillis().toString(16)}",
-                chain = ChainType.BITCOIN
-            )
+            val response = bitcoinBroadcastApi.broadcastBitcoinTransaction(rawTx)
+
+            if (response.isSuccessful) {
+                val txHash = response.body() ?: "unknown"
+                Log.d("BlockchainRepo", " Bitcoin broadcast successful! Hash: $txHash")
+
+                BroadcastResult(
+                    success = true,
+                    hash = txHash,
+                    chain = ChainType.BITCOIN
+                )
+            } else {
+                val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                Log.e("BlockchainRepo", " Bitcoin broadcast failed: $errorBody")
+
+                BroadcastResult(
+                    success = false,
+                    error = "HTTP ${response.code()}: $errorBody",
+                    chain = ChainType.BITCOIN
+                )
+            }
+
         } catch (e: Exception) {
-            Log.e("BlockchainRepo", "Error broadcasting BTC transaction: ${e.message}")
+            Log.e("BlockchainRepo", "Bitcoin broadcast error: ${e.message}", e)
             BroadcastResult(
                 success = false,
                 error = e.message,
                 chain = ChainType.BITCOIN
             )
         }
+    }
+
+    /**
+     * Get real Bitcoin fee estimates from Mempool.space
+     */
+    suspend fun getRealBitcoinFeeEstimates(): TransactionFee {
+        return try {
+            Log.d("BlockchainRepo", "Getting real Bitcoin fees from Mempool.space...")
+            val fees = bitcoinBroadcastApi.getBitcoinFees()
+
+            TransactionFee(
+                chain = ChainType.BITCOIN,
+                slow = FeeEstimate(
+                    feePerByte = fees.hourFee.toString(),
+                    gasPrice = null,
+                    totalFee = calculateBitcoinFee(fees.hourFee, 250), // Assuming 250 vbytes
+                    totalFeeDecimal = calculateBitcoinFeeDecimal(fees.hourFee, 250),
+                    estimatedTime = 3600, // 1 hour
+                    priority = FeeLevel.SLOW
+                ),
+                normal = FeeEstimate(
+                    feePerByte = fees.halfHourFee.toString(),
+                    gasPrice = null,
+                    totalFee = calculateBitcoinFee(fees.halfHourFee, 250),
+                    totalFeeDecimal = calculateBitcoinFeeDecimal(fees.halfHourFee, 250),
+                    estimatedTime = 1800, // 30 minutes
+                    priority = FeeLevel.NORMAL
+                ),
+                fast = FeeEstimate(
+                    feePerByte = fees.fastestFee.toString(),
+                    gasPrice = null,
+                    totalFee = calculateBitcoinFee(fees.fastestFee, 250),
+                    totalFeeDecimal = calculateBitcoinFeeDecimal(fees.fastestFee, 250),
+                    estimatedTime = 300, // 5 minutes
+                    priority = FeeLevel.FAST
+                )
+            )
+
+        } catch (e: Exception) {
+            Log.e("BlockchainRepo", "Failed to get real Bitcoin fees: ${e.message}")
+            // Fallback to demo fees
+            getDemoBitcoinFees()
+        }
+    }
+
+    private fun calculateBitcoinFee(feePerByte: Int, sizeBytes: Int): String {
+        return (feePerByte * sizeBytes).toString()
+    }
+
+    private fun calculateBitcoinFeeDecimal(feePerByte: Int, sizeBytes: Int): String {
+        val feeSats = feePerByte * sizeBytes
+        return BigDecimal(feeSats).divide(BigDecimal("100000000"), 8, RoundingMode.HALF_UP).toPlainString()
     }
 
     // Get Bitcoin UTXOs (for transaction building)
@@ -369,7 +439,7 @@ class BlockchainRepository @Inject constructor(
         if (status == null || !status.confirmed) return 0
 
         // For demo purposes, we'll return a fixed number
-        // In production, you'd get current block height from API
+        // In production, we'll get current block height from API
         return 3
     }
     // Get Ethereum Nonce

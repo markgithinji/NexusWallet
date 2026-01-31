@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.di
 
+import com.example.nexuswallet.feature.wallet.data.remote.BitcoinBroadcastApiService
 import com.example.nexuswallet.feature.wallet.data.remote.BlockstreamApiService
 import com.example.nexuswallet.feature.wallet.data.remote.CovalentApiService
 import com.example.nexuswallet.feature.wallet.data.remote.EtherscanApiService
@@ -68,5 +69,18 @@ object NetworkModule {
             .addConverterFactory(Json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(CovalentApiService::class.java)
+    }
+
+    private const val MEMPOOL_BASE_URL = "https://mempool.space/"
+
+    @Provides
+    @Singleton
+    fun provideBitcoinBroadcastApi(client: OkHttpClient): BitcoinBroadcastApiService {
+        return Retrofit.Builder()
+            .baseUrl(MEMPOOL_BASE_URL)
+            .client(client)
+            .addConverterFactory(Json.asConverterFactory("application/json".toMediaType()))
+            .build()
+            .create(BitcoinBroadcastApiService::class.java)
     }
 }

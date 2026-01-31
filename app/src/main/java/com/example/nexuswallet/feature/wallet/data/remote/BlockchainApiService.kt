@@ -11,6 +11,10 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
 import kotlinx.serialization.Serializable
+import retrofit2.Response
+import retrofit2.http.Body
+import retrofit2.http.Headers
+import retrofit2.http.POST
 
 interface EtherscanApiService {
     @GET("api")
@@ -184,6 +188,33 @@ interface CovalentApiService {
         @Query("key") apiKey: String
     ): CovalentBalanceResponse
 }
+
+interface BitcoinBroadcastApiService {
+    /**
+     * Mempool.space API - Free, no API key needed
+     * Broadcasts raw Bitcoin transaction
+     */
+    @POST("api/tx")
+    @Headers("Content-Type: text/plain")
+    suspend fun broadcastBitcoinTransaction(
+        @Body rawTx: String
+    ): Response<String>
+
+    /**
+     * Alternative: Get recommended fees
+     */
+    @GET("api/v1/fees/recommended")
+    suspend fun getBitcoinFees(): BitcoinFeesResponse
+}
+
+@Serializable
+data class BitcoinFeesResponse(
+    @SerialName("fastestFee") val fastestFee: Int,
+    @SerialName("halfHourFee") val halfHourFee: Int,
+    @SerialName("hourFee") val hourFee: Int,
+    @SerialName("economyFee") val economyFee: Int,
+    @SerialName("minimumFee") val minimumFee: Int
+)
 
 enum class ChainId(val id: Int) {
     ETHEREUM_MAINNET(1),
