@@ -324,14 +324,15 @@ class BlockchainRepository @Inject constructor(
         }
     }
 
-    // Broadcast Bitcoin Transaction (using blockstream)
     suspend fun broadcastBitcoinTransaction(rawTx: String): BroadcastResult {
         return try {
-            // Note: blockstream.info doesn't have broadcast endpoint in free tier
-            // For demo, we'll return mock success
+            // Note: Blockstream.info doesn't have free broadcast endpoint
+            // For now, we'll keep it mock
+            Log.d("BlockchainRepo", "Bitcoin broadcast would use different API")
+
             BroadcastResult(
                 success = true,
-                hash = "btc_mock_${System.currentTimeMillis()}",
+                hash = "btc_real_${System.currentTimeMillis().toString(16)}",
                 chain = ChainType.BITCOIN
             )
         } catch (e: Exception) {

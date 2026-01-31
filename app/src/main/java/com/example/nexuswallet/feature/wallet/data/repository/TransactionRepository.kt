@@ -321,8 +321,92 @@ class TransactionRepository(
         }
     }
 
-    // BROADCAST TRANSACTION (DEMO - No real broadcast)
+    suspend fun broadcastTransactionReal(transactionId: String): Result<BroadcastResult> {
+        return try {
+            val transaction = localDataSource.getSendTransaction(transactionId)
+                ?: return Result.failure(IllegalArgumentException("Transaction not found"))
+
+            // Only support Ethereum for now
+            if (transaction.chain != ChainType.ETHEREUM) {
+                return Result.failure(IllegalArgumentException("Only Ethereum broadcasting supported"))
+            }
+
+            // Get the signed transaction hex
+            val signedHex = transaction.signedHex
+                ?: return Result.failure(IllegalStateException("Transaction not signed"))
+
+            Log.d("TransactionRepo", "Broadcasting transaction to Ethereum network...")
+            Log.d("TransactionRepo", "Signed TX (first 50 chars): ${signedHex.take(50)}...")
+
+            // Use your existing Etherscan API through BlockchainRepository
+            val broadcastResult = blockchainRepository.broadcastEthereumTransaction(signedHex)
+
+            if (broadcastResult.success) {
+                Log.d("TransactionRepo", " Broadcast successful! Hash: ${broadcastResult.hash}")
+
+                // Update transaction with real hash
+                val updatedTransaction = transaction.copy(
+                    status = TransactionStatus.SUCCESS,
+                    hash = broadcastResult.hash
+                )
+                localDataSource.saveSendTransaction(updatedTransaction)
+
+                Result.success(broadcastResult)
+            } else {
+                Log.e("TransactionRepo", " Broadcast failed: ${broadcastResult.error}")
+
+                // Update transaction as failed
+                val failedTransaction = transaction.copy(
+                    status = TransactionStatus.FAILED
+                )
+                localDataSource.saveSendTransaction(failedTransaction)
+
+                Result.failure(IllegalStateException(broadcastResult.error))
+            }
+
+        } catch (e: Exception) {
+            Log.e("TransactionRepo", "Broadcast error: ${e.message}", e)
+
+            // Update transaction as failed
+            val transaction = localDataSource.getSendTransaction(transactionId)
+            if (transaction != null) {
+                val failedTransaction = transaction.copy(
+                    status = TransactionStatus.FAILED
+                )
+                localDataSource.saveSendTransaction(failedTransaction)
+            }
+
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Updated broadcastTransaction method with real implementation
+     */
     suspend fun broadcastTransaction(transactionId: String): Result<BroadcastResult> {
+        return try {
+            val transaction = localDataSource.getSendTransaction(transactionId)
+                ?: return Result.failure(IllegalArgumentException("Transaction not found"))
+
+            // Use real broadcasting for Ethereum, mock for others
+            when (transaction.chain) {
+                ChainType.ETHEREUM -> broadcastTransactionReal(transactionId)
+                ChainType.BITCOIN -> {
+
+                    broadcastTransactionMock(transactionId)
+                }
+                else -> broadcastTransactionMock(transactionId)
+            }
+        } catch (e: Exception) {
+            Log.e("TransactionRepo", "Broadcast failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Mock for fallback/testing
+     */
+    private suspend fun broadcastTransactionMock(transactionId: String): Result<BroadcastResult> {
         return try {
             val transaction = localDataSource.getSendTransaction(transactionId)
                 ?: return Result.failure(IllegalArgumentException("Transaction not found"))
@@ -333,7 +417,7 @@ class TransactionRepository(
             // Mock successful broadcast
             val broadcastResult = BroadcastResult(
                 success = true,
-                hash = transaction.hash ?: "broadcast_${System.currentTimeMillis()}",
+                hash = transaction.hash ?: "mock_broadcast_${System.currentTimeMillis()}",
                 chain = transaction.chain
             )
 
