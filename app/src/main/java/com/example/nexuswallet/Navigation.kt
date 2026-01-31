@@ -20,6 +20,7 @@ import com.example.nexuswallet.feature.settings.ui.SettingsScreen
 import com.example.nexuswallet.feature.wallet.ui.ApiDebugScreen
 import com.example.nexuswallet.feature.wallet.ui.BlockchainViewModel
 import com.example.nexuswallet.feature.wallet.ui.FullQrCodeScreen
+import com.example.nexuswallet.feature.wallet.ui.ReceiveScreen
 import com.example.nexuswallet.feature.wallet.ui.SendScreen
 import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
 import com.example.nexuswallet.feature.wallet.ui.TransactionStatusScreen
@@ -204,7 +205,6 @@ fun Navigation() {
                         }
 
                         "send" -> {
-                            // Navigate directly to send screen after auth
                             navController.navigate("send/$walletId") {
                                 popUpTo("authenticate/{screen}/{walletId}") {
                                     inclusive = true
@@ -274,7 +274,7 @@ fun Navigation() {
             )
         ) { backStackEntry ->
             val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            SendScreen(  // This is your proper SendScreen
+            SendScreen(
                 navController = navController,
                 walletId = walletId
             )
