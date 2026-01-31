@@ -117,9 +117,10 @@ object DatabaseModule {
     fun provideWalletRepository(
         localDataSource: WalletLocalDataSource,
         securityManager: SecurityManager,
-        blockchainRepository: BlockchainRepository
+        blockchainRepository: BlockchainRepository,
+        keyManager: KeyManager
     ): WalletRepository {
-        return WalletRepository(localDataSource, securityManager, blockchainRepository)
+        return WalletRepository(localDataSource, securityManager, blockchainRepository, keyManager)
     }
 
     @Provides
@@ -156,9 +157,9 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideKeyManager(
-        walletRepository: WalletRepository
+        securityManager: SecurityManager
     ): KeyManager {
-        return KeyManager(walletRepository)
+        return KeyManager(securityManager)
     }
 
     @Provides

@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.wallet.data.repository
 
 
 import android.util.Log
+import androidx.room.util.copy
 import com.example.nexuswallet.feature.authentication.domain.BackupResult
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
@@ -30,6 +31,7 @@ import org.bitcoinj.wallet.DeterministicSeed
 import org.web3j.crypto.Bip32ECKeyPair
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.MnemonicUtils
+import org.web3j.utils.Numeric
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.security.SecureRandom
@@ -39,7 +41,8 @@ import org.bitcoinj.wallet.Wallet as BitcoinJWallet
 class WalletRepository @Inject constructor(
     private val localDataSource: WalletLocalDataSource,
     private val securityManager: SecurityManager,
-    private val blockchainRepository: BlockchainRepository
+    private val blockchainRepository: BlockchainRepository,
+    private val keyManager: KeyManager
 ) {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -151,83 +154,189 @@ class WalletRepository @Inject constructor(
         return bitcoinWallet
     }
 
-    fun createEthereumWallet(
+    suspend fun createEthereumWallet(
         mnemonic: List<String>,
         name: String,
         network: EthereumNetwork = EthereumNetwork.MAINNET
-    ): EthereumWallet {
-        val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
+    ): Result<EthereumWallet> {
+        return try {
+            val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
 
-        // Derive based on network
-        val derivationPath = when (network) {
-            EthereumNetwork.MAINNET -> "m/44'/60'/0'/0/0"
-            EthereumNetwork.POLYGON -> "m/44'/966'/0'/0/0"
-            EthereumNetwork.BSC -> "m/44'/9006'/0'/0/0"
-            EthereumNetwork.ARBITRUM -> "m/44'/60'/0'/0/0"
-            EthereumNetwork.OPTIMISM -> "m/44'/60'/0'/0/0"
-            else -> "m/44'/60'/0'/0/0"
-        }
-
-        val pathArray = derivationPath.split("/")
-            .drop(1)
-            .map { part ->
-                val isHardened = part.endsWith("'")
-                val number = part.replace("'", "").toInt()
-                if (isHardened) number or HARDENED_BIT else number
+            val derivationPath = when (network) {
+                EthereumNetwork.MAINNET -> "m/44'/60'/0'/0/0"
+                EthereumNetwork.POLYGON -> "m/44'/966'/0'/0/0"
+                EthereumNetwork.BSC -> "m/44'/9006'/0'/0/0"
+                EthereumNetwork.ARBITRUM -> "m/44'/60'/0'/0/0"
+                EthereumNetwork.OPTIMISM -> "m/44'/60'/0'/0/0"
+                else -> "m/44'/60'/0'/0/0"
             }
-            .toIntArray()
 
-        val masterKey = Bip32ECKeyPair.generateKeyPair(seed)
-        val derivedKey = Bip32ECKeyPair.deriveKeyPair(masterKey, pathArray)
-        val credentials = Credentials.create(derivedKey)
+            val pathArray = derivationPath.split("/")
+                .drop(1)
+                .map { part ->
+                    val isHardened = part.endsWith("'")
+                    val number = part.replace("'", "").toInt()
+                    if (isHardened) number or HARDENED_BIT else number
+                }
+                .toIntArray()
 
-        return EthereumWallet(
-            id = "eth_${System.currentTimeMillis()}",
-            name = name,
-            address = credentials.address,
-            publicKey = derivedKey.publicKeyPoint.getEncoded(false).toHex(),
-            privateKeyEncrypted = "",
-            network = network,
-            derivationPath = derivationPath,
-            isSmartContractWallet = false,
-            walletFile = null,
-            mnemonicHash = mnemonic.hashCode().toString(),
-            createdAt = System.currentTimeMillis(),
-            isBackedUp = false,
-            walletType = WalletType.ETHEREUM
-        )
+            val masterKey = Bip32ECKeyPair.generateKeyPair(seed)
+            val derivedKey = Bip32ECKeyPair.deriveKeyPair(masterKey, pathArray)
+
+            val privateKey = derivedKey.privateKey
+            val privateKeyHex = "0x${privateKey.toString(16)}"
+
+            Log.d("WalletRepo", "Generated private key (first 10 chars): ${privateKeyHex.take(10)}...")
+
+            // Create credentials from the derived key
+            val credentials = Credentials.create(derivedKey)
+            Log.d("WalletRepo", "Generated address: ${credentials.address}")
+
+            val wallet = EthereumWallet(
+                id = "eth_${System.currentTimeMillis()}",
+                name = name,
+                address = credentials.address,
+                publicKey = derivedKey.publicKeyPoint.getEncoded(false).joinToString("") { "%02x".format(it) },
+                privateKeyEncrypted = "", // Leave empty - stored separately
+                network = network,
+                derivationPath = derivationPath,
+                isSmartContractWallet = false,
+                walletFile = null,
+                mnemonicHash = mnemonic.hashCode().toString(),
+                createdAt = System.currentTimeMillis(),
+                isBackedUp = false,
+                walletType = WalletType.ETHEREUM
+            )
+
+            // Store the wallet first
+            saveWallet(wallet)
+
+            // Store the REAL private key using KeyManager
+            val storeResult = keyManager.storePrivateKey(
+                walletId = wallet.id,
+                privateKey = privateKeyHex,
+                keyType = "ETH_PRIVATE_KEY"
+            )
+
+            if (storeResult.isFailure) {
+                Log.e("WalletRepo", "Failed to store private key: ${storeResult.exceptionOrNull()?.message}")
+            } else {
+                Log.d("WalletRepo", "Private key stored successfully")
+            }
+
+            // Store mnemonic securely
+            securityManager.secureMnemonic(wallet.id, mnemonic)
+
+            Result.success(wallet)
+
+        } catch (e: Exception) {
+            Log.e("WalletRepo", "Failed to create Ethereum wallet: ${e.message}", e)
+            Result.failure(e)
+        }
     }
 
-    fun createMultiChainWallet(
+    suspend fun createMultiChainWallet(
         mnemonic: List<String>,
         name: String
-    ): MultiChainWallet {
-        val bitcoinWallet = createBitcoinWallet(mnemonic, "$name (Bitcoin)")
-        val ethereumWallet = createEthereumWallet(mnemonic, "$name (Ethereum)")
-        val polygonWallet = createEthereumWallet(mnemonic, "$name (Polygon)").copy(
-            network = EthereumNetwork.POLYGON
-        )
-        val bscWallet = createEthereumWallet(mnemonic, "$name (BSC)").copy(
-            network = EthereumNetwork.BSC
-        )
+    ): Result<MultiChainWallet> {
+        return try {
+            // Create Bitcoin wallet
+            val bitcoinWallet = createBitcoinWallet(mnemonic, "$name (Bitcoin)")
 
-        // Use Ethereum address as the primary address, or Bitcoin if Ethereum is null
-        val primaryAddress = ethereumWallet.address ?: bitcoinWallet.address
+            // Create Ethereum wallet - handle Result type
+            val ethereumResult = createEthereumWallet(mnemonic, "$name (Ethereum)")
+            if (ethereumResult.isFailure) {
+                return Result.failure(
+                    ethereumResult.exceptionOrNull() ?:
+                    IllegalStateException("Failed to create Ethereum wallet")
+                )
+            }
+            val ethereumWallet = ethereumResult.getOrThrow()
 
-        return MultiChainWallet(
-            id = "multi_${System.currentTimeMillis()}",
-            name = name,
-            address = primaryAddress,
-            bitcoinWallet = bitcoinWallet,
-            ethereumWallet = ethereumWallet,
-            polygonWallet = polygonWallet,
-            bscWallet = bscWallet,
-            solanaWallet = null,
-            mnemonicHash = mnemonic.hashCode().toString(),
-            createdAt = System.currentTimeMillis(),
-            isBackedUp = false,
-            walletType = WalletType.MULTICHAIN
-        )
+            // Create Polygon wallet
+            val polygonResult = createEthereumWallet(mnemonic, "$name (Polygon)")
+            if (polygonResult.isFailure) {
+                return Result.failure(
+                    polygonResult.exceptionOrNull() ?:
+                    IllegalStateException("Failed to create Polygon wallet")
+                )
+            }
+            val polygonWalletRaw = polygonResult.getOrThrow()
+
+            // Create BSC wallet
+            val bscResult = createEthereumWallet(mnemonic, "$name (BSC)")
+            if (bscResult.isFailure) {
+                return Result.failure(
+                    bscResult.exceptionOrNull() ?:
+                    IllegalStateException("Failed to create BSC wallet")
+                )
+            }
+            val bscWalletRaw = bscResult.getOrThrow()
+
+            // Create wallet instances with correct networks
+            val polygonWallet = EthereumWallet(
+                id = polygonWalletRaw.id,
+                name = "$name (Polygon)",
+                address = polygonWalletRaw.address,
+                publicKey = polygonWalletRaw.publicKey,
+                privateKeyEncrypted = polygonWalletRaw.privateKeyEncrypted,
+                network = EthereumNetwork.POLYGON,
+                derivationPath = polygonWalletRaw.derivationPath,
+                isSmartContractWallet = polygonWalletRaw.isSmartContractWallet,
+                walletFile = polygonWalletRaw.walletFile,
+                mnemonicHash = polygonWalletRaw.mnemonicHash,
+                createdAt = polygonWalletRaw.createdAt,
+                isBackedUp = polygonWalletRaw.isBackedUp,
+                walletType = polygonWalletRaw.walletType
+            )
+
+            val bscWallet = EthereumWallet(
+                id = bscWalletRaw.id,
+                name = "$name (BSC)",
+                address = bscWalletRaw.address,
+                publicKey = bscWalletRaw.publicKey,
+                privateKeyEncrypted = bscWalletRaw.privateKeyEncrypted,
+                network = EthereumNetwork.BSC,
+                derivationPath = bscWalletRaw.derivationPath,
+                isSmartContractWallet = bscWalletRaw.isSmartContractWallet,
+                walletFile = bscWalletRaw.walletFile,
+                mnemonicHash = bscWalletRaw.mnemonicHash,
+                createdAt = bscWalletRaw.createdAt,
+                isBackedUp = bscWalletRaw.isBackedUp,
+                walletType = bscWalletRaw.walletType
+            )
+
+            // Store the chain wallets
+            saveWallet(polygonWallet)
+            saveWallet(bscWallet)
+
+            // Use Ethereum address as primary
+            val primaryAddress = ethereumWallet.address
+
+            val multiChainWallet = MultiChainWallet(
+                id = "multi_${System.currentTimeMillis()}",
+                name = name,
+                address = primaryAddress,
+                bitcoinWallet = bitcoinWallet,
+                ethereumWallet = ethereumWallet,
+                polygonWallet = polygonWallet,
+                bscWallet = bscWallet,
+                solanaWallet = null,
+                mnemonicHash = mnemonic.hashCode().toString(),
+                createdAt = System.currentTimeMillis(),
+                isBackedUp = false,
+                walletType = WalletType.MULTICHAIN
+            )
+
+            // Store the multi-chain wallet
+            saveWallet(multiChainWallet)
+
+            Result.success(multiChainWallet)
+
+        } catch (e: Exception) {
+            Log.e("WalletRepo", "Failed to create multi-chain wallet: ${e.message}", e)
+            Result.failure(e)
+        }
     }
 
     // === BALANCE OPERATIONS ===
