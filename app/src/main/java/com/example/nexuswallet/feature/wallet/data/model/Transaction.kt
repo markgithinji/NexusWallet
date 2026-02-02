@@ -1,8 +1,10 @@
 package com.example.nexuswallet.feature.wallet.data.model
 
 import com.example.nexuswallet.feature.wallet.domain.ChainType
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletType
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 @Serializable
 data class SendTransaction(
@@ -82,24 +84,22 @@ data class EthereumTransactionData(
 
 @Serializable
 data class EthereumTransactionParams(
-    val nonce: String,           // Hex string "0x1"
-    val gasPrice: String,        // Hex string "0x..."
-    val gasLimit: String,        // Hex string "0x5208" (21000)
-    val to: String,             // Address "0x..."
-    val value: String,          // Hex string "0x..."
-    val data: String = "0x",    // Hex string
-    val chainId: Long = 1L      // 1=Mainnet, 5=Goerli
-)
-
-@Serializable
-data class SigningResult(
-    val success: Boolean,
-    val signedTransaction: SignedTransaction? = null,
-    val error: String? = null
-)
-
-enum class SigningMode {
-    MOCK,           // For demo/portfolio
-    REAL_ETHEREUM,  // Real Ethereum signing
-    REAL_BITCOIN    // Real Bitcoin signing
+    val nonce: String,
+    val gasPrice: String,
+    val gasLimit: String,
+    val to: String,
+    val value: String,
+    val data: String = "0x",
+    val network: EthereumNetwork = EthereumNetwork.MAINNET
+) {
+    fun getChainId(): Long {
+        return when (network) {
+            EthereumNetwork.MAINNET -> 1L
+            EthereumNetwork.GOERLI -> 5L
+            EthereumNetwork.SEPOLIA -> 11155111L
+            EthereumNetwork.POLYGON -> 137L
+            EthereumNetwork.BSC -> 56L
+            else -> 1L
+        }
+    }
 }
