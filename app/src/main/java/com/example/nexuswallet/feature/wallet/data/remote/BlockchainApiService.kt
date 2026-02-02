@@ -1,16 +1,17 @@
 package com.example.nexuswallet.feature.wallet.data.remote
-
 import com.example.nexuswallet.feature.wallet.data.repository.BlockstreamTransaction
 import com.example.nexuswallet.feature.wallet.data.repository.BlockstreamUtxo
 import com.example.nexuswallet.feature.wallet.data.repository.CovalentBalanceResponse
 import com.example.nexuswallet.feature.wallet.data.repository.EtherscanBalanceResponse
 import com.example.nexuswallet.feature.wallet.data.repository.EtherscanTransactionsResponse
 import com.example.nexuswallet.feature.wallet.data.repository.GasPriceResponse
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.Headers
@@ -63,6 +64,49 @@ interface EtherscanApiService {
         @Query("apikey") apiKey: String
     ): EtherscanBroadcastResponse
 }
+
+@Serializable
+data class EtherscanErrorResponse(
+    @SerialName("status") val status: String,
+    @SerialName("message") val message: String,
+    @SerialName("result") val result: String
+)
+
+@Serializable
+data class EtherscanStatsResponse(
+    @SerialName("status") val status: String,
+    @SerialName("message") val message: String,
+    @SerialName("result") val result: String
+)
+
+
+@Serializable
+data class EtherscanFlexibleResponse(
+    @SerialName("status") val status: String,
+    @SerialName("message") val message: String,
+    @SerialName("result") @Contextual val result: JsonElement? = null
+)
+
+@Serializable
+data class EtherscanGasOracleResponse(
+    @SerialName("status") val status: String,
+    @SerialName("message") val message: String,
+    @SerialName("result") val result: GasPriceResult
+)
+
+@Serializable
+data class JsonRpcResponse<T>(
+    @SerialName("jsonrpc") val jsonrpc: String,
+    @SerialName("result") val result: T? = null,
+    @SerialName("error") val error: JsonRpcError? = null,
+    @SerialName("id") val id: Int
+)
+
+@Serializable
+data class JsonRpcError(
+    @SerialName("code") val code: Int,
+    @SerialName("message") val message: String
+)
 
 @Serializable
 data class EtherscanTransactionCountResponse(
