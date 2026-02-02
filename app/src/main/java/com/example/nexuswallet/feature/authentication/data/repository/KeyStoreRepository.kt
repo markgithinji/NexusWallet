@@ -1,10 +1,9 @@
-package com.example.nexuswallet.feature.authentication.domain
+package com.example.nexuswallet.feature.authentication.data.repository
 
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import androidx.core.content.edit
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -17,7 +16,7 @@ import kotlinx.coroutines.withContext
  * Handles encryption/decryption using Android KeyStore
  * Provides hardware-backed security when available
  */
-class KeyStoreEncryption(private val context: Context) {
+class KeyStoreRepository(private val context: Context) {
 
     companion object {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"

@@ -4,6 +4,7 @@ import com.example.nexuswallet.feature.wallet.domain.WalletBackup
 import kotlinx.serialization.json.Json
 import android.content.Context
 import android.util.Log
+import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,13 +26,13 @@ import kotlin.math.max
  * Uses Android KeyStore for encryption and DataStore for secure storage
  */
 @Singleton
-class SecurityManager @Inject constructor(
+class SecurityManager @Inject constructor( //TODO: break class down to usecases
     @ApplicationContext private val context: Context,
     private val securityPreferencesRepository: SecurityPreferencesRepository
 ) {
 
     private val scope = CoroutineScope(Dispatchers.IO)
-    private val keyStoreEncryption = KeyStoreEncryption(context)
+    private val keyStoreRepository = KeyStoreRepository(context)
 
     private val _securityState = MutableStateFlow<SecurityState>(SecurityState.IDLE)
     val securityState: StateFlow<SecurityState> = _securityState
@@ -55,7 +56,7 @@ class SecurityManager @Inject constructor(
             val mnemonicString = mnemonic.joinToString(" ")
 
             // Encrypt using KeyStore
-            val (encryptedHex, ivHex) = keyStoreEncryption.encryptString(mnemonicString)
+            val (encryptedHex, ivHex) = keyStoreRepository.encryptString(mnemonicString)
 
             // Store in secure storage
             securityPreferencesRepository.storeEncryptedMnemonic(
@@ -85,12 +86,12 @@ class SecurityManager @Inject constructor(
             Log.d("SecurityManager", "Encrypting private key for wallet: $walletId")
 
             // Encrypt the private key
-            val (encryptedHex, ivHex) = keyStoreEncryption.encryptString(privateKey)
+            val (encryptedHex, ivHex) = keyStoreRepository.encryptString(privateKey)
 
             // Store in secure storage WITH keyType
             securityPreferencesRepository.storeEncryptedPrivateKey(
                 walletId = walletId,
-                keyType = keyType,  // ADD this
+                keyType = keyType,
                 encryptedKey = encryptedHex,
                 iv = hexToBytes(ivHex)
             )
@@ -114,7 +115,7 @@ class SecurityManager @Inject constructor(
     suspend fun getPrivateKeyForSigning(
         walletId: String,
         requireAuth: Boolean = true,
-        keyType: String = "ETH_PRIVATE_KEY"  // ADD this parameter
+        keyType: String = "ETH_PRIVATE_KEY"
     ): Result<String> {
         return try {
             _securityState.value = SecurityState.DECRYPTING
@@ -138,7 +139,7 @@ class SecurityManager @Inject constructor(
 
             // Decrypt using KeyStore
             Log.d("SecurityManager", "Decrypting private key for wallet: $walletId")
-            val privateKey = keyStoreEncryption.decryptString(encryptedHex, iv.toHex())
+            val privateKey = keyStoreRepository.decryptString(encryptedHex, iv.toHex())
 
             // Record authentication time for session management
             recordAuthentication()
@@ -162,9 +163,9 @@ class SecurityManager @Inject constructor(
      */
     suspend fun hasPrivateKey(
         walletId: String,
-        keyType: String = "ETH_PRIVATE_KEY"  // ADD this parameter
+        keyType: String = "ETH_PRIVATE_KEY"
     ): Boolean {
-        return securityPreferencesRepository.getEncryptedPrivateKey(walletId, keyType) != null  // ADD keyType
+        return securityPreferencesRepository.getEncryptedPrivateKey(walletId, keyType) != null
     }
 
     /**
@@ -184,7 +185,7 @@ class SecurityManager @Inject constructor(
             val (encryptedHex, iv) = encryptedData
 
             // Decrypt using KeyStore
-            val decryptedString = keyStoreEncryption.decryptString(
+            val decryptedString = keyStoreRepository.decryptString(
                 encryptedHex,
                 iv.toHex()
             )
@@ -210,7 +211,7 @@ class SecurityManager @Inject constructor(
         return try {
             _securityState.value = SecurityState.ENCRYPTING
 
-            val (encryptedHex, ivHex) = keyStoreEncryption.encryptString(privateKey)
+            val (encryptedHex, ivHex) = keyStoreRepository.encryptString(privateKey)
 
             securityPreferencesRepository.storeEncryptedPrivateKey(
                 walletId = walletId,
@@ -245,7 +246,7 @@ class SecurityManager @Inject constructor(
             // Create backup data
             val backupData = WalletBackup(
                 walletId = walletId,
-                encryptedMnemonic = "encrypted_placeholder", // Will be replaced
+                encryptedMnemonic = "encrypted_placeholder",
                 encryptedPrivateKey = "encrypted_placeholder",
                 encryptionIV = "",
                 backupDate = System.currentTimeMillis(),
@@ -259,7 +260,7 @@ class SecurityManager @Inject constructor(
 
             // Encrypt entire backup
             val backupJson = Json.encodeToString(backupData)
-            val (encryptedHex, ivHex) = keyStoreEncryption.encryptString(backupJson)
+            val (encryptedHex, ivHex) = keyStoreRepository.encryptString(backupJson)
 
             // Update backup with actual encrypted data
             val finalBackup = backupData.copy(
@@ -301,7 +302,7 @@ class SecurityManager @Inject constructor(
             val (encryptedHex, iv) = backupData
 
             // Decrypt backup
-            val decryptedJson = keyStoreEncryption.decryptString(
+            val decryptedJson = keyStoreRepository.decryptString(
                 encryptedHex,
                 iv.toHex()
             )
@@ -433,7 +434,7 @@ class SecurityManager @Inject constructor(
      */
     suspend fun clearAll() {
         securityPreferencesRepository.clearAll()
-        keyStoreEncryption.clearKey()
+        keyStoreRepository.clearKey()
         _securityState.value = SecurityState.IDLE
     }
 
@@ -441,7 +442,7 @@ class SecurityManager @Inject constructor(
      * Check if KeyStore is available
      */
     fun isKeyStoreAvailable(): Boolean {
-        return keyStoreEncryption.isKeyStoreAvailable()
+        return keyStoreRepository.isKeyStoreAvailable()
     }
 
     /**
