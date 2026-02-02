@@ -8,7 +8,6 @@ import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
-import com.example.nexuswallet.feature.wallet.data.model.SigningMode
 import com.example.nexuswallet.feature.wallet.data.model.ValidationResult
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
@@ -234,15 +233,10 @@ class TransactionRepository(
             val params = EthereumTransactionParams(
                 nonce = "0x${nonce.toString(16)}",
                 gasPrice = gasPriceHex,
-                gasLimit = transaction.gasLimit?.let { "0x${it}" } ?: "0x5208", // 21000
+                gasLimit = transaction.gasLimit?.let { "0x${it}" } ?: "0x5208",
                 to = transaction.toAddress,
                 value = "0x${BigInteger(transaction.amount).toString(16)}",
-                chainId = when (wallet.network) {
-                    EthereumNetwork.MAINNET -> 1L
-                    EthereumNetwork.POLYGON -> 137L
-                    EthereumNetwork.BSC -> 56L
-                    else -> 1L
-                }
+                network = wallet.network
             )
 
             Log.d("TransactionRepo", "Transaction params: $params")
@@ -284,9 +278,10 @@ class TransactionRepository(
 
             val signedMessage = TransactionEncoder.signMessage(
                 rawTransaction,
-                params.chainId,
+                params.getChainId(),
                 credentials
             )
+
 
             val hexValue = Numeric.toHexString(signedMessage)
 
@@ -448,44 +443,6 @@ class TransactionRepository(
             ChainType.BITCOIN -> address.startsWith("1") || address.startsWith("3") || address.startsWith("bc1")
             ChainType.ETHEREUM -> address.startsWith("0x") && address.length == 42
             else -> true
-        }
-    }
-
-    suspend fun validateAmount(
-        walletId: String,
-        amount: BigDecimal,
-        chain: ChainType
-    ): ValidationResult {
-        return try {
-            // Get the REAL wallet balance from wallet repository
-            val wallet = walletRepository.getWallet(walletId) ?: return ValidationResult.Error("Wallet not found")
-
-            // Get the balance from database/blockchain
-            val balance = when (wallet) {
-                is BitcoinWallet -> {
-                    // Try to get balance from blockchain
-                    blockchainRepository.getBitcoinBalance(wallet.address)
-                }
-                is EthereumWallet -> {
-                    blockchainRepository.getEthereumBalance(wallet.address)
-                }
-                else -> {
-                    // For other wallets, get from database or use demo
-                    val storedBalance = walletRepository.getWalletBalance(walletId)
-                    storedBalance?.nativeBalanceDecimal?.toBigDecimalOrNull() ?: BigDecimal.ZERO
-                }
-            }
-
-            // Get fee estimate
-            val feeEstimate = getFeeEstimate(chain, FeeLevel.NORMAL)
-            val estimatedFee = feeEstimate.totalFeeDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO
-
-            ValidationResult.Valid(
-                balance = balance,
-                estimatedFee = estimatedFee
-            )
-        } catch (e: Exception) {
-            ValidationResult.Error("Failed to validate: ${e.message}")
         }
     }
 

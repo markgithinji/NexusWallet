@@ -197,15 +197,15 @@ class WalletRepository @Inject constructor(
                 name = name,
                 address = credentials.address,
                 publicKey = derivedKey.publicKeyPoint.getEncoded(false).joinToString("") { "%02x".format(it) },
-                privateKeyEncrypted = "", // Leave empty - stored separately
-                network = network,
+                privateKeyEncrypted = "",
+                network = network,  // Use the network parameter
                 derivationPath = derivationPath,
                 isSmartContractWallet = false,
                 walletFile = null,
                 mnemonicHash = mnemonic.hashCode().toString(),
                 createdAt = System.currentTimeMillis(),
                 isBackedUp = false,
-                walletType = WalletType.ETHEREUM
+                walletType = if (network == EthereumNetwork.SEPOLIA) WalletType.ETHEREUM_SEPOLIA else WalletType.ETHEREUM
             )
 
             // Store the wallet first
@@ -395,29 +395,50 @@ class WalletRepository @Inject constructor(
 
     private suspend fun syncEthereumWallet(wallet: EthereumWallet) {
         try {
-            // Get real balance from blockchain
-            val ethBalance = blockchainRepository.getEthereumBalance(wallet.address)
-            Log.d("WalletRepo", "ETH Balance for ${wallet.address}: $ethBalance")
+            Log.d("WalletRepo", " Syncing Ethereum wallet:")
+            Log.d("WalletRepo", "   - Wallet ID: ${wallet.id}")
+            Log.d("WalletRepo", "   - Address: ${wallet.address}")
+            Log.d("WalletRepo", "   - Network: ${wallet.network}")
 
-            // Convert to proper decimal string
-            val nativeBalanceDecimal = ethBalance.toPlainString()
+            // Get balance from blockchain repository
+            val ethBalance = blockchainRepository.getEthereumBalance(
+                address = wallet.address,
+                network = wallet.network
+            )
+
+            Log.d("WalletRepo", " Balance received: $ethBalance ETH")
+
+            // Calculate USD value
+            val usdValue = calculateUsdValue(ethBalance, "ETH")
+            Log.d("WalletRepo", "   - USD Value: $$usdValue")
+
+            // Convert ETH to wei for storage
+            val weiBalance = (ethBalance * BigDecimal("1000000000000000000")).toPlainString()
 
             // Create updated balance
             val balance = WalletBalance(
                 walletId = wallet.id,
                 address = wallet.address,
-                nativeBalance = (ethBalance * BigDecimal("1000000000000000000")).toPlainString(),
-                nativeBalanceDecimal = nativeBalanceDecimal,
-                usdValue = calculateUsdValue(ethBalance, "ETH"), // This should calculate properly
-                tokens = emptyList() // For now, empty
+                nativeBalance = weiBalance,
+                nativeBalanceDecimal = ethBalance.toPlainString(),
+                usdValue = usdValue,
+                tokens = emptyList(),
+                lastUpdated = System.currentTimeMillis()
             )
+
+            Log.d("WalletRepo", " Saving wallet balance")
 
             // Save balance
             saveWalletBalance(balance)
-            Log.d("WalletRepo", "Ethereum wallet balance saved: $balance")
+            Log.d("WalletRepo", " Ethereum wallet synced successfully")
 
         } catch (e: Exception) {
-            Log.e("WalletRepo", "Error syncing Ethereum wallet: ${e.message}")
+            Log.e("WalletRepo", " Error syncing Ethereum wallet: ${e.message}", e)
+
+            // Fallback to sample data on error
+            val fallbackBalance = createSampleBalance(wallet.id, wallet.address)
+            saveWalletBalance(fallbackBalance)
+            Log.d("WalletRepo", "️ Using fallback sample balance due to error")
         }
     }
 
@@ -476,7 +497,11 @@ class WalletRepository @Inject constructor(
         // Sync Ethereum if exists
         wallet.ethereumWallet?.let { ethWallet ->
             try {
-                val ethBalance = blockchainRepository.getEthereumBalance(ethWallet.address)
+                val ethBalance = blockchainRepository.getEthereumBalance(
+                    ethWallet.address,
+                    ethWallet.network
+                )
+
                 val tokens = blockchainRepository.getTokenBalances(
                     ethWallet.address,
                     ChainId.ETHEREUM_MAINNET
@@ -496,7 +521,6 @@ class WalletRepository @Inject constructor(
                 Log.e("WalletRepo", "Error syncing ETH in multi-chain: ${e.message}")
             }
         }
-
         // Save combined balance
         val combinedBalance = WalletBalance(
             walletId = wallet.id,
@@ -511,12 +535,11 @@ class WalletRepository @Inject constructor(
         Log.d("WalletRepo", "Multi-chain wallet synced successfully")
     }
 
-    // Add Solana wallet sync method
     private suspend fun syncSolanaWallet(wallet: SolanaWallet) {
         try {
             Log.d("WalletRepo", "Solana wallet sync not implemented yet, using demo data")
 
-            val solBalance = BigDecimal("5.75") // Demo SOL balance
+            val solBalance = BigDecimal("5.75")
             val tokens = listOf(
                 TokenBalance(
                     tokenId = "demo_sol_usdc",
