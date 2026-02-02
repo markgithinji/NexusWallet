@@ -25,17 +25,11 @@ class KeyStoreEncryption(private val context: Context) {
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val KEY_SIZE = 256
         private const val GCM_TAG_LENGTH = 128
-
-        // SharedPreferences for storing IVs
-        private const val PREFS_NAME = "wallet_encryption"
-        private const val IV_KEY = "encryption_iv"
     }
 
     private val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply {
         load(null)
     }
-
-    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     /**
      * Get or create the secret key from Android KeyStore
@@ -138,12 +132,11 @@ class KeyStoreEncryption(private val context: Context) {
     }
 
     /**
-     * Clear the key from KeyStore (for testing or logout)
+     * Clear the key from KeyStore
      */
     fun clearKey() {
         try {
             keyStore.deleteEntry(KEY_ALIAS)
-            prefs.edit { clear() }
         } catch (e: Exception) {
             // Ignore
         }
