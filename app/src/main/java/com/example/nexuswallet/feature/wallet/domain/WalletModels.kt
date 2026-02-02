@@ -22,6 +22,7 @@ enum class ChainType {
     ETHEREUM,
     POLYGON,
     BINANCE_SMART_CHAIN,
+    ETHEREUM_SEPOLIA,
     SOLANA,
     ARBITRUM,
     OPTIMISM
@@ -100,7 +101,7 @@ data class SolanaWallet(
 ) : CryptoWallet()
 
 enum class WalletType {
-    BITCOIN, ETHEREUM, MULTICHAIN, SOLANA
+    BITCOIN, ETHEREUM, MULTICHAIN, SOLANA ,ETHEREUM_SEPOLIA
 }
 
 enum class BitcoinNetwork {
