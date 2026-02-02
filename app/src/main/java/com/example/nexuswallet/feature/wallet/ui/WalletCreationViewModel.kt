@@ -1,10 +1,13 @@
 package com.example.nexuswallet.feature.wallet.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -127,6 +130,35 @@ class WalletCreationViewModel @Inject constructor(
         }
     }
 
+    suspend fun createSepoliaWallet(
+        mnemonic: List<String>,
+        name: String = "Sepolia Testnet"
+    ): Result<EthereumWallet> {
+        return try {
+            Log.d("WalletCreationVM", "Creating Sepolia testnet wallet...")
+
+            // Use your existing walletRepository to create Ethereum wallet with SEPOLIA network
+            val walletResult = walletRepository.createEthereumWallet(
+                mnemonic = mnemonic,
+                name = name,
+                network = EthereumNetwork.SEPOLIA
+            )
+
+            if (walletResult.isSuccess) {
+                val wallet = walletResult.getOrThrow()
+                walletRepository.saveWallet(wallet)
+                Log.d("WalletCreationVM", "Sepolia wallet created successfully: ${wallet.address}")
+                Result.success(wallet)
+            } else {
+                Result.failure(walletResult.exceptionOrNull() ?:
+                IllegalStateException("Failed to create Sepolia wallet"))
+            }
+        } catch (e: Exception) {
+            Log.e("WalletCreationVM", "Error creating Sepolia wallet: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
     fun createWallet() {
         viewModelScope.launch {
             _uiState.value = WalletCreationUiState.Loading
@@ -134,20 +166,37 @@ class WalletCreationViewModel @Inject constructor(
                 val mnemonicList = _mnemonic.value
                 val name = if (_walletName.value.isBlank()) "My Wallet" else _walletName.value
 
-                // FIXED: Handle Result types from repository methods
                 val walletResult: Result<CryptoWallet> = when (_selectedWalletType.value) {
                     WalletType.BITCOIN -> {
                         val bitcoinWallet = walletRepository.createBitcoinWallet(mnemonicList, name)
-                        Result.success(bitcoinWallet) // This returns directly
+                        Result.success(bitcoinWallet)
                     }
 
                     WalletType.ETHEREUM -> {
-                        val ethereumResult = walletRepository.createEthereumWallet(mnemonicList, name)
+                        val ethereumResult = walletRepository.createEthereumWallet(
+                            mnemonicList,
+                            name,
+                            EthereumNetwork.MAINNET  // Explicitly specify MAINNET
+                        )
                         if (ethereumResult.isSuccess) {
                             Result.success(ethereumResult.getOrThrow())
                         } else {
                             Result.failure(ethereumResult.exceptionOrNull() ?:
                             IllegalStateException("Failed to create Ethereum wallet"))
+                        }
+                    }
+
+                    WalletType.ETHEREUM_SEPOLIA -> {
+                        val sepoliaResult = walletRepository.createEthereumWallet(
+                            mnemonicList,
+                            name,
+                            EthereumNetwork.SEPOLIA
+                        )
+                        if (sepoliaResult.isSuccess) {
+                            Result.success(sepoliaResult.getOrThrow())
+                        } else {
+                            Result.failure(sepoliaResult.exceptionOrNull() ?:
+                            IllegalStateException("Failed to create Sepolia wallet"))
                         }
                     }
 

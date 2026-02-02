@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
-import com.example.nexuswallet.feature.wallet.data.model.SigningMode
 import com.example.nexuswallet.feature.wallet.data.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
