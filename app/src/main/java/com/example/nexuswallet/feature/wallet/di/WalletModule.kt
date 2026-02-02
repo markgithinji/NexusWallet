@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.wallet.di
 
 import android.content.Context
-import com.example.nexuswallet.feature.authentication.domain.SecureStorage
+import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.wallet.data.local.BackupDao
 import com.example.nexuswallet.feature.wallet.data.local.BalanceDao
@@ -144,14 +144,14 @@ object DatabaseModule {
     fun provideSecureStorage(
         @ApplicationContext context: Context,
         walletLocalDataSource: WalletLocalDataSource
-    ): SecureStorage {
-        return SecureStorage(context, walletLocalDataSource)
+    ): SecurityPreferencesRepository {
+        return SecurityPreferencesRepository(context, walletLocalDataSource)
     }
 
     @Provides
     @Singleton
-    fun provideSecurityManager(@ApplicationContext context: Context, secureStorage: SecureStorage): SecurityManager {
-        return SecurityManager(context, secureStorage)
+    fun provideSecurityManager(@ApplicationContext context: Context, securityPreferencesRepository: SecurityPreferencesRepository): SecurityManager {
+        return SecurityManager(context, securityPreferencesRepository)
     }
 
     @Provides

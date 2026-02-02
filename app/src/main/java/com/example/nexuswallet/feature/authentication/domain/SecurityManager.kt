@@ -4,7 +4,7 @@ import com.example.nexuswallet.feature.wallet.domain.WalletBackup
 import kotlinx.serialization.json.Json
 import android.content.Context
 import android.util.Log
-import com.example.nexuswallet.NexusWalletApplication
+import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -27,7 +27,7 @@ import kotlin.math.max
 @Singleton
 class SecurityManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val secureStorage: SecureStorage
+    private val securityPreferencesRepository: SecurityPreferencesRepository
 ) {
 
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -58,7 +58,7 @@ class SecurityManager @Inject constructor(
             val (encryptedHex, ivHex) = keyStoreEncryption.encryptString(mnemonicString)
 
             // Store in secure storage
-            secureStorage.storeEncryptedMnemonic(
+            securityPreferencesRepository.storeEncryptedMnemonic(
                 walletId = walletId,
                 encryptedMnemonic = encryptedHex,
                 iv = hexToBytes(ivHex)
@@ -88,7 +88,7 @@ class SecurityManager @Inject constructor(
             val (encryptedHex, ivHex) = keyStoreEncryption.encryptString(privateKey)
 
             // Store in secure storage WITH keyType
-            secureStorage.storeEncryptedPrivateKey(
+            securityPreferencesRepository.storeEncryptedPrivateKey(
                 walletId = walletId,
                 keyType = keyType,  // ADD this
                 encryptedKey = encryptedHex,
@@ -128,7 +128,7 @@ class SecurityManager @Inject constructor(
             }
 
             // Get encrypted private key from storage WITH keyType
-            val encryptedData = secureStorage.getEncryptedPrivateKey(walletId, keyType)  // ADD keyType
+            val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(walletId, keyType)  // ADD keyType
             if (encryptedData == null) {
                 Log.e("SecurityManager", "No private key found for wallet: $walletId")
                 return Result.failure(IllegalStateException("Private key not found"))
@@ -164,7 +164,7 @@ class SecurityManager @Inject constructor(
         walletId: String,
         keyType: String = "ETH_PRIVATE_KEY"  // ADD this parameter
     ): Boolean {
-        return secureStorage.getEncryptedPrivateKey(walletId, keyType) != null  // ADD keyType
+        return securityPreferencesRepository.getEncryptedPrivateKey(walletId, keyType) != null  // ADD keyType
     }
 
     /**
@@ -175,7 +175,7 @@ class SecurityManager @Inject constructor(
             _securityState.value = SecurityState.DECRYPTING
 
             // Get encrypted data
-            val encryptedData = secureStorage.getEncryptedMnemonic(walletId)
+            val encryptedData = securityPreferencesRepository.getEncryptedMnemonic(walletId)
             if (encryptedData == null) {
                 _securityState.value = SecurityState.IDLE
                 return null
@@ -212,7 +212,7 @@ class SecurityManager @Inject constructor(
 
             val (encryptedHex, ivHex) = keyStoreEncryption.encryptString(privateKey)
 
-            secureStorage.storeEncryptedPrivateKey(
+            securityPreferencesRepository.storeEncryptedPrivateKey(
                 walletId = walletId,
                 keyType = keyType,
                 encryptedKey = encryptedHex,
@@ -268,7 +268,7 @@ class SecurityManager @Inject constructor(
             )
 
             // Store backup
-            secureStorage.storeEncryptedBackup(
+            securityPreferencesRepository.storeEncryptedBackup(
                 walletId = walletId,
                 backupData = finalBackup,
                 encryptedData = encryptedHex,
@@ -293,7 +293,7 @@ class SecurityManager @Inject constructor(
             _securityState.value = SecurityState.RESTORING
 
             // Get encrypted backup
-            val backupData = secureStorage.getEncryptedBackup(walletId)
+            val backupData = securityPreferencesRepository.getEncryptedBackup(walletId)
             if (backupData == null) {
                 throw IllegalStateException("No backup found")
             }
@@ -337,12 +337,12 @@ class SecurityManager @Inject constructor(
 
             // Store in secure storage
             Log.d("SECURITY_PIN", "Storing PIN hash in secure storage...")
-            secureStorage.storePinHash(pinHash)
+            securityPreferencesRepository.storePinHash(pinHash)
             Log.d("SECURITY_PIN", " PIN hash stored")
 
             // Verify storage
             Log.d("SECURITY_PIN", "Verifying storage...")
-            val storedHash = secureStorage.getPinHash()
+            val storedHash = securityPreferencesRepository.getPinHash()
             if (storedHash != null) {
                 Log.d("SECURITY_PIN", " Retrieved stored hash")
                 Log.d("SECURITY_PIN", "Stored hash matches original: ${storedHash == pinHash}")
@@ -371,7 +371,7 @@ class SecurityManager @Inject constructor(
 
         return try {
             Log.d("SECURITY_PIN", "Retrieving stored PIN hash...")
-            val storedHash = secureStorage.getPinHash()
+            val storedHash = securityPreferencesRepository.getPinHash()
 
             if (storedHash == null) {
                 Log.d("SECURITY_PIN", " No PIN hash stored in secure storage")
@@ -411,28 +411,28 @@ class SecurityManager @Inject constructor(
      * Check if PIN is set
      */
     suspend fun isPinSet(): Boolean {
-        return secureStorage.getPinHash() != null
+        return securityPreferencesRepository.getPinHash() != null
     }
 
     /**
      * Enable/disable biometric authentication
      */
     suspend fun setBiometricEnabled(enabled: Boolean) {
-        secureStorage.setBiometricEnabled(enabled)
+        securityPreferencesRepository.setBiometricEnabled(enabled)
     }
 
     /**
      * Check if biometric is enabled
      */
     suspend fun isBiometricEnabled(): Boolean {
-        return secureStorage.isBiometricEnabled()
+        return securityPreferencesRepository.isBiometricEnabled()
     }
 
     /**
      * Clear all security data (logout)
      */
     suspend fun clearAll() {
-        secureStorage.clearAll()
+        securityPreferencesRepository.clearAll()
         keyStoreEncryption.clearKey()
         _securityState.value = SecurityState.IDLE
     }
@@ -613,7 +613,7 @@ class SecurityManager @Inject constructor(
      */
     suspend fun setSessionTimeout(seconds: Int) {
         sessionTimeout = seconds * 1000L
-        secureStorage.saveSessionTimeout(seconds)
+        securityPreferencesRepository.saveSessionTimeout(seconds)
         Log.d("SecurityManager", "Session timeout set to ${seconds}s")
     }
 
@@ -621,7 +621,7 @@ class SecurityManager @Inject constructor(
      * Get current session timeout
      */
     suspend fun getSessionTimeout(): Long {
-        return secureStorage.getSessionTimeout() * 1000L
+        return securityPreferencesRepository.getSessionTimeout() * 1000L
     }
 
     /**
@@ -686,7 +686,7 @@ class SecurityManager @Inject constructor(
      * Clear PIN (remove PIN protection)
      */
     suspend fun clearPin() {
-        secureStorage.clearPinHash()
+        securityPreferencesRepository.clearPinHash()
         Log.d("SecurityManager", "PIN cleared")
     }
 

@@ -18,9 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.authentication.domain.SecurityState
 import com.example.nexuswallet.feature.authentication.ui.PinSetupDialog
 import kotlinx.coroutines.launch
@@ -29,7 +28,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SecuritySettingsScreen(
     navController: NavController,
-    viewModel: SecuritySettingsViewModel = viewModel()
+    viewModel: SecuritySettingsViewModel = hiltViewModel()
 ) {
     val securityState by viewModel.securityState.collectAsState()
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()

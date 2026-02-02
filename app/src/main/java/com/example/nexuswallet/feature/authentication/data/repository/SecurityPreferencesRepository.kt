@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.authentication.domain
+package com.example.nexuswallet.feature.authentication.data.repository
 
 
 import android.content.Context
@@ -23,7 +23,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
 )
 
 @Singleton
-class SecureStorage @Inject constructor(
+class SecurityPreferencesRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val walletLocalDataSource: WalletLocalDataSource
 ) {

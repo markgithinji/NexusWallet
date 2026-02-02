@@ -13,9 +13,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SecuritySettingsViewModel @Inject constructor(
-    private val securityManager: SecurityManager  // Inject SecurityManager
+    private val securityManager: SecurityManager
 ) : ViewModel() {
-    // Remove: private val securityManager = NexusWalletApplication.Companion.instance.securityManager
 
     private val _securityState = MutableStateFlow<SecurityState>(SecurityState.IDLE)
     val securityState: StateFlow<SecurityState> = _securityState
