@@ -6,6 +6,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.example.nexuswallet.feature.authentication.data.repository.SecurityManager
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 import java.util.concurrent.Executor
@@ -15,30 +16,11 @@ import java.util.concurrent.Executor
  */
 class AuthenticationManager(private val context: Context) {
 
-    private val biometricManager = BiometricManager.from(context)
     private lateinit var executor: Executor
 
     companion object {
         const val AUTH_TYPE_BIOMETRIC = 1
         const val AUTH_TYPE_PIN = 2
-        const val AUTH_TYPE_NONE = 3
-
-        const val REQUEST_CODE_BIOMETRIC = 1001
-        const val REQUEST_CODE_PIN = 1002
-    }
-
-    /**
-     * Check if biometric authentication is available
-     */
-    fun isBiometricAvailable(): BiometricStatus {
-        return when (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)) {
-            BiometricManager.BIOMETRIC_SUCCESS -> BiometricStatus.AVAILABLE
-            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> BiometricStatus.NOT_ENROLLED
-            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> BiometricStatus.HARDWARE_UNAVAILABLE
-            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> BiometricStatus.NO_HARDWARE
-            BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> BiometricStatus.SECURITY_UPDATE_REQUIRED
-            else -> BiometricStatus.UNAVAILABLE
-        }
     }
 
     /**
@@ -93,9 +75,6 @@ class AuthenticationManager(private val context: Context) {
     }
 
     /**
-     * Verify PIN code
-     */
-    /**
      * Verify PIN code with detailed logging
      */
     suspend fun authenticateWithPin(
@@ -124,73 +103,6 @@ class AuthenticationManager(private val context: Context) {
             Log.d("AUTH_MGR_PIN", " === AUTH_MGR: authenticateWithPin END ===")
         }
     }
-
-    /**
-     * Check if authentication is required (based on settings)
-     */
-    suspend fun isAuthenticationRequired(
-        securityManager: SecurityManager,
-        requireBiometric: Boolean = true,
-        requirePin: Boolean = true
-    ): Boolean {
-        if (requireBiometric && securityManager.isBiometricEnabled()) {
-            return true
-        }
-
-        if (requirePin && securityManager.isPinSet()) {
-            return true
-        }
-
-        return false
-    }
-
-    /**
-     * Get available authentication methods
-     */
-    suspend fun getAvailableAuthMethods(
-        securityManager: SecurityManager
-    ): List<AuthMethod> {
-        val methods = mutableListOf<AuthMethod>()
-
-        // Check biometric availability
-        val biometricStatus = isBiometricAvailable()
-        if (biometricStatus == BiometricStatus.AVAILABLE && securityManager.isBiometricEnabled()) {
-            methods.add(AuthMethod.BIOMETRIC)
-        }
-
-        // Check if PIN is set
-        if (securityManager.isPinSet()) {
-            methods.add(AuthMethod.PIN)
-        }
-
-        return methods
-    }
-
-    /**
-     * Show appropriate authentication based on available methods
-     */
-//    suspend fun authenticate(
-//        activity: FragmentActivity,
-//        securityManager: SecurityManager,
-//        title: String = "Authentication Required",
-//        description: String = "Authenticate to proceed"
-//    ): AuthenticationResult {
-//        val availableMethods = getAvailableAuthMethods(securityManager)
-//
-//        return when {
-//            availableMethods.contains(AuthMethod.BIOMETRIC) -> {
-//                // Use biometric if available and enabled
-//                authenticateWithBiometric(activity, title, description)
-//            }
-//            availableMethods.contains(AuthMethod.PIN) -> {
-//                // Return special result to show PIN dialog in UI
-//                AuthenticationResult.PinRequired
-//            }
-//            else -> {
-//                AuthenticationResult.Error("No authentication method available")
-//            }
-//        }
-//    }
 }
 
 // Authentication result sealed class
@@ -199,14 +111,4 @@ sealed class AuthenticationResult {
     data class Error(val message: String) : AuthenticationResult()
     object PinRequired : AuthenticationResult()
     object Cancelled : AuthenticationResult()
-}
-
-// Biometric status enum
-enum class BiometricStatus {
-    AVAILABLE,
-    NOT_ENROLLED,
-    HARDWARE_UNAVAILABLE,
-    NO_HARDWARE,
-    SECURITY_UPDATE_REQUIRED,
-    UNAVAILABLE
 }
