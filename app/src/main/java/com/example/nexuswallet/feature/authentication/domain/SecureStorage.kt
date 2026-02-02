@@ -222,18 +222,6 @@ class SecureStorage @Inject constructor(
         }
     }
 
-//    suspend fun clearWalletData(walletId: String) {
-//        context.dataStore.edit { preferences ->
-//            // Remove all keys related to this wallet
-//            preferences.keys.forEach { key ->
-//                if (key.name.contains(walletId)) {
-//                    preferences.remove(key)
-//                }
-//            }
-//        }
-//        Log.d(" SECURE_STORAGE", "Cleared wallet data for: $walletId")
-//    }
-
     /**
      * Clear all sensitive data (for logout)
      */
@@ -242,13 +230,6 @@ class SecureStorage @Inject constructor(
             preferences.clear()
         }
         Log.d(" SECURE_STORAGE", " Cleared all secure storage")
-    }
-
-    /**
-     * Check if wallet has encrypted data
-     */
-    suspend fun hasEncryptedData(walletId: String): Boolean {
-        return getEncryptedMnemonic(walletId) != null
     }
 
     suspend fun saveSessionTimeout(seconds: Int) {
@@ -277,61 +258,11 @@ class SecureStorage @Inject constructor(
         Log.d(" SECURE_STORAGE", " Cleared PIN hash")
     }
 
-    suspend fun debugDataStoreContents() {
-        try {
-            val preferences = context.dataStore.data.first()
-            Log.d(" DATASTORE_DEBUG", "══════════════════════════════════════════════")
-            Log.d(" DATASTORE_DEBUG", " DataStore Contents (${preferences.asMap().size} items):")
 
-            preferences.asMap().forEach { (key, value) ->
-                val valueStr = when {
-                    key.name.contains("hash") || key.name.contains("encrypted") ->
-                        "${value.toString().take(20)}..."
-
-                    else -> value.toString()
-                }
-                Log.d(" DATASTORE_DEBUG", "  • ${key.name}: $valueStr")
-            }
-
-            Log.d(" DATASTORE_DEBUG", "══════════════════════════════════════════════")
-        } catch (e: Exception) {
-            Log.e(" DATASTORE_DEBUG", " Error reading DataStore", e)
-        }
-    }
-
-    suspend fun testPersistence(): Boolean {
-        val testKey = stringPreferencesKey("persistence_test")
-        val testValue = "test_${System.currentTimeMillis()}"
-
-        // Save test value
-        context.dataStore.edit { preferences ->
-            preferences[testKey] = testValue
-        }
-
-        // Read it back immediately
-        val preferences = context.dataStore.data.first()
-        val retrieved = preferences[testKey]
-
-        val success = retrieved == testValue
-
-        Log.d(" PERSISTENCE_TEST", "DataStore persistence test: $success")
-
-        if (success) {
-            // Clean up
-            context.dataStore.edit { preferences ->
-                preferences.remove(testKey)
-            }
-        }
-
-        return success
-    }
-
-    // Helper methods for storing backup metadata in regular storage
     private suspend fun storeBackupMetadata(walletId: String, backupData: WalletBackup) {
         walletLocalDataSource.saveBackupMetadata(backupData)
     }
 
-    // Utility functions
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 
     private fun hexToBytes(hex: String): ByteArray {
