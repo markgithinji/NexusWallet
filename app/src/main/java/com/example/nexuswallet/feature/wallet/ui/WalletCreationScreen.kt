@@ -435,7 +435,12 @@ fun WalletTypeSelectionStep(
         Spacer(modifier = Modifier.height(24.dp))
 
         // Wallet Type Cards
-        WalletType.entries.forEach { type ->
+        listOf(
+            WalletType.BITCOIN,
+            WalletType.ETHEREUM,
+            WalletType.ETHEREUM_SEPOLIA,
+            WalletType.MULTICHAIN
+        ).forEach { type ->
             WalletTypeCard(
                 walletType = type,
                 isSelected = selectedType == type,
@@ -473,6 +478,12 @@ fun WalletTypeCard(
             "Ethereum Wallet",
             "Ethereum, ERC20 tokens & smart contracts",
             Icons.Default.Diamond
+        )
+
+        WalletType.ETHEREUM_SEPOLIA -> Triple(
+            "Sepolia Testnet",
+            "Ethereum testnet for development & testing",
+            Icons.Default.Diamond,
         )
 
         WalletType.MULTICHAIN -> Triple(
@@ -533,6 +544,19 @@ fun WalletTypeCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                if (walletType == WalletType.ETHEREUM_SEPOLIA) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "TESTNET",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Red,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .background(Color.Red.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
             }
 
             if (isSelected) {

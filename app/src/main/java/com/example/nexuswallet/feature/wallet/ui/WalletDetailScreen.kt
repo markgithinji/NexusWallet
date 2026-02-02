@@ -44,6 +44,7 @@ import androidx.navigation.NavController
 import com.example.nexuswallet.NavigationViewModel
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
 import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
@@ -735,7 +736,11 @@ fun EmptyTransactionsView() {
 fun getWalletTypeDisplay(wallet: CryptoWallet): String {
     return when (wallet) {
         is BitcoinWallet -> "Bitcoin Wallet"
-        is EthereumWallet -> "Ethereum Wallet"
+        is EthereumWallet -> when (wallet.network) {
+            EthereumNetwork.SEPOLIA -> "Sepolia Testnet"
+            EthereumNetwork.GOERLI -> "Goerli Testnet"
+            else -> "Ethereum Wallet"
+        }
         is MultiChainWallet -> "Multi-Chain Wallet"
         is SolanaWallet -> "Solana Wallet"
         else -> "Crypto Wallet"
@@ -745,7 +750,10 @@ fun getWalletTypeDisplay(wallet: CryptoWallet): String {
 fun getNativeSymbol(wallet: CryptoWallet): String {
     return when (wallet) {
         is BitcoinWallet -> "BTC"
-        is EthereumWallet -> "ETH"
+        is EthereumWallet -> when (wallet.network) {
+            EthereumNetwork.SEPOLIA -> "ETH (Sepolia)"  // Show it's testnet ETH
+            else -> "ETH"
+        }
         is MultiChainWallet -> "MULTI"
         is SolanaWallet -> "SOL"
         else -> "CRYPTO"
