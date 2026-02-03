@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.wallet.data.repository
 
-import android.content.Context
 import android.util.Log
 import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
@@ -18,18 +17,17 @@ import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import kotlinx.serialization.json.Json
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody
+import org.json.JSONObject
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.RoundingMode
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Named
-import kotlin.collections.filter
 
 class BlockchainRepository @Inject constructor(
     @Named("mainnetEtherscanApi") private val mainnetEtherscanApi: EtherscanApiService,
@@ -39,10 +37,16 @@ class BlockchainRepository @Inject constructor(
     private val covalentApi: CovalentApiService,
     private val bitcoinBroadcastApi: BitcoinBroadcastApiService
 ) {
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-        encodeDefaults = true
+
+    companion object {
+        // Chain IDs for Etherscan V2
+        const val CHAIN_ID_ETHEREUM = "1"
+        const val CHAIN_ID_SEPOLIA = "11155111"
+        const val CHAIN_ID_HOLESKY = "17000"
+        const val CHAIN_ID_POLYGON = "137"
+        const val CHAIN_ID_BSC = "56"
+        const val CHAIN_ID_ARBITRUM = "42161"
+        const val CHAIN_ID_OPTIMISM = "10"
     }
 
     suspend fun getEthereumBalance(
@@ -50,87 +54,92 @@ class BlockchainRepository @Inject constructor(
         network: EthereumNetwork = EthereumNetwork.MAINNET
     ): BigDecimal {
         Log.d("BlockchainRepo", "=".repeat(50))
-        Log.d("BlockchainRepo", " START: getEthereumBalance()")
+        Log.d("BlockchainRepo", " START: getEthereumBalance() - V2")
         Log.d("BlockchainRepo", " Wallet Address: $address")
-        Log.d("BlockchainRepo", "Network: $network")
-        Log.d("BlockchainRepo", "API Key exists: ${BuildConfig.ETHERSCAN_API_KEY.isNotEmpty()}")
+        Log.d("BlockchainRepo", " Network: $network")
+        Log.d("BlockchainRepo", " API Key exists: ${BuildConfig.ETHERSCAN_API_KEY.isNotEmpty()}")
 
         return try {
-            // For Sepolia, use direct RPC
-            if (network == EthereumNetwork.SEPOLIA) {
-                Log.d("BlockchainRepo", " Strategy: Using DIRECT RPC for Sepolia")
-                return getSepoliaBalanceViaRPC(address)
+            // Get chain ID for V2 API
+            val chainId = when (network) {
+                EthereumNetwork.SEPOLIA -> CHAIN_ID_SEPOLIA
+//                EthereumNetwork.HOLESKY -> CHAIN_ID_HOLESKY
+                EthereumNetwork.POLYGON -> CHAIN_ID_POLYGON
+                EthereumNetwork.BSC -> CHAIN_ID_BSC
+                EthereumNetwork.ARBITRUM -> CHAIN_ID_ARBITRUM
+                EthereumNetwork.OPTIMISM -> CHAIN_ID_OPTIMISM
+                else -> CHAIN_ID_ETHEREUM
             }
 
-            // For mainnet, try Etherscan
-            Log.d("BlockchainRepo", " Strategy: Using Etherscan API")
+            // Get appropriate API service
+            val etherscanApi = when (network) {
+                EthereumNetwork.SEPOLIA -> sepoliaEtherscanApi
+                else -> mainnetEtherscanApi
+            }
 
-            return try {
-                val etherscanApi = when (network) {
-                    EthereumNetwork.SEPOLIA -> sepoliaEtherscanApi
-                    else -> mainnetEtherscanApi
+            val apiKey = BuildConfig.ETHERSCAN_API_KEY
+            Log.d("BlockchainRepo", " Using Etherscan API V2")
+            Log.d("BlockchainRepo", " Chain ID: $chainId")
+            Log.d("BlockchainRepo", " Base URL: https://api.etherscan.io/v2/api")
+            Log.d("BlockchainRepo", " Parameters: chainid=$chainId, module=account, action=balance, address=$address")
+
+            val response = etherscanApi.getEthereumBalance(
+                chainId = chainId,
+                address = address,
+                apiKey = apiKey
+            )
+
+            Log.d("BlockchainRepo", " API CALL SUCCESSFUL")
+            Log.d("BlockchainRepo", " Response Status: ${response.status}")
+            Log.d("BlockchainRepo", " Response Message: ${response.message}")
+            Log.d("BlockchainRepo", " Raw Result: ${response.result}")
+            Log.d("BlockchainRepo", " Result Length: ${response.result.length} chars")
+
+            if (response.status == "1") {
+                val wei = BigDecimal(response.result)
+                val eth = wei.divide(BigDecimal("1000000000000000000"), 8, RoundingMode.HALF_UP)
+
+                Log.d("BlockchainRepo", " BALANCE CALCULATION:")
+                Log.d("BlockchainRepo", "   - Wei: $wei")
+                Log.d("BlockchainRepo", "   - ETH: $eth")
+                Log.d("BlockchainRepo", "   - Conversion: $wei / 1000000000000000000 = $eth")
+
+                Log.d("BlockchainRepo", " FINAL BALANCE: $eth ETH")
+                Log.d("BlockchainRepo", "=".repeat(50))
+
+                eth
+            } else {
+                Log.w("BlockchainRepo", "⚠ Etherscan API V2 Error:")
+                Log.w("BlockchainRepo", "  - Status: ${response.status}")
+                Log.w("BlockchainRepo", "  - Message: ${response.message}")
+                Log.w("BlockchainRepo", "  - Result: ${response.result}")
+
+                if (response.message.contains("deprecated") || response.message.contains("V1")) {
+                    Log.e("BlockchainRepo", " V1 API DEPRECATED! Using RPC fallback...")
                 }
 
-                val apiKey = BuildConfig.ETHERSCAN_API_KEY
-                Log.d("BlockchainRepo", " Making Etherscan API call...")
-                Log.d("BlockchainRepo", " API URL: https://${if (network == EthereumNetwork.SEPOLIA) "api-sepolia" else "api"}.etherscan.io/api")
-                Log.d("BlockchainRepo", " Parameters: module=account, action=balance, address=$address, tag=latest")
-
-                val response = etherscanApi.getEthereumBalance(
-                    address = address,
-                    apiKey = apiKey
-                )
-
-                Log.d("BlockchainRepo", " API CALL SUCCESSFUL")
-                Log.d("BlockchainRepo", " Response Status: ${response.status}")
-                Log.d("BlockchainRepo", " Response Message: ${response.message}")
-                Log.d("BlockchainRepo", " Raw Result: ${response.result}")
-                Log.d("BlockchainRepo", " Result Length: ${response.result.length} chars")
-
-                if (response.status == "1") {
-                    val wei = BigDecimal(response.result)
-                    val eth = wei.divide(BigDecimal("1000000000000000000"), 8, RoundingMode.HALF_UP)
-
-                    Log.d("BlockchainRepo", " BALANCE CALCULATION:")
-                    Log.d("BlockchainRepo", "   - Wei: $wei")
-                    Log.d("BlockchainRepo", "   - ETH: $eth")
-                    Log.d("BlockchainRepo", "   - Conversion: $wei / 1000000000000000000 = $eth")
-
-                    Log.d("BlockchainRepo", " FINAL BALANCE: $eth ETH")
-                    Log.d("BlockchainRepo", "=".repeat(50))
-
-                    eth
-                } else {
-                    Log.w("BlockchainRepo", "⚠ Etherscan API Error:")
-                    Log.w("BlockchainRepo", "  - Status: ${response.status}")
-                    Log.w("BlockchainRepo", "   - Message: ${response.message}")
-                    Log.w("BlockchainRepo", "   - Result: ${response.result}")
-
-                    if (response.result.contains("deprecated")) {
-                        Log.e("BlockchainRepo", " V1 API DEPRECATED! Need API key upgrade.")
-                    }
-
-                    // Fallback to simulated
-                    val simulated = getSimulatedBalance(address)
-                    Log.d("BlockchainRepo", " Using simulated balance: $simulated ETH")
-                    Log.d("BlockchainRepo", "=".repeat(50))
-                    simulated
+                // Fallback to RPC for Sepolia
+                if (network == EthereumNetwork.SEPOLIA) {
+                    Log.d("BlockchainRepo", " Falling back to RPC for Sepolia...")
+                    return getSepoliaBalanceViaRPC(address)
                 }
-            } catch (e: Exception) {
-                Log.e("BlockchainRepo", " Etherscan API call failed:")
-                Log.e("BlockchainRepo", "   - Error: ${e.javaClass.simpleName}")
-                Log.e("BlockchainRepo", "   - Message: ${e.message}")
 
+                // Fallback to simulated for other networks
                 val simulated = getSimulatedBalance(address)
                 Log.d("BlockchainRepo", " Using simulated balance: $simulated ETH")
                 Log.d("BlockchainRepo", "=".repeat(50))
                 simulated
             }
-
         } catch (e: Exception) {
-            Log.e("BlockchainRepo", " OUTER ERROR in getEthereumBalance:")
+            Log.e("BlockchainRepo", " Etherscan API V2 call failed:")
             Log.e("BlockchainRepo", "   - Error: ${e.javaClass.simpleName}")
             Log.e("BlockchainRepo", "   - Message: ${e.message}")
+
+            // Fallback to RPC for Sepolia
+            if (network == EthereumNetwork.SEPOLIA) {
+                Log.d("BlockchainRepo", " Falling back to RPC for Sepolia...")
+                return getSepoliaBalanceViaRPC(address)
+            }
 
             val simulated = getSimulatedBalance(address)
             Log.d("BlockchainRepo", " Using simulated balance: $simulated ETH")
@@ -140,57 +149,62 @@ class BlockchainRepository @Inject constructor(
     }
 
     private suspend fun getSepoliaBalanceViaRPC(address: String): BigDecimal {
-        return try {
-            Log.d("BlockchainRepo", " Getting Sepolia balance via RPC...")
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("BlockchainRepo", " Getting Sepolia balance via RPC...")
 
-            // Use public Sepolia RPC
-            val rpcUrl = "https://rpc.sepolia.org"
-            val client = OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(10, TimeUnit.SECONDS)
-                .build()
+                // Use public Sepolia RPC
+                val rpcUrl = "https://rpc.sepolia.org"
+                val client = OkHttpClient.Builder()
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .readTimeout(10, TimeUnit.SECONDS)
+                    .build()
 
-            val jsonRequest = """
-            {
-                "jsonrpc": "2.0",
-                "method": "eth_getBalance",
-                "params": ["$address", "latest"],
-                "id": 1
-            }
-        """.trimIndent()
+                val jsonRequest = """
+                {
+                    "jsonrpc": "2.0",
+                    "method": "eth_getBalance",
+                    "params": ["$address", "latest"],
+                    "id": 1
+                }
+                """.trimIndent()
 
-            val request = Request.Builder()
-                .url(rpcUrl)
-                .post(RequestBody.create("application/json".toMediaType(), jsonRequest))
-                .build()
+                val request = Request.Builder()
+                    .url(rpcUrl)
+                    .post(RequestBody.create("application/json".toMediaType(), jsonRequest))
+                    .build()
 
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string()
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
 
-            if (response.isSuccessful && responseBody != null) {
-                // Simple JSON parsing
-                if (responseBody.contains("\"result\"")) {
-                    val regex = "\"result\":\"([^\"]+)\"".toRegex()
-                    val matchResult = regex.find(responseBody)
-                    val hexResult = matchResult?.groupValues?.get(1)
+                if (response.isSuccessful && responseBody != null) {
+                    // Parse JSON response
+                    val json = JSONObject(responseBody)
+                    if (json.has("result")) {
+                        val hexResult = json.getString("result")
 
-                    if (hexResult != null && hexResult.startsWith("0x")) {
-                        val hexBalance = hexResult.removePrefix("0x")
-                        val wei = BigInteger(hexBalance, 16)
-                        val eth = BigDecimal(wei).divide(BigDecimal("1000000000000000000"), 8, RoundingMode.HALF_UP)
+                        if (hexResult != null && hexResult.startsWith("0x")) {
+                            val hexBalance = hexResult.removePrefix("0x")
+                            val wei = BigInteger(hexBalance, 16)
+                            val eth = BigDecimal(wei).divide(
+                                BigDecimal("1000000000000000000"),
+                                8,
+                                RoundingMode.HALF_UP
+                            )
 
-                        Log.d("BlockchainRepo", " RPC Balance: $eth ETH")
-                        return eth
+                            Log.d("BlockchainRepo", " RPC Balance: $eth ETH")
+                            return@withContext eth
+                        }
                     }
                 }
+
+                Log.w("BlockchainRepo", "RPC failed, using simulated")
+                getSimulatedBalance(address)
+
+            } catch (e: Exception) {
+                Log.e("BlockchainRepo", "RPC error: ${e.message}")
+                getSimulatedBalance(address)
             }
-
-            Log.w("BlockchainRepo", "RPC failed, using simulated")
-            getSimulatedBalance(address)
-
-        } catch (e: Exception) {
-            Log.e("BlockchainRepo", "RPC error: ${e.message}")
-            getSimulatedBalance(address)
         }
     }
 
@@ -245,17 +259,25 @@ class BlockchainRepository @Inject constructor(
         network: EthereumNetwork = EthereumNetwork.MAINNET
     ): List<Transaction> {
         return try {
+            val chainId = when (network) {
+                EthereumNetwork.SEPOLIA -> CHAIN_ID_SEPOLIA
+//                EthereumNetwork.HOLESKY -> CHAIN_ID_HOLESKY
+                EthereumNetwork.POLYGON -> CHAIN_ID_POLYGON
+                EthereumNetwork.BSC -> CHAIN_ID_BSC
+                EthereumNetwork.ARBITRUM -> CHAIN_ID_ARBITRUM
+                EthereumNetwork.OPTIMISM -> CHAIN_ID_OPTIMISM
+                else -> CHAIN_ID_ETHEREUM
+            }
+
             val etherscanApi = when (network) {
                 EthereumNetwork.SEPOLIA -> sepoliaEtherscanApi
                 else -> mainnetEtherscanApi
             }
 
-            val apiKey = when (network) {
-                EthereumNetwork.SEPOLIA -> BuildConfig.ETHERSCAN_API_KEY
-                else -> BuildConfig.ETHERSCAN_API_KEY
-            }
+            val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
             val response = etherscanApi.getEthereumTransactions(
+                chainId = chainId,
                 address = address,
                 apiKey = apiKey
             )
@@ -290,6 +312,7 @@ class BlockchainRepository @Inject constructor(
                     )
                 }
             } else {
+                Log.w("BlockchainRepo", "V2 API error for transactions: ${response.message}")
                 emptyList()
             }
         } catch (e: Exception) {
@@ -297,7 +320,6 @@ class BlockchainRepository @Inject constructor(
             getSampleTransactions(address, getChainTypeForNetwork(network))
         }
     }
-
 
     // Helper: Get simulated balance for demo
     private fun getSimulatedBalance(address: String): BigDecimal {
@@ -336,10 +358,23 @@ class BlockchainRepository @Inject constructor(
         )
     }
 
-    suspend fun getCurrentGasPrice(): GasPrice {
+    suspend fun getCurrentGasPrice(network: EthereumNetwork = EthereumNetwork.MAINNET): GasPrice {
         return try {
+            val chainId = when (network) {
+                EthereumNetwork.SEPOLIA -> CHAIN_ID_SEPOLIA
+//                EthereumNetwork.HOLESKY -> CHAIN_ID_HOLESKY
+                EthereumNetwork.POLYGON -> CHAIN_ID_POLYGON
+                EthereumNetwork.BSC -> CHAIN_ID_BSC
+                EthereumNetwork.ARBITRUM -> CHAIN_ID_ARBITRUM
+                EthereumNetwork.OPTIMISM -> CHAIN_ID_OPTIMISM
+                else -> CHAIN_ID_ETHEREUM
+            }
+
+            val apiKey = BuildConfig.ETHERSCAN_API_KEY
+
             val response = etherscanApi.getGasPrice(
-                apiKey = BuildConfig.ETHERSCAN_API_KEY
+                chainId = chainId,
+                apiKey = apiKey
             )
 
             GasPrice(
@@ -348,8 +383,7 @@ class BlockchainRepository @Inject constructor(
                 fast = response.result.FastGasPrice
             )
         } catch (e: Exception) {
-            Log.e("BlockchainRepo", "Error getting gas price: ${e.message}")
-            // Return reasonable defaults
+            Log.e("BlockchainRepo", "Error getting gas price for $network: ${e.message}")
             GasPrice(
                 safe = "30",
                 propose = "35",
@@ -380,7 +414,7 @@ class BlockchainRepository @Inject constructor(
         return address.matches(Regex("^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,39}\$"))
     }
 
-    suspend fun getBitcoinFeeEstimates(): TransactionFee {
+    fun getBitcoinFeeEstimates(): TransactionFee {
         return try {
             // Using blockstream.info API for fee estimates
             // For demo, we'll return mock data
@@ -418,12 +452,14 @@ class BlockchainRepository @Inject constructor(
         }
     }
 
-    // Ethereum Gas Price
-    suspend fun getEthereumGasPrice(): TransactionFee {
+    suspend fun getEthereumGasPrice(network: EthereumNetwork = EthereumNetwork.MAINNET): TransactionFee {
         return try {
-            val gasPrice = getCurrentGasPrice()
+            val gasPrice = getCurrentGasPrice(network)
             TransactionFee(
-                chain = ChainType.ETHEREUM,
+                chain = when (network) {
+                    EthereumNetwork.SEPOLIA -> ChainType.ETHEREUM_SEPOLIA
+                    else -> ChainType.ETHEREUM
+                },
                 slow = FeeEstimate(
                     feePerByte = null,
                     gasPrice = gasPrice.safe,
@@ -450,7 +486,7 @@ class BlockchainRepository @Inject constructor(
                 )
             )
         } catch (e: Exception) {
-            Log.e("BlockchainRepo", "Error getting ETH gas price: ${e.message}")
+            Log.e("BlockchainRepo", "Error getting ETH gas price for $network: ${e.message}")
             // Fallback to demo fees
             getDemoEthereumFees()
         }
@@ -461,17 +497,25 @@ class BlockchainRepository @Inject constructor(
         network: EthereumNetwork = EthereumNetwork.MAINNET
     ): BroadcastResult {
         return try {
+            val chainId = when (network) {
+                EthereumNetwork.SEPOLIA -> CHAIN_ID_SEPOLIA
+//                EthereumNetwork.HOLESKY -> CHAIN_ID_HOLESKY
+                EthereumNetwork.POLYGON -> CHAIN_ID_POLYGON
+                EthereumNetwork.BSC -> CHAIN_ID_BSC
+                EthereumNetwork.ARBITRUM -> CHAIN_ID_ARBITRUM
+                EthereumNetwork.OPTIMISM -> CHAIN_ID_OPTIMISM
+                else -> CHAIN_ID_ETHEREUM
+            }
+
             val etherscanApi = when (network) {
                 EthereumNetwork.SEPOLIA -> sepoliaEtherscanApi
                 else -> mainnetEtherscanApi
             }
 
-            val apiKey = when (network) {
-                EthereumNetwork.SEPOLIA -> BuildConfig.ETHERSCAN_API_KEY
-                else -> BuildConfig.ETHERSCAN_API_KEY
-            }
+            val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
             val response = etherscanApi.broadcastTransaction(
+                chainId = chainId,
                 hex = rawTx,
                 apiKey = apiKey
             )
@@ -499,11 +543,14 @@ class BlockchainRepository @Inject constructor(
         }
     }
 
-    // Helper function
     private fun getChainTypeForNetwork(network: EthereumNetwork): ChainType {
         return when (network) {
             EthereumNetwork.SEPOLIA -> ChainType.ETHEREUM_SEPOLIA
-            EthereumNetwork.GOERLI -> ChainType.ETHEREUM
+//            EthereumNetwork.HOLESKY -> ChainType.ETHEREUM_HOLESKY
+            EthereumNetwork.POLYGON -> ChainType.POLYGON
+            EthereumNetwork.BSC -> ChainType.BINANCE_SMART_CHAIN
+            EthereumNetwork.ARBITRUM -> ChainType.ARBITRUM
+            EthereumNetwork.OPTIMISM -> ChainType.OPTIMISM
             else -> ChainType.ETHEREUM
         }
     }
@@ -597,39 +644,28 @@ class BlockchainRepository @Inject constructor(
         return BigDecimal(feeSats).divide(BigDecimal("100000000"), 8, RoundingMode.HALF_UP).toPlainString()
     }
 
-    // Get Bitcoin UTXOs (for transaction building)
-    suspend fun getBitcoinUTXOs(address: String): List<UTXO> {
-        return try {
-            val utxos = blockstreamApi.getBitcoinUtxos(address)
-            utxos.map { utxo ->
-                UTXO(
-                    txid = utxo.txId,
-                    vout = utxo.vout,
-                    amount = utxo.value,
-                    scriptPubKey = utxo.scriptPubKey ?: "",
-                    confirmations = calculateConfirmations(utxo.status)
-                )
-            }
-        } catch (e: Exception) {
-            Log.e("BlockchainRepo", "Error getting BTC UTXOs: ${e.message}")
-            // Return mock UTXOs for demo
-            getMockUTXOs(address)
-        }
-    }
-
     private fun calculateConfirmations(status: BlockstreamStatus?): Int {
         if (status == null || !status.confirmed) return 0
-
-        // For demo purposes, we'll return a fixed number
-        // In production, we'll get current block height from API
-        return 3
+        return 3 // For demo
     }
+
     // Get Ethereum Nonce
-    suspend fun getEthereumNonce(address: String): Int {
+    suspend fun getEthereumNonce(
+        address: String,
+        network: EthereumNetwork = EthereumNetwork.MAINNET
+    ): Int {
         return try {
+            val chainId = when (network) {
+                EthereumNetwork.SEPOLIA -> CHAIN_ID_SEPOLIA
+                else -> CHAIN_ID_ETHEREUM
+            }
+
+            val apiKey = BuildConfig.ETHERSCAN_API_KEY
+
             val response = etherscanApi.getTransactionCount(
+                chainId = chainId,
                 address = address,
-                apiKey = BuildConfig.ETHERSCAN_API_KEY
+                apiKey = apiKey
             )
 
             // JSON-RPC response: just check if result is valid
@@ -650,20 +686,10 @@ class BlockchainRepository @Inject constructor(
                 0
             }
         } catch (e: Exception) {
-            Log.e("BlockchainRepo", "Error getting ETH nonce: ${e.message}")
+            Log.e("BlockchainRepo", "Error getting ETH nonce for $network: ${e.message}")
             0 // Return 0 for demo
         }
     }
-
-    // Validation with chain parameter
-    suspend fun validateAddress(address: String, chain: ChainType): Boolean {
-        return when (chain) {
-            ChainType.BITCOIN -> isValidBitcoinAddress(address)
-            ChainType.ETHEREUM -> isValidEthereumAddress(address)
-            else -> true // Accept all other chains for demo
-        }
-    }
-
 
     private fun getDemoBitcoinFees(): TransactionFee {
         return TransactionFee(
@@ -748,46 +774,6 @@ class BlockchainRepository @Inject constructor(
     }
 }
 
-fun getSampleTransactions(address: String, chain: ChainType): List<Transaction> {
-    return listOf(
-        Transaction(
-            hash = when (chain) {
-                ChainType.BITCOIN -> "btc_${System.currentTimeMillis().toString(16)}"
-                ChainType.SOLANA -> "sol_${System.currentTimeMillis().toString(16)}"
-                else -> "0x${System.currentTimeMillis().toString(16)}"
-            },
-            from = when (chain) {
-                ChainType.BITCOIN -> "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
-                ChainType.SOLANA -> "SolanaSender123456789012345678901234567890"
-                else -> "0x742d35Cc6634C0532925a3b844Bc9e"
-            },
-            to = address,
-            value = when (chain) {
-                ChainType.BITCOIN -> "150000000"
-                ChainType.SOLANA -> "5000000000"
-                else -> "1000000000000000000"
-            },
-            valueDecimal = when (chain) {
-                ChainType.BITCOIN -> "1.5"
-                ChainType.SOLANA -> "5.0"
-                else -> "1.0"
-            },
-            gasPrice = when (chain) {
-                ChainType.BITCOIN, ChainType.SOLANA -> null
-                else -> "50000000000"
-            },
-            gasUsed = when (chain) {
-                ChainType.BITCOIN, ChainType.SOLANA -> null
-                else -> "21000"
-            },
-            timestamp = System.currentTimeMillis() - 86400000,
-            status = TransactionStatus.SUCCESS,
-            chain = chain
-        )
-    )
-}
-
-// Helper extension
 private fun ChainId.toChainType(): ChainType {
     return when (this) {
         ChainId.ETHEREUM_MAINNET -> ChainType.ETHEREUM
