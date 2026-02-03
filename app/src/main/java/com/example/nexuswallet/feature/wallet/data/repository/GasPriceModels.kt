@@ -16,9 +16,7 @@ data class GasPriceResult(
     @SerialName("LastBlock") val lastBlock: String,
     @SerialName("SafeGasPrice") val SafeGasPrice: String,
     @SerialName("ProposeGasPrice") val ProposeGasPrice: String,
-    @SerialName("FastGasPrice") val FastGasPrice: String,
-    @SerialName("suggestBaseFee") val suggestBaseFee: String,
-    @SerialName("gasUsedRatio") val gasUsedRatio: String
+    @SerialName("FastGasPrice") val FastGasPrice: String
 )
 
 @Serializable

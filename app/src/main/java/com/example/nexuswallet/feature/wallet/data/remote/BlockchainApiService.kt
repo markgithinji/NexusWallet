@@ -18,8 +18,9 @@ import retrofit2.http.Headers
 import retrofit2.http.POST
 
 interface EtherscanApiService {
-    @GET("api")
+    @GET("v2/api")
     suspend fun getEthereumBalance(
+        @Query("chainid") chainId: String,
         @Query("module") module: String = "account",
         @Query("action") action: String = "balance",
         @Query("address") address: String,
@@ -27,28 +28,27 @@ interface EtherscanApiService {
         @Query("apikey") apiKey: String
     ): EtherscanBalanceResponse
 
-    @GET("api")
+    @GET("v2/api")
     suspend fun getEthereumTransactions(
+        @Query("chainid") chainId: String,
         @Query("module") module: String = "account",
         @Query("action") action: String = "txlist",
         @Query("address") address: String,
-        @Query("startblock") startBlock: Int = 0,
-        @Query("endblock") endBlock: Int = 99999999,
-        @Query("page") page: Int = 1,
-        @Query("offset") offset: Int = 50,
         @Query("sort") sort: String = "desc",
         @Query("apikey") apiKey: String
     ): EtherscanTransactionsResponse
 
-    @GET("api")
+    @GET("v2/api")
     suspend fun getGasPrice(
+        @Query("chainid") chainId: String,
         @Query("module") module: String = "gastracker",
         @Query("action") action: String = "gasoracle",
         @Query("apikey") apiKey: String
     ): GasPriceResponse
 
-    @GET("api")
+    @GET("v2/api")
     suspend fun getTransactionCount(
+        @Query("chainid") chainId: String,
         @Query("module") module: String = "proxy",
         @Query("action") action: String = "eth_getTransactionCount",
         @Query("address") address: String,
@@ -56,57 +56,15 @@ interface EtherscanApiService {
         @Query("apikey") apiKey: String
     ): EtherscanTransactionCountResponse
 
-    @GET("api")
+    @GET("v2/api")
     suspend fun broadcastTransaction(
+        @Query("chainid") chainId: String,
         @Query("module") module: String = "proxy",
         @Query("action") action: String = "eth_sendRawTransaction",
         @Query("hex") hex: String,
         @Query("apikey") apiKey: String
     ): EtherscanBroadcastResponse
 }
-
-@Serializable
-data class EtherscanErrorResponse(
-    @SerialName("status") val status: String,
-    @SerialName("message") val message: String,
-    @SerialName("result") val result: String
-)
-
-@Serializable
-data class EtherscanStatsResponse(
-    @SerialName("status") val status: String,
-    @SerialName("message") val message: String,
-    @SerialName("result") val result: String
-)
-
-
-@Serializable
-data class EtherscanFlexibleResponse(
-    @SerialName("status") val status: String,
-    @SerialName("message") val message: String,
-    @SerialName("result") @Contextual val result: JsonElement? = null
-)
-
-@Serializable
-data class EtherscanGasOracleResponse(
-    @SerialName("status") val status: String,
-    @SerialName("message") val message: String,
-    @SerialName("result") val result: GasPriceResult
-)
-
-@Serializable
-data class JsonRpcResponse<T>(
-    @SerialName("jsonrpc") val jsonrpc: String,
-    @SerialName("result") val result: T? = null,
-    @SerialName("error") val error: JsonRpcError? = null,
-    @SerialName("id") val id: Int
-)
-
-@Serializable
-data class JsonRpcError(
-    @SerialName("code") val code: Int,
-    @SerialName("message") val message: String
-)
 
 @Serializable
 data class EtherscanTransactionCountResponse(
@@ -122,45 +80,6 @@ data class EtherscanBroadcastResponse(
     @SerialName("id") val id: Int
 )
 
-@Serializable
-data class EtherscanBalanceResponse(
-    @SerialName("status") val status: String,
-    @SerialName("message") val message: String,
-    @SerialName("result") val result: String
-)
-
-@Serializable
-data class EtherscanTransactionsResponse(
-    @SerialName("status") val status: String,
-    @SerialName("result") val result: List<EtherscanTransaction>
-)
-
-@Serializable
-data class EtherscanTransaction(
-    @SerialName("hash") val hash: String,
-    @SerialName("from") val from: String,
-    @SerialName("to") val to: String,
-    @SerialName("value") val value: String,
-    @SerialName("gasPrice") val gasPrice: String,
-    @SerialName("gas") val gas: String,
-    @SerialName("timestamp") val timestamp: String,
-    @SerialName("isError") val isError: String,
-    @SerialName("receiptStatus") val receiptStatus: String
-)
-
-@Serializable
-data class GasPriceResponse(
-    @SerialName("status") val status: String,
-    @SerialName("result") val result: GasPriceResult
-)
-
-@Serializable
-data class GasPriceResult(
-    @SerialName("SafeGasPrice") val SafeGasPrice: String,
-    @SerialName("ProposeGasPrice") val ProposeGasPrice: String,
-    @SerialName("FastGasPrice") val FastGasPrice: String
-)
-
 interface BlockstreamApiService {
     @GET("address/{address}/utxo")
     suspend fun getBitcoinUtxos(@Path("address") address: String): List<BlockstreamUtxo>
@@ -168,59 +87,6 @@ interface BlockstreamApiService {
     @GET("address/{address}/transactions")
     suspend fun getBitcoinTransactions(@Path("address") address: String): List<BlockstreamTransaction>
 }
-
-@Serializable
-data class BlockstreamUtxo(
-    @SerialName("txid") val txid: String,
-    @SerialName("vout") val vout: Int,
-    @SerialName("value") val value: Long,
-    @SerialName("scriptpubkey") val scriptpubkey: String? = null,
-    @SerialName("scriptpubkey_asm") val scriptpubkeyAsm: String? = null,
-    @SerialName("scriptpubkey_type") val scriptpubkeyType: String? = null,
-    @SerialName("scriptpubkey_address") val scriptpubkeyAddress: String? = null,
-    @SerialName("status") val status: BlockstreamStatus? = null
-)
-
-@Serializable
-data class BlockstreamStatus(
-    @SerialName("confirmed") val confirmed: Boolean,
-    @SerialName("block_height") val blockHeight: Int? = null,
-    @SerialName("block_hash") val blockHash: String? = null,
-    @SerialName("block_time") val blockTime: Int? = null
-)
-
-@Serializable
-data class BlockstreamTransaction(
-    @SerialName("txid") val txid: String,
-    @SerialName("version") val version: Int,
-    @SerialName("locktime") val locktime: Int,
-    @SerialName("vin") val vin: List<BlockstreamVin>,
-    @SerialName("vout") val vout: List<BlockstreamVout>,
-    @SerialName("size") val size: Int,
-    @SerialName("weight") val weight: Int,
-    @SerialName("fee") val fee: Long,
-    @SerialName("status") val status: BlockstreamStatus
-)
-
-@Serializable
-data class BlockstreamVin(
-    @SerialName("txid") val txid: String,
-    @SerialName("vout") val vout: Int,
-    @SerialName("prevout") val prevout: BlockstreamVout? = null,
-    @SerialName("scriptsig") val scriptsig: String? = null,
-    @SerialName("scriptsig_asm") val scriptsigAsm: String? = null,
-    @SerialName("is_coinbase") val isCoinbase: Boolean,
-    @SerialName("sequence") val sequence: Long
-)
-
-@kotlinx.serialization.Serializable
-data class BlockstreamVout(
-    @SerialName("scriptpubkey") val scriptpubkey: String? = null,
-    @SerialName("scriptpubkey_asm") val scriptpubkeyAsm: String? = null,
-    @SerialName("scriptpubkey_type") val scriptpubkeyType: String? = null,
-    @SerialName("scriptpubkey_address") val scriptpubkeyAddress: String? = null,
-    @SerialName("value") val value: Long
-)
 
 interface CovalentApiService {
     @GET("v1/{chainId}/address/{address}/balances_v2/")
