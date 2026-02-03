@@ -575,13 +575,6 @@ class WalletRepository @Inject constructor(
         }
     }
 
-    suspend fun refreshAllWallets() {
-        val wallets = _walletsFlow.value
-        wallets.forEach { wallet ->
-            syncWalletWithBlockchain(wallet.id)
-        }
-    }
-
     // === TRANSACTION OPERATIONS ===
     suspend fun saveTransactions(walletId: String, transactions: List<Transaction>) {
         localDataSource.saveTransactions(walletId, transactions)
@@ -589,38 +582,6 @@ class WalletRepository @Inject constructor(
 
     fun getTransactions(walletId: String): Flow<List<Transaction>> {
         return localDataSource.loadTransactions(walletId)
-    }
-
-    // === SETTINGS OPERATIONS ===
-    suspend fun saveSettings(settings: WalletSettings) {
-        localDataSource.saveSettings(settings)
-    }
-
-    suspend fun getSettings(walletId: String): WalletSettings? {
-        return localDataSource.loadSettings(walletId)
-    }
-
-    // === MNEMONIC & SECURITY OPERATIONS ===
-    suspend fun getMnemonic(walletId: String): List<String>? {
-        return securityManager.retrieveMnemonic(walletId)
-    }
-
-    suspend fun createBackup(walletId: String): BackupResult {
-        val wallet = getWallet(walletId)
-        return if (wallet != null) {
-            securityManager.createEncryptedBackup(walletId, wallet)
-        } else {
-            BackupResult.Error(IllegalArgumentException("Wallet not found"))
-        }
-    }
-
-    // === HELPER QUERIES ===
-    suspend fun hasWallets(): Boolean {
-        return localDataSource.hasWallets()
-    }
-
-    suspend fun getWalletCount(): Int {
-        return localDataSource.getWalletCount()
     }
 
     // === FORMATTING HELPERS ===
@@ -654,18 +615,7 @@ class WalletRepository @Inject constructor(
         return (amount.toDouble() * price)
     }
 
-    fun convertToDecimal(balanceStr: String, decimals: Int): String {
-        return try {
-            val bigInt = BigInteger(balanceStr)
-            val divisor = BigDecimal(BigInteger.TEN.pow(decimals))
-            BigDecimal(bigInt).divide(divisor).toString()
-        } catch (e: Exception) {
-            "0"
-        }
-    }
-
-    // === FLOW MANAGEMENT ===
-    private suspend fun updateWalletsFlow(wallet: CryptoWallet) {
+    private fun updateWalletsFlow(wallet: CryptoWallet) {
         val currentWallets = _walletsFlow.value.toMutableList()
         val existingIndex = currentWallets.indexOfFirst { it.id == wallet.id }
 
@@ -678,24 +628,9 @@ class WalletRepository @Inject constructor(
         _walletsFlow.value = currentWallets
     }
 
-    private suspend fun removeWalletFromFlow(walletId: String) {
+    private fun removeWalletFromFlow(walletId: String) {
         val currentWallets = _walletsFlow.value.toMutableList()
         currentWallets.removeAll { it.id == walletId }
         _walletsFlow.value = currentWallets
-    }
-
-    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
-
-    suspend fun getLiveGasPrice(): GasPrice {
-        return blockchainRepository.getCurrentGasPrice()
-    }
-
-    fun validateAddress(address: String, walletType: WalletType): Boolean {
-        return when (walletType) {
-            WalletType.BITCOIN -> blockchainRepository.isValidBitcoinAddress(address)
-            WalletType.ETHEREUM -> blockchainRepository.isValidEthereumAddress(address)
-            WalletType.SOLANA -> true // For now, accept any string as Solana address
-            else -> address.isNotBlank()
-        }
     }
 }

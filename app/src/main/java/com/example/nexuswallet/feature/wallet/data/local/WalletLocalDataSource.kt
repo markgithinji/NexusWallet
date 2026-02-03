@@ -126,38 +126,6 @@ class WalletLocalDataSource @Inject constructor(
         }
     }
 
-    // === Settings Operations ===
-    suspend fun saveSettings(settings: WalletSettings) {
-        val jsonStr = json.encodeToString(settings)
-        val entity = SettingsEntity(
-            walletId = settings.walletId,
-            settingsJson = jsonStr
-        )
-        settingsDao.insert(entity)
-    }
-
-    suspend fun loadSettings(walletId: String): WalletSettings? {
-        val entity = settingsDao.get(walletId) ?: return null
-        return try {
-            json.decodeFromString<WalletSettings>(entity.settingsJson)
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    // === Mnemonic Operations ===
-    suspend fun saveEncryptedMnemonic(walletId: String, encryptedData: String) {
-        val entity = MnemonicEntity(
-            walletId = walletId,
-            encryptedData = encryptedData
-        )
-        mnemonicDao.insert(entity)
-    }
-
-    suspend fun loadEncryptedMnemonic(walletId: String): String? {
-        return mnemonicDao.get(walletId)?.encryptedData
-    }
-
     // === Backup Operations ===
     suspend fun saveBackupMetadata(backup: WalletBackup) {
         val jsonStr = Json.Default.encodeToString(backup)
@@ -166,52 +134,6 @@ class WalletLocalDataSource @Inject constructor(
             backupJson = jsonStr
         )
         backupDao.insert(entity)
-    }
-
-    suspend fun loadBackupMetadata(walletId: String): WalletBackup? {
-        val entity = backupDao.get(walletId) ?: return null
-        return try {
-            Json.Default.decodeFromString<WalletBackup>(entity.backupJson)
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    suspend fun deleteBackupMetadata(walletId: String) {
-        backupDao.delete(walletId)
-    }
-
-    // === Helper Methods ===
-//    suspend fun clearAll() {
-//        database.walletDao().run {
-//            getAll().first().forEach { delete(it.id) }
-//        }
-//    }
-
-    suspend fun walletExists(walletId: String): Boolean {
-        return walletDao.exists(walletId)
-    }
-
-    suspend fun getAllWalletIds(): List<String> {
-        return walletDao.getAll().first().map { it.id }
-    }
-
-    suspend fun getWalletCount(): Int {
-        return walletDao.count()
-    }
-
-    suspend fun hasWallets(): Boolean {
-        return walletDao.count() > 0
-    }
-
-    private val transactionLocalDataSource = TransactionLocalDataSource(
-        transactionDao = transactionDao,
-        sendTransactionDao = sendTransactionDao
-    )
-
-    // Add this method to get transaction data source
-    fun getTransactionDataSource(): TransactionLocalDataSource {
-        return transactionLocalDataSource
     }
 
     private fun tryDeserializeWallet(jsonStr: String): CryptoWallet? {
