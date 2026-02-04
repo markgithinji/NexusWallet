@@ -10,6 +10,7 @@ import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.model.ValidationResult
 import com.example.nexuswallet.feature.wallet.data.repository.BlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.repository.TransactionRepository
+import com.example.nexuswallet.feature.wallet.data.repository.TransactionState
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
@@ -40,7 +41,6 @@ class SendViewModel @Inject constructor(
         val fromAddress: String = "",
         val toAddress: String = "",
         val amount: String = "",
-        val amountDecimal: String = "",
         val note: String = "",
         val feeLevel: FeeLevel = FeeLevel.NORMAL,
         val isLoading: Boolean = false,
@@ -48,14 +48,12 @@ class SendViewModel @Inject constructor(
         val feeEstimate: FeeEstimate? = null,
         val balance: BigDecimal = BigDecimal.ZERO,
         val isValid: Boolean = false,
-        val validationError: String? = null
+        val validationError: String? = null,
+        val transactionState: TransactionState = TransactionState.Idle
     )
 
     private val _uiState = MutableStateFlow(SendUiState())
     val uiState: StateFlow<SendUiState> = _uiState.asStateFlow()
-
-    private val _createdTransaction = MutableStateFlow<SendTransaction?>(null)
-    val createdTransaction: StateFlow<SendTransaction?> = _createdTransaction.asStateFlow()
 
     sealed class SendEvent {
         data class ToAddressChanged(val address: String) : SendEvent()
@@ -65,31 +63,31 @@ class SendViewModel @Inject constructor(
         object Validate : SendEvent()
         object CreateTransaction : SendEvent()
         object ClearError : SendEvent()
+        object ResetTransactionState : SendEvent()
     }
 
     fun initialize(walletId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    transactionState = TransactionState.Idle
+                )
+            }
 
             try {
                 val wallet = walletRepository.getWallet(walletId)
                 if (wallet != null) {
-                    // Get REAL balance from wallet
                     val walletBalance = walletRepository.getWalletBalance(walletId)
-
-                    // Convert to BigDecimal for calculations
                     val balanceValue = if (walletBalance != null) {
-                        // Use the native balance decimal from database
                         walletBalance.nativeBalanceDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO
                     } else {
-                        // If no balance in database, try blockchain
                         when (wallet) {
                             is EthereumWallet -> blockchainRepository.getEthereumBalance(wallet.address)
                             else -> BigDecimal.ZERO
                         }
                     }
 
-                    // Get fee estimate
                     val chain = when (wallet) {
                         is BitcoinWallet -> ChainType.BITCOIN
                         is EthereumWallet -> ChainType.ETHEREUM
@@ -105,18 +103,19 @@ class SendViewModel @Inject constructor(
                             fromAddress = wallet.address,
                             balance = balanceValue,
                             feeEstimate = feeEstimate,
-                            isLoading = false
+                            isLoading = false,
+                            transactionState = TransactionState.Idle
                         )
                     }
 
-                    // Validate current state
                     validateInputs()
                 }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         error = "Failed to load wallet: ${e.message}",
-                        isLoading = false
+                        isLoading = false,
+                        transactionState = TransactionState.Error("Failed to load wallet: ${e.message}")
                     )
                 }
             }
@@ -132,20 +131,7 @@ class SendViewModel @Inject constructor(
                 }
 
                 is SendEvent.AmountChanged -> {
-                    _uiState.update {
-                        it.copy(
-                            amount = event.amount,
-                            amountDecimal = if (event.amount.isNotEmpty()) {
-                                try {
-                                    BigDecimal(event.amount).toPlainString()
-                                } catch (e: Exception) {
-                                    ""
-                                }
-                            } else {
-                                ""
-                            }
-                        )
-                    }
+                    _uiState.update { it.copy(amount = event.amount) }
                     validateInputs()
                 }
 
@@ -167,8 +153,83 @@ class SendViewModel @Inject constructor(
                 }
 
                 SendEvent.ClearError -> {
-                    _uiState.update { it.copy(error = null) }
+                    _uiState.update {
+                        it.copy(
+                            error = null,
+                            validationError = null,
+                            transactionState = TransactionState.Idle
+                        )
+                    }
                 }
+
+                SendEvent.ResetTransactionState -> {
+                    _uiState.update { it.copy(transactionState = TransactionState.Idle) }
+                }
+            }
+        }
+    }
+
+    private suspend fun createTransaction() {
+        val state = _uiState.value
+
+        // Reset transaction state and set loading
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                transactionState = TransactionState.Loading,
+                error = null,
+                validationError = null
+            )
+        }
+
+        Log.d("SendVM", "🔄 Creating transaction...")
+
+        try {
+            val amount = BigDecimal(state.amount)
+            Log.d("SendVM", "Amount: $amount, To: ${state.toAddress}")
+
+            val result = transactionRepository.createSendTransaction(
+                walletId = state.walletId,
+                toAddress = state.toAddress,
+                amount = amount,
+                feeLevel = state.feeLevel,
+                note = state.note.takeIf { it.isNotEmpty() }
+            )
+
+            when {
+                result.isSuccess -> {
+                    val transaction = result.getOrThrow()
+                    Log.d("SendVM", "✅ Transaction created: ${transaction.hash}")
+
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            transactionState = TransactionState.Created(transaction)
+                        )
+                    }
+                }
+                else -> {
+                    val error = result.exceptionOrNull()?.message ?: "Failed to create transaction"
+                    Log.e("SendVM", "❌ Transaction failed: $error")
+
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = error,
+                            transactionState = TransactionState.Error(error)
+                        )
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SendVM", "❌ Error: ${e.message}", e)
+
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    error = "Error: ${e.message}",
+                    transactionState = TransactionState.Error("Error: ${e.message}")
+                )
             }
         }
     }
@@ -272,56 +333,6 @@ class SendViewModel @Inject constructor(
             _uiState.update { it.copy(feeEstimate = feeEstimate) }
         } catch (e: Exception) {
             // Keep existing fee estimate
-        }
-    }
-
-    private suspend fun createTransaction() {
-        val state = _uiState.value
-
-        _uiState.update { it.copy(isLoading = true, error = null) }
-        Log.d("SendVM", " Creating transaction...")
-
-        try {
-            val amount = BigDecimal(state.amount)
-            Log.d("SendVM", "Amount: $amount, To: ${state.toAddress}")
-
-            val result = transactionRepository.createSendTransaction(
-                walletId = state.walletId,
-                toAddress = state.toAddress,
-                amount = amount,
-                feeLevel = state.feeLevel,
-                note = state.note.takeIf { it.isNotEmpty() }
-            )
-
-            if (result.isSuccess) {
-                val transaction = result.getOrThrow()
-                Log.d("SendVM", " Transaction created: ${transaction.hash}")
-
-                _createdTransaction.value = transaction
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = null
-                    )
-                }
-            } else {
-                val error = result.exceptionOrNull()?.message ?: "Failed to create transaction"
-                Log.e("SendVM", " Transaction failed: $error")
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = error
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("SendVM", " Error: ${e.message}", e)
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    error = "Error: ${e.message}"
-                )
-            }
         }
     }
 

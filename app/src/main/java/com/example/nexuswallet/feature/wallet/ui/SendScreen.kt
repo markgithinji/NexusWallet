@@ -52,6 +52,7 @@ import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
+import com.example.nexuswallet.feature.wallet.data.repository.TransactionState
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import java.math.BigDecimal
@@ -70,21 +71,42 @@ fun SendScreen(
     val context = LocalContext.current
     var showMaxDialog by remember { mutableStateOf(false) }
 
-    // Track created transaction
-    var createdTransaction by remember { mutableStateOf<SendTransaction?>(null) }
-
     // Initialize once
     LaunchedEffect(Unit) {
         viewModel.initialize(walletId)
     }
 
-    // Navigate to review when transaction is created
-    LaunchedEffect(uiState) {
-        if (!uiState.isLoading && uiState.error == null && createdTransaction != null) {
-            // Navigate to review screen
-            navController.navigate("review/${createdTransaction?.id}")
-            // Clear the created transaction to prevent re-navigation
-            createdTransaction = null
+    // Handle transaction state changes
+    LaunchedEffect(uiState.transactionState) {
+        when (val state = uiState.transactionState) {
+            is TransactionState.Created -> {
+                // Navigate to review screen with transaction
+                navController.navigate("review/${state.transaction.id}")
+                // Reset state after navigation
+                viewModel.onEvent(SendViewModel.SendEvent.ResetTransactionState)
+            }
+
+            is TransactionState.Success -> {
+                // Show success message
+                Toast.makeText(context, "Transaction successful: ${state.hash.take(10)}...", Toast.LENGTH_LONG).show()
+                // Navigate back or to transaction details
+                navController.navigate("transaction/${state.hash}")
+            }
+
+            is TransactionState.Error -> {
+                // Show error message
+                if (uiState.error == null) {
+                    Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+                }
+            }
+
+            TransactionState.Loading -> {
+                // Loading is already shown in UI
+            }
+
+            TransactionState.Idle -> {
+                // Do nothing
+            }
         }
     }
 
@@ -98,8 +120,26 @@ fun SendScreen(
                     }
                 },
                 actions = {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    // Show different icons based on transaction state
+                    when (uiState.transactionState) {
+                        TransactionState.Loading -> {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                        is TransactionState.Created -> {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                "Created",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        is TransactionState.Error -> {
+                            Icon(
+                                Icons.Default.Error,
+                                "Error",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                        else -> {}
                     }
                 }
             )
@@ -120,6 +160,9 @@ fun SendScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
+            // Transaction State Banner
+            TransactionStateBanner(uiState.transactionState)
+
             // Error Message
             uiState.error?.let { error ->
                 ErrorMessage(error = error) {
@@ -127,13 +170,13 @@ fun SendScreen(
                 }
             }
 
-            // Wallet Balance Card
             BalanceCard(
                 balance = uiState.balance,
                 walletType = uiState.walletType,
                 address = uiState.fromAddress
             )
             Spacer(modifier = Modifier.height(16.dp))
+
 
             // Recipient Address
             AddressInputSection(
@@ -205,6 +248,85 @@ fun SendScreen(
     }
 }
 
+@Composable
+fun TransactionStateBanner(state: TransactionState) {
+    when (state) {
+        TransactionState.Loading -> {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Creating transaction...")
+                }
+            }
+        }
+
+        is TransactionState.Created -> {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        "Created",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Transaction created successfully!")
+                }
+            }
+        }
+
+        is TransactionState.Error -> {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Error,
+                        "Error",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(state.message, maxLines = 2)
+                }
+            }
+        }
+
+        else -> {
+            // Don't show anything for Idle or Success (handled elsewhere)
+        }
+    }
+}
 // ===== COMPOSABLE COMPONENTS =====
 
 @Composable
@@ -918,12 +1040,23 @@ fun SendBottomBar(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // Validation error
-            uiState.validationError?.let { error ->
+            // Show transaction state message if present
+            val transactionMessage = when (uiState.transactionState) {
+                TransactionState.Loading -> "Creating transaction..."
+                is TransactionState.Created -> "✅ Transaction created"
+                is TransactionState.Error -> "❌ ${uiState.transactionState.message}"
+                else -> uiState.validationError
+            }
+
+            transactionMessage?.let { message ->
                 Text(
-                    text = error,
+                    text = message,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = when (uiState.transactionState) {
+                        is TransactionState.Error -> MaterialTheme.colorScheme.error
+                        is TransactionState.Created -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp),
@@ -941,20 +1074,28 @@ fun SendBottomBar(
                     disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                 )
             ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Creating...")
-                } else {
-                    Text(
-                        text = "Continue",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                when (uiState.transactionState) {
+                    TransactionState.Loading -> {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Creating...")
+                    }
+                    is TransactionState.Created -> {
+                        Icon(Icons.Default.CheckCircle, "Created")
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Created!")
+                    }
+                    else -> {
+                        Text(
+                            text = "Continue",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }

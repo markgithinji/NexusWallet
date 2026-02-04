@@ -182,7 +182,7 @@ class TransactionRepository(
             // 4. Prepare transaction
             // Use fixed gas price for Sepolia
             val gasPriceHex = if (wallet.network == EthereumNetwork.SEPOLIA) {
-                "0x22ecb25c00"  // Your test constant
+                "0x22ecb25c00"
             } else {
                 val gasPriceWei = BigDecimal(selectedFee.gasPrice ?: "30")
                     .multiply(BigDecimal("1000000000"))
@@ -624,4 +624,12 @@ class TransactionRepository(
     suspend fun getSendTransaction(transactionId: String): SendTransaction? {
         return localDataSource.getSendTransaction(transactionId)
     }
+}
+
+sealed class TransactionState {
+    data object Idle : TransactionState()
+    data object Loading : TransactionState()
+    data class Created(val transaction: SendTransaction) : TransactionState()
+    data class Success(val hash: String) : TransactionState()
+    data class Error(val message: String) : TransactionState()
 }

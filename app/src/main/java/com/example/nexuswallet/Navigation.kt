@@ -17,6 +17,8 @@ import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
+import com.example.nexuswallet.feature.wallet.data.test.kettest.KeyStorageTestScreen
+import com.example.nexuswallet.feature.wallet.data.test.SepoliaTestScreen
 import com.example.nexuswallet.feature.wallet.ui.ApiDebugScreen
 import com.example.nexuswallet.feature.wallet.ui.BlockchainViewModel
 import com.example.nexuswallet.feature.wallet.ui.FullQrCodeScreen
@@ -121,8 +123,7 @@ fun Navigation() {
 
             WalletDetailScreen(
                 navController = navController,
-                walletViewModel = walletViewModel,
-                blockchainViewModel = blockchainViewModel
+                walletViewModel = walletViewModel
             )
         }
 
@@ -175,6 +176,16 @@ fun Navigation() {
             SettingsScreen(
                 navController = navController
             )
+        }
+
+        // Sepolia Test Screen
+        composable("sepoliaTest") {
+            SepoliaTestScreen(
+                navController = navController
+            )
+        }
+        composable("key_storage_test") {
+            KeyStorageTestScreen(navController)
         }
 
         composable("receive/{walletId}") { backStackEntry ->

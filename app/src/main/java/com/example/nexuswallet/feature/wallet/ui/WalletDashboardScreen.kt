@@ -72,6 +72,12 @@ fun WalletDashboardScreen(
             walletCount = wallets.size
         )
 
+        Button(
+            onClick = { navController.navigate("sepoliaTest") }
+        ) {
+            Text("Test Sepolia Network")
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         // Wallets Section
