@@ -57,6 +57,32 @@ class WalletDetailViewModel @Inject constructor(
     private val _liveBalance = MutableStateFlow<String?>(null)
     val liveBalance: StateFlow<String?> = _liveBalance
 
+
+    fun refreshBalance() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            try {
+                // Force sync the wallet balance
+                _wallet.value?.let { wallet ->
+                    walletRepository.syncWalletBalance(wallet)
+
+                    // Reload balance from repository
+                    val updatedBalance = walletRepository.getWalletBalance(wallet.id)
+                    _balance.value = updatedBalance
+
+                    Log.d("WalletDetailVM", " Balance refreshed")
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to refresh balance: ${e.message}"
+                Log.e("WalletDetailVM", "Error refreshing balance", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     // Load wallet details
     fun loadWallet(walletId: String) {
         viewModelScope.launch {
@@ -133,48 +159,19 @@ class WalletDetailViewModel @Inject constructor(
         }
     }
 
-    fun getWalletTypeDisplay(): String {
-        return when (_wallet.value) {
-            is BitcoinWallet -> "Bitcoin Wallet"
-            is EthereumWallet -> "Ethereum Wallet"
-            is MultiChainWallet -> "Multi-Chain Wallet"
-            is SolanaWallet -> "Solana Wallet"
-            else -> "Crypto Wallet"
-        }
-    }
 
-    fun getNetworkDisplay(): String {
-        return when (val wallet = _wallet.value) {
-            is BitcoinWallet -> wallet.network.name
-            is EthereumWallet -> wallet.network.name
-            else -> "Mainnet"
-        }
-    }
-
-    suspend fun syncWithBlockchain(walletId: String) {
-        viewModelScope.launch {
-            try {
-                // This will update the wallet balance in database
-                walletRepository.syncWalletWithBlockchain(walletId)
-
-                // Reload the wallet to get updated balance
-                loadWallet(walletId)
-            } catch (e: Exception) {
-                Log.e("WalletDetailVM", "Error syncing with blockchain: ${e.message}")
-            }
-        }
-    }
-
-    // Also update the refresh method
     fun refresh() {
         _wallet.value?.let { wallet ->
             viewModelScope.launch {
                 _isLoading.value = true
                 try {
-                    // Sync with blockchain first
-                    walletRepository.syncWalletWithBlockchain(wallet.id)
-                    // Then reload
+                    // Refresh balance
+                    walletRepository.syncWalletBalance(wallet)
+
+                    // Reload everything
                     loadWallet(wallet.id)
+
+                    Log.d("WalletDetailVM", " Wallet refreshed")
                 } catch (e: Exception) {
                     _error.value = "Refresh failed: ${e.message}"
                 } finally {
@@ -183,6 +180,7 @@ class WalletDetailViewModel @Inject constructor(
             }
         }
     }
+
     fun createSampleTransaction(): Transaction {
         val fromAddress = getWalletAddress() ?: ""
 
@@ -213,30 +211,6 @@ class WalletDetailViewModel @Inject constructor(
                 walletRepository.saveTransactions(walletId, currentTx)
             }
         }
-    }
-
-    fun getTotalBalanceUsd(): Double {
-        return _balance.value?.usdValue ?: 0.0
-    }
-
-    fun getNativeBalance(): String {
-        return _balance.value?.nativeBalanceDecimal ?: "0"
-    }
-
-    fun clearError() {
-        _error.value = null
-    }
-
-    fun getCreationDate(): String {
-        _wallet.value?.createdAt?.let {
-            val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-            return sdf.format(Date(it))
-        }
-        return "Unknown"
-    }
-
-    fun isBackedUp(): Boolean {
-        return _wallet.value?.isBackedUp ?: false
     }
 
     override fun onCleared() {

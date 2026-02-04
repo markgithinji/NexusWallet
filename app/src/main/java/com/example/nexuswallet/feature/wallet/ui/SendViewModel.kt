@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.ui
 
+import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -83,7 +84,6 @@ class SendViewModel @Inject constructor(
                     } else {
                         // If no balance in database, try blockchain
                         when (wallet) {
-                            is BitcoinWallet -> blockchainRepository.getBitcoinBalance(wallet.address)
                             is EthereumWallet -> blockchainRepository.getEthereumBalance(wallet.address)
                             else -> BigDecimal.ZERO
                         }
@@ -279,9 +279,12 @@ class SendViewModel @Inject constructor(
         val state = _uiState.value
 
         _uiState.update { it.copy(isLoading = true, error = null) }
+        Log.d("SendVM", " Creating transaction...")
 
         try {
             val amount = BigDecimal(state.amount)
+            Log.d("SendVM", "Amount: $amount, To: ${state.toAddress}")
+
             val result = transactionRepository.createSendTransaction(
                 walletId = state.walletId,
                 toAddress = state.toAddress,
@@ -291,23 +294,28 @@ class SendViewModel @Inject constructor(
             )
 
             if (result.isSuccess) {
+                val transaction = result.getOrThrow()
+                Log.d("SendVM", " Transaction created: ${transaction.hash}")
+
+                _createdTransaction.value = transaction
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         error = null
                     )
                 }
-                // Success - navigate to review screen
-                // This will be handled by the UI
             } else {
+                val error = result.exceptionOrNull()?.message ?: "Failed to create transaction"
+                Log.e("SendVM", " Transaction failed: $error")
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = result.exceptionOrNull()?.message ?: "Failed to create transaction"
+                        error = error
                     )
                 }
             }
         } catch (e: Exception) {
+            Log.e("SendVM", " Error: ${e.message}", e)
             _uiState.update {
                 it.copy(
                     isLoading = false,

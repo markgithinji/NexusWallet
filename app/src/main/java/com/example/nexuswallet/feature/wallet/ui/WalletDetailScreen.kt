@@ -61,19 +61,11 @@ import java.util.Locale
 fun WalletDetailScreen(
     navController: NavController,
     walletViewModel: WalletDetailViewModel = hiltViewModel(),
-    blockchainViewModel: BlockchainViewModel = hiltViewModel()
 ) {
     val wallet by walletViewModel.wallet.collectAsState()
     val balance by walletViewModel.balance.collectAsState()
     val isLoading by walletViewModel.isLoading.collectAsState()
     val error by walletViewModel.error.collectAsState()
-
-    LaunchedEffect(wallet) {
-        wallet?.let {
-            // Sync wallet with blockchain when it loads
-            walletViewModel.syncWithBlockchain(it.id)
-        }
-    }
 
     // Show loading state
     if (isLoading) {
@@ -784,10 +776,4 @@ fun WalletIconDetailScreen(wallet: CryptoWallet) {
             color = Color.White
         )
     }
-}
-
-fun formatDate(timestamp: Long): String {
-    val date = Date(timestamp)
-    val format = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
-    return format.format(date)
 }

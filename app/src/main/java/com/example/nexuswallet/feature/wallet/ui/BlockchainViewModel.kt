@@ -3,7 +3,6 @@ package com.example.nexuswallet.feature.wallet.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.wallet.data.remote.ChainId
 import com.example.nexuswallet.feature.wallet.data.repository.BlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.repository.GasPrice
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
@@ -65,30 +64,13 @@ class BlockchainViewModel @Inject constructor(
                 when (wallet) {
                     is EthereumWallet -> {
                         _ethBalance.value = blockchainRepository.getEthereumBalance(wallet.address)
-                        _transactions.value = blockchainRepository.getEthereumTransactions(wallet.address)
+                        _transactions.value =
+                            blockchainRepository.getEthereumTransactions(wallet.address)
                         loadGasPrice()
                         updateApiStatus(true)
                     }
-                    is BitcoinWallet -> {
-                        _btcBalance.value = blockchainRepository.getBitcoinBalance(wallet.address)
-                        _transactions.value = blockchainRepository.getSampleTransactions(wallet.address, ChainType.BITCOIN)
-                        updateApiStatus(true)
-                    }
-                    is MultiChainWallet -> {
-                        wallet.ethereumWallet?.let {
-                            _ethBalance.value = blockchainRepository.getEthereumBalance(it.address)
-                            loadGasPrice()
-                        }
-                        wallet.bitcoinWallet?.let {
-                            _btcBalance.value = blockchainRepository.getBitcoinBalance(it.address)
-                        }
-                        _transactions.value = blockchainRepository.getSampleTransactions(wallet.address, ChainType.ETHEREUM)
-                        updateApiStatus(true)
-                    }
-                    is SolanaWallet -> {
-                        _transactions.value = blockchainRepository.getSampleTransactions(wallet.address, ChainType.SOLANA)
-                        updateApiStatus(true)
-                    }
+
+                    else -> {}
                 }
                 _lastUpdated.value = Date()
             } catch (e: Exception) {
@@ -139,12 +121,14 @@ class BlockchainViewModel @Inject constructor(
                         if (address.isNotEmpty()) {
                             val balance = blockchainRepository.getEthereumBalance(address)
                             val json = Json { prettyPrint = true }
-                            json.encodeToString(RawBalanceResponse(
-                                address = address,
-                                balance = balance.toPlainString(),
-                                source = "Etherscan API",
-                                timestamp = System.currentTimeMillis()
-                            ))
+                            json.encodeToString(
+                                RawBalanceResponse(
+                                    address = address,
+                                    balance = balance.toPlainString(),
+                                    source = "Etherscan API",
+                                    timestamp = System.currentTimeMillis()
+                                )
+                            )
                         } else {
                             "No Ethereum address found for this wallet"
                         }
@@ -152,40 +136,7 @@ class BlockchainViewModel @Inject constructor(
                         "Wallet is not an Ethereum wallet"
                     }
                 }
-                "blockstream" -> {
-                    if (wallet is BitcoinWallet || wallet is MultiChainWallet) {
-                        val address = getBitcoinAddress(wallet)
-                        if (address.isNotEmpty()) {
-                            val balance = blockchainRepository.getBitcoinBalance(address)
-                            val json = Json { prettyPrint = true }
-                            json.encodeToString(RawBalanceResponse(
-                                address = address,
-                                balance = balance.toPlainString(),
-                                source = "Blockstream API",
-                                timestamp = System.currentTimeMillis()
-                            ))
-                        } else {
-                            "No Bitcoin address found for this wallet"
-                        }
-                    } else {
-                        "Wallet is not a Bitcoin wallet"
-                    }
-                }
-                "covalent" -> {
-                    val address = getWalletAddress(wallet)
-                    if (address.isNotEmpty()) {
-                        val tokens = blockchainRepository.getTokenBalances(address, ChainId.ETHEREUM_MAINNET)
-                        val json = Json { prettyPrint = true }
-                        json.encodeToString(RawTokenResponse(
-                            address = address,
-                            tokens = tokens,
-                            source = "Covalent API",
-                            timestamp = System.currentTimeMillis()
-                        ))
-                    } else {
-                        "No valid address found for Covalent API"
-                    }
-                }
+
                 else -> "Unknown API: $api"
             }
         } catch (e: Exception) {
@@ -229,12 +180,14 @@ class BlockchainViewModel @Inject constructor(
                         if (address.isNotEmpty()) {
                             val response = blockchainRepository.getEthereumBalance(address)
                             val json = Json { prettyPrint = true }
-                            json.encodeToString(RawBalanceResponse(
-                                address = address,
-                                balance = response.toPlainString(),
-                                source = "Etherscan API",
-                                timestamp = System.currentTimeMillis()
-                            ))
+                            json.encodeToString(
+                                RawBalanceResponse(
+                                    address = address,
+                                    balance = response.toPlainString(),
+                                    source = "Etherscan API",
+                                    timestamp = System.currentTimeMillis()
+                                )
+                            )
                         } else {
                             "Not an Ethereum wallet or no Ethereum address found"
                         }
@@ -242,74 +195,11 @@ class BlockchainViewModel @Inject constructor(
                         "Not an Ethereum wallet"
                     }
                 }
-                "blockstream" -> {
-                    if (wallet is BitcoinWallet || wallet is MultiChainWallet) {
-                        val address = getBitcoinAddress(wallet)
-                        if (address.isNotEmpty()) {
-                            val response = blockchainRepository.getBitcoinBalance(address)
-                            val json = Json { prettyPrint = true }
-                            json.encodeToString(RawBalanceResponse(
-                                address = address,
-                                balance = response.toPlainString(),
-                                source = "Blockstream API",
-                                timestamp = System.currentTimeMillis()
-                            ))
-                        } else {
-                            "Not a Bitcoin wallet or no Bitcoin address found"
-                        }
-                    } else {
-                        "Not a Bitcoin wallet"
-                    }
-                }
-                "covalent" -> {
-                    val address = getWalletAddress(wallet)
-                    if (address.isNotEmpty()) {
-                        val response = blockchainRepository.getTokenBalances(address, ChainId.ETHEREUM_MAINNET)
-                        val json = Json { prettyPrint = true }
-                        json.encodeToString(RawTokenResponse(
-                            address = address,
-                            tokens = response,
-                            source = "Covalent API",
-                            timestamp = System.currentTimeMillis()
-                        ))
-                    } else {
-                        "No valid address found for Covalent API"
-                    }
-                }
+
                 else -> "Unknown API: $api"
             }
         } catch (e: Exception) {
             "Error fetching data from $api: ${e.message}\n\nStack Trace:\n${e.stackTraceToString()}"
-        }
-    }
-
-    fun testAllApis() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            val results = mutableListOf<ApiTestResult>()
-
-            try {
-                // Test Etherscan
-                results.add(testEtherscanApi())
-
-                // Test Blockstream
-                results.add(testBlockstreamApi())
-
-                // Test Covalent
-                results.add(testCovalentApi())
-
-                _apiTestResults.value = results
-
-                // Update overall status
-                val allConnected = results.all { it.isConnected }
-                _apiStatus.value = if (allConnected) ApiStatus.CONNECTED else ApiStatus.ERROR
-
-            } catch (e: Exception) {
-                Log.e("BlockchainVM", "Error testing APIs: ${e.message}")
-                _apiStatus.value = ApiStatus.ERROR
-            } finally {
-                _isLoading.value = false
-            }
         }
     }
 
@@ -331,58 +221,6 @@ class BlockchainViewModel @Inject constructor(
         } catch (e: Exception) {
             ApiTestResult(
                 name = "Etherscan",
-                isConnected = false,
-                responseTime = "N/A",
-                lastBlock = "Unknown",
-                message = "✗ Failed: ${e.message ?: "Unknown error"}"
-            )
-        }
-    }
-
-    private suspend fun testBlockstreamApi(): ApiTestResult {
-        return try {
-            // Test with a known Bitcoin address
-            val testAddress = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa" // Genesis block address
-            val startTime = System.currentTimeMillis()
-            val balance = blockchainRepository.getBitcoinBalance(testAddress)
-            val duration = System.currentTimeMillis() - startTime
-
-            ApiTestResult(
-                name = "Blockstream",
-                isConnected = true,
-                responseTime = "${duration}ms",
-                lastBlock = "Latest",
-                message = "✓ Connected - Balance: ${balance.toPlainString()} BTC"
-            )
-        } catch (e: Exception) {
-            ApiTestResult(
-                name = "Blockstream",
-                isConnected = false,
-                responseTime = "N/A",
-                lastBlock = "Unknown",
-                message = "✗ Failed: ${e.message ?: "Unknown error"}"
-            )
-        }
-    }
-
-    private suspend fun testCovalentApi(): ApiTestResult {
-        return try {
-            // Test with a known Ethereum address
-            val testAddress = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
-            val startTime = System.currentTimeMillis()
-            val tokens = blockchainRepository.getTokenBalances(testAddress, ChainId.ETHEREUM_MAINNET)
-            val duration = System.currentTimeMillis() - startTime
-
-            ApiTestResult(
-                name = "Covalent",
-                isConnected = true,
-                responseTime = "${duration}ms",
-                lastBlock = "Latest",
-                message = "✓ Connected - Found ${tokens.size} tokens"
-            )
-        } catch (e: Exception) {
-            ApiTestResult(
-                name = "Covalent",
                 isConnected = false,
                 responseTime = "N/A",
                 lastBlock = "Unknown",

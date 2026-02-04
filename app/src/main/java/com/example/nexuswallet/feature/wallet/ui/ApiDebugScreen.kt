@@ -303,26 +303,6 @@ fun ApiDebugScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Button(
-                        onClick = {
-                            viewModel.testAllApis()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
-                        enabled = !isLoading
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Icon(Icons.Default.CheckCircle, "Test All APIs")
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Run API Connectivity Test")
-                    }
-
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
