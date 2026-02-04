@@ -31,83 +31,42 @@ data class EtherscanTransactionsResponse(
     @SerialName("result") val result: List<EtherscanTransaction>
 )
 
-// ============ BLOCKSTREAM MODELS ============
 @Serializable
-data class BlockstreamUtxo(
-    @SerialName("txid") val txId: String,
-    @SerialName("vout") val vout: Int,
-    @SerialName("status") val status: BlockstreamStatus,
-    @SerialName("value") val value: Long,
-    @SerialName("scriptpubkey") val scriptPubKey: String? = null
-)
-@Serializable
-data class BlockstreamStatus(
-    @SerialName("confirmed") val confirmed: Boolean,
-    @SerialName("block_height") val blockHeight: Int?,
-    @SerialName("block_time") val blockTime: Long?
+data class EtherscanTransactionCountResponse(
+    @SerialName("jsonrpc") val jsonrpc: String,
+    @SerialName("result") val result: String,
+    @SerialName("id") val id: Int
 )
 
 @Serializable
-data class BlockstreamTransaction(
-    @SerialName("txid") val txId: String,
-    @SerialName("version") val version: Int,
-    @SerialName("locktime") val lockTime: Int,
-    @SerialName("vin") val inputs: List<BlockstreamInput>,
-    @SerialName("vout") val outputs: List<BlockstreamOutput>,
-    @SerialName("size") val size: Int,
-    @SerialName("weight") val weight: Int,
-    @SerialName("fee") val fee: Long,
-    @SerialName("status") val status: BlockstreamTransactionStatus
+data class EtherscanBroadcastResponse(
+    @SerialName("jsonrpc") val jsonrpc: String,
+    @SerialName("result") val result: String,
+    @SerialName("id") val id: Int
 )
 
 @Serializable
-data class BlockstreamInput(
-    @SerialName("txid") val txId: String,
-    @SerialName("vout") val vout: Int,
-    @SerialName("prevout") val prevout: BlockstreamOutput?,
-    @SerialName("scriptsig") val scriptSig: String?,
-    @SerialName("scriptsig_asm") val scriptSigAsm: String?,
-    @SerialName("witness") val witness: List<String>?,
-    @SerialName("is_coinbase") val isCoinbase: Boolean,
-    @SerialName("sequence") val sequence: Long
+data class GasPriceResponse(
+    @SerialName("status") val status: String,
+    @SerialName("message") val message: String,
+    @SerialName("result") val result: GasPriceResult
 )
 
 @Serializable
-data class BlockstreamOutput(
-    @SerialName("scriptpubkey") val scriptPubKey: String,
-    @SerialName("scriptpubkey_asm") val scriptPubKeyAsm: String,
-    @SerialName("scriptpubkey_type") val scriptPubKeyType: String,
-    @SerialName("scriptpubkey_address") val address: String?,
-    @SerialName("value") val value: Long
+data class GasPriceResult(
+    @SerialName("LastBlock") val lastBlock: String,
+    @SerialName("SafeGasPrice") val SafeGasPrice: String,
+    @SerialName("ProposeGasPrice") val ProposeGasPrice: String,
+    @SerialName("FastGasPrice") val FastGasPrice: String,
+    @SerialName("suggestBaseFee") val suggestBaseFee: String? = null,
+    @SerialName("gasUsedRatio") val gasUsedRatio: String? = null
 )
 
 @Serializable
-data class BlockstreamTransactionStatus(
-    @SerialName("confirmed") val confirmed: Boolean,
-    @SerialName("block_height") val blockHeight: Int?,
-    @SerialName("block_hash") val blockHash: String?,
-    @SerialName("block_time") val blockTime: Long?
-)
-
-// ============ COVALENT MODELS ============
-@Serializable
-data class CovalentTokenBalance(
-    @SerialName("contract_address") val contractAddress: String,
-    @SerialName("contract_name") val contractName: String,
-    @SerialName("contract_ticker_symbol") val symbol: String,
-    @SerialName("contract_decimals") val decimals: Int,
-    @SerialName("balance") val rawBalance: String,
-    @SerialName("quote_rate") val quoteRate: Double?,
-    @SerialName("quote") val quote: Double?
-)
-
-@Serializable
-data class CovalentBalanceResponse(
-    @SerialName("data") val data: CovalentData
-)
-
-@Serializable
-data class CovalentData(
-    @SerialName("address") val address: String,
-    @SerialName("items") val items: List<CovalentTokenBalance>
+data class GasPrice(
+    val safe: String,
+    val propose: String,
+    val fast: String,
+    val lastBlock: String? = null,
+    val baseFee: String? = null
 )
