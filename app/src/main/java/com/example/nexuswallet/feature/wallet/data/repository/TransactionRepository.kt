@@ -130,27 +130,98 @@ class TransactionRepository(
         feeLevel: FeeLevel,
         note: String?
     ): Result<SendTransaction> {
-        return try {
-            // Convert amount to wei
-            val amountWei = amount.multiply(BigDecimal("1000000000000000000"))
+        Log.d("TxRepo", " createEthereumTransaction START")
+        Log.d("TxRepo", "Wallet: ${wallet.address}, Network: ${wallet.network}")
+        Log.d("TxRepo", "Amount: $amount ETH to $toAddress")
 
-            // Get gas price
-            val gasPrice = blockchainRepository.getEthereumGasPrice()
-            val selectedGasPrice = when (feeLevel) {
+        return try {
+            // 1. Get nonce
+            val nonce = if (wallet.network == EthereumNetwork.SEPOLIA) {
+                Log.d("TxRepo", "Sepolia detected - getting nonce...")
+                val apiNonce = blockchainRepository.getEthereumNonce(wallet.address, wallet.network)
+                Log.d("TxRepo", "API returned nonce: $apiNonce")
+
+                if (apiNonce == 0) {
+                    Log.w("TxRepo", "⚠ API returned 0 for Sepolia, using manual override: 5")
+                    5L  // Change this to actual nonce!
+                } else {
+                    apiNonce.toLong()
+                }
+            } else {
+                blockchainRepository.getEthereumNonce(wallet.address, wallet.network).toLong()
+            }
+            Log.d("TxRepo", "Using nonce: $nonce")
+
+            // 2. Get gas price
+            val gasPrice = blockchainRepository.getEthereumGasPrice(wallet.network)
+            val selectedFee = when (feeLevel) {
                 FeeLevel.SLOW -> gasPrice.slow
                 FeeLevel.FAST -> gasPrice.fast
                 else -> gasPrice.normal
             }
+            Log.d("TxRepo", "Selected gas price: ${selectedFee.gasPrice} Gwei")
 
-            // Standard gas limit for ETH transfer
-            val gasLimit = "21000"
-            val gasPriceGwei = BigDecimal(selectedGasPrice.gasPrice ?: "30")
-            val gasPriceWei = gasPriceGwei.multiply(BigDecimal("1000000000"))
+            // Convert amount to wei
+            val amountWei = amount.multiply(BigDecimal("1000000000000000000"))
+            Log.d("TxRepo", "Amount in wei: $amountWei")
 
-            // Calculate fee in wei
-            val feeWei = gasPriceWei.multiply(BigDecimal(gasLimit))
+            // 3. GET PRIVATE KEY
+            Log.d("TxRepo", "Getting private key...")
+            val privateKeyResult = keyManager.getPrivateKeyForSigning(wallet.id)
 
-            // Create transaction
+            if (privateKeyResult.isFailure) {
+                Log.e("TxRepo", " No private key: ${privateKeyResult.exceptionOrNull()?.message}")
+                return Result.failure(
+                    privateKeyResult.exceptionOrNull() ?: Exception("No private key")
+                )
+            }
+
+            val privateKey = privateKeyResult.getOrThrow()
+            Log.d("TxRepo", "✓ Got private key")
+
+            // 4. Prepare transaction
+            // Use fixed gas price for Sepolia
+            val gasPriceHex = if (wallet.network == EthereumNetwork.SEPOLIA) {
+                "0x22ecb25c00"  // Your test constant
+            } else {
+                val gasPriceWei = BigDecimal(selectedFee.gasPrice ?: "30")
+                    .multiply(BigDecimal("1000000000"))
+                "0x${gasPriceWei.toBigInteger().toString(16)}"
+            }
+            Log.d("TxRepo", "Gas price hex: $gasPriceHex")
+
+            val valueHex = "0x" + amountWei.toBigInteger().toString(16)
+            Log.d("TxRepo", "Value hex: $valueHex")
+
+            // 5. Create and sign transaction
+            val rawTransaction = RawTransaction.createTransaction(
+                BigInteger.valueOf(nonce),
+                BigInteger(gasPriceHex.removePrefix("0x"), 16),
+                BigInteger("21000"),
+                toAddress,
+                BigInteger(valueHex.removePrefix("0x"), 16),
+                ""
+            )
+            Log.d("TxRepo", "Created raw transaction")
+
+            // Sign it (Sepolia chain ID = 11155111)
+            val credentials = Credentials.create(privateKey)
+            val chainId = if (wallet.network == EthereumNetwork.SEPOLIA) 11155111L else 1L
+            val signedMessage = TransactionEncoder.signMessage(
+                rawTransaction,
+                chainId,
+                credentials
+            )
+
+            val signedHex = Numeric.toHexString(signedMessage)
+            Log.d("TxRepo", "✓ Signed transaction (first 50): ${signedHex.take(50)}...")
+
+            // Calculate transaction hash locally for debugging
+            val txHashBytes = Hash.sha3(Numeric.hexStringToByteArray(signedHex))
+            val calculatedHash = Numeric.toHexString(txHashBytes)
+            Log.d("TxRepo", "Calculated TX Hash: $calculatedHash")
+
+            // 6. Create transaction record with signed data
             val transaction = SendTransaction(
                 id = "tx_${System.currentTimeMillis()}",
                 walletId = wallet.id,
@@ -159,22 +230,54 @@ class TransactionRepository(
                 toAddress = toAddress,
                 amount = amountWei.toPlainString(),
                 amountDecimal = amount.toPlainString(),
-                fee = feeWei.toPlainString(),
-                feeDecimal = feeWei.divide(BigDecimal("1000000000000000000")).toPlainString(),
-                total = (amountWei + feeWei).toPlainString(),
-                totalDecimal = (amount + feeWei.divide(BigDecimal("1000000000000000000"))).toPlainString(),
-                chain = ChainType.ETHEREUM,
+                fee = selectedFee.totalFee,
+                feeDecimal = selectedFee.totalFeeDecimal,
+                total = (amountWei + BigDecimal(selectedFee.totalFee)).toPlainString(),
+                totalDecimal = (amount + BigDecimal(selectedFee.totalFeeDecimal)).toPlainString(),
+                chain = if (wallet.network == EthereumNetwork.SEPOLIA) ChainType.ETHEREUM_SEPOLIA else ChainType.ETHEREUM,
                 status = TransactionStatus.PENDING,
                 note = note,
-                gasPrice = selectedGasPrice.gasPrice,
-                gasLimit = gasLimit
+                gasPrice = selectedFee.gasPrice,
+                gasLimit = "21000",
+                signedHex = signedHex,
+                nonce = nonce.toInt(),
+                hash = calculatedHash
             )
 
-            // Save to local storage
+            // 7. Save to local storage
             localDataSource.saveSendTransaction(transaction)
+            Log.d("TxRepo", "Saved transaction to local storage")
 
-            Result.success(transaction)
+            // 8. BROADCAST IT
+            Log.d("TxRepo", "Broadcasting to network...")
+            val broadcastResult = blockchainRepository.broadcastEthereumTransaction(
+                signedHex,
+                wallet.network
+            )
+
+            if (broadcastResult.success) {
+                Log.d("TxRepo", " Broadcast successful! Hash: ${broadcastResult.hash}")
+
+                // Update with actual broadcast hash
+                val updatedTransaction = transaction.copy(
+                    status = TransactionStatus.SUCCESS,
+                    hash = broadcastResult.hash
+                )
+                localDataSource.saveSendTransaction(updatedTransaction)
+
+                Result.success(updatedTransaction)
+            } else {
+                Log.e("TxRepo", " Broadcast failed: ${broadcastResult.error}")
+                val failedTransaction = transaction.copy(
+                    status = TransactionStatus.FAILED
+                )
+                localDataSource.saveSendTransaction(failedTransaction)
+
+                Result.failure(Exception("Broadcast failed: ${broadcastResult.error}"))
+            }
+
         } catch (e: Exception) {
+            Log.e("TxRepo", " Error in createEthereumTransaction: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -211,11 +314,17 @@ class TransactionRepository(
             val wallet = walletRepository.getWallet(transaction.walletId) as? EthereumWallet
                 ?: return Result.failure(IllegalArgumentException("Ethereum wallet not found"))
 
-            // Get nonce from Etherscan
-            val nonce = blockchainRepository.getEthereumNonce(wallet.address)
-            Log.d("TransactionRepo", "Got nonce from Etherscan: $nonce")
+            // Get nonce
+            val nonce = if (wallet.network == EthereumNetwork.SEPOLIA) {
+                Log.d("TransactionRepo", "⚠ Sepolia detected - using manual nonce override")
+                5  // ← CHANGE THIS TO ACTUAL NONCE!
+            } else {
 
-            // Get real gas price from Etherscan
+                blockchainRepository.getEthereumNonce(wallet.address, wallet.network)
+            }
+
+            Log.d("TransactionRepo", "Using nonce: $nonce")
+
             val gasPrice = blockchainRepository.getCurrentGasPrice()
             val selectedGasPrice = when (transaction.feeLevel ?: FeeLevel.NORMAL) {
                 FeeLevel.SLOW -> gasPrice.safe
@@ -241,7 +350,7 @@ class TransactionRepository(
 
             Log.d("TransactionRepo", "Transaction params: $params")
 
-            // Get REAL private key from KeyManager
+            // Get private key from KeyManager
             Log.d("TransactionRepo", "Requesting private key for signing...")
             val privateKeyResult = keyManager.getPrivateKeyForSigning(transaction.walletId)
 
@@ -333,7 +442,6 @@ class TransactionRepository(
             Log.d("TransactionRepo", "Broadcasting transaction to Ethereum network...")
             Log.d("TransactionRepo", "Signed TX (first 50 chars): ${signedHex.take(50)}...")
 
-            // Use your existing Etherscan API through BlockchainRepository
             val broadcastResult = blockchainRepository.broadcastEthereumTransaction(signedHex)
 
             if (broadcastResult.success) {
@@ -515,23 +623,5 @@ class TransactionRepository(
     // LOCAL DATA OPERATIONS
     suspend fun getSendTransaction(transactionId: String): SendTransaction? {
         return localDataSource.getSendTransaction(transactionId)
-    }
-
-    fun getSendTransactions(walletId: String): Flow<List<SendTransaction>> {
-        return localDataSource.getSendTransactions(walletId)
-    }
-
-    suspend fun updateTransactionStatus(
-        transactionId: String,
-        status: TransactionStatus,
-        hash: String? = null
-    ) {
-        val transaction = localDataSource.getSendTransaction(transactionId) ?: return
-        val updated = transaction.copy(status = status, hash = hash)
-        localDataSource.saveSendTransaction(updated)
-    }
-
-    suspend fun deleteTransaction(transactionId: String) {
-        localDataSource.deleteSendTransaction(transactionId)
     }
 }
