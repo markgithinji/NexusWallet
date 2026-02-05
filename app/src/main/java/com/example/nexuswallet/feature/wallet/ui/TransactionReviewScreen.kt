@@ -1,5 +1,7 @@
 package com.example.nexuswallet.feature.wallet.ui
 
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,7 +19,9 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Note
+import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
@@ -26,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -55,7 +60,7 @@ fun TransactionReviewScreen(
 
     LaunchedEffect(uiState.currentStep) {
         if (uiState.currentStep is TransactionReviewViewModel.TransactionStep.SUCCESS) {
-            delay(2000) // Show success for 2 seconds
+            delay(4000) // Wait 4 seconds before navigating back
             transaction?.let {
                 navController.navigate("walletDetail/${it.walletId}") {
                     popUpTo("walletDetail/${it.walletId}") { inclusive = false }
@@ -151,9 +156,113 @@ fun TransactionReviewScreen(
                 uiState.broadcastResult?.let { result ->
                     BroadcastResultSection(broadcastResult = result)
                 }
+
+                uiState.broadcastResult?.let { result ->
+                    BroadcastResultSection(broadcastResult = result)
+
+                    if (uiState.currentStep is TransactionReviewViewModel.TransactionStep.CHECKING_STATUS) {
+                        CheckingStatusSection()
+                    }
+
+                    if (uiState.currentStep is TransactionReviewViewModel.TransactionStep.SUCCESS) {
+                        TransactionFinalStatusSection(
+                            confirmed = uiState.transactionConfirmed,
+                            txHash = result.hash
+                        )
+                    }
+                }
             } ?: run {
                 // No transaction found
                 EmptyTransactionView()
+            }
+        }
+    }
+}
+
+@Composable
+fun CheckingStatusSection() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CircularProgressIndicator(
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text("Confirming on blockchain...")
+        }
+    }
+}
+
+@Composable
+fun TransactionFinalStatusSection(
+    confirmed: Boolean,
+    txHash: String?
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (confirmed)
+                Color.Green.copy(alpha = 0.1f)
+            else
+                Color.Yellow.copy(alpha = 0.1f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = if (confirmed) Icons.Default.CheckCircle else Icons.Default.Schedule,
+                    contentDescription = "Status",
+                    tint = if (confirmed) Color.Green else Color.Yellow,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (confirmed) "Confirmed on chain" else "Sent (pending confirmation)",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = if (confirmed) Color.Green else Color.Yellow
+                )
+            }
+
+            if (txHash != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "View on Etherscan",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = {
+                            // Open Etherscan
+                            val url = "https://sepolia.etherscan.io/tx/$txHash"
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+//                            LocalContext.current.startActivity(intent)
+                        }
+                    ) {
+                        Icon(Icons.Default.OpenInBrowser, "View")
+                    }
+                }
             }
         }
     }
@@ -173,11 +282,13 @@ fun TransactionStepStatus(currentStep: TransactionReviewViewModel.TransactionSte
                 is TransactionReviewViewModel.TransactionStep.REVIEWING ->
                     Color.Blue.copy(alpha = 0.1f)
                 is TransactionReviewViewModel.TransactionStep.APPROVING ->
-                    Color.Cyan .copy(alpha = 0.1f)
+                    Color.Cyan.copy(alpha = 0.1f)
                 is TransactionReviewViewModel.TransactionStep.SIGNING ->
                     Color.Yellow.copy(alpha = 0.1f)
                 is TransactionReviewViewModel.TransactionStep.BROADCASTING ->
                     Color.Magenta.copy(alpha = 0.1f)
+                is TransactionReviewViewModel.TransactionStep.CHECKING_STATUS ->
+                    Color.DarkGray .copy(alpha = 0.1f)
                 is TransactionReviewViewModel.TransactionStep.SUCCESS ->
                     Color.Green.copy(alpha = 0.1f)
                 is TransactionReviewViewModel.TransactionStep.ERROR ->
@@ -230,6 +341,15 @@ fun TransactionStepStatus(currentStep: TransactionReviewViewModel.TransactionSte
                     Spacer(modifier = Modifier.width(12.dp))
                     Text("Broadcasting to network...")
                 }
+                is TransactionReviewViewModel.TransactionStep.CHECKING_STATUS -> {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp),
+                        color = Color.DarkGray
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Confirming on blockchain...", color = Color.DarkGray)
+                }
                 is TransactionReviewViewModel.TransactionStep.SUCCESS -> {
                     Icon(Icons.Default.CheckCircle, "Success", tint = Color.Green)
                     Spacer(modifier = Modifier.width(12.dp))
@@ -279,7 +399,10 @@ fun ApprovalBottomBar(onApprove: () -> Unit) {
 }
 
 @Composable
-fun DoneBottomBar(onDone: () -> Unit) {
+fun DoneBottomBar(
+    onDone: () -> Unit,
+    txHash: String? = null
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         tonalElevation = 8.dp
@@ -287,6 +410,29 @@ fun DoneBottomBar(onDone: () -> Unit) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
+            if (txHash != null) {
+                Button(
+                    onClick = {
+                        val url = "https://sepolia.etherscan.io/tx/$txHash"
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+//                        LocalContext.current.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.OpenInBrowser,
+                        contentDescription = "View"
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("View Transaction")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             Button(
                 onClick = onDone,
                 modifier = Modifier.fillMaxWidth(),
@@ -295,17 +441,7 @@ fun DoneBottomBar(onDone: () -> Unit) {
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Done",
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Done",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Done")
             }
         }
     }

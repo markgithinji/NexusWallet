@@ -6,7 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
+import com.example.nexuswallet.feature.wallet.data.repository.BlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.repository.TransactionRepository
+import com.example.nexuswallet.feature.wallet.domain.ChainType
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +23,7 @@ import javax.inject.Inject
 @HiltViewModel
 class TransactionReviewViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
+    private val blockchainRepository: BlockchainRepository
 ) : ViewModel() {
 
     data class ReviewUiState(
@@ -27,7 +32,8 @@ class TransactionReviewViewModel @Inject constructor(
         val error: String? = null,
         val currentStep: TransactionStep = TransactionStep.LOADING,
         val broadcastResult: BroadcastResult? = null,
-        val isApproved: Boolean = false
+        val isApproved: Boolean = false,
+        val transactionConfirmed: Boolean = false
     )
 
     private val _uiState = MutableStateFlow(ReviewUiState())
@@ -41,6 +47,7 @@ class TransactionReviewViewModel @Inject constructor(
         data object BROADCASTING : TransactionStep()   // Broadcasting in progress
         data object SUCCESS : TransactionStep()        // Transaction successful
         data class ERROR(val message: String) : TransactionStep()
+        data object CHECKING_STATUS : TransactionStep()
     }
 
     sealed class ReviewEvent {
@@ -137,12 +144,17 @@ class TransactionReviewViewModel @Inject constructor(
                 if (broadcastResult.isSuccess) {
                     val result = broadcastResult.getOrThrow()
                     Log.d("TransactionReview", " Broadcast successful! Hash: ${result.hash}")
+
                     _uiState.update {
                         it.copy(
                             broadcastResult = result,
-                            currentStep = TransactionStep.SUCCESS
+                            currentStep = TransactionStep.CHECKING_STATUS
                         )
                     }
+
+                    // Step 3: Check transaction status
+                    checkTransactionStatus(result.hash, transactionId)
+
                 } else {
                     val error = broadcastResult.exceptionOrNull()?.message
                     Log.e("TransactionReview", " Broadcast failed: $error")
@@ -164,11 +176,84 @@ class TransactionReviewViewModel @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Log.e("TransactionReview", " Error in autoSignAndBroadcast: ${e.message}", e)
+            Log.e("TransactionReview", "❌Error in autoSignAndBroadcast: ${e.message}", e)
             _uiState.update {
                 it.copy(
                     error = "Error: ${e.message}",
                     currentStep = TransactionStep.ERROR("Processing error")
+                )
+            }
+        }
+    }
+
+    private fun checkTransactionStatus(txHash: String?, transactionId: String) {
+        viewModelScope.launch {
+            if (txHash == null) {
+                Log.e("TransactionReview", " No transaction hash available")
+                _uiState.update {
+                    it.copy(
+                        currentStep = TransactionStep.SUCCESS,
+                        transactionConfirmed = false
+                    )
+                }
+                return@launch
+            }
+
+            Log.d("TransactionReview", " Checking transaction status for: $txHash")
+
+            // Get network from transaction
+            val transaction = transactionRepository.getSendTransaction(transactionId)
+            val network = when (transaction?.chain) {
+                ChainType.ETHEREUM_SEPOLIA -> EthereumNetwork.SEPOLIA
+                else -> EthereumNetwork.MAINNET
+            }
+
+            // Try checking status 5 times with 3 second delays
+            for (attempt in 1..5) {
+                Log.d("TransactionReview", "Status check attempt $attempt/5")
+
+                delay(3000) // Wait 3 seconds
+
+                try {
+                    val status = blockchainRepository.checkTransactionStatus(txHash, network)
+                    Log.d("TransactionReview", "Transaction status: $status")
+
+                    when (status) {
+                        TransactionStatus.SUCCESS -> {
+                            Log.d("TransactionReview", " Transaction confirmed on chain!")
+                            _uiState.update {
+                                it.copy(
+                                    currentStep = TransactionStep.SUCCESS,
+                                    transactionConfirmed = true
+                                )
+                            }
+                            return@launch
+                        }
+                        TransactionStatus.FAILED -> {
+                            Log.e("TransactionReview", " Transaction failed on chain")
+                            _uiState.update {
+                                it.copy(
+                                    currentStep = TransactionStep.ERROR("Transaction failed"),
+                                    error = "Transaction failed on chain"
+                                )
+                            }
+                            return@launch
+                        }
+                        else -> {
+                            Log.d("TransactionReview", " Transaction still pending...")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("TransactionReview", "Error checking status: ${e.message}")
+                }
+            }
+
+            // If we get here, still pending after all attempts
+            Log.d("TransactionReview", "⚠ Transaction still pending after 15 seconds")
+            _uiState.update {
+                it.copy(
+                    currentStep = TransactionStep.SUCCESS,
+                    transactionConfirmed = false
                 )
             }
         }
