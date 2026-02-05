@@ -350,6 +350,32 @@ class BlockchainRepository @Inject constructor(
         }
     }
 
+    suspend fun checkTransactionStatus(
+        txHash: String,
+        network: EthereumNetwork = EthereumNetwork.SEPOLIA
+    ): TransactionStatus {
+        return try {
+            val chainId = when (network) {
+                EthereumNetwork.SEPOLIA -> CHAIN_ID_SEPOLIA
+                else -> CHAIN_ID_ETHEREUM
+            }
+
+            val response = etherscanApi.getTransactionReceiptStatus(
+                chainId = chainId,
+                txhash = txHash,
+                apiKey = BuildConfig.ETHERSCAN_API_KEY
+            )
+
+            when (response.result.status) {
+                "1" -> TransactionStatus.SUCCESS
+                "0" -> TransactionStatus.FAILED
+                else -> TransactionStatus.PENDING
+            }
+        } catch (e: Exception) {
+            TransactionStatus.PENDING
+        }
+    }
+
     private suspend fun checkTransactionAfterBroadcast(txHash: String, network: EthereumNetwork) {
         Log.d("Broadcast", " Checking if transaction $txHash was accepted...")
 

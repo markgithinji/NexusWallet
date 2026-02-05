@@ -5,6 +5,7 @@ import com.example.nexuswallet.feature.wallet.data.repository.EtherscanBroadcast
 import com.example.nexuswallet.feature.wallet.data.repository.EtherscanTransactionCountResponse
 import com.example.nexuswallet.feature.wallet.data.repository.EtherscanTransactionsResponse
 import com.example.nexuswallet.feature.wallet.data.repository.GasPriceResponse
+import com.example.nexuswallet.feature.wallet.data.repository.TransactionReceiptStatusResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 
@@ -55,4 +56,13 @@ interface EtherscanApiService {
         @Query("hex") hex: String,
         @Query("apikey") apiKey: String
     ): EtherscanBroadcastResponse
+
+    @GET("v2/api")
+    suspend fun getTransactionReceiptStatus(
+        @Query("chainid") chainId: String,
+        @Query("module") module: String = "transaction",
+        @Query("action") action: String = "gettxreceiptstatus",
+        @Query("txhash") txhash: String,
+        @Query("apikey") apiKey: String
+    ): TransactionReceiptStatusResponse
 }

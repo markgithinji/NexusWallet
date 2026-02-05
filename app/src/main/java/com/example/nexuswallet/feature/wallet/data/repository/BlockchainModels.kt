@@ -70,3 +70,15 @@ data class GasPrice(
     val lastBlock: String? = null,
     val baseFee: String? = null
 )
+
+@Serializable
+data class TransactionReceiptStatusResponse(
+    @SerialName("status") val status: String,
+    @SerialName("message") val message: String,
+    @SerialName("result") val result: TransactionReceiptStatusResult
+)
+
+@Serializable
+data class TransactionReceiptStatusResult(
+    @SerialName("status") val status: String  // "1" = success, "0" = failed
+)
