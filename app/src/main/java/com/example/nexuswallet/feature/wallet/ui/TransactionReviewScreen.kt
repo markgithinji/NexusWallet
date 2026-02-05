@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.ui
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Note
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,17 +53,18 @@ fun TransactionReviewScreen(
     val uiState by viewModel.uiState.collectAsState()
     val transaction = uiState.transaction
 
-    // Handle navigation when broadcast is successful
-    LaunchedEffect(uiState.broadcastResult) {
-        uiState.broadcastResult?.let { result ->
-            if (result.success) {
-                // Navigate to status screen after a short delay
-                delay(1500) // Show success message for 1.5 seconds
-                navController.navigate("status/$transactionId")
+    LaunchedEffect(uiState.currentStep) {
+        if (uiState.currentStep is TransactionReviewViewModel.TransactionStep.SUCCESS) {
+            delay(2000) // Show success for 2 seconds
+            transaction?.let {
+                navController.navigate("walletDetail/${it.walletId}") {
+                    popUpTo("walletDetail/${it.walletId}") { inclusive = false }
+                }
             }
         }
     }
 
+    // Initialize on load
     LaunchedEffect(Unit) {
         viewModel.initialize(transactionId)
     }
@@ -78,21 +81,26 @@ fun TransactionReviewScreen(
             )
         },
         bottomBar = {
-            ReviewBottomBar(
-                uiState = uiState,
-                onSign = { viewModel.onEvent(TransactionReviewViewModel.ReviewEvent.SignTransaction) },
-                onBroadcast = { viewModel.onEvent(TransactionReviewViewModel.ReviewEvent.BroadcastTransaction) },
-                onDone = {
-                    // Navigate back to wallet detail
-                    transaction?.let {
-                        navController.navigate("walletDetail/${it.walletId}") {
-                            popUpTo("walletDetail/${it.walletId}") { inclusive = false }
-                        }
-                    } ?: run {
-                        navController.navigateUp()
-                    }
+            // Show approval button only when in REVIEWING state
+            when (uiState.currentStep) {
+                is TransactionReviewViewModel.TransactionStep.REVIEWING -> {
+                    ApprovalBottomBar(
+                        onApprove = { viewModel.onEvent(TransactionReviewViewModel.ReviewEvent.ApproveTransaction) }
+                    )
                 }
-            )
+                is TransactionReviewViewModel.TransactionStep.SUCCESS -> {
+                    DoneBottomBar(
+                        onDone = {
+                            transaction?.let {
+                                navController.navigate("walletDetail/${it.walletId}") {
+                                    popUpTo("walletDetail/${it.walletId}") { inclusive = false }
+                                }
+                            }
+                        }
+                    )
+                }
+                else -> {}
+            }
         }
     ) { padding ->
         Column(
@@ -101,6 +109,9 @@ fun TransactionReviewScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
+            // Show current step
+            TransactionStepStatus(currentStep = uiState.currentStep)
+
             // Error Message
             uiState.error?.let { error ->
                 ErrorMessage(error = error) {
@@ -109,7 +120,7 @@ fun TransactionReviewScreen(
             }
 
             // Loading State
-            if (uiState.isLoading) {
+            if (uiState.isLoading || uiState.currentStep is TransactionReviewViewModel.TransactionStep.LOADING) {
                 LoadingScreen()
                 return@Scaffold
             }
@@ -136,26 +147,165 @@ fun TransactionReviewScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // Signing Status
-                if (uiState.isSigning) {
-                    SigningStatus()
-                }
-
-                uiState.signedTransaction?.let { signedTx ->
-                    SignedTransactionSection(signedTransaction = signedTx)
-                }
-
-                // Broadcasting Status
-                if (uiState.isBroadcasting) {
-                    BroadcastingStatus()
-                }
-
+                // Show broadcast result
                 uiState.broadcastResult?.let { result ->
                     BroadcastResultSection(broadcastResult = result)
                 }
             } ?: run {
                 // No transaction found
                 EmptyTransactionView()
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionStepStatus(currentStep: TransactionReviewViewModel.TransactionStep) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = when (currentStep) {
+                is TransactionReviewViewModel.TransactionStep.LOADING ->
+                    MaterialTheme.colorScheme.primaryContainer
+                is TransactionReviewViewModel.TransactionStep.REVIEWING ->
+                    Color.Blue.copy(alpha = 0.1f)
+                is TransactionReviewViewModel.TransactionStep.APPROVING ->
+                    Color.Cyan .copy(alpha = 0.1f)
+                is TransactionReviewViewModel.TransactionStep.SIGNING ->
+                    Color.Yellow.copy(alpha = 0.1f)
+                is TransactionReviewViewModel.TransactionStep.BROADCASTING ->
+                    Color.Magenta.copy(alpha = 0.1f)
+                is TransactionReviewViewModel.TransactionStep.SUCCESS ->
+                    Color.Green.copy(alpha = 0.1f)
+                is TransactionReviewViewModel.TransactionStep.ERROR ->
+                    Color.Red.copy(alpha = 0.1f)
+            }
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            when (currentStep) {
+                is TransactionReviewViewModel.TransactionStep.LOADING -> {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Loading transaction...")
+                }
+                is TransactionReviewViewModel.TransactionStep.REVIEWING -> {
+                    Icon(Icons.Default.Visibility, "Reviewing", tint = Color.Blue)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Review transaction details")
+                }
+                is TransactionReviewViewModel.TransactionStep.APPROVING -> {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp),
+                        color = Color.Cyan
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Approving transaction...")
+                }
+                is TransactionReviewViewModel.TransactionStep.SIGNING -> {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp),
+                        color = Color.Yellow
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Signing transaction...")
+                }
+                is TransactionReviewViewModel.TransactionStep.BROADCASTING -> {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp),
+                        color = Color.Magenta
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Broadcasting to network...")
+                }
+                is TransactionReviewViewModel.TransactionStep.SUCCESS -> {
+                    Icon(Icons.Default.CheckCircle, "Success", tint = Color.Green)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Transaction successful!", color = Color.Green)
+                }
+                is TransactionReviewViewModel.TransactionStep.ERROR -> {
+                    Icon(Icons.Default.Error, "Error", tint = Color.Red)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Error: ${currentStep.message}", color = Color.Red)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ApprovalBottomBar(onApprove: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        tonalElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Button(
+                onClick = onApprove,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Send,
+                    contentDescription = "Send",
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Send Transaction",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DoneBottomBar(onDone: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        tonalElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Button(
+                onClick = onDone,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Done",
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Done",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
@@ -623,119 +773,6 @@ fun BroadcastResultSection(broadcastResult: BroadcastResult) {
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Red
                 )
-            }
-        }
-    }
-}
-
-@Composable
-fun ReviewBottomBar(
-    uiState: TransactionReviewViewModel.ReviewUiState,
-    onSign: () -> Unit,
-    onBroadcast: () -> Unit,
-    onDone: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        tonalElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            when {
-                uiState.signedTransaction == null -> {
-                    // Need to sign first
-                    Button(
-                        onClick = onSign,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = !uiState.isSigning,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        if (uiState.isSigning) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Signing...")
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = "Sign",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Sign Transaction",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-
-                uiState.broadcastResult == null -> {
-                    // Need to broadcast
-                    Button(
-                        onClick = onBroadcast,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = !uiState.isBroadcasting,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50)
-                        )
-                    ) {
-                        if (uiState.isBroadcasting) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Broadcasting...")
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Send,
-                                contentDescription = "Broadcast",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Broadcast Transaction",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-
-                else -> {
-                    // Transaction completed
-                    Button(
-                        onClick = onDone,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Done",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Done",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
             }
         }
     }
