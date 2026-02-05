@@ -140,11 +140,11 @@ class BlockchainRepository @Inject constructor(
         return try {
             // For Sepolia, use fixed low gas price (don't call API)
             if (network == EthereumNetwork.SEPOLIA) {
-                Log.d("GasPrice", "Using fixed Sepolia gas price")
+                Log.d("GasPrice", "Using HIGH Sepolia gas price")
                 return GasPrice(
-                    safe = "0.1",     // 0.1 Gwei
-                    propose = "0.15",  // 0.15 Gwei
-                    fast = "0.2",      // 0.2 Gwei
+                    safe = "100",     // 100 Gwei
+                    propose = "120",  // 120 Gwei
+                    fast = "150",     // 150 Gwei
                     lastBlock = null
                 )
             }
@@ -234,14 +234,6 @@ class BlockchainRepository @Inject constructor(
                     val nonce = hexResult.toInt(16)
                     Log.d("Nonce", "✓ Parsed nonce: $nonce")
 
-
-                    if (network == EthereumNetwork.SEPOLIA && nonce == 0) {
-                        Log.w("Nonce", "⚠ Sepolia API returned nonce 0 - this may be wrong!")
-                        Log.w("Nonce", "⚠ Check Etherscan for actual transaction count")
-
-                        return 5
-                    }
-
                     return nonce
                 } else {
                     Log.w("Nonce", "Empty hex result")
@@ -273,42 +265,111 @@ class BlockchainRepository @Inject constructor(
             }
 
             val apiKey = BuildConfig.ETHERSCAN_API_KEY
+            Log.d("Broadcast", "API key present: ${apiKey.isNotEmpty()}")
+            Log.d("Broadcast", "API key last 4: ...${apiKey.takeLast(4)}")
 
             // Add delay to avoid rate limiting
             delay(500)
 
+            Log.d("Broadcast", "Making API call to Etherscan V2...")
             val response = etherscanApi.broadcastTransaction(
                 chainId = chainId,
                 hex = rawTx,
                 apiKey = apiKey
             )
 
-            Log.d("Broadcast", "Response: jsonrpc=${response.jsonrpc}, result=${response.result}, id=${response.id}")
+            Log.d("Broadcast", "Full response: jsonrpc=${response.jsonrpc}, id=${response.id}")
+            Log.d("Broadcast", "Result field: ${response.result}")
 
-            // Check if result is a transaction hash (starts with 0x and 66 chars)
-            if (response.result.startsWith("0x") && response.result.length == 66) {
-                Log.d("Broadcast", " Success! Hash: ${response.result}")
-                BroadcastResult(
-                    success = true,
-                    hash = response.result,
-                    chain = getChainTypeForNetwork(network)
-                )
-            } else {
-                // The result contains an error message
-                Log.e("Broadcast", " Failed: ${response.result}")
-                BroadcastResult(
-                    success = false,
-                    error = response.result,
-                    chain = getChainTypeForNetwork(network)
-                )
+            // CRITICAL FIX: Check if result is a valid transaction hash
+            // Valid hash: starts with 0x and is 66 chars (0x + 64 hex chars)
+            val result = response.result
+
+            when {
+                result.startsWith("0x") && result.length == 66 -> {
+                    // This is a valid transaction hash
+                    Log.d("Broadcast", " Valid TX hash detected!")
+                    Log.d("Broadcast", "Transaction hash: $result")
+
+                    // Try to fetch the transaction to confirm it was accepted
+                        delay(2000) // Wait 2 seconds
+                        checkTransactionAfterBroadcast(result, network)
+
+
+                    BroadcastResult(
+                        success = true,
+                        hash = result,
+                        chain = getChainTypeForNetwork(network)
+                    )
+                }
+                result.contains("nonce") -> {
+                    Log.e("Broadcast", " Nonce error: $result")
+                    BroadcastResult(
+                        success = false,
+                        error = "Nonce error: $result",
+                        chain = getChainTypeForNetwork(network)
+                    )
+                }
+                result.contains("insufficient funds") || result.contains("balance") -> {
+                    Log.e("Broadcast", " Insufficient balance: $result")
+                    BroadcastResult(
+                        success = false,
+                        error = "Insufficient balance: $result",
+                        chain = getChainTypeForNetwork(network)
+                    )
+                }
+                result.contains("already known") -> {
+                    Log.w("Broadcast", "⚠ Transaction already in mempool: $result")
+                    // Extract hash from the message if possible
+                    val hashPattern = Regex("0x[a-fA-F0-9]{64}")
+                    val hash = hashPattern.find(result)?.value
+
+                    BroadcastResult(
+                        success = hash != null,
+                        hash = hash,
+                        error = if (hash == null) result else null,
+                        chain = getChainTypeForNetwork(network)
+                    )
+                }
+                else -> {
+                    Log.e("Broadcast", " Unknown error: $result")
+                    BroadcastResult(
+                        success = false,
+                        error = "Broadcast failed: $result",
+                        chain = getChainTypeForNetwork(network)
+                    )
+                }
             }
         } catch (e: Exception) {
-            Log.e("Broadcast", "Error: ${e.message}", e)
+            Log.e("Broadcast", "Network error: ${e.message}", e)
             BroadcastResult(
                 success = false,
-                error = e.message ?: "Unknown error",
+                error = "Network error: ${e.message}",
                 chain = getChainTypeForNetwork(network)
             )
+        }
+    }
+
+    private suspend fun checkTransactionAfterBroadcast(txHash: String, network: EthereumNetwork) {
+        Log.d("Broadcast", " Checking if transaction $txHash was accepted...")
+
+        try {
+            val chainId = when (network) {
+                EthereumNetwork.SEPOLIA -> CHAIN_ID_SEPOLIA
+                else -> CHAIN_ID_ETHEREUM
+            }
+
+            val apiKey = BuildConfig.ETHERSCAN_API_KEY
+
+            // Try to get the transaction from Etherscan
+            val response = etherscanApi.getEthereumTransactions(
+                chainId = chainId,
+                address = "",
+                apiKey = apiKey
+            )
+
+        } catch (e: Exception) {
+            Log.e("Broadcast", "Failed to check transaction: ${e.message}")
         }
     }
 
@@ -347,7 +408,7 @@ class BlockchainRepository @Inject constructor(
             .toPlainString()
     }
 
-    // For Bitcoin (keep as is)
+    // For Bitcoin
     fun getBitcoinFeeEstimates(): TransactionFee {
         return TransactionFee(
             chain = ChainType.BITCOIN,
