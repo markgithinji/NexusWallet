@@ -13,9 +13,9 @@ import com.example.nexuswallet.feature.wallet.data.local.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.model.SendTransactionDao
-import com.example.nexuswallet.feature.wallet.data.repository.BlockchainRepository
+import com.example.nexuswallet.feature.wallet.data.repository.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
-import com.example.nexuswallet.feature.wallet.data.repository.TransactionRepository
+import com.example.nexuswallet.feature.wallet.data.repository.EthereumTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
 import dagger.Provides
@@ -117,23 +117,23 @@ object DatabaseModule {
     fun provideWalletRepository(
         localDataSource: WalletLocalDataSource,
         securityManager: SecurityManager,
-        blockchainRepository: BlockchainRepository,
+        ethereumBlockchainRepository: EthereumBlockchainRepository,
         keyManager: KeyManager
     ): WalletRepository {
-        return WalletRepository(localDataSource, securityManager, blockchainRepository, keyManager)
+        return WalletRepository(localDataSource, securityManager, ethereumBlockchainRepository, keyManager)
     }
 
     @Provides
     @Singleton
     fun provideTransactionRepository(
         transactionLocalDataSource: TransactionLocalDataSource,
-        blockchainRepository: BlockchainRepository,
+        ethereumBlockchainRepository: EthereumBlockchainRepository,
         walletRepository: WalletRepository,
         keyManager: KeyManager
-    ): TransactionRepository {
-        return TransactionRepository(
+    ): EthereumTransactionRepository {
+        return EthereumTransactionRepository(
             localDataSource = transactionLocalDataSource,
-            blockchainRepository = blockchainRepository,
+            ethereumBlockchainRepository = ethereumBlockchainRepository,
             walletRepository = walletRepository,
             keyManager = keyManager
         )

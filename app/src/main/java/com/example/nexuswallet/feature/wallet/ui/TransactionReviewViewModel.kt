@@ -5,9 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
-import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
-import com.example.nexuswallet.feature.wallet.data.repository.BlockchainRepository
-import com.example.nexuswallet.feature.wallet.data.repository.TransactionRepository
+import com.example.nexuswallet.feature.wallet.data.repository.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.wallet.data.repository.EthereumTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
@@ -22,8 +21,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class TransactionReviewViewModel @Inject constructor(
-    private val transactionRepository: TransactionRepository,
-    private val blockchainRepository: BlockchainRepository
+    private val ethereumTransactionRepository: EthereumTransactionRepository,
+    private val ethereumBlockchainRepository: EthereumBlockchainRepository
 ) : ViewModel() {
 
     data class ReviewUiState(
@@ -66,7 +65,7 @@ class TransactionReviewViewModel @Inject constructor(
             }
 
             try {
-                val transaction = transactionRepository.getSendTransaction(transactionId)
+                val transaction = ethereumTransactionRepository.getSendTransaction(transactionId)
                 if (transaction != null) {
                     _uiState.update {
                         it.copy(
@@ -120,12 +119,12 @@ class TransactionReviewViewModel @Inject constructor(
         Log.d("TransactionReview", "Step 1: Signing...")
 
         try {
-            val signResult = transactionRepository.signTransaction(transactionId)
+            val signResult = ethereumTransactionRepository.signTransaction(transactionId)
             Log.d("TransactionReview", "Sign result: ${if (signResult.isSuccess) "SUCCESS" else "FAILED"}")
 
             if (signResult.isSuccess) {
                 // Update with signed transaction
-                val updatedTransaction = transactionRepository.getSendTransaction(transactionId)
+                val updatedTransaction = ethereumTransactionRepository.getSendTransaction(transactionId)
                 _uiState.update {
                     it.copy(
                         transaction = updatedTransaction,
@@ -138,7 +137,7 @@ class TransactionReviewViewModel @Inject constructor(
                 Log.d("TransactionReview", "Transaction hash: ${updatedTransaction?.hash}")
 
                 // Step 2: Broadcast
-                val broadcastResult = transactionRepository.broadcastTransaction(transactionId)
+                val broadcastResult = ethereumTransactionRepository.broadcastTransaction(transactionId)
                 Log.d("TransactionReview", "Broadcast result: $broadcastResult")
 
                 if (broadcastResult.isSuccess) {
@@ -202,7 +201,7 @@ class TransactionReviewViewModel @Inject constructor(
             Log.d("TransactionReview", " Checking transaction status for: $txHash")
 
             // Get network from transaction
-            val transaction = transactionRepository.getSendTransaction(transactionId)
+            val transaction = ethereumTransactionRepository.getSendTransaction(transactionId)
             val network = when (transaction?.chain) {
                 ChainType.ETHEREUM_SEPOLIA -> EthereumNetwork.SEPOLIA
                 else -> EthereumNetwork.MAINNET
@@ -215,7 +214,7 @@ class TransactionReviewViewModel @Inject constructor(
                 delay(3000) // Wait 3 seconds
 
                 try {
-                    val status = blockchainRepository.checkTransactionStatus(txHash, network)
+                    val status = ethereumBlockchainRepository.checkTransactionStatus(txHash, network)
                     Log.d("TransactionReview", "Transaction status: $status")
 
                     when (status) {

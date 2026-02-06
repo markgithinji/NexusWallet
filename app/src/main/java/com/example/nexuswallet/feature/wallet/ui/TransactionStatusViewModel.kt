@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.wallet.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
-import com.example.nexuswallet.feature.wallet.data.repository.TransactionRepository
+import com.example.nexuswallet.feature.wallet.data.repository.EthereumTransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +14,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class TransactionStatusViewModel @Inject constructor(
-    private val transactionRepository: TransactionRepository
+    private val ethereumTransactionRepository: EthereumTransactionRepository
 ) : ViewModel() {
 
     data class StatusUiState(
@@ -31,7 +31,7 @@ class TransactionStatusViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
 
             try {
-                val transaction = transactionRepository.getSendTransaction(transactionId)
+                val transaction = ethereumTransactionRepository.getSendTransaction(transactionId)
                 _uiState.update {
                     it.copy(
                         transaction = transaction,

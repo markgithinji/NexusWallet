@@ -42,7 +42,7 @@ import org.bitcoinj.wallet.Wallet as BitcoinJWallet
 class WalletRepository @Inject constructor(
     private val localDataSource: WalletLocalDataSource,
     private val securityManager: SecurityManager,
-    private val blockchainRepository: BlockchainRepository,
+    private val ethereumBlockchainRepository: EthereumBlockchainRepository,
     private val keyManager: KeyManager
 ) {
 
@@ -109,7 +109,7 @@ class WalletRepository @Inject constructor(
             Log.d("WalletRepo", "Network: ${wallet.network}")
 
             // Get balance from blockchain
-            val ethBalance = blockchainRepository.getEthereumBalance(
+            val ethBalance = ethereumBlockchainRepository.getEthereumBalance(
                 address = wallet.address,
                 network = wallet.network
             )
@@ -536,7 +536,7 @@ class WalletRepository @Inject constructor(
             Log.d("WalletRepo", "   - Network: ${wallet.network}")
 
             // Get balance from blockchain repository
-            val ethBalance = blockchainRepository.getEthereumBalance(
+            val ethBalance = ethereumBlockchainRepository.getEthereumBalance(
                 address = wallet.address,
                 network = wallet.network
             )

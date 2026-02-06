@@ -20,12 +20,8 @@ data class TokenBalance(
 enum class ChainType {
     BITCOIN,
     ETHEREUM,
-    POLYGON,
-    BINANCE_SMART_CHAIN,
     ETHEREUM_SEPOLIA,
-    SOLANA,
-    ARBITRUM,
-    OPTIMISM
+    SOLANA
 }
 
 @Serializable
@@ -109,7 +105,7 @@ enum class BitcoinNetwork {
 }
 
 enum class EthereumNetwork {
-    MAINNET, ROPSTEN, GOERLI, SEPOLIA, POLYGON, BSC, ARBITRUM, OPTIMISM
+    MAINNET, GOERLI, SEPOLIA, POLYGON, BSC, ARBITRUM, OPTIMISM
 }
 
 @Serializable
@@ -121,17 +117,6 @@ data class WalletBalance(
     val usdValue: Double,
     val tokens: List<TokenBalance> = emptyList(),
     val lastUpdated: Long = System.currentTimeMillis()
-)
-
-@Serializable
-data class CreatedWallet(
-    val id: String,
-    val name: String,
-    val type: WalletType,
-    val address: String,
-    val mnemonicHash: String,
-    val createdAt: Long,
-    val chains: List<ChainType>
 )
 
 @Serializable
@@ -172,76 +157,3 @@ data class TokenTransfer(
 enum class TransactionStatus {
     PENDING, SUCCESS, FAILED
 }
-
-// Token model (for ERC20 tokens)
-@Serializable
-data class ERC20Token(
-    val contractAddress: String,
-    val symbol: String,
-    val name: String,
-    val decimals: Int,
-    val logoUrl: String? = null,
-    val chain: ChainType,
-    val priceUsd: Double? = null,
-    val marketCap: Double? = null
-)
-
-@Serializable
-data class WalletImportData(
-    val mnemonic: List<String>? = null,
-    val privateKey: String? = null,
-    val keystoreJson: String? = null,
-    val password: String? = null,
-    val walletType: WalletType
-)
-
-@Serializable
-data class WalletSettings(
-    val walletId: String,
-    val requireBiometricForTransactions: Boolean = true,
-    val autoLockTimeout: Int = 300, // seconds
-    val currency: String = "USD",
-    val hideSmallBalances: Boolean = false,
-    val rpcUrls: Map<ChainType, String> = emptyMap()
-)
-
-@Serializable
-data class NetworkFee(
-    val chain: ChainType,
-    val baseFee: String? = null,
-    val priorityFee: String? = null,
-    val gasPrice: String? = null,
-    val estimatedTime: Int, // seconds
-    val feeLevel: FeeLevel
-)
-
-enum class FeeLevel {
-    SLOW, NORMAL, FAST, CUSTOM
-}
-
-// For QR code generation
-@Serializable
-data class AddressQRCode(
-    val address: String,
-    val amount: String? = null,
-    val chain: ChainType,
-    val memo: String? = null,
-    val qrCodeData: String
-)
-
-@Serializable
-data class WalletConnectSession(
-    val sessionId: String,
-    val peerMeta: WalletConnectPeerMeta,
-    val chainId: Int,
-    val accounts: List<String>,
-    val connectedAt: Long
-)
-
-@Serializable
-data class WalletConnectPeerMeta(
-    val name: String,
-    val url: String,
-    val description: String? = null,
-    val icons: List<String> = emptyList()
-)

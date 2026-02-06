@@ -3,12 +3,10 @@ package com.example.nexuswallet.feature.wallet.data.repository
 import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.data.model.EthereumTransactionParams
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
-import com.example.nexuswallet.feature.wallet.data.model.ValidationResult
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
@@ -17,8 +15,6 @@ import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.Json
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.Hash
@@ -29,9 +25,9 @@ import java.math.BigDecimal
 import java.math.BigInteger
 
 
-class TransactionRepository(
+class EthereumTransactionRepository(
     private val localDataSource: TransactionLocalDataSource,
-    private val blockchainRepository: BlockchainRepository,
+    private val ethereumBlockchainRepository: EthereumBlockchainRepository,
     private val walletRepository: WalletRepository,
     private val keyManager: KeyManager
 ) {
@@ -86,7 +82,7 @@ class TransactionRepository(
             val amountSat = amount.multiply(BigDecimal("100000000")).toLong()
 
             // Get fee estimate
-            val feeEstimate = blockchainRepository.getBitcoinFeeEstimates()
+            val feeEstimate = ethereumBlockchainRepository.getBitcoinFeeEstimates()
             val selectedFee = when (feeLevel) {
                 FeeLevel.SLOW -> feeEstimate.slow
                 FeeLevel.FAST -> feeEstimate.fast
@@ -137,7 +133,7 @@ class TransactionRepository(
         return try {
             // 1. Get nonce for display
             Log.d("TxRepo", "Getting nonce from API...")
-            val nonce = blockchainRepository.getEthereumNonce(wallet.address, wallet.network)
+            val nonce = ethereumBlockchainRepository.getEthereumNonce(wallet.address, wallet.network)
             Log.d("TxRepo", "API returned nonce: $nonce")
 
             if (nonce == 0 && wallet.network == EthereumNetwork.SEPOLIA) {
@@ -147,7 +143,7 @@ class TransactionRepository(
             Log.d("TxRepo", "Display nonce: $nonce")
 
             // 2. Get gas price for display
-            val gasPrice = blockchainRepository.getEthereumGasPrice(wallet.network)
+            val gasPrice = ethereumBlockchainRepository.getEthereumGasPrice(wallet.network)
             val selectedFee = when (feeLevel) {
                 FeeLevel.SLOW -> gasPrice.slow
                 FeeLevel.FAST -> gasPrice.fast
@@ -234,7 +230,7 @@ class TransactionRepository(
 
             // 1. Get CURRENT nonce
             Log.d("TxRepo", "Getting fresh nonce from API...")
-            val currentNonce = blockchainRepository.getEthereumNonce(wallet.address, wallet.network)
+            val currentNonce = ethereumBlockchainRepository.getEthereumNonce(wallet.address, wallet.network)
             Log.d("TxRepo", "API returned nonce: $currentNonce")
 
             // Remove this override
@@ -245,7 +241,7 @@ class TransactionRepository(
             Log.d("TxRepo", "Signing nonce: $currentNonce")
 
             // 2. Get CURRENT gas price
-            val gasPrice = blockchainRepository.getCurrentGasPrice(wallet.network)
+            val gasPrice = ethereumBlockchainRepository.getCurrentGasPrice(wallet.network)
             val selectedGasPrice = when (transaction.feeLevel ?: FeeLevel.NORMAL) {
                 FeeLevel.SLOW -> gasPrice.safe
                 FeeLevel.FAST -> gasPrice.fast
@@ -380,7 +376,7 @@ class TransactionRepository(
 
             // 3. Broadcast
             Log.d("BroadcastDebug", "Calling blockchainRepository.broadcastEthereumTransaction...")
-            val broadcastResult = blockchainRepository.broadcastEthereumTransaction(
+            val broadcastResult = ethereumBlockchainRepository.broadcastEthereumTransaction(
                 signedHex,
                 wallet.network
             )

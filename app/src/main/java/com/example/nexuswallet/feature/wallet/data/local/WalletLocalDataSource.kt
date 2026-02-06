@@ -17,7 +17,6 @@ import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.WalletBackup
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
-import com.example.nexuswallet.feature.wallet.domain.WalletSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map

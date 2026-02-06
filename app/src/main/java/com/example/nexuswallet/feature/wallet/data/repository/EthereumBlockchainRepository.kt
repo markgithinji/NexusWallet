@@ -12,12 +12,11 @@ import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.delay
-import okhttp3.*
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
 
-class BlockchainRepository @Inject constructor(
+class EthereumBlockchainRepository @Inject constructor(
     private val etherscanApi: EtherscanApiService
 ) {
 

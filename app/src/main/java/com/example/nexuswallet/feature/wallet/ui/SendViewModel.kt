@@ -4,21 +4,17 @@ import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
-import com.example.nexuswallet.feature.wallet.data.model.ValidationResult
-import com.example.nexuswallet.feature.wallet.data.repository.BlockchainRepository
-import com.example.nexuswallet.feature.wallet.data.repository.TransactionRepository
+import com.example.nexuswallet.feature.wallet.data.repository.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.wallet.data.repository.EthereumTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.repository.TransactionState
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,9 +26,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SendViewModel @Inject constructor(
-    private val transactionRepository: TransactionRepository,
+    private val ethereumTransactionRepository: EthereumTransactionRepository,
     private val walletRepository: WalletRepository,
-    private val blockchainRepository: BlockchainRepository
+    private val ethereumBlockchainRepository: EthereumBlockchainRepository
 ) : ViewModel() {
 
     data class SendUiState(
@@ -83,7 +79,7 @@ class SendViewModel @Inject constructor(
                         walletBalance.nativeBalanceDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO
                     } else {
                         when (wallet) {
-                            is EthereumWallet -> blockchainRepository.getEthereumBalance(wallet.address)
+                            is EthereumWallet -> ethereumBlockchainRepository.getEthereumBalance(wallet.address)
                             else -> BigDecimal.ZERO
                         }
                     }
@@ -94,7 +90,7 @@ class SendViewModel @Inject constructor(
                         else -> ChainType.ETHEREUM
                     }
 
-                    val feeEstimate = transactionRepository.getFeeEstimate(chain, FeeLevel.NORMAL)
+                    val feeEstimate = ethereumTransactionRepository.getFeeEstimate(chain, FeeLevel.NORMAL)
 
                     _uiState.update {
                         it.copy(
@@ -188,7 +184,7 @@ class SendViewModel @Inject constructor(
             val amount = BigDecimal(state.amount)
             Log.d("SendVM", "Amount: $amount, To: ${state.toAddress}")
 
-            val result = transactionRepository.createSendTransaction(
+            val result = ethereumTransactionRepository.createSendTransaction(
                 walletId = state.walletId,
                 toAddress = state.toAddress,
                 amount = amount,
@@ -255,7 +251,7 @@ class SendViewModel @Inject constructor(
                 else -> ChainType.ETHEREUM
             }
 
-            val isAddressValid = transactionRepository.validateAddress(state.toAddress, chain)
+            val isAddressValid = ethereumTransactionRepository.validateAddress(state.toAddress, chain)
             if (!isAddressValid) {
                 _uiState.update {
                     it.copy(
@@ -290,7 +286,7 @@ class SendViewModel @Inject constructor(
             }
 
             // Check if amount + fee <= balance
-            val feeEstimate = transactionRepository.getFeeEstimate(chain, state.feeLevel)
+            val feeEstimate = ethereumTransactionRepository.getFeeEstimate(chain, state.feeLevel)
             val totalRequired = amount + BigDecimal(feeEstimate.totalFeeDecimal)
 
             if (totalRequired > state.balance) {
@@ -329,7 +325,7 @@ class SendViewModel @Inject constructor(
         }
 
         try {
-            val feeEstimate = transactionRepository.getFeeEstimate(chain, state.feeLevel)
+            val feeEstimate = ethereumTransactionRepository.getFeeEstimate(chain, state.feeLevel)
             _uiState.update { it.copy(feeEstimate = feeEstimate) }
         } catch (e: Exception) {
             // Keep existing fee estimate

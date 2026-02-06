@@ -3,14 +3,13 @@ package com.example.nexuswallet.feature.wallet.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.wallet.data.repository.BlockchainRepository
+import com.example.nexuswallet.feature.wallet.data.repository.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.repository.GasPrice
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
-import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,7 +24,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class BlockchainViewModel @Inject constructor(
-    private val blockchainRepository: BlockchainRepository
+    private val ethereumBlockchainRepository: EthereumBlockchainRepository
 ) : ViewModel() {
 
     private val _ethBalance = MutableStateFlow<BigDecimal?>(null)
@@ -63,9 +62,9 @@ class BlockchainViewModel @Inject constructor(
             try {
                 when (wallet) {
                     is EthereumWallet -> {
-                        _ethBalance.value = blockchainRepository.getEthereumBalance(wallet.address)
+                        _ethBalance.value = ethereumBlockchainRepository.getEthereumBalance(wallet.address)
                         _transactions.value =
-                            blockchainRepository.getEthereumTransactions(wallet.address)
+                            ethereumBlockchainRepository.getEthereumTransactions(wallet.address)
                         loadGasPrice()
                         updateApiStatus(true)
                     }
@@ -119,7 +118,7 @@ class BlockchainViewModel @Inject constructor(
                     if (wallet is EthereumWallet || wallet is MultiChainWallet) {
                         val address = getEthereumAddress(wallet)
                         if (address.isNotEmpty()) {
-                            val balance = blockchainRepository.getEthereumBalance(address)
+                            val balance = ethereumBlockchainRepository.getEthereumBalance(address)
                             val json = Json { prettyPrint = true }
                             json.encodeToString(
                                 RawBalanceResponse(
@@ -147,7 +146,7 @@ class BlockchainViewModel @Inject constructor(
     fun loadGasPrice() {
         viewModelScope.launch {
             try {
-                _gasPrice.value = blockchainRepository.getCurrentGasPrice()
+                _gasPrice.value = ethereumBlockchainRepository.getCurrentGasPrice()
                 updateApiStatus(true)
             } catch (e: Exception) {
                 Log.e("BlockchainVM", "Error loading gas price: ${e.message}")
@@ -178,7 +177,7 @@ class BlockchainViewModel @Inject constructor(
                     if (wallet is EthereumWallet || wallet is MultiChainWallet) {
                         val address = getEthereumAddress(wallet)
                         if (address.isNotEmpty()) {
-                            val response = blockchainRepository.getEthereumBalance(address)
+                            val response = ethereumBlockchainRepository.getEthereumBalance(address)
                             val json = Json { prettyPrint = true }
                             json.encodeToString(
                                 RawBalanceResponse(
@@ -208,7 +207,7 @@ class BlockchainViewModel @Inject constructor(
             // Test with a known Ethereum address (Vitalik's address)
             val testAddress = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
             val startTime = System.currentTimeMillis()
-            val balance = blockchainRepository.getEthereumBalance(testAddress)
+            val balance = ethereumBlockchainRepository.getEthereumBalance(testAddress)
             val duration = System.currentTimeMillis() - startTime
 
             ApiTestResult(
@@ -256,8 +255,8 @@ class BlockchainViewModel @Inject constructor(
 
     fun validateAddress(address: String, chain: ChainType): Boolean {
         return when (chain) {
-            ChainType.ETHEREUM -> blockchainRepository.isValidEthereumAddress(address)
-            ChainType.BITCOIN -> blockchainRepository.isValidBitcoinAddress(address)
+            ChainType.ETHEREUM -> ethereumBlockchainRepository.isValidEthereumAddress(address)
+            ChainType.BITCOIN -> ethereumBlockchainRepository.isValidBitcoinAddress(address)
             else -> address.isNotBlank()
         }
     }
