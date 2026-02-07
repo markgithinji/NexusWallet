@@ -23,7 +23,6 @@ import java.math.BigInteger
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
-
 @Singleton
 class KeyManager @Inject constructor(
     private val securityManager: SecurityManager
@@ -32,7 +31,6 @@ class KeyManager @Inject constructor(
 
     /**
      * Get private key for signing - REAL VERSION
-     * Uses your SecurityManager to retrieve real private keys
      */
     suspend fun getPrivateKeyForSigning(walletId: String): Result<String> {
         return try {
@@ -50,12 +48,6 @@ class KeyManager @Inject constructor(
             }
 
             val privateKey = privateKeyResult.getOrThrow()
-
-            // Validate private key format
-            if (!isValidEthereumPrivateKey(privateKey)) {
-                Log.e("KeyManager", "Invalid Ethereum private key format")
-                return Result.failure(IllegalArgumentException("Invalid private key format"))
-            }
 
             Log.d("KeyManager", "Private key retrieved successfully")
             Result.success(privateKey)
@@ -75,11 +67,20 @@ class KeyManager @Inject constructor(
         keyType: String = "ETH_PRIVATE_KEY"
     ): Result<Unit> {
         return try {
-            Log.d("KeyManager", "Storing private key for wallet: $walletId")
+            Log.d("KeyManager", "Storing private key for wallet: $walletId, type: $keyType")
 
-            // Validate private key format before storing
-            if (!isValidEthereumPrivateKey(privateKey)) {
-                Log.e("KeyManager", "Invalid private key format")
+            // Validate based on key type
+            val isValid = when (keyType) {
+                "ETH_PRIVATE_KEY" -> isValidEthereumPrivateKey(privateKey)
+                "SOLANA_PRIVATE_KEY" -> isValidSolanaPrivateKey(privateKey)
+                else -> {
+                    Log.w("KeyManager", "Unknown key type: $keyType, skipping format validation")
+                    true
+                }
+            }
+
+            if (!isValid) {
+                Log.e("KeyManager", "Invalid private key format for type: $keyType")
                 return Result.failure(IllegalArgumentException("Invalid private key format"))
             }
 
@@ -120,7 +121,7 @@ class KeyManager @Inject constructor(
 
             // Should be 64 hex characters (32 bytes)
             if (key.length != 64) {
-                Log.d("KeyManager", "Invalid length: ${key.length} (expected 64)")
+                Log.d("KeyManager", "Invalid Ethereum length: ${key.length} (expected 64)")
                 return false
             }
 
@@ -130,8 +131,80 @@ class KeyManager @Inject constructor(
             true
 
         } catch (e: Exception) {
-            Log.e("KeyManager", "Invalid hex format: ${e.message}")
+            Log.e("KeyManager", "Invalid Ethereum hex format: ${e.message}")
             false
+        }
+    }
+
+    /**
+     * Validate Solana private key format
+     */
+    fun isValidSolanaPrivateKey(privateKey: String): Boolean {
+        return try {
+            // Remove 0x prefix if present
+            val key = if (privateKey.startsWith("0x")) {
+                privateKey.substring(2)
+            } else {
+                privateKey
+            }
+
+            // Solana private key from sol4k is 128 hex chars (64 bytes)
+            // This is the full keypair (32-byte seed + 32-byte public key)
+            if (key.length != 128) {
+                Log.d("KeyManager", "Invalid Solana length: ${key.length} (expected 128 for full keypair)")
+
+                // Also accept 64 hex chars (32 bytes seed only)
+                if (key.length == 64) {
+                    Log.d("KeyManager", "Accepting 64-char Solana seed")
+                    // Validate it's valid hex
+                    key.toBigInteger(16)
+                    return true
+                }
+                return false
+            }
+
+            // Should be valid hex
+            key.toBigInteger(16)
+            Log.d("KeyManager", "Valid Solana private key format (128 chars)")
+            true
+
+        } catch (e: Exception) {
+            Log.e("KeyManager", "Invalid Solana hex format: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Get private key and validate for specific blockchain
+     */
+    suspend fun getPrivateKeyForChain(
+        walletId: String,
+        chain: ChainType
+    ): Result<String> {
+        return try {
+            val privateKeyResult = getPrivateKeyForSigning(walletId)
+
+            if (privateKeyResult.isFailure) {
+                return privateKeyResult
+            }
+
+            val privateKey = privateKeyResult.getOrThrow()
+
+            // Validate based on chain
+            val isValid = when (chain) {
+                ChainType.ETHEREUM -> isValidEthereumPrivateKey(privateKey)
+                ChainType.SOLANA -> isValidSolanaPrivateKey(privateKey)
+                else -> true // Skip validation for other chains
+            }
+
+            if (!isValid) {
+                return Result.failure(IllegalArgumentException("Invalid private key for chain: $chain"))
+            }
+
+            Result.success(privateKey)
+
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 

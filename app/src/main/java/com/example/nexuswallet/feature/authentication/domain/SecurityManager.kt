@@ -129,7 +129,7 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
             }
 
             // Get encrypted private key from storage WITH keyType
-            val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(walletId, keyType)  // ADD keyType
+            val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(walletId, keyType)
             if (encryptedData == null) {
                 Log.e("SecurityManager", "No private key found for wallet: $walletId")
                 return Result.failure(IllegalStateException("Private key not found"))
@@ -384,7 +384,7 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
             Log.d("SECURITY_PIN", "Stored hash (first 30 chars): ${storedHash.take(30)}...")
             Log.d("SECURITY_PIN", "Full stored hash length: ${storedHash.length} chars")
 
-            //  CORRECT: Use verifyPinHash with the stored hash (extracts salt from it)
+            //  Use verifyPinHash with the stored hash (extracts salt from it)
             Log.d("SECURITY_PIN", "Using verifyPinHash() with stored hash...")
             val isValid = verifyPinHash(pin, storedHash)
             Log.d("SECURITY_PIN", "PIN verification result: $isValid")
