@@ -4,6 +4,7 @@ package com.example.nexuswallet.feature.wallet.data.repository
 import android.util.Log
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
+import com.example.nexuswallet.feature.wallet.data.solana.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
@@ -30,11 +31,14 @@ import org.bitcoinj.crypto.MnemonicCode
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
 import org.bitcoinj.wallet.DeterministicSeed
+import org.sol4k.Keypair
+import org.sol4k.PublicKey
 import org.web3j.crypto.Bip32ECKeyPair
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.MnemonicUtils
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.math.RoundingMode
 import java.security.SecureRandom
 import javax.inject.Inject
 import org.bitcoinj.wallet.Wallet as BitcoinJWallet
@@ -43,6 +47,7 @@ class WalletRepository @Inject constructor(
     private val localDataSource: WalletLocalDataSource,
     private val securityManager: SecurityManager,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository,
+    private val solanaBlockchainRepository: SolanaBlockchainRepository,
     private val keyManager: KeyManager
 ) {
 
@@ -94,11 +99,63 @@ class WalletRepository @Inject constructor(
                 Log.d("WalletRepo", "Multi-chain wallet synced")
             }
 
+            is SolanaWallet -> {
+                syncSolanaBalance(wallet)
+            }
+
             else -> {
                 Log.d("WalletRepo", "Unknown wallet type, using sample")
                 val sampleBalance = createSampleBalance(wallet.id, wallet.address)
                 saveWalletBalance(sampleBalance)
             }
+        }
+    }
+
+    private suspend fun syncSolanaBalance(wallet: SolanaWallet) {
+        try {
+            Log.d("WalletRepo", "Syncing REAL Solana wallet balance...")
+            Log.d("WalletRepo", "Address: ${wallet.address}")
+
+            // Fetch REAL balance from Solana blockchain
+            val solBalance = solanaBlockchainRepository.getBalance(wallet.address)
+
+            Log.d("WalletRepo", "Real balance fetched: $solBalance SOL")
+
+            val usdValue = calculateUsdValue(solBalance, "SOL")
+            Log.d("WalletRepo", "USD Value: $$usdValue")
+
+            // Convert SOL to lamports for storage (1 SOL = 1,000,000,000 lamports)
+            val lamportsBalance = (solBalance * BigDecimal("1000000000")).toPlainString()
+
+            val balance = WalletBalance(
+                walletId = wallet.id,
+                address = wallet.address,
+                nativeBalance = lamportsBalance, // Store in lamports
+                nativeBalanceDecimal = solBalance.setScale(9, RoundingMode.HALF_UP).toPlainString(), // SOL with 9 decimals
+                usdValue = usdValue,
+                tokens = emptyList(),
+                lastUpdated = System.currentTimeMillis()
+            )
+
+            saveWalletBalance(balance)
+            Log.d("WalletRepo", " Solana balance synced successfully: $solBalance SOL")
+
+        } catch (e: Exception) {
+            Log.e("WalletRepo", " Error syncing Solana balance: ${e.message}")
+
+            // Fallback: Show 0 balance instead of fake 5.75
+            val zeroBalance = WalletBalance(
+                walletId = wallet.id,
+                address = wallet.address,
+                nativeBalance = "0", // 0 lamports
+                nativeBalanceDecimal = "0", // 0 SOL
+                usdValue = 0.0,
+                tokens = emptyList(),
+                lastUpdated = System.currentTimeMillis()
+            )
+
+            saveWalletBalance(zeroBalance)
+            Log.d("WalletRepo", "⚠ Using zero balance due to error")
         }
     }
 
@@ -402,7 +459,7 @@ class WalletRepository @Inject constructor(
             // Create Bitcoin wallet
             val bitcoinWallet = createBitcoinWallet(mnemonic, "$name (Bitcoin)")
 
-            // Create Ethereum wallet - handle Result type
+            // Create Ethereum wallet
             val ethereumResult = createEthereumWallet(mnemonic, "$name (Ethereum)")
             if (ethereumResult.isFailure) {
                 return Result.failure(
@@ -498,6 +555,65 @@ class WalletRepository @Inject constructor(
         }
     }
 
+    suspend fun createSolanaWallet(
+        mnemonic: List<String>,
+        name: String
+    ): Result<SolanaWallet> {
+        return try {
+            Log.d("WalletRepo", "Creating Solana wallet...")
+
+            // Generate keypair
+            val keypair = Keypair.generate()
+
+            // Get the address
+            val address = keypair.publicKey.toString()
+
+            val wallet = SolanaWallet(
+                id = "sol_${System.currentTimeMillis()}",
+                name = name,
+                address = address,
+                publicKey = keypair.publicKey.toString(),
+                privateKeyEncrypted = "",
+                mnemonicHash = mnemonic.hashCode().toString(),
+                createdAt = System.currentTimeMillis(),
+                isBackedUp = false,
+                walletType = WalletType.SOLANA
+            )
+
+            // Save the wallet first
+            saveWallet(wallet)
+
+            // Convert private key to hex (64 bytes = 128 hex chars)
+            val privateKeyBytes = keypair.secret
+            val privateKeyHex = privateKeyBytes.joinToString("") { "%02x".format(it) }
+
+            Log.d("WalletRepo", "Solana private key length: ${privateKeyHex.length} hex chars")
+
+            val storeResult = keyManager.storePrivateKey(
+                walletId = wallet.id,
+                privateKey = privateKeyHex,
+                keyType = "SOLANA_PRIVATE_KEY"
+            )
+
+            if (storeResult.isFailure) {
+                Log.e("WalletRepo", "Failed to store Solana private key: ${storeResult.exceptionOrNull()?.message}")
+                // Still return the wallet - private key storage failed but wallet exists
+            } else {
+                Log.d("WalletRepo", "Solana private key stored successfully")
+            }
+
+            // Store mnemonic securely
+            securityManager.secureMnemonic(wallet.id, mnemonic)
+
+            Log.d("WalletRepo", "Solana wallet created: $address")
+            Result.success(wallet)
+
+        } catch (e: Exception) {
+            Log.e("WalletRepo", "Failed to create Solana wallet: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
     // === BALANCE OPERATIONS ===
     suspend fun saveWalletBalance(balance: WalletBalance) {
         localDataSource.saveWalletBalance(balance)
@@ -574,46 +690,6 @@ class WalletRepository @Inject constructor(
             val fallbackBalance = createSampleBalance(wallet.id, wallet.address)
             saveWalletBalance(fallbackBalance)
             Log.d("WalletRepo", "️ Using fallback sample balance due to error")
-        }
-    }
-
-    private suspend fun syncSolanaWallet(wallet: SolanaWallet) {
-        try {
-            Log.d("WalletRepo", "Solana wallet sync not implemented yet, using demo data")
-
-            val solBalance = BigDecimal("5.75")
-            val tokens = listOf(
-                TokenBalance(
-                    tokenId = "demo_sol_usdc",
-                    symbol = "USDC",
-                    name = "USD Coin (Solana)",
-                    contractAddress = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-                    balance = "1000000000", // 1000 USDC
-                    balanceDecimal = "1000",
-                    usdPrice = 1.0,
-                    usdValue = 1000.0,
-                    decimals = 6,
-                    chain = ChainType.SOLANA
-                )
-            )
-
-            val balance = WalletBalance(
-                walletId = wallet.id,
-                address = wallet.address,
-                nativeBalance = (solBalance * BigDecimal("1000000000")).toPlainString(), // SOL has 9 decimals
-                nativeBalanceDecimal = solBalance.toPlainString(),
-                usdValue = calculateUsdValue(solBalance, "SOL"),
-                tokens = tokens
-            )
-
-            saveWalletBalance(balance)
-
-            Log.d("WalletRepo", "Solana wallet synced with demo data")
-
-        } catch (e: Exception) {
-            Log.e("WalletRepo", "Error syncing Solana wallet: ${e.message}")
-            val fallbackBalance = createSampleBalance(wallet.id, wallet.address)
-            saveWalletBalance(fallbackBalance)
         }
     }
 

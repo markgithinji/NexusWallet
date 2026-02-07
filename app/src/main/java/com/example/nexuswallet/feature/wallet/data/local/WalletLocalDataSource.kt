@@ -136,11 +136,24 @@ class WalletLocalDataSource @Inject constructor(
     }
 
     private fun tryDeserializeWallet(jsonStr: String): CryptoWallet? {
-        return listOf(
-            { json.decodeFromString<BitcoinWallet>(jsonStr) },
-            { json.decodeFromString<EthereumWallet>(jsonStr) },
-            { json.decodeFromString<MultiChainWallet>(jsonStr) },
-            { json.decodeFromString<SolanaWallet>(jsonStr) }
+        Log.d("WalletStorage", "Trying to deserialize wallet JSON")
+
+        val result = listOf(
+            { json.decodeFromString<BitcoinWallet>(jsonStr).also {
+                Log.d("WalletStorage", "Successfully deserialized as BitcoinWallet")
+            } },
+            { json.decodeFromString<EthereumWallet>(jsonStr).also {
+                Log.d("WalletStorage", "Successfully deserialized as EthereumWallet")
+            } },
+            { json.decodeFromString<SolanaWallet>(jsonStr).also {
+                Log.d("WalletStorage", "Successfully deserialized as SolanaWallet")
+            } },
+            { json.decodeFromString<MultiChainWallet>(jsonStr).also {
+                Log.d("WalletStorage", "Successfully deserialized as MultiChainWallet")
+            } }
         ).firstNotNullOfOrNull { runCatching { it() }.getOrNull() }
+
+        Log.d("WalletStorage", "Deserialization result type: ${result?.javaClass?.simpleName}")
+        return result
     }
 }
