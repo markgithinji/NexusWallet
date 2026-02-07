@@ -23,6 +23,7 @@ foundation = "1.10.1"
 runtime = "1.10.1"
 securityCrypto = "1.1.0-alpha06"
 securityCryptoVersion = "1.1.0"
+sol4k = "0.7.0"
 startupRuntime = "1.2.0"
 uiText = "1.10.1"
 bitcoinj = "0.16.3"
@@ -69,6 +70,7 @@ androidx-startup-runtime = { group = "androidx.startup", name = "startup-runtime
 androidx-compose-ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiText" }
 security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCryptoVersion" }
 bitcoinj-core = { module = "org.bitcoinj:bitcoinj-core", version.ref = "bitcoinj" }
+sol4k = { module = "org.sol4k:sol4k", version.ref = "sol4k" }
 web3j-core = { module = "org.web3j:core", version.ref = "web3j" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }

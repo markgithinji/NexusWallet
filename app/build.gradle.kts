@@ -95,6 +95,8 @@ dependencies {
     // Web3j for Ethereum wallets and smart contracts
     implementation(libs.web3j.core)
 
+    implementation(libs.sol4k)
+
     implementation(libs.androidx.security.crypto.v110alpha06)
     implementation(libs.androidx.biometric.ktx)
 
