@@ -17,6 +17,7 @@ import com.example.nexuswallet.feature.wallet.data.repository.EthereumBlockchain
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.EthereumTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.data.solana.SolanaBlockchainRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -118,9 +119,10 @@ object DatabaseModule {
         localDataSource: WalletLocalDataSource,
         securityManager: SecurityManager,
         ethereumBlockchainRepository: EthereumBlockchainRepository,
+        solanaBlockchainRepository: SolanaBlockchainRepository,
         keyManager: KeyManager
     ): WalletRepository {
-        return WalletRepository(localDataSource, securityManager, ethereumBlockchainRepository, keyManager)
+        return WalletRepository(localDataSource, securityManager, ethereumBlockchainRepository, solanaBlockchainRepository,keyManager)
     }
 
     @Provides
