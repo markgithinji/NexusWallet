@@ -129,36 +129,25 @@ class WalletDetailViewModel @Inject constructor(
     }
 
     fun getDisplayAddress(): String {
-        val addr = getWalletAddress() ?: return ""
+        val addr = _wallet.value?.address ?: return "Loading..."
+        Log.d("WalletDetailVM", "getDisplayAddress - Original: $addr")
+
         return if (addr.length > 12) {
-            "${addr.take(8)}...${addr.takeLast(4)}"
+            val display = "${addr.take(8)}...${addr.takeLast(4)}"
+            Log.d("WalletDetailVM", "getDisplayAddress - Display: $display")
+            display
         } else {
             addr
         }
     }
 
-    private fun getWalletAddress(): String? {
-        return when (val wallet = _wallet.value) {
-            is BitcoinWallet -> wallet.address
-            is EthereumWallet -> wallet.address
-            is MultiChainWallet -> wallet.ethereumWallet?.address ?: wallet.bitcoinWallet?.address
-            is SolanaWallet -> wallet.address
-            else -> null
-        }
-    }
-
     fun getFullAddress(): String {
-        return when (val wallet = _wallet.value) {
-            is BitcoinWallet -> wallet.address
-            is EthereumWallet -> wallet.address
-            is MultiChainWallet -> wallet.ethereumWallet?.address
-                ?: wallet.bitcoinWallet?.address
-                ?: ""
-            is SolanaWallet -> wallet.address
-            else -> ""
-        }
+        return _wallet.value?.address ?: ""
     }
 
+    private fun getWalletAddress(): String? {
+        return _wallet.value?.address
+    }
 
     fun refresh() {
         _wallet.value?.let { wallet ->

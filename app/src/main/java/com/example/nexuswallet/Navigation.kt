@@ -17,6 +17,7 @@ import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
+import com.example.nexuswallet.feature.wallet.data.solana.SolanaSendScreen
 import com.example.nexuswallet.feature.wallet.data.test.kettest.KeyStorageTestScreen
 import com.example.nexuswallet.feature.wallet.data.test.SepoliaTestScreen
 import com.example.nexuswallet.feature.wallet.ui.ApiDebugScreen
@@ -272,6 +273,23 @@ fun Navigation() {
             ReceiveScreen(
                 navController = navController,
                 walletId = walletId
+            )
+        }
+
+        composable(
+            route = "send/{walletId}/solana",
+            arguments = listOf(
+                navArgument("walletId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: return@composable
+
+            SolanaSendScreen(
+                walletId = walletId,
+                onBack = { navController.navigateUp() },
+                onSuccess = { hash ->
+                    navController.navigateUp()
+                }
             )
         }
 

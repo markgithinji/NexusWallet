@@ -67,7 +67,6 @@ fun WalletDetailScreen(
     val isLoading by walletViewModel.isLoading.collectAsState()
     val error by walletViewModel.error.collectAsState()
 
-    // Show loading state
     if (isLoading) {
         LoadingScreen()
         return
@@ -170,7 +169,8 @@ fun WalletDetailContent(
                 navController.navigate("receive/${wallet.id}")
             },
             onSend = {
-                navController.navigate("send/${wallet.id}")
+
+               navController.navigate("send/${wallet.id}/solana")
             },
             onBackup = {
                 navController.navigate("authenticate/backup/${wallet.id}")
@@ -724,7 +724,6 @@ fun EmptyTransactionsView() {
     }
 }
 
-// Helper functions
 fun getWalletTypeDisplay(wallet: CryptoWallet): String {
     return when (wallet) {
         is BitcoinWallet -> "Bitcoin Wallet"
@@ -743,7 +742,7 @@ fun getNativeSymbol(wallet: CryptoWallet): String {
     return when (wallet) {
         is BitcoinWallet -> "BTC"
         is EthereumWallet -> when (wallet.network) {
-            EthereumNetwork.SEPOLIA -> "ETH (Sepolia)"  // Show it's testnet ETH
+            EthereumNetwork.SEPOLIA -> "ETH (Sepolia)"
             else -> "ETH"
         }
         is MultiChainWallet -> "MULTI"
@@ -756,9 +755,9 @@ fun getNativeSymbol(wallet: CryptoWallet): String {
 fun WalletIconDetailScreen(wallet: CryptoWallet) {
     val iconSize = 48.dp
     val backgroundColor = when (wallet) {
-        is BitcoinWallet -> Color(0xFFF7931A) // Bitcoin orange
-        is EthereumWallet -> Color(0xFF627EEA) // Ethereum blue
-        is SolanaWallet -> Color(0xFF00FFA3) // Solana green
+        is BitcoinWallet -> Color(0xFFF7931A)
+        is EthereumWallet -> Color(0xFF627EEA)
+        is SolanaWallet -> Color(0xFF00FFA3)
         else -> MaterialTheme.colorScheme.primary
     }
 
