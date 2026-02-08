@@ -13,23 +13,26 @@ data class SendTransaction(
     val walletType: WalletType,
     val fromAddress: String,
     val toAddress: String,
-    val amount: String, // In smallest unit (satoshis, wei)
-    val amountDecimal: String, // Human readable (BTC, ETH)
-    val fee: String,
-    val feeDecimal: String,
-    val total: String,
-    val totalDecimal: String,
+    val amount: String, // In smallest unit (wei, satoshis, lamports)
+    val amountDecimal: String, // Human readable (ETH, BTC, SOL)
+    val fee: String, // Fee in smallest unit
+    val feeDecimal: String, // Fee human readable
+    val total: String, // Total in smallest unit (amount + fee)
+    val totalDecimal: String, // Total human readable
     val chain: ChainType,
-    val status: TransactionStatus,
-    val hash: String? = null,
-    val timestamp: Long = System.currentTimeMillis(),
-    val note: String? = null,
-    val gasPrice: String? = null, // For Ethereum
+    val status: TransactionStatus = TransactionStatus.PENDING,
+    val gasPrice: String? = null, // For Ethereum (Gwei)
     val gasLimit: String? = null, // For Ethereum
-    val nonce: Int? = null, // For Ethereum
-    val signedHex: String? = null,
-    val feeLevel: FeeLevel = FeeLevel.NORMAL
+    val computeUnits: String? = null, // For Solana
+    val signedHex: String? = null, // Signed transaction hex
+    val nonce: Int? = null, // For Ethereum, null for Bitcoin/Solana
+    val hash: String? = null, // Transaction hash
+    val note: String? = null, // User note
+    val timestamp: Long = System.currentTimeMillis(),
+    val feeLevel: FeeLevel? = FeeLevel.NORMAL,
+    val metadata: Map<String, String> = emptyMap() // Chain-specific metadata
 )
+
 
 @Serializable
 data class TransactionFee(
@@ -47,7 +50,8 @@ data class FeeEstimate(
     val totalFee: String, // Total fee in smallest unit
     val totalFeeDecimal: String, // Human readable
     val estimatedTime: Int, // Seconds
-    val priority: FeeLevel
+    val priority: FeeLevel,
+    val metadata: Map<String, String> = emptyMap() // Chain-specific metadata
 )
 
 @Serializable
