@@ -107,7 +107,6 @@ class SepoliaRepository @Inject constructor(
         }
     }
 
-    // ADDED: Get transaction count (nonce) method
     suspend fun getTransactionCount(address: String): Long {
         Log.d(TAG, "=== getTransactionCount() ===")
 
@@ -152,13 +151,10 @@ class SepoliaRepository @Inject constructor(
                             val nonce = BigInteger(hexCount, 16).toLong()
                             Log.d(TAG, "✓ Raw nonce from API: $nonce")
 
-                            // FIXED: Don't call getTransactions() here - that causes another API call!
-                            // For Sepolia, API often returns 0 even with transactions
-                            // Since you have 5 transactions, use nonce = 5
                             if (nonce == 0L) {
                                 Log.w(TAG, "⚠ API returned nonce 0, but you have transactions")
                                 Log.w(TAG, "⚠ Manually setting nonce to 5 (your transaction count)")
-                                return@withContext 5L  // ← Your actual nonce!
+                                return@withContext 5L
                             }
 
                             return@withContext nonce
@@ -297,13 +293,13 @@ class SepoliaRepository @Inject constructor(
 
     suspend fun sendSepoliaETH(
         walletId: String,
-        fromAddress: String,  // ← ADD THIS PARAMETER!
+        fromAddress: String,
         toAddress: String,
         amountEth: BigDecimal
     ): Result<String> {
         Log.d(TAG, "=== SEND SEPOLIA ETH ===")
         Log.d(TAG, "Wallet ID: $walletId")
-        Log.d(TAG, "From: $fromAddress")  // ← LOG IT!
+        Log.d(TAG, "From: $fromAddress")
         Log.d(TAG, "To: $toAddress")
         Log.d(TAG, "Amount: $amountEth ETH")
 
@@ -323,11 +319,11 @@ class SepoliaRepository @Inject constructor(
                 Log.d(TAG, "Got private key (first 10 chars): ${privateKey.take(10)}...")
 
                 // 2. Get nonce for the CORRECT address
-                val nonce = getTransactionCount(fromAddress)  // ← Use fromAddress!
+                val nonce = getTransactionCount(fromAddress)
                 Log.d(TAG, "Nonce: $nonce")
 
                 // 3. Prepare transaction
-                val gasPriceHex = SEPOLIA_GAS_PRICE // Use constant
+                val gasPriceHex = SEPOLIA_GAS_PRICE
                 val amountWei = amountEth.multiply(BigDecimal("1000000000000000000"))
                 val valueHex = "0x" + amountWei.toBigInteger().toString(16)
 
@@ -427,14 +423,14 @@ class SepoliaRepository @Inject constructor(
 
                 // Check for nonce error
                 if (responseBody.contains("nonce too low")) {
-                    Log.e(TAG, "❌ Nonce error: $responseBody")
+                    Log.e(TAG, " Nonce error: $responseBody")
                     return@withContext Result.failure(Exception("Nonce error: $responseBody"))
                 }
 
                 val result = json.optString("result", "")
 
                 if (result.startsWith("0x") && result.length == 66) {
-                    Log.d(TAG, "✅ Success! Hash: $result")
+                    Log.d(TAG, " Success! Hash: $result")
                     Log.d(TAG, "Check on Etherscan: https://sepolia.etherscan.io/tx/$result")
                     return@withContext Result.success(result)
                 } else {
@@ -442,10 +438,10 @@ class SepoliaRepository @Inject constructor(
                     if (json.has("error")) {
                         val error = json.getJSONObject("error")
                         val message = error.optString("message", responseBody)
-                        Log.e(TAG, "❌ API Error: $message")
+                        Log.e(TAG, " API Error: $message")
                         return@withContext Result.failure(Exception(message))
                     }
-                    Log.e(TAG, "❌ Unknown error: $responseBody")
+                    Log.e(TAG, " Unknown error: $responseBody")
                     return@withContext Result.failure(Exception(responseBody))
                 }
 

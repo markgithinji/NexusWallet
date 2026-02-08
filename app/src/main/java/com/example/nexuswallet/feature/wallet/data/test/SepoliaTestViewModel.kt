@@ -135,10 +135,9 @@ class SepoliaTestViewModel @Inject constructor(
 
                 _sendStatus.value = "Sending 0.01 ETH..."
 
-                // CALL WITH CORRECT ADDRESS!
                 val result = repository.sendSepoliaETH(
                     walletId = wallet.id,
-                    fromAddress = fromAddress,  // ← PASS THE ACTUAL ADDRESS!
+                    fromAddress = fromAddress,
                     toAddress = toAddress,
                     amountEth = BigDecimal("0.01")
                 )
@@ -146,20 +145,20 @@ class SepoliaTestViewModel @Inject constructor(
                 if (result.isSuccess) {
                     val hash = result.getOrThrow()
                     _txHash.value = hash
-                    _sendStatus.value = "✅ Transaction sent!"
+                    _sendStatus.value = " Transaction sent!"
                     _testResult.value = "Success! Hash: ${hash.take(10)}..."
 
                     // Update UI with transaction info
                     _error.value = "Transaction submitted. Check Etherscan: https://sepolia.etherscan.io/tx/$hash"
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Unknown error"
-                    _sendStatus.value = "❌ Failed"
+                    _sendStatus.value = " Failed"
                     _error.value = error
                 }
 
             } catch (e: Exception) {
                 Log.e("SendDebug", "Send error: ${e.message}", e)
-                _sendStatus.value = "❌ Error"
+                _sendStatus.value = " Error"
                 _error.value = "Error: ${e.message}"
             }
         }
@@ -199,7 +198,7 @@ class SepoliaTestViewModel @Inject constructor(
                 val nonce = repository.getTransactionCount(address)
                 Log.d("Verify", "Wallet verified: address=$address, balance=$balance, nonce=$nonce")
 
-                _testResult.value = "✅ Wallet ready! Balance: $balance ETH, Nonce: $nonce"
+                _testResult.value = " Wallet ready! Balance: $balance ETH, Nonce: $nonce"
 
             } catch (e: Exception) {
                 _error.value = "Verification failed: ${e.message}"

@@ -29,13 +29,11 @@ import java.math.RoundingMode
 import java.text.SimpleDateFormat
 import java.util.*
 
-// Updated SepoliaTestScreen.kt
 @Composable
 fun SepoliaTestScreen(
     navController: NavController,
     viewModel: SepoliaTestViewModel = hiltViewModel()
 ) {
-    // Use YOUR sending wallet address
     val fromAddress = "0xf35d0111a5a55d65b21b9a22f242095584c0c058"
     val balance by viewModel.balance.collectAsState()
     val loading by viewModel.loading.collectAsState()
