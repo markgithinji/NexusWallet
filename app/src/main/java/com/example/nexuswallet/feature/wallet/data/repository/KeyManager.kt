@@ -23,6 +23,7 @@ import java.math.BigInteger
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
+
 @Singleton
 class KeyManager @Inject constructor(
     private val securityManager: SecurityManager
@@ -32,24 +33,31 @@ class KeyManager @Inject constructor(
     /**
      * Get private key for signing - REAL VERSION
      */
-    suspend fun getPrivateKeyForSigning(walletId: String): Result<String> {
+    suspend fun getPrivateKeyForSigning(
+        walletId: String,
+        keyType: String = "ETH_PRIVATE_KEY"
+    ): Result<String> {
         return try {
-            Log.d("KeyManager", "Requesting private key for wallet: $walletId")
+            Log.d("KeyManager", "Requesting private key for wallet: $walletId, type: $keyType")
 
-            // Get private key from SecurityManager
-            val privateKeyResult = securityManager.getPrivateKeyForSigning(walletId, requireAuth = false)
+            // Get private key from SecurityManager with key type
+            val privateKeyResult = securityManager.getPrivateKeyForSigning(
+                walletId = walletId,
+                keyType = keyType,
+                requireAuth = false
+            )
 
             if (privateKeyResult.isFailure) {
                 Log.e("KeyManager", "Failed to get private key: ${privateKeyResult.exceptionOrNull()?.message}")
                 return Result.failure(
                     privateKeyResult.exceptionOrNull() ?:
-                    IllegalStateException("Failed to retrieve private key")
+                    IllegalStateException("Failed to retrieve private key for type: $keyType")
                 )
             }
 
             val privateKey = privateKeyResult.getOrThrow()
 
-            Log.d("KeyManager", "Private key retrieved successfully")
+            Log.d("KeyManager", "Private key retrieved successfully for type: $keyType")
             Result.success(privateKey)
 
         } catch (e: Exception) {
