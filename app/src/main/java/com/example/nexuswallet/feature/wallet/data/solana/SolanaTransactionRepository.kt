@@ -145,93 +145,98 @@ class SolanaTransactionRepository @Inject constructor(
     private suspend fun signSolanaTransactionReal(
         transactionId: String
     ): Result<SignedTransaction> {
-        return try {
-            val transaction = localDataSource.getSendTransaction(transactionId)
-                ?: return Result.failure(IllegalArgumentException("Transaction not found"))
+        return withContext(Dispatchers.IO) {
+            try {
+                val transaction = localDataSource.getSendTransaction(transactionId)
+                    ?: return@withContext Result.failure(IllegalArgumentException("Transaction not found"))
 
-            // Get wallet
-            val wallet = walletRepository.getWallet(transaction.walletId) as? SolanaWallet
-                ?: return Result.failure(IllegalArgumentException("Solana wallet not found"))
+                // Get wallet
+                val wallet = walletRepository.getWallet(transaction.walletId) as? SolanaWallet
+                    ?: return@withContext Result.failure(IllegalArgumentException("Solana wallet not found"))
 
-            Log.d("SolanaTxRepo", " Signing transaction: ${transaction.id}")
+                Log.d("SolanaTxRepo", " Signing transaction: ${transaction.id}")
 
-            // 1. Get CURRENT blockhash
-            Log.d("SolanaTxRepo", "Getting fresh blockhash from API...")
-            val currentBlockhash = solanaBlockchainRepository.getRecentBlockhash()
-            Log.d("SolanaTxRepo", "Current blockhash: ${currentBlockhash.take(16)}...")
+                // 1. Get CURRENT blockhash
+                Log.d("SolanaTxRepo", "Getting fresh blockhash from API...")
+                val currentBlockhash = solanaBlockchainRepository.getRecentBlockhash()
+                Log.d("SolanaTxRepo", "Current blockhash: ${currentBlockhash.take(16)}...")
 
-            // 2. Get fee estimate
-            val fee = solanaBlockchainRepository.getFeeEstimate()
-            Log.d("SolanaTxRepo", "Fee: ${fee.totalFee} lamports")
+                // 2. Get fee estimate
+                val fee = solanaBlockchainRepository.getFeeEstimate()
+                Log.d("SolanaTxRepo", "Fee: ${fee.totalFee} lamports")
 
-            // 3. Get private key
-            Log.d("SolanaTxRepo", "Requesting private key...")
-            val privateKeyResult = keyManager.getPrivateKeyForSigning(transaction.walletId)
-
-            if (privateKeyResult.isFailure) {
-                Log.e("SolanaTxRepo", "Failed to get private key")
-                return Result.failure(
-                    privateKeyResult.exceptionOrNull() ?: IllegalStateException("No private key")
+                // 3. Get private key
+                Log.d("SolanaTxRepo", "Requesting private key...")
+                val privateKeyResult = keyManager.getPrivateKeyForSigning(
+                    transaction.walletId,
+                    keyType = "SOLANA_PRIVATE_KEY"
                 )
+
+                if (privateKeyResult.isFailure) {
+                    Log.e("SolanaTxRepo", "Failed to get private key")
+                    return@withContext Result.failure(
+                        privateKeyResult.exceptionOrNull() ?: IllegalStateException("No private key")
+                    )
+                }
+
+                val privateKeyHex = privateKeyResult.getOrThrow()
+                Log.d("SolanaTxRepo", "✓ Got private key: ${privateKeyHex.take(8)}...")
+
+                // 4. Create sol4k Keypair from private key
+                val keypair = createSolanaKeypair(privateKeyHex)
+                    ?: return@withContext Result.failure(IllegalArgumentException("Invalid private key format"))
+
+                // 5. Verify address matches
+                val derivedAddress = keypair.publicKey.toString()
+                if (derivedAddress != wallet.address) {
+                    Log.e(
+                        "SolanaTxRepo",
+                        "Address mismatch! Expected: ${wallet.address}, Got: $derivedAddress"
+                    )
+                    return@withContext Result.failure(IllegalStateException("Private key doesn't match wallet"))
+                }
+
+                // 6. Create and sign transaction with sol4k
+                val lamports = transaction.amount.toLongOrNull() ?: 0L
+
+                val signedTx = solanaBlockchainRepository.createAndSignTransaction(
+                    fromKeypair = keypair,
+                    toAddress = transaction.toAddress,
+                    lamports = lamports
+                )
+
+                // 7. Get transaction hash (signature in Solana)
+                val signatureBytes = signedTx.signature
+                val txHash = signatureBytes.toHexString()
+
+                Log.d("SolanaTxRepo", "Signed! Hash: ${txHash.take(16)}...")
+
+                // 8. Create signed transaction
+                val signedTransaction = SignedTransaction(
+                    rawHex = signedTx.serialize().toHexString(),
+                    hash = txHash,
+                    chain = transaction.chain
+                )
+
+                // 9. Update transaction with signed data
+                val updatedTransaction = transaction.copy(
+                    status = TransactionStatus.PENDING,
+                    hash = txHash,
+                    signedHex = signedTransaction.rawHex,
+                    metadata = transaction.metadata + mapOf(
+                        "blockhash" to currentBlockhash,
+                        "signature" to txHash,
+                        "feePayer" to wallet.address
+                    )
+                )
+                localDataSource.saveSendTransaction(updatedTransaction)
+
+                Result.success(signedTransaction)
+
+            } catch (e: Exception) {
+                Log.e("SolanaTxRepo", " Signing failed: ${e.message}", e)
+                Result.failure(e)
             }
-
-            val privateKeyHex = privateKeyResult.getOrThrow()
-            Log.d("SolanaTxRepo", "✓ Got private key: ${privateKeyHex.take(8)}...")
-
-            // 4. Create sol4k Keypair from private key
-            val keypair = createSolanaKeypair(privateKeyHex)
-                ?: return Result.failure(IllegalArgumentException("Invalid private key format"))
-
-            // 5. Verify address matches
-            val derivedAddress = keypair.publicKey.toString()
-            if (derivedAddress != wallet.address) {
-                Log.e(
-                    "SolanaTxRepo",
-                    "Address mismatch! Expected: ${wallet.address}, Got: $derivedAddress"
-                )
-                return Result.failure(IllegalStateException("Private key doesn't match wallet"))
-            }
-
-            // 6. Create and sign transaction with sol4k
-            val lamports = transaction.amount.toLongOrNull() ?: 0L
-
-            val signedTx = solanaBlockchainRepository.createAndSignTransaction(
-                fromKeypair = keypair,
-                toAddress = transaction.toAddress,
-                lamports = lamports
-            )
-
-            // 7. Get transaction hash (signature in Solana)
-            val signatureBytes = signedTx.signature
-            val txHash = signatureBytes.toHexString()
-
-            Log.d("SolanaTxRepo", "Signed! Hash: ${txHash.take(16)}...")
-
-            // 8. Create signed transaction
-            val signedTransaction = SignedTransaction(
-                rawHex = signedTx.serialize().toHexString(),
-                hash = txHash,
-                chain = transaction.chain
-            )
-
-            // 9. Update transaction with signed data
-            val updatedTransaction = transaction.copy(
-                status = TransactionStatus.PENDING,
-                hash = txHash,
-                signedHex = signedTransaction.rawHex,
-                metadata = transaction.metadata + mapOf(
-                    "blockhash" to currentBlockhash,
-                    "signature" to txHash,
-                    "feePayer" to wallet.address
-                )
-            )
-            localDataSource.saveSendTransaction(updatedTransaction)
-
-            Result.success(signedTransaction)
-
-        } catch (e: Exception) {
-            Log.e("SolanaTxRepo", " Signing failed: ${e.message}", e)
-            Result.failure(e)
         }
     }
 
@@ -275,62 +280,64 @@ class SolanaTransactionRepository @Inject constructor(
     }
 
     private suspend fun broadcastTransactionReal(transactionId: String): Result<BroadcastResult> {
-        Log.d("SolanaBroadcast", "🎬 START broadcastTransactionReal")
-        Log.d("SolanaBroadcast", "Transaction ID: $transactionId")
+        return withContext(Dispatchers.IO) {
+            Log.d("SolanaBroadcast", " START broadcastTransactionReal")
+            Log.d("SolanaBroadcast", "Transaction ID: $transactionId")
 
-        return try {
-            val transaction = localDataSource.getSendTransaction(transactionId)
-                ?: run {
-                    Log.e("SolanaBroadcast", " Transaction not found")
-                    return Result.failure(IllegalArgumentException("Transaction not found"))
-                }
+            try {
+                val transaction = localDataSource.getSendTransaction(transactionId)
+                    ?: run {
+                        Log.e("SolanaBroadcast", " Transaction not found")
+                        return@withContext Result.failure(IllegalArgumentException("Transaction not found"))
+                    }
 
-            Log.d("SolanaBroadcast", "Found transaction: ${transaction.id}")
-            Log.d("SolanaBroadcast", "Signed hex available: ${transaction.signedHex != null}")
+                Log.d("SolanaBroadcast", "Found transaction: ${transaction.id}")
+                Log.d("SolanaBroadcast", "Signed hex available: ${transaction.signedHex != null}")
 
-            // 1. Check if transaction is signed
-            val signedHex = transaction.signedHex
-                ?: run {
-                    Log.e("SolanaBroadcast", " Transaction not signed")
-                    return Result.failure(IllegalStateException("Transaction not signed"))
-                }
+                // 1. Check if transaction is signed
+                val signedHex = transaction.signedHex
+                    ?: run {
+                        Log.e("SolanaBroadcast", " Transaction not signed")
+                        return@withContext Result.failure(IllegalStateException("Transaction not signed"))
+                    }
 
-            // 2. Create SolanaSignedTransaction object from hex
-            val signatureBytes = signedHex.hexToByteArray()
-            val solanaSignedTx = SolanaBlockchainRepository.SolanaSignedTransaction(
-                signature = signatureBytes.take(64).toByteArray(), // First 64 bytes are signature
-                serialize = { signatureBytes }
-            )
-
-            // 3. Broadcast to Solana devnet using sol4k
-            Log.d("SolanaBroadcast", " Broadcasting transaction to Solana devnet...")
-            val broadcastResult = solanaBlockchainRepository.broadcastTransaction(
-                solanaSignedTx
-            )
-
-            Log.d("SolanaBroadcast", "Broadcast result: success=${broadcastResult.success}")
-            Log.d("SolanaBroadcast", "Broadcast hash: ${broadcastResult.hash}")
-
-            // 4. Update transaction status
-            val updatedTransaction = if (broadcastResult.success) {
-                Log.d("SolanaBroadcast", " Transaction broadcast successful!")
-                transaction.copy(
-                    status = TransactionStatus.SUCCESS,
-                    hash = broadcastResult.hash ?: transaction.hash
+                // 2. Create SolanaSignedTransaction object from hex
+                val signatureBytes = signedHex.hexToByteArray()
+                val solanaSignedTx = SolanaBlockchainRepository.SolanaSignedTransaction(
+                    signature = signatureBytes.take(64).toByteArray(), // First 64 bytes are signature
+                    serialize = { signatureBytes }
                 )
-            } else {
-                Log.e("SolanaBroadcast", " Transaction broadcast failed: ${broadcastResult.error}")
-                transaction.copy(
-                    status = TransactionStatus.FAILED
+
+                // 3. Broadcast to Solana devnet using sol4k
+                Log.d("SolanaBroadcast", " Broadcasting transaction to Solana devnet...")
+                val broadcastResult = solanaBlockchainRepository.broadcastTransaction(
+                    solanaSignedTx
                 )
+
+                Log.d("SolanaBroadcast", "Broadcast result: success=${broadcastResult.success}")
+                Log.d("SolanaBroadcast", "Broadcast hash: ${broadcastResult.hash}")
+
+                // 4. Update transaction status
+                val updatedTransaction = if (broadcastResult.success) {
+                    Log.d("SolanaBroadcast", " Transaction broadcast successful!")
+                    transaction.copy(
+                        status = TransactionStatus.SUCCESS,
+                        hash = broadcastResult.hash ?: transaction.hash
+                    )
+                } else {
+                    Log.e("SolanaBroadcast", " Transaction broadcast failed: ${broadcastResult.error}")
+                    transaction.copy(
+                        status = TransactionStatus.FAILED
+                    )
+                }
+                localDataSource.saveSendTransaction(updatedTransaction)
+
+                Result.success(broadcastResult)
+
+            } catch (e: Exception) {
+                Log.e("SolanaBroadcast", " Broadcast error: ${e.message}", e)
+                Result.failure(e)
             }
-            localDataSource.saveSendTransaction(updatedTransaction)
-
-            Result.success(broadcastResult)
-
-        } catch (e: Exception) {
-            Log.e("SolanaBroadcast", " Broadcast error: ${e.message}", e)
-            Result.failure(e)
         }
     }
 
