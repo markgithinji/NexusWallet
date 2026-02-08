@@ -176,7 +176,7 @@ class WalletCreationViewModel @Inject constructor(
                         val ethereumResult = walletRepository.createEthereumWallet(
                             mnemonicList,
                             name,
-                            EthereumNetwork.MAINNET  // Explicitly specify MAINNET
+                            EthereumNetwork.MAINNET
                         )
                         if (ethereumResult.isSuccess) {
                             Result.success(ethereumResult.getOrThrow())
@@ -207,6 +207,17 @@ class WalletCreationViewModel @Inject constructor(
                         } else {
                             Result.failure(multiChainResult.exceptionOrNull() ?:
                             IllegalStateException("Failed to create MultiChain wallet"))
+                        }
+                    }
+
+
+                    WalletType.SOLANA -> {
+                        val solanaResult = walletRepository.createSolanaWallet(mnemonicList, name)
+                        if (solanaResult.isSuccess) {
+                            Result.success(solanaResult.getOrThrow())
+                        } else {
+                            Result.failure(solanaResult.exceptionOrNull() ?:
+                            IllegalStateException("Failed to create Solana wallet"))
                         }
                     }
 

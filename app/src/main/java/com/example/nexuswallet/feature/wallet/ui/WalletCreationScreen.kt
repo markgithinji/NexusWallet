@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CurrencyBitcoin
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -436,9 +437,10 @@ fun WalletTypeSelectionStep(
 
         // Wallet Type Cards
         listOf(
-            WalletType.BITCOIN,
+//            WalletType.BITCOIN,
             WalletType.ETHEREUM,
             WalletType.ETHEREUM_SEPOLIA,
+            WalletType.SOLANA,
             WalletType.MULTICHAIN
         ).forEach { type ->
             WalletTypeCard(
@@ -490,6 +492,12 @@ fun WalletTypeCard(
             "Multi-Chain Wallet",
             "Bitcoin, Ethereum, Polygon, BSC in one wallet",
             Icons.Default.AccountBalanceWallet
+        )
+
+        WalletType.SOLANA -> Triple(
+            "Solana Wallet",
+            "Fast Solana & SPL tokens",
+            Icons.Default.FlashOn
         )
 
         else -> Triple(
