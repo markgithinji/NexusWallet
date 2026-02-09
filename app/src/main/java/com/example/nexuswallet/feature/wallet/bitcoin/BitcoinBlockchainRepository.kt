@@ -261,7 +261,7 @@ class BitcoinBlockchainRepository @Inject constructor() {
                     tx.addOutput(changeValue, LegacyAddress.fromKey(networkParams, fromKey))
                 }
 
-                // 6. Sign all inputs using the bitcoinj signing method
+                // 6. Sign all inputs using the proper bitcoinj signing method
                 for (i in 0 until tx.inputs.size) {
                     val input = tx.getInput(i.toLong())
                     val utxo = utxos[i]
@@ -297,9 +297,7 @@ class BitcoinBlockchainRepository @Inject constructor() {
     private suspend fun getUnspentOutputs(address: String, network: BitcoinNetwork): List<UTXO> {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d("BitcoinRepo", "=== GET UTXOs ===")
-                Log.d("BitcoinRepo", "Address: $address")
-                Log.d("BitcoinRepo", "Network: $network")
+                Log.d("BitcoinRepo", " Getting UTXOs for: $address on $network")
 
                 val baseUrl = when (network) {
                     BitcoinNetwork.MAINNET -> "https://blockstream.info/api"
@@ -309,24 +307,34 @@ class BitcoinBlockchainRepository @Inject constructor() {
                 }
 
                 val url = "$baseUrl/address/$address/utxo"
-                Log.d("BitcoinRepo", "UTXO URL: $url")
+                Log.d("BitcoinRepo", "📡 Calling: $url")
 
                 val request = Request.Builder().url(url).build()
                 val response = client.newCall(request).execute()
-                val responseBody = response.body?.string() ?: return@withContext emptyList()
+                val responseBody = response.body?.string()
 
-                Log.d("BitcoinRepo", "UTXO API Response code: ${response.code}")
-                Log.d("BitcoinRepo", "UTXO API Response: $responseBody")
+                Log.d("BitcoinRepo", "Response code: ${response.code}")
 
-                if (!response.isSuccessful) {
-                    Log.e("BitcoinRepo", "UTXO API failed: ${response.code}")
+                if (!response.isSuccessful || responseBody.isNullOrEmpty()) {
+                    Log.e("BitcoinRepo", " Failed to get UTXOs. Code: ${response.code}")
+                    return@withContext emptyList()
+                }
+
+                if (responseBody.trim() == "[]") {
+                    Log.d("BitcoinRepo", "ℹ No UTXOs found (empty array)")
                     return@withContext emptyList()
                 }
 
                 val jsonArray = JSONArray(responseBody)
-                val utxos = mutableListOf<UTXO>()
+                Log.d("BitcoinRepo", " Found ${jsonArray.length()} UTXOs in API response")
 
-                Log.d("BitcoinRepo", "Found ${jsonArray.length()} UTXOs in API response")
+                val networkParams = when (network) {
+                    BitcoinNetwork.MAINNET -> MainNetParams.get()
+                    BitcoinNetwork.TESTNET -> TestNet3Params.get()
+                    BitcoinNetwork.REGTEST -> RegTestParams.get()
+                }
+
+                val utxos = mutableListOf<UTXO>()
 
                 for (i in 0 until jsonArray.length()) {
                     try {
@@ -335,60 +343,17 @@ class BitcoinBlockchainRepository @Inject constructor() {
                         val vout = utxoJson.getInt("vout")
                         val value = utxoJson.getLong("value")
 
-                        Log.d("BitcoinRepo", "Processing UTXO $i:")
-                        Log.d("BitcoinRepo", "  txid: $txid")
-                        Log.d("BitcoinRepo", "  vout: $vout")
-                        Log.d("BitcoinRepo", "  value: $value satoshis")
+                        Log.d("BitcoinRepo", "Processing UTXO $i: txid=$txid, vout=$vout, value=$value")
 
-                        // Get transaction details with retry logic
-                        val txUrl = "$baseUrl/tx/$txid"
-                        val txRequest = Request.Builder().url(txUrl).build()
+                        // Fetch transaction to get the scriptpubkey
+                        val scriptHex = getScriptPubKeyFromTransaction(txid, vout, baseUrl)
 
-                        var txBody: String? = null
-                        var retryCount = 0
-                        val maxRetries = 3
-
-                        while (txBody == null && retryCount < maxRetries) {
-                            try {
-                                if (retryCount > 0) {
-                                    Log.d("BitcoinRepo", "Retry $retryCount for tx: $txid")
-                                    delay(1000L * retryCount) // Exponential backoff
-                                }
-
-                                val txResponse = client.newCall(txRequest).execute()
-                                txBody = txResponse.body?.string()
-
-                                if (!txResponse.isSuccessful) {
-                                    Log.w("BitcoinRepo", "TX API failed (attempt $retryCount): ${txResponse.code}")
-                                    txBody = null
-                                }
-                            } catch (e: Exception) {
-                                Log.e("BitcoinRepo", "TX API error (attempt $retryCount): ${e.message}")
-                            }
-                            retryCount++
-                        }
-
-                        if (txBody == null) {
-                            Log.e("BitcoinRepo", " Failed to get transaction $txid after $maxRetries attempts")
+                        if (scriptHex == null) {
+                            Log.e("BitcoinRepo", " Failed to get script for UTXO $i")
                             continue
                         }
 
-                        val txJson = JSONObject(txBody)
-                        val voutArray = txJson.getJSONArray("vout")
-
-                        if (vout >= voutArray.length()) {
-                            Log.e("BitcoinRepo", " Invalid vout index: $vout for array size: ${voutArray.length()}")
-                            continue
-                        }
-
-                        val output = voutArray.getJSONObject(vout)
-                        val scriptHex = output.getJSONObject("scriptpubkey").getString("hex")
-
-                        val networkParams = when (network) {
-                            BitcoinNetwork.MAINNET -> MainNetParams.get()
-                            BitcoinNetwork.TESTNET -> TestNet3Params.get()
-                            BitcoinNetwork.REGTEST -> RegTestParams.get()
-                        }
+                        Log.d("BitcoinRepo", "Got script: ${scriptHex.take(20)}...")
 
                         val utxo = UTXO(
                             outPoint = TransactionOutPoint(
@@ -404,12 +369,12 @@ class BitcoinBlockchainRepository @Inject constructor() {
                         Log.d("BitcoinRepo", "✓ Added UTXO $i successfully")
 
                     } catch (e: Exception) {
-                        Log.e("BitcoinRepo", " Error processing UTXO $i: ${e.message}", e)
+                        Log.e("BitcoinRepo", " Error processing UTXO $i: ${e.message}")
                     }
                 }
 
-                Log.d("BitcoinRepo", "Total UTXOs processed: ${utxos.size}")
-                utxos
+                Log.d("BitcoinRepo", " Total UTXOs processed: ${utxos.size}")
+                return@withContext utxos
 
             } catch (e: Exception) {
                 Log.e("BitcoinRepo", " Error getting UTXOs: ${e.message}", e)
@@ -418,6 +383,69 @@ class BitcoinBlockchainRepository @Inject constructor() {
         }
     }
 
+    private suspend fun getScriptPubKeyFromTransaction(txid: String, vout: Int, baseUrl: String): String? {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Add delay to avoid rate limiting
+                delay(100L)
+
+                val url = "$baseUrl/tx/$txid"
+                Log.d("BitcoinRepo", " Fetching TX: $url")
+
+                val request = Request.Builder().url(url).build()
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+
+                if (!response.isSuccessful || responseBody.isNullOrEmpty()) {
+                    Log.e("BitcoinRepo", " Failed to fetch TX $txid: ${response.code}")
+                    return@withContext null
+                }
+
+                Log.d("BitcoinRepo", " TX Response: ${responseBody.take(500)}...")
+
+                val txJson = JSONObject(responseBody)
+                val voutArray = txJson.getJSONArray("vout")
+
+                if (vout >= voutArray.length()) {
+                    Log.e("BitcoinRepo", " Invalid vout $vout for TX $txid")
+                    return@withContext null
+                }
+
+                val output = voutArray.getJSONObject(vout)
+
+                // Try different ways to get scriptpubkey
+                return@withContext when {
+                    // 1. Check if scriptpubkey is a JSON object with "hex" field
+                    output.has("scriptpubkey") && output.get("scriptpubkey") is JSONObject -> {
+                        val scriptObj = output.getJSONObject("scriptpubkey")
+                        scriptObj.getString("hex")
+                    }
+                    // 2. Check if scriptpubkey is a direct string (hex)
+                    output.has("scriptpubkey") && output.get("scriptpubkey") is String -> {
+                        output.getString("scriptpubkey")
+                    }
+                    // 3. Check for alternative fields
+                    output.has("scriptPubKey") -> {
+                        val scriptValue = output.get("scriptPubKey")
+                        if (scriptValue is String) scriptValue else null
+                    }
+                    output.has("script") -> {
+                        val scriptValue = output.get("script")
+                        if (scriptValue is String) scriptValue else null
+                    }
+                    // 4. Last resort: try to get it as a string anyway
+                    else -> {
+                        output.optString("scriptpubkey").takeIf { it.isNotEmpty() && it.matches(Regex("^[0-9a-fA-F]+$")) }
+                    }
+                }
+
+            } catch (e: Exception) {
+                Log.e("BitcoinRepo", " Error fetching script from TX $txid: ${e.message}")
+                e.printStackTrace()
+                null
+            }
+        }
+    }
     /**
      * Broadcast transaction to Bitcoin network
      */
