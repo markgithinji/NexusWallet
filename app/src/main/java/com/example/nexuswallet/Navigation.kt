@@ -17,6 +17,7 @@ import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
+import com.example.nexuswallet.feature.wallet.bitcoin.BitcoinSendScreen
 import com.example.nexuswallet.feature.wallet.data.solana.SolanaSendScreen
 import com.example.nexuswallet.feature.wallet.data.test.kettest.KeyStorageTestScreen
 import com.example.nexuswallet.feature.wallet.data.test.SepoliaTestScreen
@@ -306,6 +307,22 @@ fun Navigation() {
             SendScreen(
                 navController = navController,
                 walletId = walletId
+            )
+        }
+
+        // In your NavGraph
+        composable(
+            route = "send/{walletId}/bitcoin",
+            arguments = listOf(navArgument("walletId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: return@composable
+            BitcoinSendScreen(
+                walletId = walletId,
+                onBack = { navController.navigateUp() },
+                onSuccess = { hash ->
+                    // Show success dialog or navigate back
+                    navController.navigateUp()
+                }
             )
         }
 

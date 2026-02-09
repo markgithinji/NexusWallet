@@ -169,8 +169,13 @@ fun WalletDetailContent(
                 navController.navigate("receive/${wallet.id}")
             },
             onSend = {
-
-               navController.navigate("send/${wallet.id}/solana")
+                when (wallet) {
+                    is SolanaWallet -> navController.navigate("send/${wallet.id}/solana")
+                    is BitcoinWallet -> navController.navigate("send/${wallet.id}/bitcoin")
+                    else -> {
+                        navController.navigate("send/${wallet.id}")
+                    }
+                }
             },
             onBackup = {
                 navController.navigate("authenticate/backup/${wallet.id}")

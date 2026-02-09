@@ -437,11 +437,11 @@ fun WalletTypeSelectionStep(
 
         // Wallet Type Cards
         listOf(
-//            WalletType.BITCOIN,
+            WalletType.BITCOIN,
             WalletType.ETHEREUM,
             WalletType.ETHEREUM_SEPOLIA,
             WalletType.SOLANA,
-            WalletType.MULTICHAIN
+//            WalletType.MULTICHAIN
         ).forEach { type ->
             WalletTypeCard(
                 walletType = type,
