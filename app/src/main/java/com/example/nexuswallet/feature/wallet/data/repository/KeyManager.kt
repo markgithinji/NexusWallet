@@ -38,7 +38,9 @@ class KeyManager @Inject constructor(
         keyType: String = "ETH_PRIVATE_KEY"
     ): Result<String> {
         return try {
-            Log.d("KeyManager", "Requesting private key for wallet: $walletId, type: $keyType")
+            Log.d("KeyManager", "=== getPrivateKeyForSigning ===")
+            Log.d("KeyManager", "Wallet ID: $walletId")
+            Log.d("KeyManager", "Requested key type: $keyType")
 
             // Get private key from SecurityManager with key type
             val privateKeyResult = securityManager.getPrivateKeyForSigning(
@@ -48,20 +50,23 @@ class KeyManager @Inject constructor(
             )
 
             if (privateKeyResult.isFailure) {
-                Log.e("KeyManager", "Failed to get private key: ${privateKeyResult.exceptionOrNull()?.message}")
+                val error = privateKeyResult.exceptionOrNull()
+                Log.e("KeyManager", " Failed to get private key: ${error?.message}")
+                Log.e("KeyManager", "Error type: ${error?.javaClass?.simpleName}")
                 return Result.failure(
-                    privateKeyResult.exceptionOrNull() ?:
-                    IllegalStateException("Failed to retrieve private key for type: $keyType")
+                    error ?: IllegalStateException("Failed to retrieve private key for type: $keyType")
                 )
             }
 
             val privateKey = privateKeyResult.getOrThrow()
+            Log.d("KeyManager", " Private key retrieved successfully")
+            Log.d("KeyManager", "Key length: ${privateKey.length}")
+            Log.d("KeyManager", "First 10 chars: ${privateKey.take(10)}...")
 
-            Log.d("KeyManager", "Private key retrieved successfully for type: $keyType")
             Result.success(privateKey)
 
         } catch (e: Exception) {
-            Log.e("KeyManager", "Unexpected error: ${e.message}", e)
+            Log.e("KeyManager", " Unexpected error: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -81,6 +86,7 @@ class KeyManager @Inject constructor(
             val isValid = when (keyType) {
                 "ETH_PRIVATE_KEY" -> isValidEthereumPrivateKey(privateKey)
                 "SOLANA_PRIVATE_KEY" -> isValidSolanaPrivateKey(privateKey)
+                "BTC_PRIVATE_KEY" -> isValidBitcoinPrivateKey(privateKey)
                 else -> {
                     Log.w("KeyManager", "Unknown key type: $keyType, skipping format validation")
                     true
@@ -112,6 +118,33 @@ class KeyManager @Inject constructor(
         } catch (e: Exception) {
             Log.e("KeyManager", "Error storing private key: ${e.message}", e)
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Validate Bitcoin private key format
+     */
+    fun isValidBitcoinPrivateKey(privateKey: String): Boolean {
+        return try {
+            // Bitcoin private keys are typically WIF format
+            // WIF format starts with specific characters based on network
+            when {
+                // Mainnet uncompressed private key WIF
+                privateKey.startsWith("5") && privateKey.length in 51..52 -> true
+                // Mainnet compressed private key WIF
+                privateKey.startsWith("L") || privateKey.startsWith("K") -> true
+                // Testnet private key WIF
+                privateKey.startsWith("9") || privateKey.startsWith("c") -> true
+                // Could also be raw hex (64 characters)
+                privateKey.length == 64 && privateKey.all { it in "0123456789abcdefABCDEF" } -> true
+                else -> {
+                    Log.d("KeyManager", "Invalid Bitcoin private key format: ${privateKey.take(10)}...")
+                    false
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("KeyManager", "Error validating Bitcoin key: ${e.message}")
+            false
         }
     }
 
@@ -189,31 +222,16 @@ class KeyManager @Inject constructor(
         walletId: String,
         chain: ChainType
     ): Result<String> {
-        return try {
-            val privateKeyResult = getPrivateKeyForSigning(walletId)
-
-            if (privateKeyResult.isFailure) {
-                return privateKeyResult
-            }
-
-            val privateKey = privateKeyResult.getOrThrow()
-
-            // Validate based on chain
-            val isValid = when (chain) {
-                ChainType.ETHEREUM -> isValidEthereumPrivateKey(privateKey)
-                ChainType.SOLANA -> isValidSolanaPrivateKey(privateKey)
-                else -> true // Skip validation for other chains
-            }
-
-            if (!isValid) {
-                return Result.failure(IllegalArgumentException("Invalid private key for chain: $chain"))
-            }
-
-            Result.success(privateKey)
-
-        } catch (e: Exception) {
-            Result.failure(e)
+        // Map chain to key type
+        val keyType = when (chain) {
+            ChainType.ETHEREUM -> "ETH_PRIVATE_KEY"
+            ChainType.SOLANA -> "SOLANA_PRIVATE_KEY"
+            ChainType.BITCOIN -> "BTC_PRIVATE_KEY"
+            else -> "DEFAULT_PRIVATE_KEY"
         }
+
+        Log.d("KeyManager", "Getting key for chain: $chain, using keyType: $keyType")
+        return getPrivateKeyForSigning(walletId, keyType)
     }
 
     /**

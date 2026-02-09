@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.wallet.data.repository
 
 import android.util.Log
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
+import com.example.nexuswallet.feature.wallet.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.solana.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
@@ -48,6 +49,7 @@ class WalletRepository @Inject constructor(
     private val securityManager: SecurityManager,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
+    private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val keyManager: KeyManager
 ) {
 
@@ -76,26 +78,18 @@ class WalletRepository @Inject constructor(
 
         when (wallet) {
             is BitcoinWallet -> {
-                // For Bitcoin, we'll use sample data for now
-                val btcBalance = createBitcoinSampleBalance(wallet.id, wallet.address)
-                saveWalletBalance(btcBalance)
-                Log.d("WalletRepo", "Bitcoin balance synced (sample)")
+                syncBitcoinBalance(wallet)
             }
 
             is EthereumWallet -> {
-                // Sync real Ethereum balance
                 syncEthereumBalance(wallet)
             }
 
             is MultiChainWallet -> {
-                // Sync each chain in multi-chain wallet
                 wallet.ethereumWallet?.let { syncEthereumBalance(it) }
                 wallet.polygonWallet?.let { syncEthereumBalance(it) }
                 wallet.bscWallet?.let { syncEthereumBalance(it) }
-                wallet.bitcoinWallet?.let {
-                    val btcBalance = createBitcoinSampleBalance(it.id, it.address)
-                    saveWalletBalance(btcBalance)
-                }
+                wallet.bitcoinWallet?.let { syncBitcoinBalance(it) }
                 Log.d("WalletRepo", "Multi-chain wallet synced")
             }
 
@@ -104,9 +98,7 @@ class WalletRepository @Inject constructor(
             }
 
             else -> {
-                Log.d("WalletRepo", "Unknown wallet type, using sample")
-                val sampleBalance = createSampleBalance(wallet.id, wallet.address)
-                saveWalletBalance(sampleBalance)
+                Log.d("WalletRepo", "Unknown wallet type")
             }
         }
     }
@@ -116,7 +108,7 @@ class WalletRepository @Inject constructor(
             Log.d("WalletRepo", "Syncing REAL Solana wallet balance...")
             Log.d("WalletRepo", "Address: ${wallet.address}")
 
-            // Fetch REAL balance from Solana blockchain
+            // Fetch balance from Solana blockchain
             val solBalance = solanaBlockchainRepository.getBalance(wallet.address)
 
             Log.d("WalletRepo", "Real balance fetched: $solBalance SOL")
@@ -204,6 +196,56 @@ class WalletRepository @Inject constructor(
             val fallbackBalance = createEthereumSampleBalance(wallet.id, wallet.address)
             saveWalletBalance(fallbackBalance)
             Log.d("WalletRepo", "⚠ Using sample balance due to error")
+        }
+    }
+
+    private suspend fun syncBitcoinBalance(wallet: BitcoinWallet) {
+        try {
+            Log.d("WalletRepo", "Syncing REAL Bitcoin wallet balance...")
+            Log.d("WalletRepo", "Address: ${wallet.address}")
+            Log.d("WalletRepo", "Network: ${wallet.network}")
+
+            val btcBalance = bitcoinBlockchainRepository.getBalance(
+                address = wallet.address,
+                network = wallet.network
+            )
+
+            Log.d("WalletRepo", "Real balance fetched: $btcBalance BTC")
+
+            val usdValue = calculateUsdValue(btcBalance, "BTC")
+            Log.d("WalletRepo", "USD Value: $$usdValue")
+
+            // Convert BTC to satoshis for storage (1 BTC = 100,000,000 satoshis)
+            val satoshiBalance = (btcBalance * BigDecimal("100000000")).toPlainString()
+
+            val balance = WalletBalance(
+                walletId = wallet.id,
+                address = wallet.address,
+                nativeBalance = satoshiBalance,
+                nativeBalanceDecimal = btcBalance.setScale(8, RoundingMode.HALF_UP).toPlainString(),
+                usdValue = usdValue,
+                tokens = emptyList(),
+                lastUpdated = System.currentTimeMillis()
+            )
+
+            saveWalletBalance(balance)
+            Log.d("WalletRepo", " Bitcoin balance synced successfully: $btcBalance BTC")
+
+        } catch (e: Exception) {
+            Log.e("WalletRepo", " Error syncing Bitcoin balance: ${e.message}")
+
+            val zeroBalance = WalletBalance(
+                walletId = wallet.id,
+                address = wallet.address,
+                nativeBalance = "0",
+                nativeBalanceDecimal = "0",
+                usdValue = 0.0,
+                tokens = emptyList(),
+                lastUpdated = System.currentTimeMillis()
+            )
+
+            saveWalletBalance(zeroBalance)
+            Log.d("WalletRepo", "⚠ Using zero balance due to error")
         }
     }
 
@@ -323,7 +365,7 @@ class WalletRepository @Inject constructor(
     fun createBitcoinWallet(
         mnemonic: List<String>,
         name: String,
-        network: BitcoinNetwork = BitcoinNetwork.MAINNET
+        network: BitcoinNetwork = BitcoinNetwork.TESTNET
     ): BitcoinWallet {
         val params = when (network) {
             BitcoinNetwork.MAINNET -> MainNetParams.get()
@@ -340,12 +382,15 @@ class WalletRepository @Inject constructor(
 
         val address = LegacyAddress.fromKey(params, key).toString()
 
+        // Get private key in WIF format
+        val privateKeyWIF = key.getPrivateKeyEncoded(params).toString()
+
         val bitcoinWallet = BitcoinWallet(
             id = "btc_${System.currentTimeMillis()}",
             name = name,
             address = address,
             publicKey = key.pubKey.toString(),
-            privateKeyEncrypted = "",
+            privateKeyEncrypted = privateKeyWIF,
             network = network,
             derivationPath = "m/44'/0'/0'/0/0",
             xpub = xpub,
@@ -355,9 +400,17 @@ class WalletRepository @Inject constructor(
             walletType = WalletType.BITCOIN
         )
 
-        // Secure the mnemonic in background
+        // Secure mnemonic AND private key in background
         scope.launch {
+            // Store mnemonic
             securityManager.secureMnemonic(bitcoinWallet.id, mnemonic)
+
+            // Store Bitcoin private key with correct key type
+            keyManager.storePrivateKey(
+                walletId = bitcoinWallet.id,
+                privateKey = privateKeyWIF,
+                keyType = "BTC_PRIVATE_KEY"
+            )
         }
 
         return bitcoinWallet
@@ -424,7 +477,7 @@ class WalletRepository @Inject constructor(
             // Store the wallet first
             saveWallet(wallet)
 
-            // Store the REAL private key using KeyManager
+            // Store the private key using KeyManager
             val storeResult = keyManager.storePrivateKey(
                 walletId = wallet.id,
                 privateKey = privateKeyHex,

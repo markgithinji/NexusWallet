@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.wallet.di
 import android.content.Context
 import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
+import com.example.nexuswallet.feature.wallet.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.local.BackupDao
 import com.example.nexuswallet.feature.wallet.data.local.BalanceDao
 import com.example.nexuswallet.feature.wallet.data.local.MnemonicDao
@@ -120,9 +121,10 @@ object DatabaseModule {
         securityManager: SecurityManager,
         ethereumBlockchainRepository: EthereumBlockchainRepository,
         solanaBlockchainRepository: SolanaBlockchainRepository,
+        bitcoinBlockchainRepository: BitcoinBlockchainRepository,
         keyManager: KeyManager
     ): WalletRepository {
-        return WalletRepository(localDataSource, securityManager, ethereumBlockchainRepository, solanaBlockchainRepository,keyManager)
+        return WalletRepository(localDataSource, securityManager, ethereumBlockchainRepository, solanaBlockchainRepository, bitcoinBlockchainRepository,keyManager)
     }
 
     @Provides
