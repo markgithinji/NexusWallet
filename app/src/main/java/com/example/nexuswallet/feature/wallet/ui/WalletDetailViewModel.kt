@@ -13,18 +13,23 @@ import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
+import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
+import com.example.nexuswallet.feature.coin.usdc.domain.GetUSDCBalanceUseCase
+import com.example.nexuswallet.feature.wallet.domain.ChainType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
 class WalletDetailViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
-    private val usdcTransactionRepository: USDCTransactionRepository
+    private val getUSDCBalanceUseCase: GetUSDCBalanceUseCase,
+    private val getETHBalanceForGasUseCase: GetETHBalanceForGasUseCase
 ) : ViewModel() {
 
     // Current wallet
@@ -102,76 +107,127 @@ class WalletDetailViewModel @Inject constructor(
             _error.value = null
 
             try {
-                // 1. Load wallet
+                // 1. Load wallet from repository
                 val loadedWallet = walletRepository.getWallet(walletId)
                 _wallet.value = loadedWallet
 
-                // 2. Load balance (async)
+                // 2. Load wallet balance from repository
                 val balanceDeferred = async { walletRepository.getWalletBalance(walletId) }
 
-                // 3. Load token balances if applicable
+                // 3. Load token balances using use cases
                 if (loadedWallet is USDCWallet || loadedWallet is EthereumWallet) {
                     loadTokenBalances(walletId)
                 }
 
-                // 4. If USDC wallet, also load ETH balance for gas
+                // 4. If USDC wallet, load ETH balance for gas using use case
                 if (loadedWallet is USDCWallet) {
-                    val ethBalanceDeferred = async {
-                        walletRepository.getWalletBalance(loadedWallet.id)
-                    }
-                    _ethBalanceForGas.value = ethBalanceDeferred.await()
-                } else {
-                    Log.d("WalletDetailVM", "Not an USDC wallet, not loading ETH balance for gas")
+                    val ethBalance = getETHBalanceForGasUseCase(walletId)
+                    // Store in metadata or separate state
                 }
 
-                // 5. Start collecting transactions
-                startCollectingTransactions(walletId)
-
-                // 6. Wait for balance and update
+                // 5. Wait for balance and update
                 val loadedBalance = balanceDeferred.await()
                 _balance.value = loadedBalance
 
-                Log.d("WalletDetailVM", "Loaded ${loadedWallet?.walletType} wallet")
-
             } catch (e: Exception) {
                 _error.value = "Failed to load wallet: ${e.message}"
-                Log.e("WalletDetailVM", "Error loading wallet: ${e.message}", e)
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
-    // Load token balances (USDC and other tokens)
     fun loadTokenBalances(walletId: String) {
         viewModelScope.launch {
             _isLoadingTokenBalances.value = true
             try {
                 val wallet = walletRepository.getWallet(walletId)
+
+                // Get existing wallet balance first
+                val existingBalance = walletRepository.getWalletBalance(walletId)
+
                 when (wallet) {
                     is USDCWallet -> {
-                        // Load USDC balance specifically
-                        val usdcBalance = usdcTransactionRepository.getUSDCBalance(walletId)
-                        _tokenBalances.value = if (usdcBalance.balanceDecimal != "0") {
+                        // Load USDC balance
+                        val usdcBalance = try {
+                            getUSDCBalanceUseCase(walletId)
+                        } catch (e: Exception) {
+                            Log.e("WalletDetailVM", "Error getting USDC balance: ${e.message}")
+                            createEmptyUSDCBalance(wallet.network)
+                        }
+
+                        // Also get ETH balance for gas (for USDC wallets)
+                        val ethBalance = try {
+                            getETHBalanceForGasUseCase(walletId)
+                        } catch (e: Exception) {
+                            Log.e("WalletDetailVM", "Error getting ETH balance for gas: ${e.message}")
+                            BigDecimal.ZERO
+                        }
+
+                        // Update token balances state
+                        val tokenList = if (usdcBalance.balanceDecimal != "0") {
                             listOf(usdcBalance)
                         } else {
                             emptyList()
                         }
+                        _tokenBalances.value = tokenList
+
+                        // Update the main WalletBalance with tokens in the tokens field
+                        if (existingBalance != null) {
+                            val updatedBalance = existingBalance.copy(
+                                tokens = tokenList,
+                                nativeBalance = existingBalance.nativeBalance,
+                                nativeBalanceDecimal = existingBalance.nativeBalanceDecimal,
+                                lastUpdated = System.currentTimeMillis()
+                            )
+
+                            // Save updated balance with tokens
+                            walletRepository.saveWalletBalance(updatedBalance)
+                            _balance.value = updatedBalance
+                        }
+
+                        Log.d("WalletDetailVM", "Loaded USDC: ${usdcBalance.balanceDecimal}, ETH for gas: $ethBalance")
                     }
+
                     is EthereumWallet -> {
-                        if (wallet.network == EthereumNetwork.SEPOLIA) {
-                            val usdcBalance = usdcTransactionRepository.getUSDCBalance(walletId)
-                            if (usdcBalance.balanceDecimal != "0") {
-                                _tokenBalances.value = listOf(usdcBalance)
-                            } else {
-                                _tokenBalances.value = emptyList()
+                        // For Ethereum wallets, check if they have USDC
+                        if (wallet.network == EthereumNetwork.SEPOLIA || wallet.network == EthereumNetwork.MAINNET) {
+                            val usdcBalance = try {
+                                getUSDCBalanceUseCase(walletId)
+                            } catch (e: Exception) {
+                                Log.e("WalletDetailVM", "Error getting USDC for Ethereum wallet: ${e.message}")
+                                createEmptyUSDCBalance(wallet.network)
                             }
+
+                            val tokenList = if (usdcBalance.balanceDecimal != "0") {
+                                listOf(usdcBalance)
+                            } else {
+                                emptyList()
+                            }
+
+                            _tokenBalances.value = tokenList
+
+                            // Update main balance with tokens
+                            if (existingBalance != null) {
+                                val updatedBalance = existingBalance.copy(
+                                    tokens = tokenList,
+                                    lastUpdated = System.currentTimeMillis()
+                                )
+
+                                walletRepository.saveWalletBalance(updatedBalance)
+                                _balance.value = updatedBalance
+                            }
+
+                            Log.d("WalletDetailVM", "Found USDC on Ethereum wallet: ${usdcBalance.balanceDecimal}")
                         } else {
                             _tokenBalances.value = emptyList()
+                            Log.d("WalletDetailVM", "Not checking USDC for non-Ethereum network: ${wallet.network}")
                         }
                     }
+
                     else -> {
                         _tokenBalances.value = emptyList()
+                        Log.d("WalletDetailVM", "Wallet type ${wallet?.walletType} doesn't support token balances")
                     }
                 }
             } catch (e: Exception) {
@@ -183,16 +239,117 @@ class WalletDetailViewModel @Inject constructor(
         }
     }
 
-    // Refresh token balances
+    private fun createEmptyUSDCBalance(network: EthereumNetwork): TokenBalance {
+        val chainType = when (network) {
+            EthereumNetwork.SEPOLIA -> ChainType.ETHEREUM_SEPOLIA
+            else -> ChainType.ETHEREUM
+        }
+
+        return TokenBalance(
+            tokenId = "usdc_empty_${System.currentTimeMillis()}",
+            symbol = "USDC",
+            name = "USD Coin",
+            contractAddress = "",
+            balance = "0",
+            balanceDecimal = "0",
+            usdPrice = 1.0,
+            usdValue = 0.0,
+            decimals = 6,
+            chain = chainType
+        )
+    }
+
+    // Helper to get display balance with tokens
+    fun getDisplayBalance(): String {
+        val balance = _balance.value
+
+        return when (val wallet = _wallet.value) {
+            is USDCWallet -> {
+                // For USDC wallets, show both native balance and token balance
+                val native = balance?.nativeBalanceDecimal ?: "0"
+                val hasTokens = balance?.tokens?.isNotEmpty() == true
+
+                if (hasTokens) {
+                    val usdcBalance = balance.tokens.firstOrNull()
+                    "${usdcBalance?.balanceDecimal ?: "0"} USDC (${native} native)"
+                } else {
+                    "$native USDC"
+                }
+            }
+            is EthereumWallet -> {
+                // For Ethereum wallets, show ETH balance and any tokens
+                val ethBalance = balance?.nativeBalanceDecimal ?: "0"
+                val hasTokens = balance?.tokens?.isNotEmpty() == true
+
+                if (hasTokens) {
+                    val tokenList = balance.tokens.joinToString(", ") { "${it.balanceDecimal} ${it.symbol}" }
+                    "$ethBalance ETH + $tokenList"
+                } else {
+                    "$ethBalance ETH"
+                }
+            }
+            else -> {
+                balance?.nativeBalanceDecimal ?: "0"
+            }
+        }
+    }
+
+    // Get total USD value including tokens
+    fun getTotalUsdValue(): Double {
+        val balance = _balance.value
+        var total = balance?.usdValue ?: 0.0
+
+        // Add token values
+        balance?.tokens?.forEach { token ->
+            total += token.usdValue
+        }
+
+        return total
+    }
+
     fun refreshTokenBalances() {
         _wallet.value?.let { wallet ->
             loadTokenBalances(wallet.id)
         }
     }
 
-    // Get token balance for display
+    // Get specific token balance
     fun getTokenBalance(symbol: String = "USDC"): TokenBalance? {
-        return _tokenBalances.value.find { it.symbol == symbol }
+        return _balance.value?.tokens?.find { it.symbol == symbol } ?: _tokenBalances.value.find { it.symbol == symbol }
+    }
+
+    // Check if wallet has any tokens
+    fun hasTokens(): Boolean {
+        return _balance.value?.tokens?.isNotEmpty() == true || _tokenBalances.value.isNotEmpty()
+    }
+
+    fun getAllTokens(): List<TokenBalance> {
+        return _balance.value?.tokens ?: _tokenBalances.value
+    }
+
+    // Get ETH balance for gas (specifically for USDC wallets)
+    suspend fun getETHGasBalance(): BigDecimal? {
+        val wallet = _wallet.value
+        return if (wallet is USDCWallet) {
+            try {
+                getETHBalanceForGasUseCase(wallet.id)
+            } catch (e: Exception) {
+                Log.e("WalletDetailVM", "Error getting ETH gas balance: ${e.message}")
+                null
+            }
+        } else {
+            null
+        }
+    }
+
+    // Check if wallet has sufficient ETH for USDC transactions
+    suspend fun hasSufficientGasForUSDC(minRequired: BigDecimal = BigDecimal("0.001")): Boolean {
+        return if (_wallet.value is USDCWallet) {
+            val ethBalance = getETHGasBalance()
+            ethBalance?.let { it >= minRequired } ?: false
+        } else {
+            true // Non-USDC wallets don't need this check
+        }
     }
 
     private fun startCollectingTransactions(walletId: String) {
