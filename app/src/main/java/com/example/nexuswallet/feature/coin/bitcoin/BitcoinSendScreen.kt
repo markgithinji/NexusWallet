@@ -22,7 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.nexuswallet.feature.wallet.solana.LoadingDialog
+import com.example.nexuswallet.feature.coin.solana.LoadingDialog
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import java.math.BigDecimal
 

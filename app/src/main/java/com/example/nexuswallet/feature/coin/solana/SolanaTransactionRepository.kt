@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.solana
+package com.example.nexuswallet.feature.coin.solana
 
 import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource

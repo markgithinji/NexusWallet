@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.solana
+package com.example.nexuswallet.feature.coin.solana
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
