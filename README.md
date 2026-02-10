@@ -1,6 +1,8 @@
-# Nexus Wallet 🔐
+# Nexus Wallet 🔐 🚧 *Currently Under Development*
 
-A **production-ready** cryptocurrency wallet for Android showcasing advanced technical skills in security, real-time data handling, and modern Android architecture.
+A cryptocurrency wallet for Android showcasing advanced technical skills in security, real-time data handling, and modern Android architecture.
+
+> **Note:** This project is currently a work-in-progress and under active development.
 
 ![Android](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-0095D5?&style=for-the-badge&logo=kotlin&logoColor=white)
@@ -31,16 +33,16 @@ A **production-ready** cryptocurrency wallet for Android showcasing advanced tec
 
 ## ✨ Key Features
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| 🔐 **Secure Wallet Creation** | ✅ Complete | BIP39 12-word seed phrases with verification |
-| 📈 **Real-time Market Data** | ✅ Complete | Live prices with WebSocket updates |
-| 👤 **Biometric Authentication** | ✅ Complete | Fingerprint/Face ID + PIN protection |
-| 💰 **Multi-Currency Support** | ✅ Complete | Bitcoin, Ethereum, multi-chain wallets |
-| 🎨 **Professional UI/UX** | ✅ Complete | Jetpack Compose, Material Design 3 |
-| 🔄 **Clean Architecture** | ✅ Complete | MVVM, Repository pattern, StateFlow |
-| 📊 **Portfolio Tracking** | 🔄 In Progress | Balance aggregation & analytics |
-| 🧾 **Transaction History** | 🔄 In Progress | Blockchain API integration |
+| Feature | Status          | Description |
+|---------|-----------------|-------------|
+| 🔐 **Secure Wallet Creation** | ✅ Complete      | BIP39 12-word seed phrases with verification |
+| 📈 **Real-time Market Data** | ✅ Complete      | Live prices with WebSocket updates |
+| 👤 **Biometric Authentication** | ✅ Complete      | Fingerprint/Face ID + PIN protection |
+| 💰 **Multi-Currency Support** | ✅ Complete      | Bitcoin, Ethereum, multi-chain wallets |
+| 🎨 **Professional UI/UX** | 🔄 In Progress  | Jetpack Compose, Material Design 3 |
+| 🔄 **Clean Architecture** | ✅ Complete      | MVVM, Repository pattern, StateFlow |
+| 📊 **Portfolio Tracking** | 🔄 In Progress  | Balance aggregation & analytics |
+| 🧾 **Transaction History** | 🔄 In Progress  | Blockchain API integration |
 
 ## 🛠️ Tech Stack
 
@@ -57,4 +59,3 @@ A **production-ready** cryptocurrency wallet for Android showcasing advanced tec
 
 
 ⚠️ Disclaimer: This is a portfolio project demonstrating Android development skills. It is NOT intended for real cryptocurrency storage. Use at your own risk.
-
