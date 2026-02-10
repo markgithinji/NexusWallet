@@ -8,10 +8,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CurrencyBitcoin
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +36,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nexuswallet.NavigationViewModel
+import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
+import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -247,7 +251,6 @@ fun WalletsList(
         }
     }
 }
-
 @Composable
 fun WalletCard(
     wallet: CryptoWallet,
@@ -288,13 +291,34 @@ fun WalletCard(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = wallet.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = wallet.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    // Add USDC badge if needed
+                    if (wallet is USDCWallet) {
+                        Box(
+                            modifier = Modifier
+                                .background(Color.Blue.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "USDC",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.Blue,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
 
                 Text(
                     text = getWalletTypeDisplay(wallet),
@@ -304,11 +328,33 @@ fun WalletCard(
 
                 balance?.let {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "$${String.format("%.2f", it.usdValue)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
+
+                    // For USDC wallets, show USDC amount instead of USD value
+                    if (wallet is USDCWallet && it.nativeBalanceDecimal != "0") {
+                        Row(
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            Text(
+                                text = "${it.nativeBalanceDecimal} USDC",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "$${String.format("%.2f", it.usdValue)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    } else {
+                        // For other wallets, show USD value
+                        Text(
+                            text = "$${String.format("%.2f", it.usdValue)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
 
@@ -331,11 +377,12 @@ fun WalletIcon(wallet: CryptoWallet) {
     val (icon, color) = when (wallet) {
         is BitcoinWallet -> Pair(Icons.Default.CurrencyBitcoin, Color(0xFFF7931A))
         is EthereumWallet -> Pair(Icons.Default.Diamond, Color(0xFF627EEA))
+        is SolanaWallet -> Pair(Icons.Default.FlashOn, Color(0xFF00FFA3))
+        is USDCWallet -> Pair(Icons.Default.AttachMoney, Color(0xFF2775CA))
         is MultiChainWallet -> Pair(
             Icons.Default.AccountBalanceWallet,
             MaterialTheme.colorScheme.primary
         )
-
         else -> Pair(Icons.Default.AccountBalanceWallet, MaterialTheme.colorScheme.primary)
     }
 
