@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.data.repository
+package com.example.nexuswallet.feature.wallet.ethereum
 
 import android.util.Log
 import com.example.nexuswallet.BuildConfig
@@ -6,7 +6,6 @@ import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.model.TransactionFee
-import com.example.nexuswallet.feature.wallet.data.remote.EtherscanApiService
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.Transaction

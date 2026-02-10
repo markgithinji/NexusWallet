@@ -3,8 +3,8 @@ package com.example.nexuswallet.feature.wallet.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.wallet.data.repository.EthereumBlockchainRepository
-import com.example.nexuswallet.feature.wallet.data.repository.GasPrice
+import com.example.nexuswallet.feature.wallet.ethereum.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.wallet.ethereum.GasPrice
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet

@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.data.repository
+package com.example.nexuswallet.feature.wallet.ethereum
 
 import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
@@ -7,6 +7,8 @@ import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
+import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
+import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork

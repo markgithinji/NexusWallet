@@ -1,10 +1,8 @@
 package com.example.nexuswallet.feature.wallet.usdc
 
-import com.example.nexuswallet.feature.wallet.bitcoin.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.wallet.bitcoin.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
-import com.example.nexuswallet.feature.wallet.data.remote.EtherscanApiService
-import com.example.nexuswallet.feature.wallet.data.repository.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.wallet.ethereum.EtherscanApiService
+import com.example.nexuswallet.feature.wallet.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module

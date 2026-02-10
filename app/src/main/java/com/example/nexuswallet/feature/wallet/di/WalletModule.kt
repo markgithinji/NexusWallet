@@ -14,9 +14,9 @@ import com.example.nexuswallet.feature.wallet.data.local.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.model.SendTransactionDao
-import com.example.nexuswallet.feature.wallet.data.repository.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.wallet.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
-import com.example.nexuswallet.feature.wallet.data.repository.EthereumTransactionRepository
+import com.example.nexuswallet.feature.wallet.ethereum.EthereumTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.solana.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.wallet.usdc.USDCBlockchainRepository

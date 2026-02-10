@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.data.repository
+package com.example.nexuswallet.feature.wallet.ethereum
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

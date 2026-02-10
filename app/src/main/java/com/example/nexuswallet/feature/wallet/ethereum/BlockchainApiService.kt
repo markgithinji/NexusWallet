@@ -1,14 +1,5 @@
-package com.example.nexuswallet.feature.wallet.data.remote
+package com.example.nexuswallet.feature.wallet.ethereum
 
-import com.example.nexuswallet.feature.wallet.data.repository.EtherscanBalanceResponse
-import com.example.nexuswallet.feature.wallet.data.repository.EtherscanBroadcastResponse
-import com.example.nexuswallet.feature.wallet.data.repository.EtherscanContractABIResponse
-import com.example.nexuswallet.feature.wallet.data.repository.EtherscanTokenSupplyResponse
-import com.example.nexuswallet.feature.wallet.data.repository.EtherscanTokenTransfersResponse
-import com.example.nexuswallet.feature.wallet.data.repository.EtherscanTransactionCountResponse
-import com.example.nexuswallet.feature.wallet.data.repository.EtherscanTransactionsResponse
-import com.example.nexuswallet.feature.wallet.data.repository.GasPriceResponse
-import com.example.nexuswallet.feature.wallet.data.repository.TransactionReceiptStatusResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 

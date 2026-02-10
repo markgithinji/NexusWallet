@@ -3,8 +3,8 @@ package com.example.nexuswallet.feature.wallet.usdc
 import android.util.Log
 import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.data.remote.EtherscanApiService
-import com.example.nexuswallet.feature.wallet.data.repository.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.wallet.ethereum.EtherscanApiService
+import com.example.nexuswallet.feature.wallet.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
@@ -19,9 +19,7 @@ import org.web3j.abi.TypeReference
 import org.web3j.abi.datatypes.Address
 import org.web3j.abi.datatypes.Bool
 import org.web3j.abi.datatypes.Function
-import org.web3j.abi.datatypes.Utf8String
 import org.web3j.abi.datatypes.generated.Uint256
-import org.web3j.abi.datatypes.generated.Uint8
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.Hash
 import org.web3j.crypto.RawTransaction
@@ -29,8 +27,6 @@ import org.web3j.crypto.TransactionEncoder
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.http.HttpService
-import org.web3j.tx.Contract
-import org.web3j.tx.TransactionManager
 import org.web3j.utils.Numeric
 import java.math.BigDecimal
 import java.math.BigInteger
