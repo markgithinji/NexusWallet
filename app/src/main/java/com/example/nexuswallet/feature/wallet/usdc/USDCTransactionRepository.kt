@@ -14,6 +14,7 @@ import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -43,15 +44,40 @@ class USDCTransactionRepository @Inject constructor(
     ): Result<SendTransaction> {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d("USDCTxRepo", " Creating REAL USDC transfer")
+                Log.d("USDCTxRepo", " Creating REAL USDC transfer for wallet: $walletId")
 
                 // 1. Get wallet
-                val wallet = walletRepository.getWallet(walletId) as? EthereumWallet
-                    ?: return@withContext Result.failure(IllegalArgumentException("Ethereum wallet not found"))
+                val wallet = walletRepository.getWallet(walletId)
+
+                // Check if it's a USDC wallet or an Ethereum wallet with USDC
+                val (address, network, contractAddress) = when (wallet) {
+                    is USDCWallet -> {
+                        Log.d("USDCTxRepo", "Found USDC wallet: ${wallet.address}")
+                        Triple(wallet.address, wallet.network, wallet.contractAddress)
+                    }
+                    is EthereumWallet -> {
+                        Log.d("USDCTxRepo", "Found Ethereum wallet: ${wallet.address}")
+                        // For Ethereum wallets, we need to get the USDC contract address
+                        val contract = getUSDCContractAddress(wallet.network)
+                        if (contract == null) {
+                            return@withContext Result.failure(
+                                IllegalArgumentException("USDC not supported on ${wallet.network}")
+                            )
+                        }
+                        Triple(wallet.address, wallet.network, contract)
+                    }
+                    else -> {
+                        return@withContext Result.failure(
+                            IllegalArgumentException("Wallet is not a USDC or Ethereum wallet")
+                        )
+                    }
+                }
 
                 // 2. Get USDC balance to validate
-                val usdcBalance = usdcBlockchainRepository.getUSDCBalance(wallet.address, wallet.network)
+                val usdcBalance = usdcBlockchainRepository.getUSDCBalance(address, network)
                 val availableBalance = BigDecimal(usdcBalance.balanceDecimal)
+
+                Log.d("USDCTxRepo", "Available USDC balance: $availableBalance, Requested: $amount")
 
                 if (amount > availableBalance) {
                     return@withContext Result.failure(
@@ -60,15 +86,15 @@ class USDCTransactionRepository @Inject constructor(
                 }
 
                 // 3. Get gas price from EthereumBlockchainRepository
-                val gasPrice = ethereumBlockchainRepository.getCurrentGasPrice(wallet.network)
+                val gasPrice = ethereumBlockchainRepository.getCurrentGasPrice(network)
                 val gasPriceGwei = gasPrice.propose
 
                 // 4. Create transaction object
                 val transaction = SendTransaction(
                     id = "usdc_tx_${System.currentTimeMillis()}",
                     walletId = walletId,
-                    walletType = WalletType.ETHEREUM,
-                    fromAddress = wallet.address,
+                    walletType = if (wallet is USDCWallet) WalletType.USDC else WalletType.ETHEREUM,
+                    fromAddress = address,
                     toAddress = toAddress,
                     amount = amount.multiply(BigDecimal("1000000")).toBigInteger().toString(),
                     amountDecimal = amount.toPlainString(),
@@ -76,7 +102,7 @@ class USDCTransactionRepository @Inject constructor(
                     feeDecimal = "0", // Will be updated after signing
                     total = "0", // Will be updated after signing
                     totalDecimal = "0", // Will be updated after signing
-                    chain = when (wallet.network) {
+                    chain = when (network) {
                         EthereumNetwork.SEPOLIA -> ChainType.ETHEREUM_SEPOLIA
                         else -> ChainType.ETHEREUM
                     },
@@ -88,7 +114,8 @@ class USDCTransactionRepository @Inject constructor(
                     metadata = mapOf(
                         "token" to "USDC",
                         "isTokenTransfer" to "true",
-                        "amountUsdc" to amount.toPlainString()
+                        "amountUsdc" to amount.toPlainString(),
+                        "contractAddress" to contractAddress
                     )
                 )
 
@@ -105,6 +132,7 @@ class USDCTransactionRepository @Inject constructor(
         }
     }
 
+
     /**
      * Sign REAL USDC transaction with private key
      */
@@ -118,8 +146,20 @@ class USDCTransactionRepository @Inject constructor(
                     ?: return@withContext Result.failure(IllegalArgumentException("Transaction not found"))
 
                 // 2. Get wallet
-                val wallet = walletRepository.getWallet(transaction.walletId) as? EthereumWallet
-                    ?: return@withContext Result.failure(IllegalArgumentException("Wallet not found"))
+                val wallet = walletRepository.getWallet(transaction.walletId)
+                val (address, network, contractAddress) = when (wallet) {
+                    is USDCWallet -> Triple(wallet.address, wallet.network, wallet.contractAddress)
+                    is EthereumWallet -> {
+                        val contract = getUSDCContractAddress(wallet.network)
+                            ?: return@withContext Result.failure(
+                                IllegalArgumentException("USDC not supported on ${wallet.network}")
+                            )
+                        Triple(wallet.address, wallet.network, contract)
+                    }
+                    else -> return@withContext Result.failure(
+                        IllegalArgumentException("Wallet not found or not supported")
+                    )
+                }
 
                 // 3. Get private key
                 val privateKeyResult = keyManager.getPrivateKeyForSigning(transaction.walletId)
@@ -133,11 +173,11 @@ class USDCTransactionRepository @Inject constructor(
 
                 // 5. Create and sign transaction
                 val (rawTransaction, signedHex) = usdcBlockchainRepository.createAndSignUSDCTransfer(
-                    fromAddress = wallet.address,
+                    fromAddress = address,
                     fromPrivateKey = privateKey,
                     toAddress = transaction.toAddress,
                     amount = amount,
-                    network = wallet.network
+                    network = network
                 )
 
                 // 6. Calculate actual fees
@@ -195,13 +235,19 @@ class USDCTransactionRepository @Inject constructor(
                     ?: return@withContext Result.failure(IllegalStateException("Transaction not signed"))
 
                 // 2. Get wallet for network info
-                val wallet = walletRepository.getWallet(transaction.walletId) as? EthereumWallet
-                    ?: return@withContext Result.failure(IllegalArgumentException("Wallet not found"))
+                val wallet = walletRepository.getWallet(transaction.walletId)
+                val network = when (wallet) {
+                    is USDCWallet -> wallet.network
+                    is EthereumWallet -> wallet.network
+                    else -> return@withContext Result.failure(
+                        IllegalArgumentException("Wallet not found")
+                    )
+                }
 
                 // 3. Broadcast transaction
                 val broadcastResult = usdcBlockchainRepository.broadcastUSDCTransaction(
                     signedHex = signedHex,
-                    network = wallet.network
+                    network = network
                 )
 
                 // 4. Update transaction status
@@ -225,6 +271,7 @@ class USDCTransactionRepository @Inject constructor(
             }
         }
     }
+
 
     /**
      * Complete USDC transfer flow: Create → Sign → Broadcast
@@ -267,12 +314,16 @@ class USDCTransactionRepository @Inject constructor(
     suspend fun getUSDCTransactions(walletId: String): List<Transaction> {
         return withContext(Dispatchers.IO) {
             try {
-                val wallet = walletRepository.getWallet(walletId) as? EthereumWallet
-                    ?: return@withContext emptyList()
+                val wallet = walletRepository.getWallet(walletId)
+                val (address, network) = when (wallet) {
+                    is USDCWallet -> Pair(wallet.address, wallet.network)
+                    is EthereumWallet -> Pair(wallet.address, wallet.network)
+                    else -> return@withContext emptyList()
+                }
 
                 usdcBlockchainRepository.getUSDCTransactions(
-                    address = wallet.address,
-                    network = wallet.network
+                    address = address,
+                    network = network
                 )
             } catch (e: Exception) {
                 Log.e("USDCTxRepo", "Error getting USDC transactions: ${e.message}")
@@ -287,17 +338,47 @@ class USDCTransactionRepository @Inject constructor(
     suspend fun getUSDCBalance(walletId: String): TokenBalance {
         return withContext(Dispatchers.IO) {
             try {
-                val wallet = walletRepository.getWallet(walletId) as? EthereumWallet
-                    ?: return@withContext createEmptyBalance()
+                val wallet = walletRepository.getWallet(walletId)
+                val (address, network) = when (wallet) {
+                    is USDCWallet -> {
+                        Log.d("USDCTxRepo", "Getting USDC balance for USDC wallet: ${wallet.address}")
+                        Pair(wallet.address, wallet.network)
+                    }
+                    is EthereumWallet -> {
+                        Log.d("USDCTxRepo", "Getting USDC balance for Ethereum wallet: ${wallet.address}")
+                        Pair(wallet.address, wallet.network)
+                    }
+                    else -> {
+                        Log.d("USDCTxRepo", "Wallet not USDC or Ethereum type")
+                        return@withContext createEmptyBalance()
+                    }
+                }
 
-                usdcBlockchainRepository.getUSDCBalance(
-                    address = wallet.address,
-                    network = wallet.network
+                Log.d("USDCTxRepo", "Calling USDCBlockchainRepository with address: $address, network: $network")
+                val balance = usdcBlockchainRepository.getUSDCBalance(
+                    address = address,
+                    network = network
                 )
+
+                Log.d("USDCTxRepo", "Got USDC balance: ${balance.balanceDecimal}")
+                return@withContext balance
+
             } catch (e: Exception) {
-                Log.e("USDCTxRepo", "Error getting USDC balance: ${e.message}")
+                Log.e("USDCTxRepo", "Error getting USDC balance: ${e.message}", e)
                 createEmptyBalance()
             }
+        }
+    }
+
+    private fun getUSDCContractAddress(network: EthereumNetwork): String? {
+        return when (network) {
+            EthereumNetwork.MAINNET -> "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            EthereumNetwork.SEPOLIA -> "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+            EthereumNetwork.POLYGON -> "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+            EthereumNetwork.BSC -> "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
+            EthereumNetwork.ARBITRUM -> "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"
+            EthereumNetwork.OPTIMISM -> "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"
+            else -> null
         }
     }
 
