@@ -3,6 +3,9 @@ package com.example.nexuswallet.feature.coin.usdc
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
+import com.example.nexuswallet.feature.coin.usdc.domain.GetUSDCBalanceUseCase
+import com.example.nexuswallet.feature.coin.usdc.domain.SendUSDCUseCase
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.USDCWallet
@@ -16,8 +19,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class USDCSendViewModel @Inject constructor(
-    private val usdcTransactionRepository: USDCTransactionRepository,
-    private val ethereumBlockchainRepository: EthereumBlockchainRepository,
+    private val getUSDCBalanceUseCase: GetUSDCBalanceUseCase,
+    private val sendUSDCUseCase: SendUSDCUseCase,
+    private val getETHBalanceForGasUseCase: GetETHBalanceForGasUseCase,
     private val walletRepository: WalletRepository
 ) : ViewModel() {
 
@@ -37,14 +41,21 @@ class USDCSendViewModel @Inject constructor(
                     return@launch
                 }
 
+                val usdcBalance = getUSDCBalanceUseCase(walletId)
+                val ethBalance = getETHBalanceForGasUseCase(walletId)
+
                 _state.update { it.copy(
                     wallet = wallet,
                     network = wallet.network,
                     contractAddress = wallet.contractAddress,
-                    isLoading = false,
-                    hasSufficientBalance = true,
-                    hasSufficientGas = true
+                    usdcBalance = usdcBalance.balanceDecimal,
+                    usdcBalanceDecimal = usdcBalance.balanceDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO,
+                    ethBalance = ethBalance.toPlainString(),
+                    ethBalanceDecimal = ethBalance,
+                    isLoading = false
                 ) }
+
+                validateForm()
 
             } catch (e: Exception) {
                 _state.update { it.copy(
@@ -55,27 +66,11 @@ class USDCSendViewModel @Inject constructor(
         }
     }
 
-    private fun validateForm() {
-        val currentState = _state.value
-
-        // Only validate address format
-        val isValidAddress = currentState.toAddress.startsWith("0x") &&
-                currentState.toAddress.length == 42
-
-        _state.update { it.copy(
-            isValidAddress = isValidAddress,
-            hasSufficientBalance = true,
-            hasSufficientGas = true,
-            estimatedGas = "0.0005"
-        ) }
-    }
-
     fun send(onSuccess: (String) -> Unit) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
 
             try {
-                val wallet = state.value.wallet ?: throw IllegalStateException("Wallet not loaded")
                 val toAddress = state.value.toAddress
                 val amount = state.value.amountValue
 
@@ -84,8 +79,8 @@ class USDCSendViewModel @Inject constructor(
                     throw IllegalArgumentException("Invalid Ethereum address")
                 }
 
-                // Send USDC
-                val result = usdcTransactionRepository.completeUSDCTransfer(
+                val wallet = state.value.wallet ?: throw IllegalStateException("Wallet not loaded")
+                val result = sendUSDCUseCase(
                     walletId = wallet.id,
                     toAddress = toAddress,
                     amount = amount
@@ -112,6 +107,21 @@ class USDCSendViewModel @Inject constructor(
                 ) }
             }
         }
+    }
+
+    private fun validateForm() {
+        val currentState = _state.value
+
+        // Only validate address format
+        val isValidAddress = currentState.toAddress.startsWith("0x") &&
+                currentState.toAddress.length == 42
+
+        _state.update { it.copy(
+            isValidAddress = isValidAddress,
+            hasSufficientBalance = true,
+            hasSufficientGas = true,
+            estimatedGas = "0.0005"
+        ) }
     }
 
 
