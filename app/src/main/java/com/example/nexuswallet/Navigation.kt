@@ -33,6 +33,7 @@ import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailViewModel
+import com.example.nexuswallet.feature.wallet.usdc.USDCSendScreen
 
 @Composable
 fun Navigation() {
@@ -310,7 +311,6 @@ fun Navigation() {
             )
         }
 
-        // In your NavGraph
         composable(
             route = "send/{walletId}/bitcoin",
             arguments = listOf(navArgument("walletId") { type = NavType.StringType })
@@ -321,6 +321,24 @@ fun Navigation() {
                 onBack = { navController.navigateUp() },
                 onSuccess = { hash ->
                     // Show success dialog or navigate back
+                    navController.navigateUp()
+                }
+            )
+        }
+
+        // Send USDC Screen
+        composable(
+            route = "send/{walletId}/usdc",
+            arguments = listOf(
+                navArgument("walletId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: return@composable
+
+            USDCSendScreen (
+                walletId = walletId,
+                onBack = { navController.navigateUp() },
+                onSuccess = { hash ->
                     navController.navigateUp()
                 }
             )
