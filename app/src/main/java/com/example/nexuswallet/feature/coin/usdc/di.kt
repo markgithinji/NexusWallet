@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.usdc
+package com.example.nexuswallet.feature.coin.usdc
 
 import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
 import com.example.nexuswallet.feature.coin.ethereum.EtherscanApiService

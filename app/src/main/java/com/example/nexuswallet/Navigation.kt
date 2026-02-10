@@ -33,7 +33,7 @@ import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailViewModel
-import com.example.nexuswallet.feature.wallet.usdc.USDCSendScreen
+import com.example.nexuswallet.feature.coin.usdc.USDCSendScreen
 
 @Composable
 fun Navigation() {

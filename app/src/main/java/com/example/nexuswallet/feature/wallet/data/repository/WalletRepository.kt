@@ -18,7 +18,7 @@ import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
-import com.example.nexuswallet.feature.wallet.usdc.USDCBlockchainRepository
+import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

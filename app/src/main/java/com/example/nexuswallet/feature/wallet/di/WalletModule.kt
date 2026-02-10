@@ -19,7 +19,7 @@ import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
-import com.example.nexuswallet.feature.wallet.usdc.USDCBlockchainRepository
+import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

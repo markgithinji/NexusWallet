@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.usdc
+package com.example.nexuswallet.feature.coin.usdc
 
 import android.util.Log
 import com.example.nexuswallet.BuildConfig
