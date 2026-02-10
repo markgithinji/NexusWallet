@@ -1,10 +1,9 @@
-package com.example.nexuswallet.feature.wallet.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin
 
 import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
-import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
@@ -12,12 +11,10 @@ import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.bitcoinj.core.DumpedPrivateKey
 import org.bitcoinj.core.LegacyAddress
@@ -25,8 +22,6 @@ import org.bitcoinj.core.Utils
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.RegTestParams
 import org.bitcoinj.params.TestNet3Params
-import org.sol4k.Keypair
-import org.sol4k.PublicKey
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject

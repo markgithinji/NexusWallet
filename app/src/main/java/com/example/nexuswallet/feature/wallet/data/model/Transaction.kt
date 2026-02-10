@@ -1,10 +1,10 @@
 package com.example.nexuswallet.feature.wallet.data.model
 
+import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletType
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 @Serializable
 data class SendTransaction(

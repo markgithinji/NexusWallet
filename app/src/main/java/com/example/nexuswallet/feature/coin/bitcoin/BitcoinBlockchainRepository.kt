@@ -1,20 +1,14 @@
-package com.example.nexuswallet.feature.wallet.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin
 
 
 import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
-import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -36,25 +30,16 @@ import org.bitcoinj.script.Script
 import org.bitcoinj.script.ScriptBuilder
 import org.json.JSONArray
 import org.json.JSONObject
-import org.sol4k.Connection
-import org.sol4k.instruction.TransferInstruction
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.Any
 import kotlin.Boolean
-import kotlin.ByteArray
-import kotlin.Double
 import kotlin.Exception
 import kotlin.Int
 import kotlin.Long
-import kotlin.Result
 import kotlin.String
-import kotlin.collections.map
-import kotlin.let
 import kotlin.text.take
 import kotlin.to
 

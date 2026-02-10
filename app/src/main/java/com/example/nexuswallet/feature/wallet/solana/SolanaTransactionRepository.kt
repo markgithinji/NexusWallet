@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.wallet.solana
 import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
+import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager

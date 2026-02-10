@@ -1,17 +1,13 @@
-package com.example.nexuswallet.feature.wallet.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject

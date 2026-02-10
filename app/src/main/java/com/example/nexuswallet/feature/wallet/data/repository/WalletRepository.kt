@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.wallet.data.repository
 
 import android.util.Log
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
-import com.example.nexuswallet.feature.wallet.bitcoin.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.solana.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork

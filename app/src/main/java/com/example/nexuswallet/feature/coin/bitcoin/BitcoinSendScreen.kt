@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState

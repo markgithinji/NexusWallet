@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
-import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
+import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.ethereum.TransactionState
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import java.math.BigDecimal

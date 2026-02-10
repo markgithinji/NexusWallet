@@ -3,15 +3,12 @@ package com.example.nexuswallet.feature.wallet.solana
 import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
-import com.example.nexuswallet.feature.wallet.data.model.FeeLevel
+import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
 import org.sol4k.*
 import org.sol4k.Connection
 import org.sol4k.instruction.TransferInstruction

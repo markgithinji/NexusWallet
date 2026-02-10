@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin
 
 import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
