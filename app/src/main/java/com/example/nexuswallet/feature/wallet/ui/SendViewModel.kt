@@ -14,6 +14,7 @@ import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletType
+import com.example.nexuswallet.feature.wallet.usdc.USDCTransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,12 +24,12 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
 
-
 @HiltViewModel
 class SendViewModel @Inject constructor(
     private val ethereumTransactionRepository: EthereumTransactionRepository,
     private val walletRepository: WalletRepository,
-    private val ethereumBlockchainRepository: EthereumBlockchainRepository
+    private val ethereumBlockchainRepository: EthereumBlockchainRepository,
+    private val usdcTransactionRepository: USDCTransactionRepository
 ) : ViewModel() {
 
     data class SendUiState(
@@ -45,7 +46,8 @@ class SendViewModel @Inject constructor(
         val balance: BigDecimal = BigDecimal.ZERO,
         val isValid: Boolean = false,
         val validationError: String? = null,
-        val transactionState: TransactionState = TransactionState.Idle
+        val transactionState: TransactionState = TransactionState.Idle,
+        val selectedToken: TokenType = TokenType.ETH
     )
 
     private val _uiState = MutableStateFlow(SendUiState())
@@ -56,6 +58,7 @@ class SendViewModel @Inject constructor(
         data class AmountChanged(val amount: String) : SendEvent()
         data class NoteChanged(val note: String) : SendEvent()
         data class FeeLevelChanged(val feeLevel: FeeLevel) : SendEvent()
+        data class TokenChanged(val token: TokenType) : SendEvent()
         object Validate : SendEvent()
         object CreateTransaction : SendEvent()
         object ClearError : SendEvent()
@@ -140,6 +143,10 @@ class SendViewModel @Inject constructor(
                     updateFeeEstimate()
                 }
 
+                is SendEvent.TokenChanged -> {
+                    _uiState.update { it.copy(selectedToken = event.token) }
+                }
+
                 SendEvent.Validate -> {
                     validateInputs()
                 }
@@ -168,7 +175,6 @@ class SendViewModel @Inject constructor(
     private suspend fun createTransaction() {
         val state = _uiState.value
 
-        // Reset transaction state and set loading
         _uiState.update {
             it.copy(
                 isLoading = true,
@@ -178,54 +184,95 @@ class SendViewModel @Inject constructor(
             )
         }
 
-        Log.d("SendVM", "🔄 Creating transaction...")
+        Log.d("SendVM", " Creating ${state.selectedToken} transaction...")
 
         try {
             val amount = BigDecimal(state.amount)
-            Log.d("SendVM", "Amount: $amount, To: ${state.toAddress}")
+            Log.d("SendVM", "Amount: $amount, To: ${state.toAddress}, Token: ${state.selectedToken}")
 
-            val result = ethereumTransactionRepository.createSendTransaction(
-                walletId = state.walletId,
-                toAddress = state.toAddress,
-                amount = amount,
-                feeLevel = state.feeLevel,
-                note = state.note.takeIf { it.isNotEmpty() }
-            )
-
-            when {
-                result.isSuccess -> {
-                    val transaction = result.getOrThrow()
-                    Log.d("SendVM", "✅ Transaction created: ${transaction.hash}")
-
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            transactionState = TransactionState.Created(transaction)
-                        )
-                    }
+            when (state.selectedToken) {
+                TokenType.ETH -> {
+                    createEthTransaction(state, amount)
                 }
-                else -> {
-                    val error = result.exceptionOrNull()?.message ?: "Failed to create transaction"
-                    Log.e("SendVM", "❌ Transaction failed: $error")
-
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = error,
-                            transactionState = TransactionState.Error(error)
-                        )
-                    }
+                TokenType.USDC -> {
+                    createUsdcTransaction(state, amount)
                 }
             }
         } catch (e: Exception) {
-            Log.e("SendVM", "❌ Error: ${e.message}", e)
-
+            Log.e("SendVM", " Error: ${e.message}", e)
             _uiState.update {
                 it.copy(
                     isLoading = false,
                     error = "Error: ${e.message}",
                     transactionState = TransactionState.Error("Error: ${e.message}")
                 )
+            }
+        }
+    }
+
+    private suspend fun createEthTransaction(state: SendUiState, amount: BigDecimal) {
+        val result = ethereumTransactionRepository.createSendTransaction(
+            walletId = state.walletId,
+            toAddress = state.toAddress,
+            amount = amount,
+            feeLevel = state.feeLevel,
+            note = state.note.takeIf { it.isNotEmpty() }
+        )
+
+        when {
+            result.isSuccess -> {
+                val transaction = result.getOrThrow()
+                Log.d("SendVM", " ETH Transaction created: ${transaction.hash}")
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        transactionState = TransactionState.Created(transaction)
+                    )
+                }
+            }
+            else -> {
+                val error = result.exceptionOrNull()?.message ?: "Failed to create transaction"
+                Log.e("SendVM", " Transaction failed: $error")
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = error,
+                        transactionState = TransactionState.Error(error)
+                    )
+                }
+            }
+        }
+    }
+
+    private suspend fun createUsdcTransaction(state: SendUiState, amount: BigDecimal) {
+        val result = usdcTransactionRepository.createUSDCTransfer(
+            walletId = state.walletId,
+            toAddress = state.toAddress,
+            amount = amount,
+            note = state.note.takeIf { it.isNotEmpty() }
+        )
+
+        when {
+            result.isSuccess -> {
+                val transaction = result.getOrThrow()
+                Log.d("SendVM", " USDC Transaction created: ${transaction.id}")
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        transactionState = TransactionState.Created(transaction)
+                    )
+                }
+            }
+            else -> {
+                val error = result.exceptionOrNull()?.message ?: "Failed to create USDC transaction"
+                Log.e("SendVM", " USDC Transaction failed: $error")
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = error,
+                        transactionState = TransactionState.Error(error)
+                    )
+                }
             }
         }
     }
@@ -244,7 +291,7 @@ class SendViewModel @Inject constructor(
         }
 
         try {
-            // Validate address
+            // Validate address based on wallet type
             val chain = when (state.walletType) {
                 WalletType.BITCOIN -> ChainType.BITCOIN
                 WalletType.ETHEREUM -> ChainType.ETHEREUM
@@ -285,18 +332,24 @@ class SendViewModel @Inject constructor(
                 return
             }
 
-            // Check if amount + fee <= balance
-            val feeEstimate = ethereumTransactionRepository.getFeeEstimate(chain, state.feeLevel)
-            val totalRequired = amount + BigDecimal(feeEstimate.totalFeeDecimal)
+            // For USDC, we'll validate balance during transaction creation
+            // For ETH, check if amount + fee <= balance
+            if (state.selectedToken == TokenType.ETH) {
+                val feeEstimate = ethereumTransactionRepository.getFeeEstimate(
+                    if (state.walletType == WalletType.ETHEREUM_SEPOLIA) ChainType.ETHEREUM_SEPOLIA else ChainType.ETHEREUM,
+                    state.feeLevel
+                )
+                val totalRequired = amount + BigDecimal(feeEstimate.totalFeeDecimal)
 
-            if (totalRequired > state.balance) {
-                _uiState.update {
-                    it.copy(
-                        isValid = false,
-                        validationError = "Insufficient balance"
-                    )
+                if (totalRequired > state.balance) {
+                    _uiState.update {
+                        it.copy(
+                            isValid = false,
+                            validationError = "Insufficient balance"
+                        )
+                    }
+                    return
                 }
-                return
             }
 
             _uiState.update {
@@ -321,6 +374,7 @@ class SendViewModel @Inject constructor(
         val chain = when (state.walletType) {
             WalletType.BITCOIN -> ChainType.BITCOIN
             WalletType.ETHEREUM -> ChainType.ETHEREUM
+            WalletType.ETHEREUM_SEPOLIA -> ChainType.ETHEREUM_SEPOLIA
             else -> ChainType.ETHEREUM
         }
 
@@ -328,13 +382,15 @@ class SendViewModel @Inject constructor(
             val feeEstimate = ethereumTransactionRepository.getFeeEstimate(chain, state.feeLevel)
             _uiState.update { it.copy(feeEstimate = feeEstimate) }
         } catch (e: Exception) {
-            // Keep existing fee estimate
         }
     }
 
     fun getCreatedTransaction(): SendTransaction? {
-        // This would be called after successful creation
-        // For now, return null - UI will handle navigation
-        return null
+        return null // UI will handle navigation
     }
+}
+
+
+enum class TokenType {
+    ETH, USDC
 }
