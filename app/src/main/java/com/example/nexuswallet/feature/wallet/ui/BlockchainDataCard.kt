@@ -23,7 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.nexuswallet.feature.wallet.ethereum.GasPrice
+import com.example.nexuswallet.feature.coin.ethereum.GasPrice
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet

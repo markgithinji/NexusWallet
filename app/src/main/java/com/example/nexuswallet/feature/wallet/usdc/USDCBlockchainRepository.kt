@@ -3,8 +3,8 @@ package com.example.nexuswallet.feature.wallet.usdc
 import android.util.Log
 import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.ethereum.EtherscanApiService
-import com.example.nexuswallet.feature.wallet.ethereum.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.EtherscanApiService
+import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance

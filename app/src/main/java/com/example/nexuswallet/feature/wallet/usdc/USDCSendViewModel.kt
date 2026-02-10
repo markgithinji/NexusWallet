@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.wallet.usdc
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.wallet.ethereum.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.USDCWallet

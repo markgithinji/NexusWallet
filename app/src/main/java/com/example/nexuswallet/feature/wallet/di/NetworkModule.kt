@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.wallet.di
 
-import com.example.nexuswallet.feature.wallet.ethereum.EtherscanApiService
+import com.example.nexuswallet.feature.coin.ethereum.EtherscanApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

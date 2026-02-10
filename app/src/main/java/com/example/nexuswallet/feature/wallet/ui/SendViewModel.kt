@@ -6,9 +6,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.wallet.ethereum.EthereumBlockchainRepository
-import com.example.nexuswallet.feature.wallet.ethereum.EthereumTransactionRepository
-import com.example.nexuswallet.feature.wallet.ethereum.TransactionState
+import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.TransactionState
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType

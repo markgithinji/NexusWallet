@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.ethereum
+package com.example.nexuswallet.feature.coin.ethereum
 
 import android.util.Log
 import com.example.nexuswallet.BuildConfig

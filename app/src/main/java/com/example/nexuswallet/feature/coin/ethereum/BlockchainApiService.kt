@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.ethereum
+package com.example.nexuswallet.feature.coin.ethereum
 
 import retrofit2.http.GET
 import retrofit2.http.Query

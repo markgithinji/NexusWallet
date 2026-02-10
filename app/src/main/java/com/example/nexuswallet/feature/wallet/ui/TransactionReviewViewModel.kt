@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
-import com.example.nexuswallet.feature.wallet.ethereum.EthereumBlockchainRepository
-import com.example.nexuswallet.feature.wallet.ethereum.EthereumTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
