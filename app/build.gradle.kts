@@ -33,10 +33,12 @@ android {
         // API Keys - will be empty strings if not found in local.properties
         val etherscanKey = localProperties.getProperty("ETHERSCAN_API_KEY") ?: ""
         val covalentKey = localProperties.getProperty("COVALENT_API_KEY") ?: ""
+        val alchemyKey = localProperties.getProperty("ALCHEMY_API_KEY") ?: ""
+
 
         buildConfigField("String", "ETHERSCAN_API_KEY", "\"$etherscanKey\"")
         buildConfigField("String", "COVALENT_API_KEY", "\"$covalentKey\"")
-        buildConfigField("Boolean", "IS_DEMO_MODE", "${etherscanKey.isEmpty()}")
+        buildConfigField("String", "ALCHEMY_API_KEY", "\"$alchemyKey\"")
     }
 
     buildTypes {
