@@ -1,10 +1,8 @@
-package com.example.nexuswallet.feature.wallet.data.solana
+package com.example.nexuswallet.feature.wallet.solana
 
 import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.data.test.SepoliaRepository
-import com.example.nexuswallet.feature.wallet.data.test.kettest.KeyStorageTestRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

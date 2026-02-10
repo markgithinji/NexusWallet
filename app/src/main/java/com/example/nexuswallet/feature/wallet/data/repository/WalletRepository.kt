@@ -5,16 +5,14 @@ import android.util.Log
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.wallet.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
-import com.example.nexuswallet.feature.wallet.data.solana.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.wallet.solana.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
-import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
 import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
-import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
@@ -35,7 +33,6 @@ import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
 import org.bitcoinj.wallet.DeterministicSeed
 import org.sol4k.Keypair
-import org.sol4k.PublicKey
 import org.web3j.crypto.Bip32ECKeyPair
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.MnemonicUtils

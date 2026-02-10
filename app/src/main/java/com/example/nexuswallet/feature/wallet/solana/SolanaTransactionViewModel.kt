@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.data.solana
+package com.example.nexuswallet.feature.wallet.solana
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

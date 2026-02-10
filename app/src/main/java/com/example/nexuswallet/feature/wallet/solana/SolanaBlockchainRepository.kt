@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.data.solana
+package com.example.nexuswallet.feature.wallet.solana
 
 import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult

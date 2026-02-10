@@ -5,8 +5,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
-import androidx.compose.material.Chip
-import androidx.compose.material.ChipDefaults
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -24,10 +22,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.nexuswallet.feature.wallet.data.solana.LoadingDialog
+import com.example.nexuswallet.feature.wallet.solana.LoadingDialog
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import java.math.BigDecimal
-import java.util.*
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)

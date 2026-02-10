@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.data.solana
+package com.example.nexuswallet.feature.wallet.solana
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -46,7 +46,7 @@ fun SolanaSendScreen(
             if (state.wallet != null) {
                 BottomSendBar(
                     enabled = state.toAddress.isNotBlank() &&
-                            state.amountValue > java.math.BigDecimal.ZERO &&
+                            state.amountValue > BigDecimal.ZERO &&
                             !state.isLoading,
                     isLoading = state.isLoading,
                     onClick = { viewModel.send(onSuccess) }
