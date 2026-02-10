@@ -96,8 +96,24 @@ data class SolanaWallet(
     override val walletType: WalletType = WalletType.SOLANA
 ) : CryptoWallet()
 
+@Serializable
+data class USDCWallet(
+    override val id: String,
+    override val name: String,
+    override val address: String,
+    val publicKey: String,
+    val privateKeyEncrypted: String,
+    val network: EthereumNetwork, // USDC exists on Ethereum, Polygon, etc.
+    val contractAddress: String, // USDC contract address for this network
+    val parentEthereumWalletId: String? = null, // Optional: link to ETH wallet for gas
+    override val mnemonicHash: String,
+    override val createdAt: Long,
+    override val isBackedUp: Boolean = false,
+    override val walletType: WalletType = WalletType.USDC
+) : CryptoWallet()
+
 enum class WalletType {
-    BITCOIN, ETHEREUM, MULTICHAIN, SOLANA ,ETHEREUM_SEPOLIA
+    BITCOIN, ETHEREUM, MULTICHAIN, SOLANA, ETHEREUM_SEPOLIA, USDC
 }
 
 enum class BitcoinNetwork {

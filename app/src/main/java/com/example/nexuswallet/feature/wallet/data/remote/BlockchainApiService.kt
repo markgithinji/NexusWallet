@@ -2,6 +2,9 @@ package com.example.nexuswallet.feature.wallet.data.remote
 
 import com.example.nexuswallet.feature.wallet.data.repository.EtherscanBalanceResponse
 import com.example.nexuswallet.feature.wallet.data.repository.EtherscanBroadcastResponse
+import com.example.nexuswallet.feature.wallet.data.repository.EtherscanContractABIResponse
+import com.example.nexuswallet.feature.wallet.data.repository.EtherscanTokenSupplyResponse
+import com.example.nexuswallet.feature.wallet.data.repository.EtherscanTokenTransfersResponse
 import com.example.nexuswallet.feature.wallet.data.repository.EtherscanTransactionCountResponse
 import com.example.nexuswallet.feature.wallet.data.repository.EtherscanTransactionsResponse
 import com.example.nexuswallet.feature.wallet.data.repository.GasPriceResponse
@@ -65,4 +68,52 @@ interface EtherscanApiService {
         @Query("txhash") txhash: String,
         @Query("apikey") apiKey: String
     ): TransactionReceiptStatusResponse
+
+    @GET("v2/api")
+    suspend fun getTokenBalance(
+        @Query("chainid") chainId: String,
+        @Query("module") module: String = "account",
+        @Query("action") action: String = "tokenbalance",
+        @Query("contractaddress") contractAddress: String,
+        @Query("address") address: String,
+        @Query("tag") tag: String = "latest",
+        @Query("apikey") apiKey: String
+    ): EtherscanBalanceResponse
+
+    @GET("v2/api")
+    suspend fun getTokenTransfers(
+        @Query("chainid") chainId: String,
+        @Query("module") module: String = "account",
+        @Query("action") action: String = "tokentx",
+        @Query("address") address: String,
+        @Query("contractaddress") contractAddress: String,
+        @Query("sort") sort: String = "desc",
+        @Query("apikey") apiKey: String
+    ): EtherscanTokenTransfersResponse
+
+    @GET("v2/api")
+    suspend fun getContractABI(
+        @Query("chainid") chainId: String,
+        @Query("module") module: String = "contract",
+        @Query("action") action: String = "getabi",
+        @Query("address") address: String,
+        @Query("apikey") apiKey: String
+    ): EtherscanContractABIResponse
+
+    @GET("v2/api")
+    suspend fun getTokenTotalSupply(
+        @Query("chainid") chainId: String,
+        @Query("module") module: String = "stats",
+        @Query("action") action: String = "tokensupply",
+        @Query("contractaddress") contractAddress: String,
+        @Query("apikey") apiKey: String
+    ): EtherscanTokenSupplyResponse
+
+    @GET("v2/api")
+    suspend fun getGasOracle(
+        @Query("chainid") chainId: String,
+        @Query("module") module: String = "gastracker",
+        @Query("action") action: String = "gasoracle",
+        @Query("apikey") apiKey: String
+    ): GasPriceResponse
 }
