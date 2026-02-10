@@ -15,6 +15,7 @@ import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
 import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
 import com.example.nexuswallet.feature.wallet.domain.Transaction
+import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletBackup
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import kotlinx.coroutines.flow.Flow
@@ -41,6 +42,7 @@ class WalletLocalDataSource @Inject constructor(
             is EthereumWallet -> json.encodeToString(wallet)
             is MultiChainWallet -> json.encodeToString(wallet)
             is SolanaWallet -> json.encodeToString(wallet)
+            is USDCWallet -> json.encodeToString(wallet)
             else -> throw IllegalArgumentException("Unknown wallet type")
         }
 
@@ -147,6 +149,9 @@ class WalletLocalDataSource @Inject constructor(
             } },
             { json.decodeFromString<SolanaWallet>(jsonStr).also {
                 Log.d("WalletStorage", "Successfully deserialized as SolanaWallet")
+            } },
+            { json.decodeFromString<USDCWallet>(jsonStr).also {
+                Log.d("WalletStorage", "Successfully deserialized as USDCWallet")
             } },
             { json.decodeFromString<MultiChainWallet>(jsonStr).also {
                 Log.d("WalletStorage", "Successfully deserialized as MultiChainWallet")

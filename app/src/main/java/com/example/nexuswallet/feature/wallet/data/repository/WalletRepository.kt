@@ -16,8 +16,10 @@ import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
 import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import com.example.nexuswallet.feature.wallet.domain.Transaction
+import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.WalletType
+import com.example.nexuswallet.feature.wallet.usdc.USDCBlockchainRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -50,6 +52,7 @@ class WalletRepository @Inject constructor(
     private val ethereumBlockchainRepository: EthereumBlockchainRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+    private val usdcBlockchainRepository: USDCBlockchainRepository,
     private val keyManager: KeyManager
 ) {
 
@@ -80,11 +83,12 @@ class WalletRepository @Inject constructor(
             is BitcoinWallet -> {
                 syncBitcoinBalance(wallet)
             }
-
             is EthereumWallet -> {
                 syncEthereumBalance(wallet)
             }
-
+            is USDCWallet -> {
+                syncUSDCBalance(wallet)
+            }
             is MultiChainWallet -> {
                 wallet.ethereumWallet?.let { syncEthereumBalance(it) }
                 wallet.polygonWallet?.let { syncEthereumBalance(it) }
@@ -92,11 +96,9 @@ class WalletRepository @Inject constructor(
                 wallet.bitcoinWallet?.let { syncBitcoinBalance(it) }
                 Log.d("WalletRepo", "Multi-chain wallet synced")
             }
-
             is SolanaWallet -> {
                 syncSolanaBalance(wallet)
             }
-
             else -> {
                 Log.d("WalletRepo", "Unknown wallet type")
             }
@@ -165,7 +167,7 @@ class WalletRepository @Inject constructor(
 
             Log.d("WalletRepo", "Got balance from API: $ethBalance ETH")
 
-            // Calculate USD value (simplified - in production use real price API)
+            // Calculate USD value
             val ethPrice = when (wallet.network) {
                 EthereumNetwork.SEPOLIA -> 3000.0 // Testnet ETH has no real value, use mainnet price
                 else -> 3000.0 // Mainnet ETH price approximation
@@ -249,6 +251,54 @@ class WalletRepository @Inject constructor(
         }
     }
 
+    private suspend fun syncUSDCBalance(wallet: USDCWallet) {
+        try {
+            Log.d("WalletRepo", "Syncing USDC wallet balance...")
+            Log.d("WalletRepo", "Address: ${wallet.address}")
+            Log.d("WalletRepo", "Network: ${wallet.network}")
+            Log.d("WalletRepo", "Contract: ${wallet.contractAddress}")
+
+            // Get USDC balance from USDC repository
+            val usdcBalance = usdcBlockchainRepository.getUSDCBalance(
+                address = wallet.address,
+                network = wallet.network
+            )
+
+            Log.d("WalletRepo", "Got USDC balance: ${usdcBalance.balanceDecimal} USDC")
+
+            // Create WalletBalance with USDC as native balance
+            val balance = WalletBalance(
+                walletId = wallet.id,
+                address = wallet.address,
+                nativeBalance = usdcBalance.balance, // USDC units (6 decimals)
+                nativeBalanceDecimal = usdcBalance.balanceDecimal, // Human readable USDC
+                usdValue = usdcBalance.usdValue, // USD value of USDC
+                tokens = emptyList(),
+                lastUpdated = System.currentTimeMillis()
+            )
+
+            saveWalletBalance(balance)
+            Log.d("WalletRepo", " USDC balance synced: ${usdcBalance.balanceDecimal} USDC")
+
+        } catch (e: Exception) {
+            Log.e("WalletRepo", "Error syncing USDC balance: ${e.message}", e)
+
+            // Fallback to zero balance
+            val zeroBalance = WalletBalance(
+                walletId = wallet.id,
+                address = wallet.address,
+                nativeBalance = "0",
+                nativeBalanceDecimal = "0",
+                usdValue = 0.0,
+                tokens = emptyList(),
+                lastUpdated = System.currentTimeMillis()
+            )
+
+            saveWalletBalance(zeroBalance)
+            Log.d("WalletRepo", "⚠ Using zero balance due to error")
+        }
+    }
+
     private fun createEthereumSampleBalance(
         walletId: String,
         address: String,
@@ -303,9 +353,17 @@ class WalletRepository @Inject constructor(
     suspend fun getWallet(walletId: String): CryptoWallet? {
         val wallet = localDataSource.loadWallet(walletId)
         wallet?.let {
-            // Trigger background sync when wallet is loaded
+            // Trigger background sync
             scope.launch {
                 syncWalletBalance(it)
+            }
+
+            // If it's USDC wallet, also sync parent ETH balance for gas estimates
+            if (it is USDCWallet && it.parentEthereumWalletId != null) {
+                val ethWallet = localDataSource.loadWallet(it.parentEthereumWalletId)
+                if (ethWallet is EthereumWallet) {
+                    syncEthereumBalance(ethWallet)
+                }
             }
         }
         return wallet
@@ -504,6 +562,90 @@ class WalletRepository @Inject constructor(
         }
     }
 
+    suspend fun createUSDCWallet(
+        mnemonic: List<String>,
+        name: String,
+        network: EthereumNetwork = EthereumNetwork.SEPOLIA
+    ): Result<USDCWallet> {
+        return try {
+            Log.d("WalletRepo", "Creating USDC wallet...")
+
+            // Get USDC contract address for the network
+            val contractAddress = getUSDCContractAddress(network)
+                ?: return Result.failure(IllegalArgumentException("USDC not supported on $network"))
+
+            // Generate Ethereum-like credentials for the address
+            val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
+
+            // Use Ethereum derivation path since USDC is an ERC-20 token on Ethereum
+            val derivationPath = when (network) {
+                EthereumNetwork.SEPOLIA -> "m/44'/60'/0'/0/0"  // Ethereum testnet path
+                else -> "m/44'/60'/0'/0/0"  // Default Ethereum path
+            }
+
+            val pathArray = derivationPath.split("/")
+                .drop(1)
+                .map { part ->
+                    val isHardened = part.endsWith("'")
+                    val number = part.replace("'", "").toInt()
+                    if (isHardened) number or HARDENED_BIT else number
+                }
+                .toIntArray()
+
+            val masterKey = Bip32ECKeyPair.generateKeyPair(seed)
+            val derivedKey = Bip32ECKeyPair.deriveKeyPair(masterKey, pathArray)
+
+            // Create credentials from the derived key
+            val credentials = Credentials.create(derivedKey)
+
+            val privateKeyHex = "0x${derivedKey.privateKey.toString(16)}"
+
+            Log.d("WalletRepo", "Generated USDC wallet address: ${credentials.address}")
+
+            val usdcWallet = USDCWallet(
+                id = "usdc_${System.currentTimeMillis()}",
+                name = name,
+                address = credentials.address,
+                publicKey = derivedKey.publicKeyPoint.getEncoded(false)
+                    .joinToString("") { "%02x".format(it) },
+                privateKeyEncrypted = "",
+                network = network,
+                contractAddress = contractAddress,
+                parentEthereumWalletId = null,
+                mnemonicHash = mnemonic.hashCode().toString(),
+                createdAt = System.currentTimeMillis(),
+                isBackedUp = false,
+                walletType = WalletType.USDC
+            )
+
+            // Save the wallet first
+            saveWallet(usdcWallet)
+
+            // Store the private key using KeyManager
+            val storeResult = keyManager.storePrivateKey(
+                walletId = usdcWallet.id,
+                privateKey = privateKeyHex,
+                keyType = "ETH_PRIVATE_KEY"  // Same as Ethereum since USDC is ERC-20
+            )
+
+            if (storeResult.isFailure) {
+                Log.e("WalletRepo", "Failed to store private key: ${storeResult.exceptionOrNull()?.message}")
+            } else {
+                Log.d("WalletRepo", "Private key stored successfully")
+            }
+
+            // Store mnemonic securely
+            securityManager.secureMnemonic(usdcWallet.id, mnemonic)
+
+            Log.d("WalletRepo", " USDC wallet created: ${usdcWallet.address}")
+            Result.success(usdcWallet)
+
+        } catch (e: Exception) {
+            Log.e("WalletRepo", "Failed to create USDC wallet: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
     suspend fun createMultiChainWallet(
         mnemonic: List<String>,
         name: String
@@ -664,6 +806,16 @@ class WalletRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e("WalletRepo", "Failed to create Solana wallet: ${e.message}", e)
             Result.failure(e)
+        }
+    }
+
+    private fun getUSDCContractAddress(network: EthereumNetwork): String? {
+        return when (network) {
+            EthereumNetwork.MAINNET -> "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            EthereumNetwork.SEPOLIA -> "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+            EthereumNetwork.POLYGON -> "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+            EthereumNetwork.BSC -> "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
+            else -> null
         }
     }
 
