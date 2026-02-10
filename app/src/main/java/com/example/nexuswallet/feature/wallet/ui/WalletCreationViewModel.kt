@@ -3,14 +3,12 @@ package com.example.nexuswallet.feature.wallet.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -137,7 +135,6 @@ class WalletCreationViewModel @Inject constructor(
         return try {
             Log.d("WalletCreationVM", "Creating Sepolia testnet wallet...")
 
-            // Use your existing walletRepository to create Ethereum wallet with SEPOLIA network
             val walletResult = walletRepository.createEthereumWallet(
                 mnemonic = mnemonic,
                 name = name,
@@ -221,6 +218,22 @@ class WalletCreationViewModel @Inject constructor(
                         }
                     }
 
+                    WalletType.USDC -> {
+                        val usdcWalletResult = walletRepository.createUSDCWallet(
+                            mnemonicList,
+                            name,
+                            EthereumNetwork.SEPOLIA
+                        )
+
+                        if (usdcWalletResult.isSuccess) {
+                            val ethWallet = usdcWalletResult.getOrThrow()
+                            Result.success(ethWallet)
+                        } else {
+                            Result.failure(usdcWalletResult.exceptionOrNull() ?:
+                            IllegalStateException("Failed to create USDC wallet"))
+                        }
+                    }
+
                     else -> {
                         val multiChainResult = walletRepository.createMultiChainWallet(mnemonicList, name)
                         if (multiChainResult.isSuccess) {
@@ -242,7 +255,6 @@ class WalletCreationViewModel @Inject constructor(
 
                 val wallet = walletResult.getOrThrow()
 
-                // Save the wallet to repository
                 walletRepository.saveWallet(wallet)
 
                 // Update UI state
@@ -254,7 +266,6 @@ class WalletCreationViewModel @Inject constructor(
         }
     }
 
-    // Move to previous step
     fun previousStep() {
         if (_currentStep.value > 0) {
             _currentStep.value = _currentStep.value - 1

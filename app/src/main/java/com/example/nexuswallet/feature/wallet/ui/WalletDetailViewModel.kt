@@ -14,6 +14,7 @@ import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
 import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -58,6 +59,11 @@ class WalletDetailViewModel @Inject constructor(
     val liveBalance: StateFlow<String?> = _liveBalance
 
 
+    // ETH balance for USDC wallet (for gas)
+    private val _ethBalanceForGas = MutableStateFlow<WalletBalance?>(null)
+    val ethBalanceForGas: StateFlow<WalletBalance?> = _ethBalanceForGas
+
+
     fun refreshBalance() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -97,12 +103,24 @@ class WalletDetailViewModel @Inject constructor(
                 // 2. Load balance (async)
                 val balanceDeferred = async { walletRepository.getWalletBalance(walletId) }
 
-                // 3. Start collecting transactions flow
+                // 3. If USDC wallet, also load ETH balance for gas
+                if (loadedWallet is USDCWallet) {
+                    val ethBalanceDeferred = async {
+                        walletRepository.getWalletBalance(loadedWallet.id)
+                    }
+                    _ethBalanceForGas.value = ethBalanceDeferred.await()
+                } else{
+                    Log.d("WalletDetailVM", "Not an USDC wallet, not loading ETH balance for gas")
+                }
+
+                // 4. Start collecting transactions
                 startCollectingTransactions(walletId)
 
-                // 4. Wait for balance and update
+                // 5. Wait for balance and update
                 val loadedBalance = balanceDeferred.await()
                 _balance.value = loadedBalance
+
+                Log.d("WalletDetailVM", "Loaded ${loadedWallet?.walletType} wallet")
 
             } catch (e: Exception) {
                 _error.value = "Failed to load wallet: ${e.message}"

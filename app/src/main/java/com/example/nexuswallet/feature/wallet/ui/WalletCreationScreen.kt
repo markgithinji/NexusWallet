@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
@@ -435,13 +436,14 @@ fun WalletTypeSelectionStep(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Wallet Type Cards
+
         listOf(
-            WalletType.BITCOIN,
+//            WalletType.BITCOIN,
             WalletType.ETHEREUM,
             WalletType.ETHEREUM_SEPOLIA,
             WalletType.SOLANA,
-//            WalletType.MULTICHAIN
+            WalletType.USDC,
+//    WalletType.MULTICHAIN
         ).forEach { type ->
             WalletTypeCard(
                 walletType = type,
@@ -500,6 +502,12 @@ fun WalletTypeCard(
             Icons.Default.FlashOn
         )
 
+        WalletType.USDC -> Triple(
+            "USDC Wallet",
+            "USD Coin (ERC-20 stablecoin) on Sepolia",
+            Icons.Default.AttachMoney
+        )
+
         else -> Triple(
             "Crypto Wallet",
             "General cryptocurrency wallet",
@@ -553,15 +561,15 @@ fun WalletTypeCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                if (walletType == WalletType.ETHEREUM_SEPOLIA) {
+                if (walletType == WalletType.USDC) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "TESTNET",
+                        text = "TESTNET ONLY",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.Red,
+                        color = Color.Blue,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
-                            .background(Color.Red.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                            .background(Color.Blue.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
