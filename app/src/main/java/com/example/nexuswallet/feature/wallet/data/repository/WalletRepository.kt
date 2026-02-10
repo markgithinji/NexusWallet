@@ -79,28 +79,32 @@ class WalletRepository @Inject constructor(
         Log.d("WalletRepo", "Wallet ID: ${wallet.id}")
         Log.d("WalletRepo", "Wallet Type: ${wallet.walletType}")
 
-        when (wallet) {
-            is BitcoinWallet -> {
-                syncBitcoinBalance(wallet)
+        when (wallet.walletType) {
+            WalletType.BITCOIN -> {
+                if (wallet is BitcoinWallet) syncBitcoinBalance(wallet)
             }
-            is EthereumWallet -> {
-                syncEthereumBalance(wallet)
+            WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+                if (wallet is EthereumWallet) syncEthereumBalance(wallet)
             }
-            is USDCWallet -> {
-                syncUSDCBalance(wallet)
+            WalletType.USDC -> {
+                if (wallet is USDCWallet) {
+                    syncUSDCBalance(wallet)
+                }
             }
-            is MultiChainWallet -> {
-                wallet.ethereumWallet?.let { syncEthereumBalance(it) }
-                wallet.polygonWallet?.let { syncEthereumBalance(it) }
-                wallet.bscWallet?.let { syncEthereumBalance(it) }
-                wallet.bitcoinWallet?.let { syncBitcoinBalance(it) }
-                Log.d("WalletRepo", "Multi-chain wallet synced")
+            WalletType.SOLANA -> {
+                if (wallet is SolanaWallet) syncSolanaBalance(wallet)
             }
-            is SolanaWallet -> {
-                syncSolanaBalance(wallet)
+            WalletType.MULTICHAIN -> {
+                if (wallet is MultiChainWallet) {
+                    wallet.ethereumWallet?.let { syncEthereumBalance(it) }
+                    wallet.polygonWallet?.let { syncEthereumBalance(it) }
+                    wallet.bscWallet?.let { syncEthereumBalance(it) }
+                    wallet.bitcoinWallet?.let { syncBitcoinBalance(it) }
+                    Log.d("WalletRepo", "Multi-chain wallet synced")
+                }
             }
             else -> {
-                Log.d("WalletRepo", "Unknown wallet type")
+                Log.d("WalletRepo", "Unknown wallet type: ${wallet.walletType}")
             }
         }
     }

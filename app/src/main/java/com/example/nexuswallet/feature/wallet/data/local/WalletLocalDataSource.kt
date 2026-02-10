@@ -147,11 +147,11 @@ class WalletLocalDataSource @Inject constructor(
             { json.decodeFromString<EthereumWallet>(jsonStr).also {
                 Log.d("WalletStorage", "Successfully deserialized as EthereumWallet")
             } },
-            { json.decodeFromString<SolanaWallet>(jsonStr).also {
-                Log.d("WalletStorage", "Successfully deserialized as SolanaWallet")
-            } },
             { json.decodeFromString<USDCWallet>(jsonStr).also {
                 Log.d("WalletStorage", "Successfully deserialized as USDCWallet")
+            } },
+            { json.decodeFromString<SolanaWallet>(jsonStr).also {
+                Log.d("WalletStorage", "Successfully deserialized as SolanaWallet")
             } },
             { json.decodeFromString<MultiChainWallet>(jsonStr).also {
                 Log.d("WalletStorage", "Successfully deserialized as MultiChainWallet")
