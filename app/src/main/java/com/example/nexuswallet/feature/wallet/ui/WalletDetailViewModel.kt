@@ -5,23 +5,30 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.NexusWalletApplication
+import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
 import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
+import com.example.nexuswallet.feature.wallet.domain.TokenBalance
+import com.example.nexuswallet.feature.wallet.domain.TokenTransfer
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
+import com.example.nexuswallet.feature.wallet.usdc.USDCTransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -29,7 +36,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class WalletDetailViewModel @Inject constructor(
-    private val walletRepository: WalletRepository
+    private val walletRepository: WalletRepository,
+    private val usdcTransactionRepository: USDCTransactionRepository
 ) : ViewModel() {
 
     // Current wallet
@@ -40,13 +48,20 @@ class WalletDetailViewModel @Inject constructor(
     private val _balance = MutableStateFlow<WalletBalance?>(null)
     val balance: StateFlow<WalletBalance?> = _balance
 
+    // Token balances (for USDC and other ERC-20 tokens)
+    private val _tokenBalances = MutableStateFlow<List<TokenBalance>>(emptyList())
+    val tokenBalances: StateFlow<List<TokenBalance>> = _tokenBalances
+
     // Transactions
     private val _transactions = MutableStateFlow<List<Transaction>>(emptyList())
     val transactions: StateFlow<List<Transaction>> = _transactions
 
-    // Loading state
+    // Loading states
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _isLoadingTokenBalances = MutableStateFlow(false)
+    val isLoadingTokenBalances: StateFlow<Boolean> = _isLoadingTokenBalances
 
     // Error state
     private val _error = MutableStateFlow<String?>(null)
@@ -55,14 +70,13 @@ class WalletDetailViewModel @Inject constructor(
     // Job for collecting transactions flow
     private var transactionsJob: Job? = null
 
+    // Live balance
     private val _liveBalance = MutableStateFlow<String?>(null)
     val liveBalance: StateFlow<String?> = _liveBalance
-
 
     // ETH balance for USDC wallet (for gas)
     private val _ethBalanceForGas = MutableStateFlow<WalletBalance?>(null)
     val ethBalanceForGas: StateFlow<WalletBalance?> = _ethBalanceForGas
-
 
     fun refreshBalance() {
         viewModelScope.launch {
@@ -77,6 +91,11 @@ class WalletDetailViewModel @Inject constructor(
                     // Reload balance from repository
                     val updatedBalance = walletRepository.getWalletBalance(wallet.id)
                     _balance.value = updatedBalance
+
+                    // Also refresh token balances if it's a token wallet
+                    if (wallet is USDCWallet || wallet is EthereumWallet) {
+                        loadTokenBalances(wallet.id)
+                    }
 
                     Log.d("WalletDetailVM", " Balance refreshed")
                 }
@@ -103,20 +122,25 @@ class WalletDetailViewModel @Inject constructor(
                 // 2. Load balance (async)
                 val balanceDeferred = async { walletRepository.getWalletBalance(walletId) }
 
-                // 3. If USDC wallet, also load ETH balance for gas
+                // 3. Load token balances if applicable
+                if (loadedWallet is USDCWallet || loadedWallet is EthereumWallet) {
+                    loadTokenBalances(walletId)
+                }
+
+                // 4. If USDC wallet, also load ETH balance for gas
                 if (loadedWallet is USDCWallet) {
                     val ethBalanceDeferred = async {
                         walletRepository.getWalletBalance(loadedWallet.id)
                     }
                     _ethBalanceForGas.value = ethBalanceDeferred.await()
-                } else{
+                } else {
                     Log.d("WalletDetailVM", "Not an USDC wallet, not loading ETH balance for gas")
                 }
 
-                // 4. Start collecting transactions
+                // 5. Start collecting transactions
                 startCollectingTransactions(walletId)
 
-                // 5. Wait for balance and update
+                // 6. Wait for balance and update
                 val loadedBalance = balanceDeferred.await()
                 _balance.value = loadedBalance
 
@@ -129,6 +153,59 @@ class WalletDetailViewModel @Inject constructor(
                 _isLoading.value = false
             }
         }
+    }
+
+    // Load token balances (USDC and other tokens)
+    fun loadTokenBalances(walletId: String) {
+        viewModelScope.launch {
+            _isLoadingTokenBalances.value = true
+            try {
+                val wallet = walletRepository.getWallet(walletId)
+                when (wallet) {
+                    is USDCWallet -> {
+                        // Load USDC balance specifically
+                        val usdcBalance = usdcTransactionRepository.getUSDCBalance(walletId)
+                        _tokenBalances.value = if (usdcBalance.balanceDecimal != "0") {
+                            listOf(usdcBalance)
+                        } else {
+                            emptyList()
+                        }
+                    }
+                    is EthereumWallet -> {
+                        if (wallet.network == EthereumNetwork.SEPOLIA) {
+                            val usdcBalance = usdcTransactionRepository.getUSDCBalance(walletId)
+                            if (usdcBalance.balanceDecimal != "0") {
+                                _tokenBalances.value = listOf(usdcBalance)
+                            } else {
+                                _tokenBalances.value = emptyList()
+                            }
+                        } else {
+                            _tokenBalances.value = emptyList()
+                        }
+                    }
+                    else -> {
+                        _tokenBalances.value = emptyList()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("WalletDetailVM", "Error loading token balances: ${e.message}")
+                _tokenBalances.value = emptyList()
+            } finally {
+                _isLoadingTokenBalances.value = false
+            }
+        }
+    }
+
+    // Refresh token balances
+    fun refreshTokenBalances() {
+        _wallet.value?.let { wallet ->
+            loadTokenBalances(wallet.id)
+        }
+    }
+
+    // Get token balance for display
+    fun getTokenBalance(symbol: String = "USDC"): TokenBalance? {
+        return _tokenBalances.value.find { it.symbol == symbol }
     }
 
     private fun startCollectingTransactions(walletId: String) {
@@ -184,38 +261,6 @@ class WalletDetailViewModel @Inject constructor(
                 } finally {
                     _isLoading.value = false
                 }
-            }
-        }
-    }
-
-    fun createSampleTransaction(): Transaction {
-        val fromAddress = getWalletAddress() ?: ""
-
-        return Transaction(
-            hash = "0x${System.currentTimeMillis().toString(16)}",
-            from = fromAddress,
-            to = "0x742d35Cc6634C0532925a3b844Bc9e",
-            value = "1000000000000000000", // 1 ETH
-            valueDecimal = "1.0",
-            gasPrice = "50000000000", // 50 Gwei
-            gasUsed = "21000",
-            timestamp = System.currentTimeMillis() - 3600000, // 1 hour ago
-            status = TransactionStatus.SUCCESS,
-            chain = ChainType.ETHEREUM,
-            tokenTransfers = emptyList()
-        )
-    }
-
-    fun addSampleTransaction() {
-        viewModelScope.launch {
-            val sampleTx = createSampleTransaction()
-            val currentTx = _transactions.value.toMutableList()
-            currentTx.add(0, sampleTx)
-            _transactions.value = currentTx
-
-            // Save to data layer
-            _wallet.value?.id?.let { walletId ->
-                walletRepository.saveTransactions(walletId, currentTx)
             }
         }
     }

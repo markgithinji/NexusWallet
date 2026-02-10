@@ -12,14 +12,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.CurrencyBitcoin
+import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Receipt
@@ -48,8 +54,10 @@ import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
 import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
+import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import com.example.nexuswallet.formatDate
 import java.text.SimpleDateFormat
@@ -172,6 +180,7 @@ fun WalletDetailContent(
                 when (wallet) {
                     is SolanaWallet -> navController.navigate("send/${wallet.id}/solana")
                     is BitcoinWallet -> navController.navigate("send/${wallet.id}/bitcoin")
+                    is USDCWallet -> navController.navigate("send/${wallet.id}/usdc")
                     else -> {
                         navController.navigate("send/${wallet.id}")
                     }
@@ -181,7 +190,7 @@ fun WalletDetailContent(
                 navController.navigate("authenticate/backup/${wallet.id}")
             },
             onAddSampleTransaction = {
-                viewModel.addSampleTransaction()
+//                viewModel.addSampleTransaction()
             },
             onViewPrivateKey = {
                 Toast.makeText(context, "Private key viewing requires authentication", Toast.LENGTH_SHORT).show()
@@ -201,21 +210,339 @@ fun WalletDetailContent(
                 Toast.makeText(context, "Address copied to clipboard", Toast.LENGTH_SHORT).show()
             },
             onShowFullQR = {
-                // Navigate to full screen QR code
                 navController.navigate("qrCode/${wallet.id}")
             }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Token Balances (for USDC and other token wallets)
+        if (wallet is USDCWallet || wallet is EthereumWallet) {
+            TokenBalancesSection(
+                wallet = wallet,
+                viewModel = viewModel,
+                navController = navController
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         // Recent Transactions
         TransactionsSection(
             transactions = transactions,
+            wallet = wallet,
             onViewAll = {
-                // TODO: Navigate to full transactions screen
-                Toast.makeText(context, "View all transactions", Toast.LENGTH_SHORT).show()
+                navController.navigate("transactions/${wallet.id}")
             }
         )
+    }
+}
+
+@Composable
+fun TokenBalancesSection(
+    wallet: CryptoWallet,
+    viewModel: WalletDetailViewModel,
+    navController: NavController
+) {
+    val tokenBalances by viewModel.tokenBalances.collectAsState()
+    val isLoading by viewModel.isLoadingTokenBalances.collectAsState()
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Token Balances",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                IconButton(
+                    onClick = { viewModel.refreshTokenBalances() },
+                    enabled = !isLoading
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                    } else {
+                        Icon(Icons.Default.Refresh, "Refresh Tokens")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+                tokenBalances.isEmpty() -> {
+                    EmptyTokensView()
+                }
+                else -> {
+                    tokenBalances.forEach { tokenBalance ->
+                        TokenBalanceItem(
+                            tokenBalance = tokenBalance,
+                            onClick = {
+                                // Navigate to token detail or send screen
+                                if (tokenBalance.symbol == "USDC") {
+                                    navController.navigate("send/${wallet.id}/usdc")
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TokenBalanceItem(
+    tokenBalance: TokenBalance,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Token icon
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        when (tokenBalance.symbol) {
+                            "USDC" -> Color(0xFF2775CA)
+                            else -> MaterialTheme.colorScheme.primary
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = tokenBalance.symbol.take(2),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = tokenBalance.symbol,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = tokenBalance.name,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    text = tokenBalance.balanceDecimal,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "$${String.format("%.2f", tokenBalance.usdValue)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyTokensView() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Default.AccountBalance,
+            contentDescription = "No Tokens",
+            modifier = Modifier.size(48.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "No Token Balances",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Text(
+            text = "Tokens will appear here when detected",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun TransactionsSection(
+    transactions: List<Transaction>,
+    wallet: CryptoWallet,
+    onViewAll: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Recent Transactions",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                TextButton(onClick = onViewAll) {
+                    Text("View All")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (transactions.isEmpty()) {
+                EmptyTransactionsView()
+            } else {
+                transactions.take(3).forEach { transaction ->
+                    TransactionItem(transaction = transaction, wallet = wallet)
+                    if (transactions.indexOf(transaction) < 2) {
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionItem(transaction: Transaction, wallet: CryptoWallet) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(
+                    color = when (transaction.status) {
+                        TransactionStatus.SUCCESS -> Color.Green.copy(alpha = 0.1f)
+                        TransactionStatus.PENDING -> Color.Yellow.copy(alpha = 0.1f)
+                        TransactionStatus.FAILED -> Color.Red.copy(alpha = 0.1f)
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if ((transaction.value.toDoubleOrNull() ?: 0.0) > 0) {
+                    Icons.Default.ArrowDownward
+                } else {
+                    Icons.Default.ArrowUpward
+                },
+                contentDescription = "Transaction",
+                tint = when (transaction.status) {
+                    TransactionStatus.SUCCESS -> Color.Green
+                    TransactionStatus.PENDING -> Color.Yellow
+                    TransactionStatus.FAILED -> Color.Red
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = if (transaction.value.toDoubleOrNull() ?: 0.0 > 0) "Received" else "Sent",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = formatDate(transaction.timestamp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Column(
+            horizontalAlignment = Alignment.End
+        ) {
+            // Show appropriate symbol based on wallet type
+            val symbol = when (wallet) {
+                is BitcoinWallet -> "BTC"
+                is EthereumWallet -> "ETH"
+                is SolanaWallet -> "SOL"
+                is USDCWallet -> "USDC"
+                else -> "CRYPTO"
+            }
+
+            Text(
+                text = "${transaction.valueDecimal} $symbol",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = transaction.status.name,
+                style = MaterialTheme.typography.labelSmall,
+                color = when (transaction.status) {
+                    TransactionStatus.SUCCESS -> Color.Green
+                    TransactionStatus.PENDING -> Color.Yellow
+                    TransactionStatus.FAILED -> Color.Red
+                }
+            )
+        }
     }
 }
 
@@ -266,13 +593,80 @@ fun WalletHeaderCard(wallet: CryptoWallet, balance: WalletBalance?) {
             )
 
             balance?.let {
-                Text(
-                    text = "${it.nativeBalanceDecimal} ${getNativeSymbol(wallet)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                // Show different balance formats based on wallet type
+                when (wallet) {
+                    is USDCWallet -> {
+                        Text(
+                            text = "${it.nativeBalanceDecimal} USDC",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    else -> {
+                        Text(
+                            text = "${it.nativeBalanceDecimal} ${getNativeSymbol(wallet)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+fun WalletIconDetailScreen(wallet: CryptoWallet) {
+    val iconSize = 48.dp
+    val (backgroundColor, icon) = when (wallet) {
+        is BitcoinWallet -> Pair(Color(0xFFF7931A), Icons.Default.CurrencyBitcoin)
+        is EthereumWallet -> Pair(Color(0xFF627EEA), Icons.Default.Diamond)
+        is SolanaWallet -> Pair(Color(0xFF00FFA3), Icons.Default.FlashOn)
+        is USDCWallet -> Pair(Color(0xFF2775CA), Icons.Default.AttachMoney)
+        else -> Pair(MaterialTheme.colorScheme.primary, Icons.Default.AccountBalanceWallet)
+    }
+
+    Box(
+        modifier = Modifier
+            .size(iconSize)
+            .clip(CircleShape)
+            .background(backgroundColor),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = "Wallet Type",
+            tint = Color.White,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+fun getWalletTypeDisplay(wallet: CryptoWallet): String {
+    return when (wallet) {
+        is BitcoinWallet -> "Bitcoin"
+        is EthereumWallet -> when (wallet.network) {
+            EthereumNetwork.SEPOLIA -> "Ethereum Sepolia"
+            else -> "Ethereum"
+        }
+        is SolanaWallet -> "Solana"
+        is USDCWallet -> "USDC ${getNetworkDisplay(wallet.network)}"
+        is MultiChainWallet -> "Multi-Chain"
+        else -> "Crypto Wallet"
+    }
+}
+
+fun getNativeSymbol(wallet: CryptoWallet): String {
+    return when (wallet) {
+        is BitcoinWallet -> "BTC"
+        is EthereumWallet -> when (wallet.network) {
+            EthereumNetwork.SEPOLIA -> "ETH (Sepolia)"
+            else -> "ETH"
+        }
+        is SolanaWallet -> "SOL"
+        is USDCWallet -> "USDC"
+        is MultiChainWallet -> "MULTI"
+        else -> "CRYPTO"
     }
 }
 
@@ -729,55 +1123,10 @@ fun EmptyTransactionsView() {
     }
 }
 
-fun getWalletTypeDisplay(wallet: CryptoWallet): String {
-    return when (wallet) {
-        is BitcoinWallet -> "Bitcoin Wallet"
-        is EthereumWallet -> when (wallet.network) {
-            EthereumNetwork.SEPOLIA -> "Sepolia Testnet"
-            EthereumNetwork.GOERLI -> "Goerli Testnet"
-            else -> "Ethereum Wallet"
-        }
-        is MultiChainWallet -> "Multi-Chain Wallet"
-        is SolanaWallet -> "Solana Wallet"
-        else -> "Crypto Wallet"
-    }
-}
-
-fun getNativeSymbol(wallet: CryptoWallet): String {
-    return when (wallet) {
-        is BitcoinWallet -> "BTC"
-        is EthereumWallet -> when (wallet.network) {
-            EthereumNetwork.SEPOLIA -> "ETH (Sepolia)"
-            else -> "ETH"
-        }
-        is MultiChainWallet -> "MULTI"
-        is SolanaWallet -> "SOL"
-        else -> "CRYPTO"
-    }
-}
-
-@Composable
-fun WalletIconDetailScreen(wallet: CryptoWallet) {
-    val iconSize = 48.dp
-    val backgroundColor = when (wallet) {
-        is BitcoinWallet -> Color(0xFFF7931A)
-        is EthereumWallet -> Color(0xFF627EEA)
-        is SolanaWallet -> Color(0xFF00FFA3)
-        else -> MaterialTheme.colorScheme.primary
-    }
-
-    Box(
-        modifier = Modifier
-            .size(iconSize)
-            .clip(CircleShape)
-            .background(backgroundColor),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = wallet.name.take(1).uppercase(),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
+private fun getNetworkDisplay(network: EthereumNetwork): String {
+    return when (network) {
+        EthereumNetwork.SEPOLIA -> "(Sepolia)"
+        EthereumNetwork.MAINNET -> ""
+        else -> "(${network.name})"
     }
 }
