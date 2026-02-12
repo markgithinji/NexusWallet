@@ -14,7 +14,6 @@ import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletType
-import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
 import com.example.nexuswallet.feature.coin.usdc.domain.GetUSDCBalanceUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.SendUSDCUseCase
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet

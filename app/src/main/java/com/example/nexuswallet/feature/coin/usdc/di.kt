@@ -17,32 +17,14 @@ class USDCModule {
 
     @Provides
     @Singleton
-    fun provideUSDCBlockchainRepository(
-        etherscanApi: EtherscanApiService,
-        ethereumBlockchainRepository: EthereumBlockchainRepository
-    ): USDCBlockchainRepository {
-        return USDCBlockchainRepository(
-            etherscanApi = etherscanApi,
-            ethereumBlockchainRepository = ethereumBlockchainRepository
-        )
-
-    }
+    fun provideWeb3jFactory(): Web3jFactory = Web3jFactory()
 
     @Provides
     @Singleton
-    fun provideUSDCTransactionRepository(
-        localDataSource: TransactionLocalDataSource,
-        usdcBlockchainRepository: USDCBlockchainRepository,
-        ethereumBlockchainRepository: EthereumBlockchainRepository,
-        keyManager: KeyManager,
-        walletRepository: WalletRepository
-    ): USDCTransactionRepository {
-        return USDCTransactionRepository(
-            localDataSource = localDataSource,
-            usdcBlockchainRepository = usdcBlockchainRepository,
-            ethereumBlockchainRepository = ethereumBlockchainRepository,
-            keyManager = keyManager,
-            walletRepository = walletRepository
-        )
+    fun provideUSDCBlockchainRepository(
+        etherscanApi: EtherscanApiService,
+        web3jFactory: Web3jFactory
+    ): USDCBlockchainRepository {
+        return USDCBlockchainRepository(etherscanApi, web3jFactory)
     }
 }

@@ -12,7 +12,6 @@ import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
-import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
 import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.GetUSDCBalanceUseCase
 import com.example.nexuswallet.feature.wallet.domain.ChainType
