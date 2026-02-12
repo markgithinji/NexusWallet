@@ -29,6 +29,9 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
+import kotlin.getOrThrow
+import com.example.nexuswallet.feature.coin.Result
+
 @HiltViewModel
 class SendViewModel @Inject constructor(
     private val ethereumTransactionRepository: EthereumTransactionRepository,
@@ -81,66 +84,79 @@ class SendViewModel @Inject constructor(
                 )
             }
 
-            try {
-                val wallet = walletRepository.getWallet(walletId)
-                if (wallet != null) {
-                    val walletBalance = walletRepository.getWalletBalance(walletId)
-
-                    // Get ETH balance (for all Ethereum-based wallets)
-                    val ethBalance = if (walletBalance != null) {
-                        walletBalance.nativeBalanceDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO
-                    } else {
-                        when (wallet) {
-                            is EthereumWallet, is USDCWallet ->
-                                ethereumBlockchainRepository.getEthereumBalance(wallet.address, getNetworkForWallet(wallet))
-                            else -> BigDecimal.ZERO
-                        }
-                    }
-
-                    // Get USDC balance if wallet supports it
-                    var usdcBalance = BigDecimal.ZERO
-                    if (wallet is USDCWallet || wallet is EthereumWallet) {
-                        try {
-                            val tokenBalance = getUSDCBalanceUseCase(walletId)
-                            usdcBalance = tokenBalance.balanceDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO
-                        } catch (e: Exception) {
-                            Log.e("SendVM", "Error getting USDC balance: ${e.message}")
-                        }
-                    }
-
-                    val chain = when (wallet) {
-                        is BitcoinWallet -> ChainType.BITCOIN
-                        is EthereumWallet -> if (wallet.network == EthereumNetwork.SEPOLIA) ChainType.ETHEREUM_SEPOLIA else ChainType.ETHEREUM
-                        is USDCWallet -> if (wallet.network == EthereumNetwork.SEPOLIA) ChainType.ETHEREUM_SEPOLIA else ChainType.ETHEREUM
-                        else -> ChainType.ETHEREUM
-                    }
-
-                    val feeEstimate = ethereumTransactionRepository.getFeeEstimate(chain, FeeLevel.NORMAL)
-
-                    _uiState.update {
-                        it.copy(
-                            walletId = walletId,
-                            walletType = wallet.walletType,
-                            fromAddress = wallet.address,
-                            balance = ethBalance, // ETH balance
-                            usdcBalance = usdcBalance, // USDC balance
-                            feeEstimate = feeEstimate,
-                            isLoading = false,
-                            transactionState = TransactionState.Idle
-                        )
-                    }
-
-                    validateInputs()
-                }
-            } catch (e: Exception) {
+            val wallet = walletRepository.getWallet(walletId)
+            if (wallet == null) {
                 _uiState.update {
                     it.copy(
-                        error = "Failed to load wallet: ${e.message}",
+                        error = "Wallet not found",
                         isLoading = false,
-                        transactionState = TransactionState.Error("Failed to load wallet: ${e.message}")
+                        transactionState = TransactionState.Error("Wallet not found")
                     )
                 }
+                return@launch
             }
+
+            val walletBalance = walletRepository.getWalletBalance(walletId)
+
+            // Get ETH balance (for all Ethereum-based wallets)
+            val ethBalance = if (walletBalance != null) {
+                walletBalance.nativeBalanceDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO
+            } else {
+                when (wallet) {
+                    is EthereumWallet, is USDCWallet ->
+                        ethereumBlockchainRepository.getEthereumBalance(wallet.address, getNetworkForWallet(wallet))
+                    else -> BigDecimal.ZERO
+                }
+            }
+
+            // Get USDC balance if wallet supports it
+            var usdcBalance = BigDecimal.ZERO
+            if (wallet is USDCWallet || wallet is EthereumWallet) {
+                val usdcBalanceResult = getUSDCBalanceUseCase(walletId)
+                when (usdcBalanceResult) {
+                    is Result.Success -> {
+                        usdcBalance = usdcBalanceResult.data.balanceDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO
+                        Log.d("SendVM", "USDC balance loaded: $usdcBalance")
+                    }
+                    is Result.Error -> {
+                        Log.e("SendVM", "Error getting USDC balance: ${usdcBalanceResult.message}")
+                        // Keep usdcBalance as BigDecimal.ZERO
+                    }
+                    Result.Loading -> {
+                        // Should not happen, but handle gracefully
+                        Log.d("SendVM", "Loading USDC balance...")
+                    }
+                }
+            }
+
+            val chain = when (wallet) {
+                is BitcoinWallet -> ChainType.BITCOIN
+                is EthereumWallet -> if (wallet.network == EthereumNetwork.SEPOLIA) ChainType.ETHEREUM_SEPOLIA else ChainType.ETHEREUM
+                is USDCWallet -> if (wallet.network == EthereumNetwork.SEPOLIA) ChainType.ETHEREUM_SEPOLIA else ChainType.ETHEREUM
+                else -> ChainType.ETHEREUM
+            }
+
+            val feeEstimate = try {
+                ethereumTransactionRepository.getFeeEstimate(chain, FeeLevel.NORMAL)
+            } catch (e: Exception) {
+                Log.e("SendVM", "Error getting fee estimate: ${e.message}")
+                null
+            }
+
+            _uiState.update {
+                it.copy(
+                    walletId = walletId,
+                    walletType = wallet.walletType,
+                    fromAddress = wallet.address,
+                    balance = ethBalance,
+                    usdcBalance = usdcBalance,
+                    feeEstimate = feeEstimate,
+                    isLoading = false,
+                    transactionState = TransactionState.Idle
+                )
+            }
+
+            validateInputs()
         }
     }
 
@@ -269,19 +285,18 @@ class SendViewModel @Inject constructor(
     }
 
     private suspend fun createUsdcTransaction(state: SendUiState, amount: BigDecimal) {
-        // Use the SendUSDCUseCase instead of USDCTransactionRepository
         val result = sendUSDCUseCase(
             walletId = state.walletId,
             toAddress = state.toAddress,
             amount = amount
         )
 
-        when {
-            result.isSuccess -> {
-                val broadcastResult = result.getOrThrow()
+        when (result) {
+            is Result.Success -> {
+                val broadcastResult = result.data
                 Log.d("SendVM", " USDC Transaction result: success=${broadcastResult.success}, hash=${broadcastResult.hash}")
 
-                // Create a SendTransaction object from the broadcast result
+                // Create a SendTransaction object
                 val transaction = SendTransaction(
                     id = "usdc_tx_${System.currentTimeMillis()}",
                     walletId = state.walletId,
@@ -318,9 +333,10 @@ class SendViewModel @Inject constructor(
                     )
                 }
             }
-            else -> {
-                val error = result.exceptionOrNull()?.message ?: "Failed to create USDC transaction"
-                Log.e("SendVM", " USDC Transaction failed: $error")
+
+            is com.example.nexuswallet.feature.coin.Result.Error -> {
+                val error = result.message
+                Log.e("SendVM", " USDC Transaction failed: $error", result.throwable)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -328,6 +344,11 @@ class SendViewModel @Inject constructor(
                         transactionState = TransactionState.Error(error)
                     )
                 }
+            }
+
+            Result.Loading -> {
+                // Should not happen as sendUSDCUseCase doesn't return Loading
+                Log.d("SendVM", " USDC Transaction loading...")
             }
         }
     }
