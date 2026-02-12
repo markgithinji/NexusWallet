@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
+import com.example.nexuswallet.feature.coin.usdc.Web3jFactory
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.ChainType
@@ -19,6 +20,7 @@ import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.web3j.protocol.core.DefaultBlockParameterName
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
@@ -70,7 +72,25 @@ class SendUSDCUseCase @Inject constructor(
         }
         val privateKey = privateKeyResult.getOrThrow()
 
-        // Create transaction
+        // Get gas price
+        val gasPriceResponse = ethereumBlockchainRepository.getCurrentGasPrice(network)
+        val gasPriceGwei = BigDecimal(gasPriceResponse.propose)
+        val gasPriceWei = gasPriceGwei.multiply(BigDecimal("1000000000")).toBigInteger()
+
+        // Get nonce
+        val nonce = usdcBlockchainRepository.getNonce(address, network)
+
+        // Get chainId
+        val chainId = when (network) {
+            EthereumNetwork.MAINNET -> 1L
+            EthereumNetwork.SEPOLIA -> 11155111L
+            EthereumNetwork.POLYGON -> 137L
+            EthereumNetwork.BSC -> 56L
+            EthereumNetwork.ARBITRUM -> 42161L
+            EthereumNetwork.OPTIMISM -> 10L
+            else -> 11155111L
+        }
+
         val transaction = SendTransaction(
             id = "usdc_tx_${System.currentTimeMillis()}",
             walletId = walletId,
@@ -88,7 +108,7 @@ class SendUSDCUseCase @Inject constructor(
                 else -> ChainType.ETHEREUM
             },
             status = TransactionStatus.PENDING,
-            gasPrice = "0",
+            gasPrice = gasPriceGwei.toString(),
             gasLimit = "65000",
             note = null,
             feeLevel = FeeLevel.NORMAL,
@@ -103,17 +123,20 @@ class SendUSDCUseCase @Inject constructor(
         // Save to local storage
         transactionLocalDataSource.saveSendTransaction(transaction)
 
-        // Create and sign transaction
+        // Create and sign transaction - now passing gasPrice, nonce, chainId
         val (rawTransaction, signedHex, txHash) = usdcBlockchainRepository.createAndSignUSDCTransfer(
             fromAddress = address,
             fromPrivateKey = privateKey,
             toAddress = toAddress,
             amount = amount,
+            gasPriceWei = gasPriceWei,
+            nonce = nonce,
+            chainId = chainId,
             network = network
         )
 
         // Update transaction with signed data
-        val gasPriceWei = rawTransaction.gasPrice
+        val transactionGasPriceWei  = rawTransaction.gasPrice
         val gasLimit = rawTransaction.gasLimit
         val feeWei = gasPriceWei.multiply(gasLimit)
         val feeEth = feeWei.toBigDecimal().divide(
@@ -123,7 +146,7 @@ class SendUSDCUseCase @Inject constructor(
         )
 
         val updatedTransaction = transaction.copy(
-            gasPrice = gasPriceWei.toString(),
+            gasPrice = transactionGasPriceWei.toString(),
             gasLimit = gasLimit.toString(),
             fee = feeWei.toString(),
             feeDecimal = feeEth.toPlainString(),
@@ -131,7 +154,7 @@ class SendUSDCUseCase @Inject constructor(
             totalDecimal = feeEth.toPlainString(),
             signedHex = signedHex,
             metadata = transaction.metadata + mapOf(
-                "gasPriceWei" to gasPriceWei.toString(),
+                "gasPriceWei" to transactionGasPriceWei.toString(),
                 "gasLimit" to gasLimit.toString(),
                 "rawTransaction" to rawTransaction.toString()
             )
@@ -173,7 +196,6 @@ class SendUSDCUseCase @Inject constructor(
     }
 }
 
-// Use Case to get ETH balance for gas
 class GetETHBalanceForGasUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository
