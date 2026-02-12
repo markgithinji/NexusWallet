@@ -16,7 +16,6 @@ import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.model.SendTransactionDao
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
-import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
@@ -127,22 +126,6 @@ object DatabaseModule {
         keyManager: KeyManager
     ): WalletRepository {
         return WalletRepository(localDataSource, securityManager, ethereumBlockchainRepository, solanaBlockchainRepository, bitcoinBlockchainRepository,usdcBlockchainRepository,keyManager)
-    }
-
-    @Provides
-    @Singleton
-    fun provideTransactionRepository(
-        transactionLocalDataSource: TransactionLocalDataSource,
-        ethereumBlockchainRepository: EthereumBlockchainRepository,
-        walletRepository: WalletRepository,
-        keyManager: KeyManager
-    ): EthereumTransactionRepository {
-        return EthereumTransactionRepository(
-            localDataSource = transactionLocalDataSource,
-            ethereumBlockchainRepository = ethereumBlockchainRepository,
-            walletRepository = walletRepository,
-            keyManager = keyManager
-        )
     }
 
     @Provides
