@@ -211,52 +211,59 @@ class WalletRepository @Inject constructor(
     }
 
     private suspend fun syncBitcoinBalance(wallet: BitcoinWallet) {
-        try {
-            Log.d("WalletRepo", "Syncing REAL Bitcoin wallet balance...")
-            Log.d("WalletRepo", "Address: ${wallet.address}")
-            Log.d("WalletRepo", "Network: ${wallet.network}")
+        Log.d("WalletRepo", "Syncing REAL Bitcoin wallet balance...")
+        Log.d("WalletRepo", "Address: ${wallet.address}")
+        Log.d("WalletRepo", "Network: ${wallet.network}")
 
-            val btcBalance = bitcoinBlockchainRepository.getBalance(
-                address = wallet.address,
-                network = wallet.network
-            )
+        val balanceResult = bitcoinBlockchainRepository.getBalance(
+            address = wallet.address,
+            network = wallet.network
+        )
 
-            Log.d("WalletRepo", "Real balance fetched: $btcBalance BTC")
+        when (balanceResult) {
+            is com.example.nexuswallet.feature.coin.Result.Success -> {
+                val btcBalance = balanceResult.data
+                Log.d("WalletRepo", "Real balance fetched: $btcBalance BTC")
 
-            val usdValue = calculateUsdValue(btcBalance, "BTC")
-            Log.d("WalletRepo", "USD Value: $$usdValue")
+                val usdValue = calculateUsdValue(btcBalance, "BTC")
+                Log.d("WalletRepo", "USD Value: $$usdValue")
 
-            // Convert BTC to satoshis for storage (1 BTC = 100,000,000 satoshis)
-            val satoshiBalance = (btcBalance * BigDecimal("100000000")).toPlainString()
+                val satoshiBalance = (btcBalance * BigDecimal("100000000")).toPlainString()
 
-            val balance = WalletBalance(
-                walletId = wallet.id,
-                address = wallet.address,
-                nativeBalance = satoshiBalance,
-                nativeBalanceDecimal = btcBalance.setScale(8, RoundingMode.HALF_UP).toPlainString(),
-                usdValue = usdValue,
-                tokens = emptyList(),
-                lastUpdated = System.currentTimeMillis()
-            )
+                val balance = WalletBalance(
+                    walletId = wallet.id,
+                    address = wallet.address,
+                    nativeBalance = satoshiBalance,
+                    nativeBalanceDecimal = btcBalance.setScale(8, RoundingMode.HALF_UP).toPlainString(),
+                    usdValue = usdValue,
+                    tokens = emptyList(),
+                    lastUpdated = System.currentTimeMillis()
+                )
 
-            saveWalletBalance(balance)
-            Log.d("WalletRepo", " Bitcoin balance synced successfully: $btcBalance BTC")
+                saveWalletBalance(balance)
+                Log.d("WalletRepo", "✓ Bitcoin balance synced successfully: $btcBalance BTC")
+            }
 
-        } catch (e: Exception) {
-            Log.e("WalletRepo", " Error syncing Bitcoin balance: ${e.message}")
+            is com.example.nexuswallet.feature.coin.Result.Error -> {
+                Log.e("WalletRepo", "✗ Error syncing Bitcoin balance: ${balanceResult.message}", balanceResult.throwable)
 
-            val zeroBalance = WalletBalance(
-                walletId = wallet.id,
-                address = wallet.address,
-                nativeBalance = "0",
-                nativeBalanceDecimal = "0",
-                usdValue = 0.0,
-                tokens = emptyList(),
-                lastUpdated = System.currentTimeMillis()
-            )
+                val zeroBalance = WalletBalance(
+                    walletId = wallet.id,
+                    address = wallet.address,
+                    nativeBalance = "0",
+                    nativeBalanceDecimal = "0",
+                    usdValue = 0.0,
+                    tokens = emptyList(),
+                    lastUpdated = System.currentTimeMillis()
+                )
 
-            saveWalletBalance(zeroBalance)
-            Log.d("WalletRepo", "⚠ Using zero balance due to error")
+                saveWalletBalance(zeroBalance)
+                Log.d("WalletRepo", "⚠ Using zero balance due to error: ${balanceResult.message}")
+            }
+
+            com.example.nexuswallet.feature.coin.Result.Loading -> {
+                Log.d("WalletRepo", " Loading Bitcoin balance...")
+            }
         }
     }
 
