@@ -68,254 +68,254 @@ fun ApiDebugScreen(
     val walletViewModel: WalletDetailViewModel = hiltViewModel()
     val wallet by walletViewModel.wallet.collectAsState()
 
-    val apiTestResults by viewModel.apiTestResults.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val rawData by viewModel.rawData.collectAsState()
-    val selectedApi by viewModel.selectedApi.collectAsState()
-    val apiStatus by viewModel.apiStatus.collectAsState()
-    val lastUpdated by viewModel.lastUpdated.collectAsState()
+//    val apiTestResults by viewModel.apiTestResults.collectAsState()
+//    val isLoading by viewModel.isLoading.collectAsState()
+//    val rawData by viewModel.rawData.collectAsState()
+//    val selectedApi by viewModel.selectedApi.collectAsState()
+//    val apiStatus by viewModel.apiStatus.collectAsState()
+//    val lastUpdated by viewModel.lastUpdated.collectAsState()
+//
+//    // Load data when wallet changes
+//    LaunchedEffect(wallet) {
+//        wallet?.let {
+//            viewModel.refreshRawData(it)
+//        }
+//    }
+//
+//    // Also load when selected API changes
+//    LaunchedEffect(selectedApi) {
+//        wallet?.let {
+//            viewModel.refreshRawData(it)
+//        }
+//    }
 
-    // Load data when wallet changes
-    LaunchedEffect(wallet) {
-        wallet?.let {
-            viewModel.refreshRawData(it)
-        }
-    }
-
-    // Also load when selected API changes
-    LaunchedEffect(selectedApi) {
-        wallet?.let {
-            viewModel.refreshRawData(it)
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("API Debug") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.Default.ArrowBack, "Back")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-        ) {
-            ApiStatusCard(
-                apiStatus = apiStatus,
-                lastUpdated = lastUpdated
-            )
-
-            // API Selector
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Select API to Test",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        ApiSelectorButton(
-                            label = "Etherscan",
-                            isSelected = selectedApi == "etherscan",
-                            onClick = { viewModel.selectApi("etherscan") }
-                        )
-                        ApiSelectorButton(
-                            label = "Blockstream",
-                            isSelected = selectedApi == "blockstream",
-                            onClick = { viewModel.selectApi("blockstream") }
-                        )
-                        ApiSelectorButton(
-                            label = "Covalent",
-                            isSelected = selectedApi == "covalent",
-                            onClick = { viewModel.selectApi("covalent") }
-                        )
-                    }
-                }
-            }
-
-            // API Test Results (show if we have results)
-            if (apiTestResults.isNotEmpty()) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "API Test Results",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        apiTestResults.forEach { result ->
-                            ApiTestResultItem(result = result)
-                            if (apiTestResults.indexOf(result) < apiTestResults.size - 1) {
-                                Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Raw Data Display
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Raw API Response",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Button(
-                            onClick = {
-                                wallet?.let {
-                                    viewModel.refreshRawData(it)
-                                }
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            enabled = !isLoading && wallet != null
-                        ) {
-                            if (isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Icon(Icons.Default.Refresh, "Refresh")
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    if (rawData != null) {
-                        val scrollState = rememberScrollState()
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(300.dp)
-                                .background(Color.Black.copy(alpha = 0.05f))
-                                .clip(RoundedCornerShape(8.dp))
-                                .padding(12.dp)
-                        ) {
-                            Text(
-                                text = rawData!!,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(scrollState)
-                            )
-                        }
-
-                        // Show data source
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Source: $selectedApi API • ${wallet?.getDisplayAddress() ?: ""}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(300.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            when {
-                                isLoading -> CircularProgressIndicator()
-                                wallet == null -> Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Warning,
-                                        contentDescription = "No Wallet",
-                                        modifier = Modifier.size(48.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        "No wallet loaded",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                else -> Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Download,
-                                        contentDescription = "Load Data",
-                                        modifier = Modifier.size(48.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        "Select an API to load data",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Test Controls
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "API Connectivity Tests",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Tests all blockchain APIs with known addresses",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-    }
+//    Scaffold(
+//        topBar = {
+//            TopAppBar(
+//                title = { Text("API Debug") },
+//                navigationIcon = {
+//                    IconButton(onClick = { navController.navigateUp() }) {
+//                        Icon(Icons.Default.ArrowBack, "Back")
+//                    }
+//                }
+//            )
+//        }
+//    ) { padding ->
+//        Column(
+//            modifier = Modifier
+//                .fillMaxSize()
+//                .padding(padding)
+//                .verticalScroll(rememberScrollState())
+//        ) {
+//            ApiStatusCard(
+//                apiStatus = apiStatus,
+//                lastUpdated = lastUpdated
+//            )
+//
+//            // API Selector
+//            Card(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(16.dp)
+//            ) {
+//                Column(modifier = Modifier.padding(16.dp)) {
+//                    Text(
+//                        text = "Select API to Test",
+//                        style = MaterialTheme.typography.titleMedium,
+//                        fontWeight = FontWeight.Bold
+//                    )
+//
+//                    Spacer(modifier = Modifier.height(12.dp))
+//
+//                    Row(
+//                        modifier = Modifier.fillMaxWidth(),
+//                        horizontalArrangement = Arrangement.SpaceEvenly
+//                    ) {
+//                        ApiSelectorButton(
+//                            label = "Etherscan",
+//                            isSelected = selectedApi == "etherscan",
+//                            onClick = { viewModel.selectApi("etherscan") }
+//                        )
+//                        ApiSelectorButton(
+//                            label = "Blockstream",
+//                            isSelected = selectedApi == "blockstream",
+//                            onClick = { viewModel.selectApi("blockstream") }
+//                        )
+//                        ApiSelectorButton(
+//                            label = "Covalent",
+//                            isSelected = selectedApi == "covalent",
+//                            onClick = { viewModel.selectApi("covalent") }
+//                        )
+//                    }
+//                }
+//            }
+//
+//            // API Test Results (show if we have results)
+//            if (apiTestResults.isNotEmpty()) {
+//                Card(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .padding(16.dp)
+//                ) {
+//                    Column(modifier = Modifier.padding(16.dp)) {
+//                        Text(
+//                            text = "API Test Results",
+//                            style = MaterialTheme.typography.titleMedium,
+//                            fontWeight = FontWeight.Bold
+//                        )
+//
+//                        Spacer(modifier = Modifier.height(12.dp))
+//
+//                        apiTestResults.forEach { result ->
+//                            ApiTestResultItem(result = result)
+//                            if (apiTestResults.indexOf(result) < apiTestResults.size - 1) {
+//                                Divider(modifier = Modifier.padding(vertical = 8.dp))
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//
+//            // Raw Data Display
+//            Card(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(16.dp)
+//            ) {
+//                Column(modifier = Modifier.padding(16.dp)) {
+//                    Row(
+//                        modifier = Modifier.fillMaxWidth(),
+//                        horizontalArrangement = Arrangement.SpaceBetween,
+//                        verticalAlignment = Alignment.CenterVertically
+//                    ) {
+//                        Text(
+//                            text = "Raw API Response",
+//                            style = MaterialTheme.typography.titleMedium,
+//                            fontWeight = FontWeight.Bold
+//                        )
+//
+//                        Button(
+//                            onClick = {
+//                                wallet?.let {
+//                                    viewModel.refreshRawData(it)
+//                                }
+//                            },
+//                            shape = RoundedCornerShape(8.dp),
+//                            enabled = !isLoading && wallet != null
+//                        ) {
+//                            if (isLoading) {
+//                                CircularProgressIndicator(
+//                                    modifier = Modifier.size(16.dp),
+//                                    strokeWidth = 2.dp
+//                                )
+//                            } else {
+//                                Icon(Icons.Default.Refresh, "Refresh")
+//                            }
+//                        }
+//                    }
+//
+//                    Spacer(modifier = Modifier.height(12.dp))
+//
+//                    if (rawData != null) {
+//                        val scrollState = rememberScrollState()
+//                        Box(
+//                            modifier = Modifier
+//                                .fillMaxWidth()
+//                                .height(300.dp)
+//                                .background(Color.Black.copy(alpha = 0.05f))
+//                                .clip(RoundedCornerShape(8.dp))
+//                                .padding(12.dp)
+//                        ) {
+//                            Text(
+//                                text = rawData!!,
+//                                style = MaterialTheme.typography.bodySmall,
+//                                fontFamily = FontFamily.Monospace,
+//                                modifier = Modifier
+//                                    .fillMaxSize()
+//                                    .verticalScroll(scrollState)
+//                            )
+//                        }
+//
+//                        // Show data source
+//                        Spacer(modifier = Modifier.height(8.dp))
+//                        Text(
+//                            text = "Source: $selectedApi API • ${wallet?.getDisplayAddress() ?: ""}",
+//                            style = MaterialTheme.typography.labelSmall,
+//                            color = MaterialTheme.colorScheme.onSurfaceVariant
+//                        )
+//                    } else {
+//                        Box(
+//                            modifier = Modifier
+//                                .fillMaxWidth()
+//                                .height(300.dp),
+//                            contentAlignment = Alignment.Center
+//                        ) {
+//                            when {
+//                                isLoading -> CircularProgressIndicator()
+//                                wallet == null -> Column(
+//                                    horizontalAlignment = Alignment.CenterHorizontally
+//                                ) {
+//                                    Icon(
+//                                        imageVector = Icons.Default.Warning,
+//                                        contentDescription = "No Wallet",
+//                                        modifier = Modifier.size(48.dp),
+//                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+//                                    )
+//                                    Spacer(modifier = Modifier.height(8.dp))
+//                                    Text(
+//                                        "No wallet loaded",
+//                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                                    )
+//                                }
+//                                else -> Column(
+//                                    horizontalAlignment = Alignment.CenterHorizontally
+//                                ) {
+//                                    Icon(
+//                                        imageVector = Icons.Default.Download,
+//                                        contentDescription = "Load Data",
+//                                        modifier = Modifier.size(48.dp),
+//                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+//                                    )
+//                                    Spacer(modifier = Modifier.height(8.dp))
+//                                    Text(
+//                                        "Select an API to load data",
+//                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                                    )
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//
+//            // Test Controls
+//            Card(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(16.dp)
+//            ) {
+//                Column(modifier = Modifier.padding(16.dp)) {
+//                    Text(
+//                        text = "API Connectivity Tests",
+//                        style = MaterialTheme.typography.titleMedium,
+//                        fontWeight = FontWeight.Bold
+//                    )
+//
+//                    Spacer(modifier = Modifier.height(12.dp))
+//
+//                    Spacer(modifier = Modifier.height(8.dp))
+//
+//                    Text(
+//                        text = "Tests all blockchain APIs with known addresses",
+//                        style = MaterialTheme.typography.bodySmall,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                }
+//            }
+//
+//            Spacer(modifier = Modifier.height(16.dp))
+//        }
+//    }
 }
 
 @Composable

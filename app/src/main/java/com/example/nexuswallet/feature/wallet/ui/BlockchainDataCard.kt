@@ -307,10 +307,10 @@ fun BlockchainDataCard(
             ) {
                 Button(
                     onClick = {
-                        blockchainViewModel.refresh(wallet)
-                        if (wallet is EthereumWallet || wallet is MultiChainWallet) {
-                            blockchainViewModel.loadGasPrice()
-                        }
+//                        blockchainViewModel.refresh(wallet)
+//                        if (wallet is EthereumWallet || wallet is MultiChainWallet) {
+//                            blockchainViewModel.loadGasPrice()
+//                        }
                     },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(8.dp),
