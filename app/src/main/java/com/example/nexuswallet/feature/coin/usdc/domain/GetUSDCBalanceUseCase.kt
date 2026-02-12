@@ -46,6 +46,7 @@ class GetUSDCBalanceUseCase @Inject constructor(
     }
 }
 
+@Singleton
 class SendUSDCUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val usdcBlockchainRepository: USDCBlockchainRepository,
@@ -61,17 +62,21 @@ class SendUSDCUseCase @Inject constructor(
 
         // 1. Get wallet
         val wallet = walletRepository.getWallet(walletId)
+            ?: return Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
+
         val (address, network, contractAddress) = when (wallet) {
             is USDCWallet -> Triple(wallet.address, wallet.network, wallet.contractAddress)
             is EthereumWallet -> {
                 val contract = getUSDCContractAddress(wallet.network)
                     ?: return Result.Error(
-                        message = "USDC not supported on ${wallet.network}"
+                        message = "USDC not supported on ${wallet.network}",
+                        throwable = IllegalArgumentException("Unsupported network for USDC")
                     )
                 Triple(wallet.address, wallet.network, contract)
             }
             else -> return Result.Error(
-                message = "Wallet is not USDC or Ethereum wallet"
+                message = "Wallet is not USDC or Ethereum wallet",
+                throwable = IllegalArgumentException("Wallet type: ${wallet.walletType}")
             )
         }
 
@@ -86,26 +91,29 @@ class SendUSDCUseCase @Inject constructor(
         val privateKey = privateKeyResult.getOrThrow()
 
         // 3. Get gas price
-        val gasPriceResponse = try {
-            ethereumBlockchainRepository.getCurrentGasPrice(network)
-        } catch (e: Exception) {
-            return Result.Error(
-                message = "Failed to get gas price: ${e.message}",
-                throwable = e
+        val gasPriceResult = ethereumBlockchainRepository.getCurrentGasPrice(network)
+        val gasPriceResponse = when (gasPriceResult) {
+            is Result.Success -> gasPriceResult.data
+            is Result.Error -> return Result.Error(
+                message = "Failed to get gas price: ${gasPriceResult.message}",
+                throwable = gasPriceResult.throwable
             )
+            Result.Loading -> return Result.Error("Failed to get gas price: timeout", null)
         }
+
         val gasPriceGwei = BigDecimal(gasPriceResponse.propose)
         val gasPriceWei = gasPriceGwei.multiply(BigDecimal("1000000000")).toBigInteger()
 
         // 4. Get nonce
         val nonceResult = usdcBlockchainRepository.getNonce(address, network)
-        if (nonceResult !is Result.Success) {
-            return Result.Error(
-                message = (nonceResult as Result.Error).message,
-                throwable = (nonceResult as Result.Error).throwable
+        val nonce = when (nonceResult) {
+            is Result.Success -> nonceResult.data
+            is Result.Error -> return Result.Error(
+                message = nonceResult.message,
+                throwable = nonceResult.throwable
             )
+            Result.Loading -> return Result.Error("Failed to get nonce: timeout", null)
         }
-        val nonce = nonceResult.data
 
         // 5. Get chainId
         val chainId = when (network) {
@@ -140,6 +148,7 @@ class SendUSDCUseCase @Inject constructor(
             gasLimit = "65000",
             note = null,
             feeLevel = FeeLevel.NORMAL,
+            timestamp = System.currentTimeMillis(),
             metadata = mapOf(
                 "token" to "USDC",
                 "isTokenTransfer" to "true",
@@ -163,14 +172,14 @@ class SendUSDCUseCase @Inject constructor(
             network = network
         )
 
-        if (createResult !is Result.Success) {
-            return Result.Error(
-                message = (createResult as Result.Error).message,
-                throwable = (createResult as Result.Error).throwable
+        val (rawTransaction, signedHex, txHash) = when (createResult) {
+            is Result.Success -> createResult.data
+            is Result.Error -> return Result.Error(
+                message = createResult.message,
+                throwable = createResult.throwable
             )
+            Result.Loading -> return Result.Error("Failed to create USDC transfer: timeout", null)
         }
-
-        val (rawTransaction, signedHex, txHash) = createResult.data
 
         // 9. Calculate fees
         val transactionGasPriceWei = rawTransaction.gasPrice
@@ -206,14 +215,14 @@ class SendUSDCUseCase @Inject constructor(
             network = network
         )
 
-        if (broadcastResult !is Result.Success) {
-            return Result.Error(
-                message = (broadcastResult as Result.Error).message,
-                throwable = (broadcastResult as Result.Error).throwable
+        val broadcastData = when (broadcastResult) {
+            is Result.Success -> broadcastResult.data
+            is Result.Error -> return Result.Error(
+                message = broadcastResult.message,
+                throwable = broadcastResult.throwable
             )
+            Result.Loading -> return Result.Error("Broadcast timeout", null)
         }
-
-        val broadcastData = broadcastResult.data
 
         // 12. Update transaction status
         val finalTransaction = updatedTransaction.copy(
@@ -243,37 +252,34 @@ class SendUSDCUseCase @Inject constructor(
     }
 }
 
+@Singleton
 class GetETHBalanceForGasUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository
 ) {
     suspend operator fun invoke(walletId: String): Result<BigDecimal> {
         val wallet = walletRepository.getWallet(walletId)
+            ?: return Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
 
         return when (wallet) {
-            is USDCWallet -> try {
-                val balance = ethereumBlockchainRepository.getEthereumBalance(
+            is USDCWallet, is EthereumWallet -> {
+                val balanceResult = ethereumBlockchainRepository.getEthereumBalance(
                     address = wallet.address,
-                    network = wallet.network
+                    network = when (wallet) {
+                        is USDCWallet -> wallet.network
+                        is EthereumWallet -> wallet.network
+                        else -> EthereumNetwork.SEPOLIA
+                    }
                 )
-                Result.Success(balance)
-            } catch (e: Exception) {
-                Result.Error(
-                    message = "Failed to get ETH balance: ${e.message}",
-                    throwable = e
-                )
-            }
-            is EthereumWallet -> try {
-                val balance = ethereumBlockchainRepository.getEthereumBalance(
-                    address = wallet.address,
-                    network = wallet.network
-                )
-                Result.Success(balance)
-            } catch (e: Exception) {
-                Result.Error(
-                    message = "Failed to get ETH balance: ${e.message}",
-                    throwable = e
-                )
+
+                when (balanceResult) {
+                    is Result.Success -> Result.Success(balanceResult.data)
+                    is Result.Error -> Result.Error(
+                        message = "Failed to get ETH balance: ${balanceResult.message}",
+                        throwable = balanceResult.throwable
+                    )
+                    Result.Loading -> Result.Error("Failed to get ETH balance: timeout", null)
+                }
             }
             else -> Result.Success(BigDecimal.ZERO)
         }
