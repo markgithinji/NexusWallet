@@ -57,6 +57,14 @@ object SolanaUseCaseModule {
 
     @Provides
     @Singleton
+    fun provideGetSolanaBalanceUseCase(
+        solanaBlockchainRepository: SolanaBlockchainRepository
+    ): GetSolanaBalanceUseCase {
+        return GetSolanaBalanceUseCase(solanaBlockchainRepository)
+    }
+
+    @Provides
+    @Singleton
     fun provideGetSolanaFeeEstimateUseCase(
         solanaBlockchainRepository: SolanaBlockchainRepository
     ): GetSolanaFeeEstimateUseCase {
@@ -73,7 +81,25 @@ object SolanaUseCaseModule {
 
     @Provides
     @Singleton
-    fun provideValidateSolanaAddressUseCase(): ValidateSolanaAddressUseCase {
-        return ValidateSolanaAddressUseCase()
+    fun provideRequestSolanaAirdropUseCase(
+        solanaBlockchainRepository: SolanaBlockchainRepository
+    ): RequestSolanaAirdropUseCase {
+        return RequestSolanaAirdropUseCase(solanaBlockchainRepository)
+    }
+
+//    @Provides
+//    @Singleton
+//    fun provideGetSolanaTransactionHistoryUseCase(
+//        solanaBlockchainRepository: SolanaBlockchainRepository
+//    ): GetSolanaTransactionHistoryUseCase {
+//        return GetSolanaTransactionHistoryUseCase(solanaBlockchainRepository)
+//    }
+
+    @Provides
+    @Singleton
+    fun provideValidateSolanaAddressUseCase(
+        solanaBlockchainRepository: SolanaBlockchainRepository
+    ): ValidateSolanaAddressUseCase {
+        return ValidateSolanaAddressUseCase(solanaBlockchainRepository)
     }
 }
