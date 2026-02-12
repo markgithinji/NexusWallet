@@ -24,57 +24,44 @@ import kotlin.Double
 import kotlin.Exception
 import kotlin.Int
 import kotlin.Long
-import kotlin.Result
 import kotlin.String
 import kotlin.collections.map
 import kotlin.let
 import kotlin.text.take
 import kotlin.to
+import com.example.nexuswallet.feature.coin.Result
 
 @Singleton
 class SolanaBlockchainRepository @Inject constructor() {
 
     companion object {
         private const val LAMPORTS_PER_SOL = 1_000_000_000L
-        private const val SOLANA_FIXED_FEE_LAMPORTS = 5000L // ~0.000005 SOL
+        private const val SOLANA_FIXED_FEE_LAMPORTS = 5000L
     }
 
-    // Use sol4k Connection for RPC calls
     private val connection = Connection("https://api.devnet.solana.com")
-
     private val json = Json { ignoreUnknownKeys = true }
 
-    /**
-     * Get recent blockhash for transaction creation
-     */
-    suspend fun getRecentBlockhash(): String {
+    suspend fun getRecentBlockhash(): Result<String> {
         return try {
             withContext(Dispatchers.IO) {
-                val blockhashObj = connection.getLatestBlockhash()
-                Log.d("SolanaRepo", "Got blockhash object")
-
-                val blockhash = blockhashObj
+                val blockhash = connection.getLatestBlockhash()
                 Log.d("SolanaRepo", "Got blockhash: ${blockhash.take(16)}...")
-                blockhash
+                Result.Success(blockhash)
             }
         } catch (e: Exception) {
-            Log.e("SolanaRepo", "Error getting blockhash: ${e.message}")
-            throw e
+            Log.e("SolanaRepo", "Error getting blockhash: ${e.message}", e)
+            Result.Error("Failed to get recent blockhash: ${e.message}", e)
         }
     }
-    /**
-     * Get SOL balance
-     */
-    suspend fun getBalance(address: String): BigDecimal {
+
+    suspend fun getBalance(address: String): Result<BigDecimal> {
         return try {
-            Log.d("SolanaRepo", " getBalance START for address: $address")
+            Log.d("SolanaRepo", "getBalance START for address: $address")
 
             withContext(Dispatchers.IO) {
                 val publicKey = PublicKey(address)
-                Log.d("SolanaRepo", "Created PublicKey object")
-
                 val balance = connection.getBalance(publicKey)
-                Log.d("SolanaRepo", "Raw balance from RPC: ${balance} lamports")
 
                 val solBalance = BigDecimal(balance).divide(
                     BigDecimal(LAMPORTS_PER_SOL),
@@ -82,127 +69,113 @@ class SolanaBlockchainRepository @Inject constructor() {
                     RoundingMode.HALF_UP
                 )
 
-                Log.d("SolanaRepo", " Balance for $address: $solBalance SOL")
-                solBalance
+                Log.d("SolanaRepo", "Balance for $address: $solBalance SOL")
+                Result.Success(solBalance)
             }
         } catch (e: Exception) {
-            Log.e("SolanaRepo", " Error getting balance: ${e.message}", e)
-            BigDecimal.ZERO
+            Log.e("SolanaRepo", "Error getting balance: ${e.message}", e)
+            Result.Error("Failed to get balance: ${e.message}", e)
         }
     }
 
-    /**
-     * Get fee estimate (Solana has fixed fees)
-     */
-    suspend fun getFeeEstimate(feeLevel: FeeLevel = FeeLevel.NORMAL): FeeEstimate {
-        // Solana has fixed fees, ignore feeLevel for now
-        val feeDecimal = BigDecimal(SOLANA_FIXED_FEE_LAMPORTS).divide(
-            BigDecimal(LAMPORTS_PER_SOL),
-            9,
-            RoundingMode.HALF_UP
-        )
+    suspend fun getFeeEstimate(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<FeeEstimate> {
+        return try {
+            val feeDecimal = BigDecimal(SOLANA_FIXED_FEE_LAMPORTS).divide(
+                BigDecimal(LAMPORTS_PER_SOL),
+                9,
+                RoundingMode.HALF_UP
+            )
 
-        return FeeEstimate(
-            feePerByte = null,
-            gasPrice = null,
-            totalFee = SOLANA_FIXED_FEE_LAMPORTS.toString(),
-            totalFeeDecimal = feeDecimal.toPlainString(),
-            estimatedTime = 1, // Solana confirms in ~400ms
-            priority = feeLevel,
-            metadata = mapOf("computeUnits" to "1400000") // Default compute units
-        )
+            val estimate = FeeEstimate(
+                feePerByte = null,
+                gasPrice = null,
+                totalFee = SOLANA_FIXED_FEE_LAMPORTS.toString(),
+                totalFeeDecimal = feeDecimal.toPlainString(),
+                estimatedTime = 1,
+                priority = feeLevel,
+                metadata = mapOf("computeUnits" to "1400000")
+            )
+
+            Result.Success(estimate)
+        } catch (e: Exception) {
+            Result.Error("Failed to get fee estimate: ${e.message}", e)
+        }
     }
 
-    /**
-     * Create and sign a SOL transfer transaction using sol4k
-     */
     suspend fun createAndSignTransaction(
         fromKeypair: Keypair,
         toAddress: String,
         lamports: Long
-    ): SolanaSignedTransaction {
+    ): Result<SolanaSignedTransaction> {
         return try {
             Log.d("SolanaRepo", "Creating transaction: $lamports lamports to $toAddress")
 
-            // 1. Get recent blockhash
             val blockhash = connection.getLatestBlockhash()
-
-            // 2. Create transfer instruction
             val receiver = PublicKey(toAddress)
             val instruction = TransferInstruction(fromKeypair.publicKey, receiver, lamports)
 
-            // 3. Create transaction message
             val message = TransactionMessage.newMessage(
                 feePayer = fromKeypair.publicKey,
                 recentBlockhash = blockhash,
                 instructions = listOf(instruction)
             )
 
-            // 4. Create and sign versioned transaction
             val transaction = VersionedTransaction(message)
             transaction.sign(fromKeypair)
 
-            // 5. Serialize the transaction
             val serializedTx = transaction.serialize()
 
-            // 6. Extract signature from serialized transaction
-            // In Solana serialized format, the signature is the first 64 bytes
             val signature = if (serializedTx.size >= 64) {
                 serializedTx.copyOfRange(0, 64)
             } else {
-                // Fallback: create a mock signature from transaction hash
                 val hash = MessageDigest.getInstance("SHA-256").digest(serializedTx)
                 hash.copyOf(64)
             }
 
             Log.d("SolanaRepo", "Transaction signed successfully")
 
-            SolanaSignedTransaction(
-                signature = signature,
-                serialize = { serializedTx }
+            Result.Success(
+                SolanaSignedTransaction(
+                    signature = signature,
+                    serialize = { serializedTx }
+                )
             )
 
         } catch (e: Exception) {
             Log.e("SolanaRepo", "Error creating transaction: ${e.message}", e)
-            throw e
+            Result.Error("Failed to create and sign transaction: ${e.message}", e)
         }
     }
 
-    /**
-     * Broadcast transaction to devnet using sol4k
-     */
-    suspend fun broadcastTransaction(signedTransaction: SolanaSignedTransaction): BroadcastResult {
+    suspend fun broadcastTransaction(signedTransaction: SolanaSignedTransaction): Result<BroadcastResult> {
         return try {
             Log.d("SolanaRepo", "Broadcasting transaction...")
 
-            // Get the serialized transaction
             val serializedTx = signedTransaction.serialize()
-
-            // Send transaction using sol4k
             val signature = connection.sendTransaction(serializedTx)
 
             Log.d("SolanaRepo", "Transaction broadcast successful: $signature")
 
-            BroadcastResult(
-                success = true,
-                hash = signature,
-                chain = ChainType.SOLANA
+            Result.Success(
+                BroadcastResult(
+                    success = true,
+                    hash = signature,
+                    chain = ChainType.SOLANA
+                )
             )
 
         } catch (e: Exception) {
             Log.e("SolanaRepo", "Error broadcasting: ${e.message}", e)
-
-            BroadcastResult(
-                success = false,
-                error = e.message ?: "Broadcast failed",
-                chain = ChainType.SOLANA
+            Result.Success(
+                BroadcastResult(
+                    success = false,
+                    error = e.message ?: "Broadcast failed",
+                    chain = ChainType.SOLANA
+                )
             )
         }
     }
 
-    /**
-     * Request airdrop (free test SOL) from devnet faucet
-     */
     suspend fun requestAirdrop(address: String, amountSol: Double = 1.0): Result<String> {
         return try {
             withContext(Dispatchers.IO) {
@@ -210,49 +183,44 @@ class SolanaBlockchainRepository @Inject constructor() {
                 val lamports = (amountSol * LAMPORTS_PER_SOL).toLong()
                 val signature = connection.requestAirdrop(publicKey, lamports)
                 Log.d("SolanaRepo", "Airdrop successful: $signature")
-                Result.success(signature)
+                Result.Success(signature)
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.Error("Airdrop failed: ${e.message}", e)
         }
     }
 
-    /**
-     * Get transaction history for an address
-     */
-    suspend fun getTransactionHistory(address: String, limit: Int = 10): List<SolanaTransaction> {
-        return try {
-            withContext(Dispatchers.IO) {
-                val publicKey = PublicKey(address)
-                val signatures = connection.getSignaturesForAddress(publicKey, limit)
+//    suspend fun getTransactionHistory(address: String, limit: Int = 10): Result<List<SolanaTransaction>> {
+//        return try {
+//            withContext(Dispatchers.IO) {
+//                val publicKey = PublicKey(address)
+//                val signatures = connection.getSignaturesForAddress(publicKey, limit)
+//
+//                val transactions = signatures.map { signatureInfo ->
+//                    SolanaTransaction(
+//                        signature = signatureInfo.signature,
+//                        slot = signatureInfo.slot,
+//                        timestamp = signatureInfo.blockTime?.let { it * 1000L } ?: 0L,
+//                        status = if (!signatureInfo.isError) TransactionStatus.SUCCESS
+//                        else TransactionStatus.FAILED,
+//                        memo = null,
+//                        error = signatureInfo.error?.toString()
+//                    )
+//                }
+//                Result.Success(transactions)
+//            }
+//        } catch (e: Exception) {
+//            Log.e("SolanaRepo", "Error fetching history: ${e.message}")
+//            Result.Error("Failed to get transaction history: ${e.message}", e)
+//        }
+//    }
 
-                signatures.map { signatureInfo ->
-                    SolanaTransaction(
-                        signature = signatureInfo.signature,
-                        slot = signatureInfo.slot,
-                        timestamp = signatureInfo.blockTime?.let { it * 1000L } ?: 0L,
-                        status = if (signatureInfo.isError) TransactionStatus.SUCCESS
-                        else TransactionStatus.FAILED,
-                        memo = null,
-                        error = signatureInfo.toString()
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("SolanaRepo", "Error fetching history: ${e.message}")
-            emptyList()
-        }
-    }
-
-    /**
-     * Validate Solana address format
-     */
-    fun validateAddress(address: String): Boolean {
+    fun validateAddress(address: String): Result<Boolean> {
         return try {
             PublicKey(address)
-            true
+            Result.Success(true)
         } catch (e: Exception) {
-            false
+            Result.Success(false)
         }
     }
 
