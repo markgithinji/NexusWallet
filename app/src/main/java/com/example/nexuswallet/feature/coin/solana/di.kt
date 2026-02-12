@@ -19,20 +19,4 @@ object SolanaModule {
     ): SolanaBlockchainRepository {
         return SolanaBlockchainRepository()
     }
-
-    @Provides
-    @Singleton
-    fun provideSolanaTransactionRepository(
-      localDataSource: TransactionLocalDataSource,
-      solanaBlockchainRepository: SolanaBlockchainRepository,
-      walletRepository: WalletRepository,
-      keyManager: KeyManager
-    ): SolanaTransactionRepository {
-        return SolanaTransactionRepository(
-            localDataSource,
-            solanaBlockchainRepository,
-            walletRepository,
-            keyManager
-        )
-    }
 }
