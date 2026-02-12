@@ -19,20 +19,4 @@ object BitcoinModule {
     ): BitcoinBlockchainRepository {
         return BitcoinBlockchainRepository()
     }
-
-    @Provides
-    @Singleton
-    fun provideBitcoinTransactionRepository(
-       localDataSource: TransactionLocalDataSource,
-       bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-       walletRepository: WalletRepository,
-       keyManager: KeyManager
-    ): BitcoinTransactionRepository {
-        return BitcoinTransactionRepository(
-            localDataSource,
-            bitcoinBlockchainRepository,
-            walletRepository,
-            keyManager
-        )
-    }
 }
