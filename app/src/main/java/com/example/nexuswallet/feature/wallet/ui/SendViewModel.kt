@@ -31,10 +31,17 @@ import java.math.RoundingMode
 import javax.inject.Inject
 import kotlin.getOrThrow
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.ethereum.CreateSendTransactionUseCase
+import com.example.nexuswallet.feature.coin.ethereum.GetFeeEstimateUseCase
+import com.example.nexuswallet.feature.coin.ethereum.GetTransactionUseCase
+import com.example.nexuswallet.feature.coin.ethereum.ValidateAddressUseCase
 
 @HiltViewModel
 class SendViewModel @Inject constructor(
-    private val ethereumTransactionRepository: EthereumTransactionRepository,
+    private val createSendTransactionUseCase: CreateSendTransactionUseCase,
+    private val validateAddressUseCase: ValidateAddressUseCase,
+    private val getFeeEstimateUseCase: GetFeeEstimateUseCase,
+    private val getTransactionUseCase: GetTransactionUseCase,
     private val walletRepository: WalletRepository,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository,
     private val sendUSDCUseCase: SendUSDCUseCase,
@@ -73,6 +80,7 @@ class SendViewModel @Inject constructor(
         object CreateTransaction : SendEvent()
         object ClearError : SendEvent()
         object ResetTransactionState : SendEvent()
+        object FetchTransaction : SendEvent()
     }
 
     fun initialize(walletId: String) {
@@ -120,10 +128,8 @@ class SendViewModel @Inject constructor(
                     }
                     is Result.Error -> {
                         Log.e("SendVM", "Error getting USDC balance: ${usdcBalanceResult.message}")
-                        // Keep usdcBalance as BigDecimal.ZERO
                     }
                     Result.Loading -> {
-                        // Should not happen, but handle gracefully
                         Log.d("SendVM", "Loading USDC balance...")
                     }
                 }
@@ -137,7 +143,7 @@ class SendViewModel @Inject constructor(
             }
 
             val feeEstimate = try {
-                ethereumTransactionRepository.getFeeEstimate(chain, FeeLevel.NORMAL)
+                getFeeEstimateUseCase(chain, FeeLevel.NORMAL)
             } catch (e: Exception) {
                 Log.e("SendVM", "Error getting fee estimate: ${e.message}")
                 null
@@ -184,7 +190,7 @@ class SendViewModel @Inject constructor(
 
                 is SendEvent.TokenChanged -> {
                     _uiState.update { it.copy(selectedToken = event.token) }
-                    validateInputs() // Re-validate since token changed
+                    validateInputs()
                 }
 
                 SendEvent.Validate -> {
@@ -193,6 +199,10 @@ class SendViewModel @Inject constructor(
 
                 SendEvent.CreateTransaction -> {
                     createTransaction()
+                }
+
+                SendEvent.FetchTransaction -> {
+                    fetchCreatedTransaction()
                 }
 
                 SendEvent.ClearError -> {
@@ -251,7 +261,7 @@ class SendViewModel @Inject constructor(
     }
 
     private suspend fun createEthTransaction(state: SendUiState, amount: BigDecimal) {
-        val result = ethereumTransactionRepository.createSendTransaction(
+        val result = createSendTransactionUseCase(
             walletId = state.walletId,
             toAddress = state.toAddress,
             amount = amount,
@@ -262,7 +272,7 @@ class SendViewModel @Inject constructor(
         when {
             result.isSuccess -> {
                 val transaction = result.getOrThrow()
-                Log.d("SendVM", " ETH Transaction created: ${transaction.hash}")
+                Log.d("SendVM", " ETH Transaction created: ${transaction.id}")
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -334,7 +344,7 @@ class SendViewModel @Inject constructor(
                 }
             }
 
-            is com.example.nexuswallet.feature.coin.Result.Error -> {
+            is Result.Error -> {
                 val error = result.message
                 Log.e("SendVM", " USDC Transaction failed: $error", result.throwable)
                 _uiState.update {
@@ -347,8 +357,23 @@ class SendViewModel @Inject constructor(
             }
 
             Result.Loading -> {
-                // Should not happen as sendUSDCUseCase doesn't return Loading
                 Log.d("SendVM", " USDC Transaction loading...")
+            }
+        }
+    }
+
+    private suspend fun fetchCreatedTransaction() {
+        val transactionState = _uiState.value.transactionState
+        if (transactionState is TransactionState.Created) {
+            val transactionId = transactionState.transaction.id
+            val transaction = getTransactionUseCase(transactionId)
+            if (transaction != null) {
+                Log.d("SendVM", "Fetched transaction: ${transaction.id}, status: ${transaction.status}")
+                _uiState.update {
+                    it.copy(
+                        transactionState = TransactionState.Created(transaction)
+                    )
+                }
             }
         }
     }
@@ -370,11 +395,11 @@ class SendViewModel @Inject constructor(
             // Validate address based on wallet type
             val chain = when (state.walletType) {
                 WalletType.BITCOIN -> ChainType.BITCOIN
-                WalletType.ETHEREUM -> ChainType.ETHEREUM
+                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> ChainType.ETHEREUM
                 else -> ChainType.ETHEREUM
             }
 
-            val isAddressValid = ethereumTransactionRepository.validateAddress(state.toAddress, chain)
+            val isAddressValid = validateAddressUseCase(state.toAddress, chain)
             if (!isAddressValid) {
                 _uiState.update {
                     it.copy(
@@ -412,9 +437,10 @@ class SendViewModel @Inject constructor(
             when (state.selectedToken) {
                 TokenType.ETH -> {
                     // Check ETH balance
-                    val feeEstimate = ethereumTransactionRepository.getFeeEstimate(
-                        if (state.walletType == WalletType.ETHEREUM_SEPOLIA) ChainType.ETHEREUM_SEPOLIA else ChainType.ETHEREUM,
-                        state.feeLevel
+                    val feeEstimate = getFeeEstimateUseCase(
+                        chain = if (state.walletType == WalletType.ETHEREUM_SEPOLIA)
+                            ChainType.ETHEREUM_SEPOLIA else ChainType.ETHEREUM,
+                        feeLevel = state.feeLevel
                     )
                     val totalRequired = amount + BigDecimal(feeEstimate.totalFeeDecimal)
 
@@ -481,10 +507,10 @@ class SendViewModel @Inject constructor(
         }
 
         try {
-            val feeEstimate = ethereumTransactionRepository.getFeeEstimate(chain, state.feeLevel)
+            val feeEstimate = getFeeEstimateUseCase(chain, state.feeLevel)
             _uiState.update { it.copy(feeEstimate = feeEstimate) }
         } catch (e: Exception) {
-            // Keep existing fee estimate on error
+            Log.e("SendVM", "Error updating fee estimate: ${e.message}")
         }
     }
 
@@ -493,7 +519,7 @@ class SendViewModel @Inject constructor(
         return when (wallet) {
             is EthereumWallet -> wallet.network
             is USDCWallet -> wallet.network
-            else -> EthereumNetwork.SEPOLIA // default
+            else -> EthereumNetwork.SEPOLIA
         }
     }
 
@@ -522,7 +548,6 @@ class SendViewModel @Inject constructor(
         }
     }
 }
-
 
 enum class TokenType {
     ETH, USDC
