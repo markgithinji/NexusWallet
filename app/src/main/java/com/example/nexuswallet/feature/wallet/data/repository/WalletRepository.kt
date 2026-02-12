@@ -156,50 +156,52 @@ class WalletRepository @Inject constructor(
     }
 
     private suspend fun syncEthereumBalance(wallet: EthereumWallet) {
-        try {
-            Log.d("WalletRepo", "Syncing Ethereum wallet balance...")
-            Log.d("WalletRepo", "Address: ${wallet.address}")
-            Log.d("WalletRepo", "Network: ${wallet.network}")
+        Log.d("WalletRepo", "Syncing Ethereum wallet balance...")
+        Log.d("WalletRepo", "Address: ${wallet.address}")
+        Log.d("WalletRepo", "Network: ${wallet.network}")
 
-            // Get balance from blockchain
-            val ethBalance = ethereumBlockchainRepository.getEthereumBalance(
-                address = wallet.address,
-                network = wallet.network
-            )
+        val balanceResult = ethereumBlockchainRepository.getEthereumBalance(
+            address = wallet.address,
+            network = wallet.network
+        )
 
-            Log.d("WalletRepo", "Got balance from API: $ethBalance ETH")
+        when (balanceResult) {
+            is com.example.nexuswallet.feature.coin.Result.Success -> {
+                val ethBalance = balanceResult.data
+                Log.d("WalletRepo", "Got balance from API: $ethBalance ETH")
 
-            // Calculate USD value
-            val ethPrice = when (wallet.network) {
-                EthereumNetwork.SEPOLIA -> 3000.0 // Testnet ETH has no real value, use mainnet price
-                else -> 3000.0 // Mainnet ETH price approximation
+                val ethPrice = when (wallet.network) {
+                    EthereumNetwork.SEPOLIA -> 3000.0
+                    else -> 3000.0
+                }
+                val usdValue = ethBalance.toDouble() * ethPrice
+
+                val weiBalance = (ethBalance * BigDecimal("1000000000000000000")).toPlainString()
+
+                val balance = WalletBalance(
+                    walletId = wallet.id,
+                    address = wallet.address,
+                    nativeBalance = weiBalance,
+                    nativeBalanceDecimal = ethBalance.toPlainString(),
+                    usdValue = usdValue,
+                    tokens = emptyList(),
+                    lastUpdated = System.currentTimeMillis()
+                )
+
+                saveWalletBalance(balance)
+                Log.d("WalletRepo", " Ethereum balance synced: $ethBalance ETH")
             }
-            val usdValue = ethBalance.toDouble() * ethPrice
 
-            // Convert ETH to wei for storage
-            val weiBalance = (ethBalance * BigDecimal("1000000000000000000")).toPlainString()
+            is com.example.nexuswallet.feature.coin.Result.Error -> {
+                Log.e("WalletRepo", "Error syncing Ethereum balance: ${balanceResult.message}", balanceResult.throwable)
+                val fallbackBalance = createEthereumSampleBalance(wallet.id, wallet.address)
+                saveWalletBalance(fallbackBalance)
+                Log.d("WalletRepo", "⚠ Using sample balance due to error")
+            }
 
-            val balance = WalletBalance(
-                walletId = wallet.id,
-                address = wallet.address,
-                nativeBalance = weiBalance,
-                nativeBalanceDecimal = ethBalance.toPlainString(),
-                usdValue = usdValue,
-                tokens = emptyList(),
-                lastUpdated = System.currentTimeMillis()
-            )
-
-            // Save to local storage
-            saveWalletBalance(balance)
-            Log.d("WalletRepo", " Ethereum balance synced: $ethBalance ETH")
-
-        } catch (e: Exception) {
-            Log.e("WalletRepo", "Error syncing Ethereum balance: ${e.message}", e)
-
-            // Fallback to sample data
-            val fallbackBalance = createEthereumSampleBalance(wallet.id, wallet.address)
-            saveWalletBalance(fallbackBalance)
-            Log.d("WalletRepo", "⚠ Using sample balance due to error")
+            com.example.nexuswallet.feature.coin.Result.Loading -> {
+                Log.d("WalletRepo", "Loading Ethereum balance...")
+            }
         }
     }
 
@@ -859,54 +861,54 @@ class WalletRepository @Inject constructor(
     }
 
 
-    private suspend fun syncEthereumWallet(wallet: EthereumWallet) {
-        try {
-            Log.d("WalletRepo", " Syncing Ethereum wallet:")
-            Log.d("WalletRepo", "   - Wallet ID: ${wallet.id}")
-            Log.d("WalletRepo", "   - Address: ${wallet.address}")
-            Log.d("WalletRepo", "   - Network: ${wallet.network}")
-
-            // Get balance from blockchain repository
-            val ethBalance = ethereumBlockchainRepository.getEthereumBalance(
-                address = wallet.address,
-                network = wallet.network
-            )
-
-            Log.d("WalletRepo", " Balance received: $ethBalance ETH")
-
-            // Calculate USD value
-            val usdValue = calculateUsdValue(ethBalance, "ETH")
-            Log.d("WalletRepo", "   - USD Value: $$usdValue")
-
-            // Convert ETH to wei for storage
-            val weiBalance = (ethBalance * BigDecimal("1000000000000000000")).toPlainString()
-
-            // Create updated balance
-            val balance = WalletBalance(
-                walletId = wallet.id,
-                address = wallet.address,
-                nativeBalance = weiBalance,
-                nativeBalanceDecimal = ethBalance.toPlainString(),
-                usdValue = usdValue,
-                tokens = emptyList(),
-                lastUpdated = System.currentTimeMillis()
-            )
-
-            Log.d("WalletRepo", " Saving wallet balance")
-
-            // Save balance
-            saveWalletBalance(balance)
-            Log.d("WalletRepo", " Ethereum wallet synced successfully")
-
-        } catch (e: Exception) {
-            Log.e("WalletRepo", " Error syncing Ethereum wallet: ${e.message}", e)
-
-            // Fallback to sample data on error
-            val fallbackBalance = createSampleBalance(wallet.id, wallet.address)
-            saveWalletBalance(fallbackBalance)
-            Log.d("WalletRepo", "️ Using fallback sample balance due to error")
-        }
-    }
+//    private suspend fun syncEthereumWallet(wallet: EthereumWallet) {
+//        try {
+//            Log.d("WalletRepo", " Syncing Ethereum wallet:")
+//            Log.d("WalletRepo", "   - Wallet ID: ${wallet.id}")
+//            Log.d("WalletRepo", "   - Address: ${wallet.address}")
+//            Log.d("WalletRepo", "   - Network: ${wallet.network}")
+//
+//            // Get balance from blockchain repository
+//            val ethBalance = ethereumBlockchainRepository.getEthereumBalance(
+//                address = wallet.address,
+//                network = wallet.network
+//            )
+//
+//            Log.d("WalletRepo", " Balance received: $ethBalance ETH")
+//
+//            // Calculate USD value
+//            val usdValue = calculateUsdValue(ethBalance, "ETH")
+//            Log.d("WalletRepo", "   - USD Value: $$usdValue")
+//
+//            // Convert ETH to wei for storage
+//            val weiBalance = (ethBalance * BigDecimal("1000000000000000000")).toPlainString()
+//
+//            // Create updated balance
+//            val balance = WalletBalance(
+//                walletId = wallet.id,
+//                address = wallet.address,
+//                nativeBalance = weiBalance,
+//                nativeBalanceDecimal = ethBalance.toPlainString(),
+//                usdValue = usdValue,
+//                tokens = emptyList(),
+//                lastUpdated = System.currentTimeMillis()
+//            )
+//
+//            Log.d("WalletRepo", " Saving wallet balance")
+//
+//            // Save balance
+//            saveWalletBalance(balance)
+//            Log.d("WalletRepo", " Ethereum wallet synced successfully")
+//
+//        } catch (e: Exception) {
+//            Log.e("WalletRepo", " Error syncing Ethereum wallet: ${e.message}", e)
+//
+//            // Fallback to sample data on error
+//            val fallbackBalance = createSampleBalance(wallet.id, wallet.address)
+//            saveWalletBalance(fallbackBalance)
+//            Log.d("WalletRepo", "️ Using fallback sample balance due to error")
+//        }
+//    }
 
     // === TRANSACTION OPERATIONS ===
     suspend fun saveTransactions(walletId: String, transactions: List<Transaction>) {
