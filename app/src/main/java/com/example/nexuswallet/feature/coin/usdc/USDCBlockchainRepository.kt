@@ -34,7 +34,7 @@ import java.math.RoundingMode
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
-
+import com.example.nexuswallet.feature.coin.Result
 @Singleton
 class USDCBlockchainRepository @Inject constructor(
     private val etherscanApi: EtherscanApiService,
@@ -69,7 +69,7 @@ class USDCBlockchainRepository @Inject constructor(
     suspend fun getUSDCBalance(
         address: String,
         network: EthereumNetwork = EthereumNetwork.SEPOLIA
-    ): TokenBalance {
+    ): Result<TokenBalance> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("USDC_DEBUG", "====== GET USDC BALANCE (Web3j Only) ======")
@@ -82,11 +82,14 @@ class USDCBlockchainRepository @Inject constructor(
                 Log.d("USDC_DEBUG", "Web3j Balance Result: ${usdcBalance.balanceDecimal} USDC")
                 Log.d("USDC_DEBUG", "====== END ======")
 
-                return@withContext usdcBalance
+                return@withContext Result.Success(usdcBalance)
 
             } catch (e: Exception) {
                 Log.e("USDC_DEBUG", "Error getting USDC balance via Web3j: ${e.message}")
-                return@withContext createEmptyUSDCBalance(network)
+                return@withContext Result.Error(
+                    message = "Failed to get USDC balance: ${e.message}",
+                    throwable = e
+                )
             }
         }
     }
@@ -104,7 +107,7 @@ class USDCBlockchainRepository @Inject constructor(
 
                 val web3j = getWeb3j(network)
                 val usdcAddress = getUSDCContractAddress(network)
-                    ?: return@withContext createEmptyUSDCBalance(network)
+                    ?: throw IllegalArgumentException("USDC not supported on $network")
 
                 Log.d("USDC_DEBUG", "Web3j RPC URL: ${getRpcUrl(network)?.take(50)}...")
                 Log.d("USDC_DEBUG", "USDC Contract: $usdcAddress")
@@ -132,7 +135,7 @@ class USDCBlockchainRepository @Inject constructor(
 
                 if (response.hasError()) {
                     Log.e("USDCRepo", "Web3j error: ${response.error?.message}")
-                    return@withContext createEmptyUSDCBalance(network)
+                    throw Exception("Web3j error: ${response.error?.message}")
                 }
 
                 val result = response.result
@@ -156,7 +159,7 @@ class USDCBlockchainRepository @Inject constructor(
 
                 if (decoded.isEmpty()) {
                     Log.e("USDCRepo", "Failed to decode Web3j response")
-                    return@withContext createEmptyUSDCBalance(network)
+                    throw Exception("Failed to decode Web3j response")
                 }
 
                 val balanceUint = decoded[0] as Uint256
@@ -180,7 +183,7 @@ class USDCBlockchainRepository @Inject constructor(
 
             } catch (e: Exception) {
                 Log.e("USDCRepo", " Web3j balance check failed: ${e.message}")
-                createEmptyUSDCBalance(network)
+                throw e
             }
         }
     }
@@ -197,13 +200,15 @@ class USDCBlockchainRepository @Inject constructor(
         nonce: BigInteger,
         chainId: Long,
         network: EthereumNetwork = EthereumNetwork.SEPOLIA
-    ): Triple<RawTransaction, String, String> {
+    ): Result<Triple<RawTransaction, String, String>> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("USDCRepo", " Creating REAL USDC transfer")
 
                 val usdcAddress = getUSDCContractAddress(network)
-                    ?: throw IllegalArgumentException("USDC not supported on $network")
+                    ?: return@withContext Result.Error(
+                        message = "USDC not supported on $network"
+                    )
 
                 // 1. Convert USDC amount to token units (6 decimals)
                 val amountInUnits = amount.multiply(BigDecimal(USDC_DECIMALS_DIVISOR))
@@ -247,7 +252,15 @@ class USDCBlockchainRepository @Inject constructor(
                 Log.d("USDCRepo", "Raw transaction created")
 
                 // 6. Sign transaction
-                val credentials = Credentials.create(fromPrivateKey)
+                val credentials = try {
+                    Credentials.create(fromPrivateKey)
+                } catch (e: Exception) {
+                    return@withContext Result.Error(
+                        message = "Invalid private key format",
+                        throwable = e
+                    )
+                }
+
                 val signedMessage = TransactionEncoder.signMessage(rawTransaction, chainId, credentials)
                 val signedHex = Numeric.toHexString(signedMessage)
 
@@ -258,11 +271,14 @@ class USDCBlockchainRepository @Inject constructor(
                 Log.d("USDCRepo", "Transaction hash: $txHash")
                 Log.d("USDCRepo", "Signed hex length: ${signedHex.length}")
 
-                Triple(rawTransaction, signedHex, txHash)
+                Result.Success(Triple(rawTransaction, signedHex, txHash))
 
             } catch (e: Exception) {
                 Log.e("USDCRepo", " Error creating USDC transfer: ${e.message}", e)
-                throw e
+                Result.Error(
+                    message = "Failed to create USDC transfer: ${e.message}",
+                    throwable = e
+                )
             }
         }
     }
@@ -302,7 +318,7 @@ class USDCBlockchainRepository @Inject constructor(
     suspend fun broadcastUSDCTransaction(
         signedHex: String,
         network: EthereumNetwork = EthereumNetwork.SEPOLIA
-    ): BroadcastResult {
+    ): Result<BroadcastResult> {
         return withContext(Dispatchers.IO) {
             try {
                 val chainId = getChainId(network)
@@ -318,28 +334,39 @@ class USDCBlockchainRepository @Inject constructor(
 
                 return@withContext when {
                     result.startsWith("0x") && result.length == 66 -> {
-                        BroadcastResult(
-                            success = true,
-                            hash = result,
-                            chain = getChainTypeForNetwork(network)
+                        Result.Success(
+                            BroadcastResult(
+                                success = true,
+                                hash = result,
+                                chain = getChainTypeForNetwork(network)
+                            )
+                        )
+                    }
+                    result.contains("insufficient funds") -> {
+                        Result.Error(
+                            message = "Insufficient ETH for gas fees",
+                            throwable = RuntimeException(result)
+                        )
+                    }
+                    result.contains("nonce") -> {
+                        Result.Error(
+                            message = "Nonce error: $result",
+                            throwable = RuntimeException(result)
                         )
                     }
                     else -> {
-                        // return error
-                        BroadcastResult(
-                            success = false,
-                            error = result,
-                            chain = getChainTypeForNetwork(network)
+                        Result.Error(
+                            message = result,
+                            throwable = RuntimeException(result)
                         )
                     }
                 }
 
             } catch (e: Exception) {
                 Log.e("USDCRepo", "Broadcast error: ${e.message}")
-                BroadcastResult(
-                    success = false,
-                    error = e.message ?: "Broadcast failed",
-                    chain = getChainTypeForNetwork(network)
+                Result.Error(
+                    message = e.message ?: "Broadcast failed",
+                    throwable = e
                 )
             }
         }
@@ -351,7 +378,7 @@ class USDCBlockchainRepository @Inject constructor(
     private suspend fun broadcastViaWeb3j(
         signedHex: String,
         network: EthereumNetwork
-    ): BroadcastResult {
+    ): Result<BroadcastResult> {
         return withContext(Dispatchers.IO) {
             try {
                 val web3j = getWeb3j(network)
@@ -360,26 +387,26 @@ class USDCBlockchainRepository @Inject constructor(
                 if (response.hasError()) {
                     val error = response.error.message
                     Log.e("USDCRepo", " Web3j broadcast error: $error")
-                    BroadcastResult(
-                        success = false,
-                        error = error,
-                        chain = getChainTypeForNetwork(network)
+                    Result.Error(
+                        message = error,
+                        throwable = RuntimeException(error)
                     )
                 } else {
                     val txHash = response.transactionHash
                     Log.d("USDCRepo", " Web3j broadcast successful: $txHash")
-                    BroadcastResult(
-                        success = true,
-                        hash = txHash,
-                        chain = getChainTypeForNetwork(network)
+                    Result.Success(
+                        BroadcastResult(
+                            success = true,
+                            hash = txHash,
+                            chain = getChainTypeForNetwork(network)
+                        )
                     )
                 }
             } catch (e: Exception) {
                 Log.e("USDCRepo", " Web3j broadcast failed: ${e.message}")
-                BroadcastResult(
-                    success = false,
-                    error = e.message ?: "Broadcast failed",
-                    chain = getChainTypeForNetwork(network)
+                Result.Error(
+                    message = e.message ?: "Broadcast failed",
+                    throwable = e
                 )
             }
         }
@@ -391,14 +418,16 @@ class USDCBlockchainRepository @Inject constructor(
     suspend fun getUSDCTransactions(
         address: String,
         network: EthereumNetwork = EthereumNetwork.SEPOLIA
-    ): List<Transaction> {
+    ): Result<List<Transaction>> {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d("USDCRepo", "Getting USDC transactions via Etherscan (fallback)...")
+                Log.d("USDCRepo", "Getting USDC transactions via Etherscan...")
 
                 val chainId = getChainId(network)
                 val usdcAddress = getUSDCContractAddress(network)
-                    ?: return@withContext emptyList()
+                    ?: return@withContext Result.Error(
+                        message = "USDC not supported on $network"
+                    )
 
                 val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
@@ -410,7 +439,7 @@ class USDCBlockchainRepository @Inject constructor(
                 )
 
                 if (response.status == "1") {
-                    response.result.map { tx ->
+                    val transactions = response.result.map { tx ->
                         Transaction(
                             hash = tx.hash,
                             from = tx.from,
@@ -424,14 +453,20 @@ class USDCBlockchainRepository @Inject constructor(
                             chain = getChainTypeForNetwork(network)
                         )
                     }
+                    Result.Success(transactions)
                 } else {
-                    Log.w("USDCRepo", "Cannot get transactions via Web3j, Etherscan failed: ${response.message}")
-                    emptyList()
+                    Result.Error(
+                        message = response.message ?: "Failed to get transactions",
+                        throwable = RuntimeException(response.message)
+                    )
                 }
 
             } catch (e: Exception) {
                 Log.e("USDCRepo", "Error getting USDC transactions: ${e.message}")
-                emptyList()
+                Result.Error(
+                    message = "Failed to get USDC transactions: ${e.message}",
+                    throwable = e
+                )
             }
         }
     }
@@ -501,14 +536,32 @@ class USDCBlockchainRepository @Inject constructor(
         )
     }
 
-    suspend fun getNonce(address: String, network: EthereumNetwork): BigInteger {
+    suspend fun getNonce(
+        address: String,
+        network: EthereumNetwork
+    ): Result<BigInteger> {
         return withContext(Dispatchers.IO) {
-            val web3j = web3jFactory.create(network)
-            val response = web3j.ethGetTransactionCount(
-                address,
-                DefaultBlockParameterName.PENDING
-            ).send()
-            response.transactionCount
+            try {
+                val web3j = web3jFactory.create(network)
+                val response = web3j.ethGetTransactionCount(
+                    address,
+                    DefaultBlockParameterName.PENDING
+                ).send()
+
+                if (response.hasError()) {
+                    Result.Error(
+                        message = "Failed to get nonce: ${response.error?.message}",
+                        throwable = RuntimeException(response.error?.message)
+                    )
+                } else {
+                    Result.Success(response.transactionCount)
+                }
+            } catch (e: Exception) {
+                Result.Error(
+                    message = "Network error getting nonce: ${e.message}",
+                    throwable = e
+                )
+            }
         }
     }
 
