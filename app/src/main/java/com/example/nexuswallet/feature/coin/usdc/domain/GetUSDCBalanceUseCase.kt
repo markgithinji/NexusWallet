@@ -24,18 +24,22 @@ import org.web3j.protocol.core.DefaultBlockParameterName
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
+import com.example.nexuswallet.feature.coin.Result
 import javax.inject.Singleton
 
 class GetUSDCBalanceUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val usdcBlockchainRepository: USDCBlockchainRepository
 ) {
-    suspend operator fun invoke(walletId: String): TokenBalance {
+    suspend operator fun invoke(walletId: String): Result<TokenBalance> {
         val wallet = walletRepository.getWallet(walletId)
+
         val (address, network) = when (wallet) {
             is USDCWallet -> Pair(wallet.address, wallet.network)
             is EthereumWallet -> Pair(wallet.address, wallet.network)
-            else -> throw IllegalArgumentException("Wallet is not USDC or Ethereum type")
+            else -> return Result.Error(
+                message = "Wallet is not USDC or Ethereum type"
+            )
         }
 
         return usdcBlockchainRepository.getUSDCBalance(address, network)
@@ -54,33 +58,56 @@ class SendUSDCUseCase @Inject constructor(
         toAddress: String,
         amount: BigDecimal
     ): Result<BroadcastResult> {
+
+        // 1. Get wallet
         val wallet = walletRepository.getWallet(walletId)
         val (address, network, contractAddress) = when (wallet) {
             is USDCWallet -> Triple(wallet.address, wallet.network, wallet.contractAddress)
             is EthereumWallet -> {
                 val contract = getUSDCContractAddress(wallet.network)
-                    ?: return Result.failure(IllegalArgumentException("USDC not supported on ${wallet.network}"))
+                    ?: return Result.Error(
+                        message = "USDC not supported on ${wallet.network}"
+                    )
                 Triple(wallet.address, wallet.network, contract)
             }
-            else -> return Result.failure(IllegalArgumentException("Wallet is not USDC or Ethereum wallet"))
+            else -> return Result.Error(
+                message = "Wallet is not USDC or Ethereum wallet"
+            )
         }
 
-        // Get private key
+        // 2. Get private key
         val privateKeyResult = keyManager.getPrivateKeyForSigning(walletId)
         if (privateKeyResult.isFailure) {
-            return Result.failure(IllegalStateException("Cannot access private key"))
+            return Result.Error(
+                message = "Cannot access private key",
+                throwable = privateKeyResult.exceptionOrNull()
+            )
         }
         val privateKey = privateKeyResult.getOrThrow()
 
-        // Get gas price
-        val gasPriceResponse = ethereumBlockchainRepository.getCurrentGasPrice(network)
+        // 3. Get gas price
+        val gasPriceResponse = try {
+            ethereumBlockchainRepository.getCurrentGasPrice(network)
+        } catch (e: Exception) {
+            return Result.Error(
+                message = "Failed to get gas price: ${e.message}",
+                throwable = e
+            )
+        }
         val gasPriceGwei = BigDecimal(gasPriceResponse.propose)
         val gasPriceWei = gasPriceGwei.multiply(BigDecimal("1000000000")).toBigInteger()
 
-        // Get nonce
-        val nonce = usdcBlockchainRepository.getNonce(address, network)
+        // 4. Get nonce
+        val nonceResult = usdcBlockchainRepository.getNonce(address, network)
+        if (nonceResult !is Result.Success) {
+            return Result.Error(
+                message = (nonceResult as Result.Error).message,
+                throwable = (nonceResult as Result.Error).throwable
+            )
+        }
+        val nonce = nonceResult.data
 
-        // Get chainId
+        // 5. Get chainId
         val chainId = when (network) {
             EthereumNetwork.MAINNET -> 1L
             EthereumNetwork.SEPOLIA -> 11155111L
@@ -91,6 +118,7 @@ class SendUSDCUseCase @Inject constructor(
             else -> 11155111L
         }
 
+        // 6. Create transaction object
         val transaction = SendTransaction(
             id = "usdc_tx_${System.currentTimeMillis()}",
             walletId = walletId,
@@ -120,11 +148,11 @@ class SendUSDCUseCase @Inject constructor(
             )
         )
 
-        // Save to local storage
+        // 7. Save to local storage
         transactionLocalDataSource.saveSendTransaction(transaction)
 
-        // Create and sign transaction - now passing gasPrice, nonce, chainId
-        val (rawTransaction, signedHex, txHash) = usdcBlockchainRepository.createAndSignUSDCTransfer(
+        // 8. Create and sign transaction
+        val createResult = usdcBlockchainRepository.createAndSignUSDCTransfer(
             fromAddress = address,
             fromPrivateKey = privateKey,
             toAddress = toAddress,
@@ -135,8 +163,17 @@ class SendUSDCUseCase @Inject constructor(
             network = network
         )
 
-        // Update transaction with signed data
-        val transactionGasPriceWei  = rawTransaction.gasPrice
+        if (createResult !is Result.Success) {
+            return Result.Error(
+                message = (createResult as Result.Error).message,
+                throwable = (createResult as Result.Error).throwable
+            )
+        }
+
+        val (rawTransaction, signedHex, txHash) = createResult.data
+
+        // 9. Calculate fees
+        val transactionGasPriceWei = rawTransaction.gasPrice
         val gasLimit = rawTransaction.gasLimit
         val feeWei = gasPriceWei.multiply(gasLimit)
         val feeEth = feeWei.toBigDecimal().divide(
@@ -145,6 +182,7 @@ class SendUSDCUseCase @Inject constructor(
             RoundingMode.HALF_UP
         )
 
+        // 10. Update transaction with signed data
         val updatedTransaction = transaction.copy(
             gasPrice = transactionGasPriceWei.toString(),
             gasLimit = gasLimit.toString(),
@@ -162,25 +200,34 @@ class SendUSDCUseCase @Inject constructor(
 
         transactionLocalDataSource.saveSendTransaction(updatedTransaction)
 
-        // Broadcast transaction
+        // 11. Broadcast transaction
         val broadcastResult = usdcBlockchainRepository.broadcastUSDCTransaction(
             signedHex = signedHex,
             network = network
         )
 
-        // Update transaction status
+        if (broadcastResult !is Result.Success) {
+            return Result.Error(
+                message = (broadcastResult as Result.Error).message,
+                throwable = (broadcastResult as Result.Error).throwable
+            )
+        }
+
+        val broadcastData = broadcastResult.data
+
+        // 12. Update transaction status
         val finalTransaction = updatedTransaction.copy(
-            status = if (broadcastResult.success) TransactionStatus.PENDING else TransactionStatus.FAILED,
-            hash = broadcastResult.hash ?: txHash,
+            status = if (broadcastData.success) TransactionStatus.PENDING else TransactionStatus.FAILED,
+            hash = broadcastData.hash ?: txHash,
             metadata = updatedTransaction.metadata + mapOf(
                 "broadcastTime" to System.currentTimeMillis().toString(),
-                "broadcastSuccess" to broadcastResult.success.toString(),
-                "broadcastError" to (broadcastResult.error ?: "")
+                "broadcastSuccess" to broadcastData.success.toString(),
+                "broadcastError" to (broadcastData.error ?: "")
             )
         )
         transactionLocalDataSource.saveSendTransaction(finalTransaction)
 
-        return Result.success(broadcastResult)
+        return Result.Success(broadcastData)
     }
 
     private fun getUSDCContractAddress(network: EthereumNetwork): String? {
@@ -200,18 +247,35 @@ class GetETHBalanceForGasUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository
 ) {
-    suspend operator fun invoke(walletId: String): BigDecimal {
+    suspend operator fun invoke(walletId: String): Result<BigDecimal> {
         val wallet = walletRepository.getWallet(walletId)
+
         return when (wallet) {
-            is USDCWallet -> ethereumBlockchainRepository.getEthereumBalance(
-                address = wallet.address,
-                network = wallet.network
-            )
-            is EthereumWallet -> ethereumBlockchainRepository.getEthereumBalance(
-                address = wallet.address,
-                network = wallet.network
-            )
-            else -> BigDecimal.ZERO
+            is USDCWallet -> try {
+                val balance = ethereumBlockchainRepository.getEthereumBalance(
+                    address = wallet.address,
+                    network = wallet.network
+                )
+                Result.Success(balance)
+            } catch (e: Exception) {
+                Result.Error(
+                    message = "Failed to get ETH balance: ${e.message}",
+                    throwable = e
+                )
+            }
+            is EthereumWallet -> try {
+                val balance = ethereumBlockchainRepository.getEthereumBalance(
+                    address = wallet.address,
+                    network = wallet.network
+                )
+                Result.Success(balance)
+            } catch (e: Exception) {
+                Result.Error(
+                    message = "Failed to get ETH balance: ${e.message}",
+                    throwable = e
+                )
+            }
+            else -> Result.Success(BigDecimal.ZERO)
         }
     }
 }
