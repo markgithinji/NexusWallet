@@ -108,50 +108,55 @@ class WalletRepository @Inject constructor(
     }
 
     private suspend fun syncSolanaBalance(wallet: SolanaWallet) {
-        try {
-            Log.d("WalletRepo", "Syncing REAL Solana wallet balance...")
-            Log.d("WalletRepo", "Address: ${wallet.address}")
+        Log.d("WalletRepo", "Syncing REAL Solana wallet balance...")
+        Log.d("WalletRepo", "Address: ${wallet.address}")
 
-            // Fetch balance from Solana blockchain
-            val solBalance = solanaBlockchainRepository.getBalance(wallet.address)
+        val balanceResult = solanaBlockchainRepository.getBalance(wallet.address)
 
-            Log.d("WalletRepo", "Real balance fetched: $solBalance SOL")
+        when (balanceResult) {
+            is com.example.nexuswallet.feature.coin.Result.Success -> {
+                val solBalance = balanceResult.data
+                Log.d("WalletRepo", "Real balance fetched: $solBalance SOL")
 
-            val usdValue = calculateUsdValue(solBalance, "SOL")
-            Log.d("WalletRepo", "USD Value: $$usdValue")
+                val usdValue = calculateUsdValue(solBalance, "SOL")
+                Log.d("WalletRepo", "USD Value: $$usdValue")
 
-            // Convert SOL to lamports for storage (1 SOL = 1,000,000,000 lamports)
-            val lamportsBalance = (solBalance * BigDecimal("1000000000")).toPlainString()
+                val lamportsBalance = (solBalance * BigDecimal("1000000000")).toPlainString()
 
-            val balance = WalletBalance(
-                walletId = wallet.id,
-                address = wallet.address,
-                nativeBalance = lamportsBalance, // Store in lamports
-                nativeBalanceDecimal = solBalance.setScale(9, RoundingMode.HALF_UP).toPlainString(), // SOL with 9 decimals
-                usdValue = usdValue,
-                tokens = emptyList(),
-                lastUpdated = System.currentTimeMillis()
-            )
+                val balance = WalletBalance(
+                    walletId = wallet.id,
+                    address = wallet.address,
+                    nativeBalance = lamportsBalance,
+                    nativeBalanceDecimal = solBalance.setScale(9, RoundingMode.HALF_UP).toPlainString(),
+                    usdValue = usdValue,
+                    tokens = emptyList(),
+                    lastUpdated = System.currentTimeMillis()
+                )
 
-            saveWalletBalance(balance)
-            Log.d("WalletRepo", " Solana balance synced successfully: $solBalance SOL")
+                saveWalletBalance(balance)
+                Log.d("WalletRepo", "✓ Solana balance synced successfully: $solBalance SOL")
+            }
 
-        } catch (e: Exception) {
-            Log.e("WalletRepo", " Error syncing Solana balance: ${e.message}")
+            is com.example.nexuswallet.feature.coin.Result.Error -> {
+                Log.e("WalletRepo", "✗ Error syncing Solana balance: ${balanceResult.message}", balanceResult.throwable)
 
-            // Fallback: Show 0 balance instead of fake 5.75
-            val zeroBalance = WalletBalance(
-                walletId = wallet.id,
-                address = wallet.address,
-                nativeBalance = "0", // 0 lamports
-                nativeBalanceDecimal = "0", // 0 SOL
-                usdValue = 0.0,
-                tokens = emptyList(),
-                lastUpdated = System.currentTimeMillis()
-            )
+                val zeroBalance = WalletBalance(
+                    walletId = wallet.id,
+                    address = wallet.address,
+                    nativeBalance = "0",
+                    nativeBalanceDecimal = "0",
+                    usdValue = 0.0,
+                    tokens = emptyList(),
+                    lastUpdated = System.currentTimeMillis()
+                )
 
-            saveWalletBalance(zeroBalance)
-            Log.d("WalletRepo", "⚠ Using zero balance due to error")
+                saveWalletBalance(zeroBalance)
+                Log.d("WalletRepo", "⚠ Using zero balance due to error: ${balanceResult.message}")
+            }
+
+            com.example.nexuswallet.feature.coin.Result.Loading -> {
+                Log.d("WalletRepo", "⏳ Loading Solana balance...")
+            }
         }
     }
 
