@@ -38,7 +38,7 @@ import javax.inject.Singleton
 @Singleton
 class USDCBlockchainRepository @Inject constructor(
     private val etherscanApi: EtherscanApiService,
-    private val ethereumBlockchainRepository: EthereumBlockchainRepository
+    private val web3jFactory: Web3jFactory
 ) {
 
     companion object {
@@ -76,7 +76,7 @@ class USDCBlockchainRepository @Inject constructor(
                 Log.d("USDC_DEBUG", "Wallet Address: $address")
                 Log.d("USDC_DEBUG", "Network: $network (${network.name})")
 
-                // Get balance via Web3j
+                // Get balance
                 val usdcBalance = getUSDCBalanceViaWeb3j(address, network)
 
                 Log.d("USDC_DEBUG", "Web3j Balance Result: ${usdcBalance.balanceDecimal} USDC")
@@ -192,15 +192,16 @@ class USDCBlockchainRepository @Inject constructor(
         fromAddress: String,
         fromPrivateKey: String,
         toAddress: String,
-        amount: BigDecimal, // USDC amount (e.g., 10.5)
+        amount: BigDecimal,
+        gasPriceWei: BigInteger,
+        nonce: BigInteger,
+        chainId: Long,
         network: EthereumNetwork = EthereumNetwork.SEPOLIA
-    ): Triple<RawTransaction, String, String> { // Returns (rawTx, signedHex, txHash)
+    ): Triple<RawTransaction, String, String> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("USDCRepo", " Creating REAL USDC transfer")
 
-                val web3j = getWeb3j(network)
-                val chainId = getChainIdLong(network)
                 val usdcAddress = getUSDCContractAddress(network)
                     ?: throw IllegalArgumentException("USDC not supported on $network")
 
@@ -209,17 +210,7 @@ class USDCBlockchainRepository @Inject constructor(
                     .toBigInteger()
                 Log.d("USDCRepo", "Amount in token units: $amountInUnits")
 
-                // 2. Get nonce
-                val nonce = getNonce(fromAddress, web3j)
-                Log.d("USDCRepo", "Nonce: $nonce")
-
-                // 3. Get gas price (convert Gwei to Wei)
-                val gasPriceResponse = ethereumBlockchainRepository.getCurrentGasPrice(network)
-                val gasPriceGwei = BigDecimal(gasPriceResponse.propose)
-                val gasPriceWei = gasPriceGwei.multiply(BigDecimal("1000000000")).toBigInteger()
-                Log.d("USDCRepo", "Gas price: $gasPriceWei wei ($gasPriceGwei Gwei)")
-
-                // 4. Create ERC-20 transfer function call
+                // 2. Create ERC-20 transfer function call
                 val function = Function(
                     "transfer",
                     listOf(
@@ -232,7 +223,10 @@ class USDCBlockchainRepository @Inject constructor(
                 val encodedFunction = FunctionEncoder.encode(function)
                 Log.d("USDCRepo", "Encoded function: ${encodedFunction.take(50)}...")
 
-                // 5. Estimate gas for token transfer
+                // 3. Use passed gas price and nonce
+                Log.d("USDCRepo", "Gas price: $gasPriceWei wei, Nonce: $nonce")
+
+                // 4. Estimate gas for token transfer
                 val estimatedGas = estimateGasForTokenTransfer(
                     fromAddress = fromAddress,
                     contractAddress = usdcAddress,
@@ -241,7 +235,7 @@ class USDCBlockchainRepository @Inject constructor(
                 )
                 Log.d("USDCRepo", "Estimated gas: $estimatedGas")
 
-                // 6. Create raw transaction
+                // 5. Create raw transaction
                 val rawTransaction = RawTransaction.createTransaction(
                     nonce,
                     gasPriceWei,
@@ -252,12 +246,12 @@ class USDCBlockchainRepository @Inject constructor(
 
                 Log.d("USDCRepo", "Raw transaction created")
 
-                // 7. Sign transaction
+                // 6. Sign transaction
                 val credentials = Credentials.create(fromPrivateKey)
                 val signedMessage = TransactionEncoder.signMessage(rawTransaction, chainId, credentials)
                 val signedHex = Numeric.toHexString(signedMessage)
 
-                // 8. Calculate transaction hash
+                // 7. Calculate transaction hash
                 val txHash = Numeric.toHexString(Hash.sha3(Numeric.hexStringToByteArray(signedHex)))
 
                 Log.d("USDCRepo", " REAL USDC transaction created")
@@ -507,13 +501,15 @@ class USDCBlockchainRepository @Inject constructor(
         )
     }
 
-    private suspend fun getNonce(address: String, web3j: Web3j): BigInteger {
-        val response = web3j.ethGetTransactionCount(
-            address,
-            DefaultBlockParameterName.PENDING
-        ).send()
-
-        return response.transactionCount
+    suspend fun getNonce(address: String, network: EthereumNetwork): BigInteger {
+        return withContext(Dispatchers.IO) {
+            val web3j = web3jFactory.create(network)
+            val response = web3j.ethGetTransactionCount(
+                address,
+                DefaultBlockParameterName.PENDING
+            ).send()
+            response.transactionCount
+        }
     }
 
     private fun createTokenBalance(
