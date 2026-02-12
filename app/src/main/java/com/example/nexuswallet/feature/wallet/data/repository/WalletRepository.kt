@@ -254,50 +254,58 @@ class WalletRepository @Inject constructor(
     }
 
     private suspend fun syncUSDCBalance(wallet: USDCWallet) {
-        try {
-            Log.d("WalletRepo", "Syncing USDC wallet balance...")
-            Log.d("WalletRepo", "Address: ${wallet.address}")
-            Log.d("WalletRepo", "Network: ${wallet.network}")
-            Log.d("WalletRepo", "Contract: ${wallet.contractAddress}")
+        Log.d("WalletRepo", "Syncing USDC wallet balance...")
+        Log.d("WalletRepo", "Address: ${wallet.address}")
+        Log.d("WalletRepo", "Network: ${wallet.network}")
+        Log.d("WalletRepo", "Contract: ${wallet.contractAddress}")
 
-            // Get USDC balance from USDC repository
-            val usdcBalance = usdcBlockchainRepository.getUSDCBalance(
-                address = wallet.address,
-                network = wallet.network
-            )
+        // Get USDC balance from USDC repository
+        val result = usdcBlockchainRepository.getUSDCBalance(
+            address = wallet.address,
+            network = wallet.network
+        )
 
-            Log.d("WalletRepo", "Got USDC balance: ${usdcBalance.balanceDecimal} USDC")
+        when (result) {
+            is com.example.nexuswallet.feature.coin.Result.Success -> {
+                val usdcBalance = result.data
+                Log.d("WalletRepo", "Got USDC balance: ${usdcBalance.balanceDecimal} USDC")
 
-            // Create WalletBalance with USDC as native balance
-            val balance = WalletBalance(
-                walletId = wallet.id,
-                address = wallet.address,
-                nativeBalance = usdcBalance.balance, // USDC units (6 decimals)
-                nativeBalanceDecimal = usdcBalance.balanceDecimal, // Human readable USDC
-                usdValue = usdcBalance.usdValue, // USD value of USDC
-                tokens = emptyList(),
-                lastUpdated = System.currentTimeMillis()
-            )
+                // Create WalletBalance with USDC as native balance
+                val balance = WalletBalance(
+                    walletId = wallet.id,
+                    address = wallet.address,
+                    nativeBalance = usdcBalance.balance, // USDC units (6 decimals)
+                    nativeBalanceDecimal = usdcBalance.balanceDecimal, // Human readable USDC
+                    usdValue = usdcBalance.usdValue, // USD value of USDC
+                    tokens = emptyList(),
+                    lastUpdated = System.currentTimeMillis()
+                )
 
-            saveWalletBalance(balance)
-            Log.d("WalletRepo", " USDC balance synced: ${usdcBalance.balanceDecimal} USDC")
+                saveWalletBalance(balance)
+                Log.d("WalletRepo", " USDC balance synced: ${usdcBalance.balanceDecimal} USDC")
+            }
 
-        } catch (e: Exception) {
-            Log.e("WalletRepo", "Error syncing USDC balance: ${e.message}", e)
+            is com.example.nexuswallet.feature.coin.Result.Error -> {
+                Log.e("WalletRepo", "Error syncing USDC balance: ${result.message}", result.throwable)
 
-            // Fallback to zero balance
-            val zeroBalance = WalletBalance(
-                walletId = wallet.id,
-                address = wallet.address,
-                nativeBalance = "0",
-                nativeBalanceDecimal = "0",
-                usdValue = 0.0,
-                tokens = emptyList(),
-                lastUpdated = System.currentTimeMillis()
-            )
+                // Fallback to zero balance
+                val zeroBalance = WalletBalance(
+                    walletId = wallet.id,
+                    address = wallet.address,
+                    nativeBalance = "0",
+                    nativeBalanceDecimal = "0",
+                    usdValue = 0.0,
+                    tokens = emptyList(),
+                    lastUpdated = System.currentTimeMillis()
+                )
 
-            saveWalletBalance(zeroBalance)
-            Log.d("WalletRepo", "⚠ Using zero balance due to error")
+                saveWalletBalance(zeroBalance)
+                Log.d("WalletRepo", "⚠ Using zero balance due to error: ${result.message}")
+            }
+
+            com.example.nexuswallet.feature.coin.Result.Loading -> {
+                Log.d("WalletRepo", "Loading USDC balance...")
+            }
         }
     }
 

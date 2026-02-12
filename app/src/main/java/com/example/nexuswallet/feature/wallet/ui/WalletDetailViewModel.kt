@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
+import com.example.nexuswallet.feature.coin.Result
 
 @HiltViewModel
 class WalletDetailViewModel @Inject constructor(
@@ -148,19 +149,37 @@ class WalletDetailViewModel @Inject constructor(
                 when (wallet) {
                     is USDCWallet -> {
                         // Load USDC balance
-                        val usdcBalance = try {
-                            getUSDCBalanceUseCase(walletId)
-                        } catch (e: Exception) {
-                            Log.e("WalletDetailVM", "Error getting USDC balance: ${e.message}")
-                            createEmptyUSDCBalance(wallet.network)
+                        val usdcBalanceResult = getUSDCBalanceUseCase(walletId)
+                        val usdcBalance = when (usdcBalanceResult) {
+                            is Result.Success -> {
+                                Log.d("WalletDetailVM", "Successfully loaded USDC balance: ${usdcBalanceResult.data.balanceDecimal}")
+                                usdcBalanceResult.data
+                            }
+                            is Result.Error -> {
+                                Log.e("WalletDetailVM", "Error getting USDC balance: ${usdcBalanceResult.message}")
+                                createEmptyUSDCBalance(wallet.network)
+                            }
+                            Result.Loading -> {
+                                Log.d("WalletDetailVM", "Loading USDC balance...")
+                                createEmptyUSDCBalance(wallet.network)
+                            }
                         }
 
                         // Also get ETH balance for gas (for USDC wallets)
-                        val ethBalance = try {
-                            getETHBalanceForGasUseCase(walletId)
-                        } catch (e: Exception) {
-                            Log.e("WalletDetailVM", "Error getting ETH balance for gas: ${e.message}")
-                            BigDecimal.ZERO
+                        val ethBalanceResult = getETHBalanceForGasUseCase(walletId)
+                        val ethBalance = when (ethBalanceResult) {
+                            is Result.Success -> {
+                                Log.d("WalletDetailVM", "Successfully loaded ETH balance: ${ethBalanceResult.data}")
+                                ethBalanceResult.data
+                            }
+                            is Result.Error -> {
+                                Log.e("WalletDetailVM", "Error getting ETH balance for gas: ${ethBalanceResult.message}")
+                                BigDecimal.ZERO
+                            }
+                            Result.Loading -> {
+                                Log.d("WalletDetailVM", "Loading ETH balance...")
+                                BigDecimal.ZERO
+                            }
                         }
 
                         // Update token balances state
@@ -191,11 +210,20 @@ class WalletDetailViewModel @Inject constructor(
                     is EthereumWallet -> {
                         // For Ethereum wallets, check if they have USDC
                         if (wallet.network == EthereumNetwork.SEPOLIA || wallet.network == EthereumNetwork.MAINNET) {
-                            val usdcBalance = try {
-                                getUSDCBalanceUseCase(walletId)
-                            } catch (e: Exception) {
-                                Log.e("WalletDetailVM", "Error getting USDC for Ethereum wallet: ${e.message}")
-                                createEmptyUSDCBalance(wallet.network)
+                            val usdcBalanceResult = getUSDCBalanceUseCase(walletId)
+                            val usdcBalance = when (usdcBalanceResult) {
+                                is Result.Success -> {
+                                    Log.d("WalletDetailVM", "Successfully loaded USDC for Ethereum wallet: ${usdcBalanceResult.data.balanceDecimal}")
+                                    usdcBalanceResult.data
+                                }
+                                is Result.Error -> {
+                                    Log.e("WalletDetailVM", "Error getting USDC for Ethereum wallet: ${usdcBalanceResult.message}")
+                                    createEmptyUSDCBalance(wallet.network)
+                                }
+                                Result.Loading -> {
+                                    Log.d("WalletDetailVM", "Loading USDC balance for Ethereum wallet...")
+                                    createEmptyUSDCBalance(wallet.network)
+                                }
                             }
 
                             val tokenList = if (usdcBalance.balanceDecimal != "0") {
@@ -230,7 +258,7 @@ class WalletDetailViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                Log.e("WalletDetailVM", "Error loading token balances: ${e.message}")
+                Log.e("WalletDetailVM", "Error loading token balances: ${e.message}", e)
                 _tokenBalances.value = emptyList()
             } finally {
                 _isLoadingTokenBalances.value = false
@@ -330,11 +358,20 @@ class WalletDetailViewModel @Inject constructor(
     suspend fun getETHGasBalance(): BigDecimal? {
         val wallet = _wallet.value
         return if (wallet is USDCWallet) {
-            try {
-                getETHBalanceForGasUseCase(wallet.id)
-            } catch (e: Exception) {
-                Log.e("WalletDetailVM", "Error getting ETH gas balance: ${e.message}")
-                null
+            val result = getETHBalanceForGasUseCase(wallet.id)
+            when (result) {
+                is Result.Success -> {
+                    Log.d("WalletDetailVM", "ETH gas balance loaded: ${result.data}")
+                    result.data
+                }
+                is Result.Error -> {
+                    Log.e("WalletDetailVM", "Error getting ETH gas balance: ${result.message}")
+                    null
+                }
+                Result.Loading -> {
+                    Log.d("WalletDetailVM", "Loading ETH gas balance...")
+                    null
+                }
             }
         } else {
             null
