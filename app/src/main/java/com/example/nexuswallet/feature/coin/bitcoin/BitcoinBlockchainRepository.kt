@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
-
 import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
@@ -42,7 +41,7 @@ import kotlin.Long
 import kotlin.String
 import kotlin.text.take
 import kotlin.to
-
+import com.example.nexuswallet.feature.coin.Result
 
 @Singleton
 class BitcoinBlockchainRepository @Inject constructor() {
@@ -60,12 +59,11 @@ class BitcoinBlockchainRepository @Inject constructor() {
     /**
      * Get Bitcoin balance for an address
      */
-    suspend fun getBalance(address: String, network: BitcoinNetwork = BitcoinNetwork.MAINNET): BigDecimal {
+    suspend fun getBalance(address: String, network: BitcoinNetwork = BitcoinNetwork.MAINNET): Result<BigDecimal> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("BitcoinRepo", " getBalance START for address: $address")
 
-                // Choose API based on network
                 val baseUrl = when (network) {
                     BitcoinNetwork.MAINNET -> "https://blockstream.info/api"
                     BitcoinNetwork.TESTNET -> "https://blockstream.info/testnet/api"
@@ -77,7 +75,7 @@ class BitcoinBlockchainRepository @Inject constructor() {
                 val request = Request.Builder().url(url).build()
 
                 val response = client.newCall(request).execute()
-                val responseBody = response.body?.string() ?: return@withContext BigDecimal.ZERO
+                val responseBody = response.body?.string() ?: return@withContext Result.Error("Empty response")
 
                 val json = JSONObject(responseBody)
                 val chainStats = json.getJSONObject("chain_stats")
@@ -94,11 +92,11 @@ class BitcoinBlockchainRepository @Inject constructor() {
                 )
 
                 Log.d("BitcoinRepo", " Balance for $address: $btcBalance BTC")
-                btcBalance
+                Result.Success(btcBalance)
 
             } catch (e: Exception) {
                 Log.e("BitcoinRepo", " Error getting balance: ${e.message}", e)
-                BigDecimal.ZERO
+                Result.Error("Failed to get balance: ${e.message}", e)
             }
         }
     }
@@ -106,26 +104,24 @@ class BitcoinBlockchainRepository @Inject constructor() {
     /**
      * Get fee estimate based on priority
      */
-    suspend fun getFeeEstimate(feeLevel: FeeLevel = FeeLevel.NORMAL): FeeEstimate {
+    suspend fun getFeeEstimate(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<FeeEstimate> {
         return withContext(Dispatchers.IO) {
             try {
                 val url = "https://blockstream.info/api/fee-estimates"
                 val request = Request.Builder().url(url).build()
 
                 val response = client.newCall(request).execute()
-                val responseBody = response.body?.string() ?: return@withContext getDefaultFeeEstimate(feeLevel)
+                val responseBody = response.body?.string() ?: return@withContext Result.Success(getDefaultFeeEstimate(feeLevel))
 
                 val json = JSONObject(responseBody)
 
-                // Blockstream API returns fees for different confirmation targets
                 val feePerByte = when (feeLevel) {
-                    FeeLevel.SLOW -> json.getDouble("144") // 24 hours
-                    FeeLevel.NORMAL -> json.getDouble("6") // 6 blocks (~1 hour)
-                    FeeLevel.FAST -> json.getDouble("2") // 2 blocks (~20 minutes)
+                    FeeLevel.SLOW -> json.getDouble("144")
+                    FeeLevel.NORMAL -> json.getDouble("6")
+                    FeeLevel.FAST -> json.getDouble("2")
                 }
 
-                // Estimate typical transaction size (in bytes)
-                val estimatedSize = 250L // Conservative estimate for 2-input, 2-output transaction
+                val estimatedSize = 250L
                 val totalFeeSatoshis = (estimatedSize * feePerByte).toLong()
 
                 val totalFeeDecimal = BigDecimal(totalFeeSatoshis).divide(
@@ -134,23 +130,25 @@ class BitcoinBlockchainRepository @Inject constructor() {
                     RoundingMode.HALF_UP
                 ).toPlainString()
 
-                FeeEstimate(
-                    feePerByte = feePerByte.toString(),
-                    gasPrice = null,
-                    totalFee = totalFeeSatoshis.toString(),
-                    totalFeeDecimal = totalFeeDecimal,
-                    estimatedTime = when (feeLevel) {
-                        FeeLevel.SLOW -> 144
-                        FeeLevel.NORMAL -> 6
-                        FeeLevel.FAST -> 2
-                    },
-                    priority = feeLevel,
-                    metadata = mapOf("estimatedSize" to estimatedSize.toString())
+                Result.Success(
+                    FeeEstimate(
+                        feePerByte = feePerByte.toString(),
+                        gasPrice = null,
+                        totalFee = totalFeeSatoshis.toString(),
+                        totalFeeDecimal = totalFeeDecimal,
+                        estimatedTime = when (feeLevel) {
+                            FeeLevel.SLOW -> 144
+                            FeeLevel.NORMAL -> 6
+                            FeeLevel.FAST -> 2
+                        },
+                        priority = feeLevel,
+                        metadata = mapOf("estimatedSize" to estimatedSize.toString())
+                    )
                 )
 
             } catch (e: Exception) {
                 Log.e("BitcoinRepo", "Error getting fee estimate: ${e.message}")
-                getDefaultFeeEstimate(feeLevel)
+                Result.Success(getDefaultFeeEstimate(feeLevel))
             }
         }
     }
@@ -186,15 +184,12 @@ class BitcoinBlockchainRepository @Inject constructor() {
     /**
      * Create and sign a Bitcoin transaction using bitcoinj
      */
-    /**
-     * Create and sign a Bitcoin transaction using bitcoinj
-     */
     suspend fun createAndSignTransaction(
         fromKey: ECKey,
         toAddress: String,
         satoshis: Long,
         network: BitcoinNetwork
-    ): Transaction {
+    ): Result<Transaction> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("BitcoinRepo", "Creating transaction: $satoshis satoshis to $toAddress")
@@ -205,23 +200,18 @@ class BitcoinBlockchainRepository @Inject constructor() {
                     BitcoinNetwork.REGTEST -> RegTestParams.get()
                 }
 
-                // 1. Create transaction
                 val tx = Transaction(networkParams)
-
-                // 2. Add output (sending to recipient)
                 val outputValue = Coin.valueOf(satoshis)
                 val outputAddress = Address.fromString(networkParams, toAddress)
                 tx.addOutput(outputValue, outputAddress)
 
-                // 3. Get UTXOs (Unspent Transaction Outputs) for the sender
                 val fromAddress = LegacyAddress.fromKey(networkParams, fromKey).toString()
                 val utxos = getUnspentOutputs(fromAddress, network)
 
                 if (utxos.isEmpty()) {
-                    throw IllegalStateException("No UTXOs found for address: $fromAddress")
+                    return@withContext Result.Error("No UTXOs found for address: $fromAddress", IllegalStateException())
                 }
 
-                // 4. Add inputs from UTXOs
                 var totalInputValue = Coin.ZERO
                 for (utxo in utxos) {
                     val input = TransactionInput(
@@ -233,25 +223,21 @@ class BitcoinBlockchainRepository @Inject constructor() {
                     tx.addInput(input)
                     totalInputValue = totalInputValue.add(utxo.value)
 
-                    // Stop if we have enough inputs
                     if (totalInputValue.isGreaterThan(Coin.valueOf(satoshis + 1000))) {
                         break
                     }
                 }
 
-                // 5. Add change output if needed
-                val fee = Coin.valueOf(1000) // Fixed fee for simplicity
+                val fee = Coin.valueOf(1000)
                 val changeValue = totalInputValue.subtract(Coin.valueOf(satoshis)).subtract(fee)
                 if (changeValue.isPositive) {
                     tx.addOutput(changeValue, LegacyAddress.fromKey(networkParams, fromKey))
                 }
 
-                // 6. Sign all inputs using the proper bitcoinj signing method
                 for (i in 0 until tx.inputs.size) {
                     val input = tx.getInput(i.toLong())
                     val utxo = utxos[i]
 
-                    // Sign the input
                     val hash = tx.hashForSignature(
                         i,
                         utxo.script,
@@ -261,17 +247,16 @@ class BitcoinBlockchainRepository @Inject constructor() {
                     val sig = fromKey.sign(hash)
                     val txSig = TransactionSignature(sig, Transaction.SigHash.ALL, false)
 
-                    // Create the input script
                     val script = ScriptBuilder.createInputScript(txSig, fromKey)
                     input.scriptSig = script
                 }
 
                 Log.d("BitcoinRepo", "Transaction signed successfully")
-                tx
+                Result.Success(tx)
 
             } catch (e: Exception) {
                 Log.e("BitcoinRepo", "Error creating transaction: ${e.message}", e)
-                throw e
+                Result.Error("Failed to create transaction: ${e.message}", e)
             }
         }
     }
@@ -292,26 +277,19 @@ class BitcoinBlockchainRepository @Inject constructor() {
                 }
 
                 val url = "$baseUrl/address/$address/utxo"
-                Log.d("BitcoinRepo", "📡 Calling: $url")
-
                 val request = Request.Builder().url(url).build()
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string()
 
-                Log.d("BitcoinRepo", "Response code: ${response.code}")
-
                 if (!response.isSuccessful || responseBody.isNullOrEmpty()) {
-                    Log.e("BitcoinRepo", " Failed to get UTXOs. Code: ${response.code}")
                     return@withContext emptyList()
                 }
 
                 if (responseBody.trim() == "[]") {
-                    Log.d("BitcoinRepo", "ℹ No UTXOs found (empty array)")
                     return@withContext emptyList()
                 }
 
                 val jsonArray = JSONArray(responseBody)
-                Log.d("BitcoinRepo", " Found ${jsonArray.length()} UTXOs in API response")
 
                 val networkParams = when (network) {
                     BitcoinNetwork.MAINNET -> MainNetParams.get()
@@ -328,17 +306,11 @@ class BitcoinBlockchainRepository @Inject constructor() {
                         val vout = utxoJson.getInt("vout")
                         val value = utxoJson.getLong("value")
 
-                        Log.d("BitcoinRepo", "Processing UTXO $i: txid=$txid, vout=$vout, value=$value")
-
-                        // Fetch transaction to get the scriptpubkey
                         val scriptHex = getScriptPubKeyFromTransaction(txid, vout, baseUrl)
 
                         if (scriptHex == null) {
-                            Log.e("BitcoinRepo", " Failed to get script for UTXO $i")
                             continue
                         }
-
-                        Log.d("BitcoinRepo", "Got script: ${scriptHex.take(20)}...")
 
                         val utxo = UTXO(
                             outPoint = TransactionOutPoint(
@@ -351,14 +323,12 @@ class BitcoinBlockchainRepository @Inject constructor() {
                         )
 
                         utxos.add(utxo)
-                        Log.d("BitcoinRepo", "✓ Added UTXO $i successfully")
 
                     } catch (e: Exception) {
                         Log.e("BitcoinRepo", " Error processing UTXO $i: ${e.message}")
                     }
                 }
 
-                Log.d("BitcoinRepo", " Total UTXOs processed: ${utxos.size}")
                 return@withContext utxos
 
             } catch (e: Exception) {
@@ -371,45 +341,34 @@ class BitcoinBlockchainRepository @Inject constructor() {
     private suspend fun getScriptPubKeyFromTransaction(txid: String, vout: Int, baseUrl: String): String? {
         return withContext(Dispatchers.IO) {
             try {
-                // Add delay to avoid rate limiting
                 delay(100L)
 
                 val url = "$baseUrl/tx/$txid"
-                Log.d("BitcoinRepo", " Fetching TX: $url")
-
                 val request = Request.Builder().url(url).build()
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string()
 
                 if (!response.isSuccessful || responseBody.isNullOrEmpty()) {
-                    Log.e("BitcoinRepo", " Failed to fetch TX $txid: ${response.code}")
                     return@withContext null
                 }
-
-                Log.d("BitcoinRepo", " TX Response: ${responseBody.take(500)}...")
 
                 val txJson = JSONObject(responseBody)
                 val voutArray = txJson.getJSONArray("vout")
 
                 if (vout >= voutArray.length()) {
-                    Log.e("BitcoinRepo", " Invalid vout $vout for TX $txid")
                     return@withContext null
                 }
 
                 val output = voutArray.getJSONObject(vout)
 
-                // Try different ways to get scriptpubkey
                 return@withContext when {
-                    // 1. Check if scriptpubkey is a JSON object with "hex" field
                     output.has("scriptpubkey") && output.get("scriptpubkey") is JSONObject -> {
                         val scriptObj = output.getJSONObject("scriptpubkey")
                         scriptObj.getString("hex")
                     }
-                    // 2. Check if scriptpubkey is a direct string (hex)
                     output.has("scriptpubkey") && output.get("scriptpubkey") is String -> {
                         output.getString("scriptpubkey")
                     }
-                    // 3. Check for alternative fields
                     output.has("scriptPubKey") -> {
                         val scriptValue = output.get("scriptPubKey")
                         if (scriptValue is String) scriptValue else null
@@ -418,7 +377,6 @@ class BitcoinBlockchainRepository @Inject constructor() {
                         val scriptValue = output.get("script")
                         if (scriptValue is String) scriptValue else null
                     }
-                    // 4. Last resort: try to get it as a string anyway
                     else -> {
                         output.optString("scriptpubkey").takeIf { it.isNotEmpty() && it.matches(Regex("^[0-9a-fA-F]+$")) }
                     }
@@ -426,18 +384,18 @@ class BitcoinBlockchainRepository @Inject constructor() {
 
             } catch (e: Exception) {
                 Log.e("BitcoinRepo", " Error fetching script from TX $txid: ${e.message}")
-                e.printStackTrace()
                 null
             }
         }
     }
+
     /**
      * Broadcast transaction to Bitcoin network
      */
     suspend fun broadcastTransaction(
         signedHex: String,
         network: BitcoinNetwork = BitcoinNetwork.MAINNET
-    ): BroadcastResult {
+    ): Result<BroadcastResult> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("BitcoinRepo", "Broadcasting Bitcoin transaction...")
@@ -461,34 +419,40 @@ class BitcoinBlockchainRepository @Inject constructor() {
 
                 if (response.isSuccessful && txId != null) {
                     Log.d("BitcoinRepo", "Transaction broadcast successful: $txId")
-                    BroadcastResult(
-                        success = true,
-                        hash = txId,
-                        chain = ChainType.BITCOIN
+                    Result.Success(
+                        BroadcastResult(
+                            success = true,
+                            hash = txId,
+                            chain = ChainType.BITCOIN
+                        )
                     )
                 } else {
                     val error = response.body?.string() ?: "Broadcast failed with code: ${response.code}"
                     Log.e("BitcoinRepo", "Broadcast failed: $error")
-                    BroadcastResult(
-                        success = false,
-                        error = error,
-                        chain = ChainType.BITCOIN
+                    Result.Success(
+                        BroadcastResult(
+                            success = false,
+                            error = error,
+                            chain = ChainType.BITCOIN
+                        )
                     )
                 }
 
             } catch (e: Exception) {
                 Log.e("BitcoinRepo", "Error broadcasting: ${e.message}", e)
-                BroadcastResult(
-                    success = false,
-                    error = e.message ?: "Broadcast failed",
-                    chain = ChainType.BITCOIN
+                Result.Success(
+                    BroadcastResult(
+                        success = false,
+                        error = e.message ?: "Broadcast failed",
+                        chain = ChainType.BITCOIN
+                    )
                 )
             }
         }
     }
 
     suspend fun debugCheckUTXOsDirect(address: String, network: BitcoinNetwork = BitcoinNetwork.TESTNET) {
-        return withContext(Dispatchers.IO) {
+        withContext(Dispatchers.IO) {
             try {
                 Log.d("BitcoinRepo", "=== DEBUG CHECK UTXOs DIRECT ===")
                 Log.d("BitcoinRepo", "Address: $address")
@@ -501,10 +465,7 @@ class BitcoinBlockchainRepository @Inject constructor() {
                     else -> "https://blockstream.info/testnet/api"
                 }
 
-                // Check 1: UTXOs endpoint
                 val utxoUrl = "$baseUrl/address/$address/utxo"
-                Log.d("BitcoinRepo", "UTXO URL: $utxoUrl")
-
                 val utxoRequest = Request.Builder().url(utxoUrl).build()
                 val utxoResponse = client.newCall(utxoRequest).execute()
                 val utxoBody = utxoResponse.body?.string() ?: ""
@@ -512,10 +473,7 @@ class BitcoinBlockchainRepository @Inject constructor() {
                 Log.d("BitcoinRepo", "UTXO Response code: ${utxoResponse.code}")
                 Log.d("BitcoinRepo", "UTXO Response: $utxoBody")
 
-                // Check 2: Address info endpoint
                 val addressUrl = "$baseUrl/address/$address"
-                Log.d("BitcoinRepo", "Address URL: $addressUrl")
-
                 val addressRequest = Request.Builder().url(addressUrl).build()
                 val addressResponse = client.newCall(addressRequest).execute()
                 val addressBody = addressResponse.body?.string() ?: ""
@@ -523,7 +481,6 @@ class BitcoinBlockchainRepository @Inject constructor() {
                 Log.d("BitcoinRepo", "Address Response code: ${addressResponse.code}")
                 Log.d("BitcoinRepo", "Address Response: $addressBody")
 
-                // Parse and display
                 if (utxoResponse.isSuccessful) {
                     try {
                         val jsonArray = JSONArray(utxoBody)
@@ -565,7 +522,6 @@ class BitcoinBlockchainRepository @Inject constructor() {
         }
     }
 
-    // Bitcoin-specific models
     data class UTXO(
         val outPoint: TransactionOutPoint,
         val value: Coin,
