@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
+import com.example.nexuswallet.feature.coin.Result
 
 @HiltViewModel
 class USDCSendViewModel @Inject constructor(
@@ -31,38 +32,50 @@ class USDCSendViewModel @Inject constructor(
     fun init(walletId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-            try {
-                val wallet = walletRepository.getWallet(walletId) as? USDCWallet
-                if (wallet == null) {
-                    _state.update { it.copy(
-                        error = "Not a USDC wallet",
-                        isLoading = false
-                    ) }
-                    return@launch
-                }
 
-                val usdcBalance = getUSDCBalanceUseCase(walletId)
-                val ethBalance = getETHBalanceForGasUseCase(walletId)
-
+            val wallet = walletRepository.getWallet(walletId) as? USDCWallet
+            if (wallet == null) {
                 _state.update { it.copy(
-                    wallet = wallet,
-                    network = wallet.network,
-                    contractAddress = wallet.contractAddress,
-                    usdcBalance = usdcBalance.balanceDecimal,
-                    usdcBalanceDecimal = usdcBalance.balanceDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO,
-                    ethBalance = ethBalance.toPlainString(),
-                    ethBalanceDecimal = ethBalance,
+                    error = "Not a USDC wallet",
                     isLoading = false
                 ) }
-
-                validateForm()
-
-            } catch (e: Exception) {
-                _state.update { it.copy(
-                    error = "Failed to load wallet: ${e.message}",
-                    isLoading = false
-                ) }
+                return@launch
             }
+
+            // Get USDC balance
+            val usdcBalanceResult = getUSDCBalanceUseCase(walletId)
+            if (usdcBalanceResult !is Result.Success) {
+                _state.update { it.copy(
+                    error = (usdcBalanceResult as Result.Error).message,
+                    isLoading = false
+                ) }
+                return@launch
+            }
+            val usdcBalance = usdcBalanceResult.data
+
+            // Get ETH balance
+            val ethBalanceResult = getETHBalanceForGasUseCase(walletId)
+            if (ethBalanceResult !is Result.Success) {
+                _state.update { it.copy(
+                    error = (ethBalanceResult as Result.Error).message,
+                    isLoading = false
+                ) }
+                return@launch
+            }
+            val ethBalance = ethBalanceResult.data
+
+            _state.update { it.copy(
+                wallet = wallet,
+                network = wallet.network,
+                contractAddress = wallet.contractAddress,
+                usdcBalance = usdcBalance.balanceDecimal,
+                usdcBalanceDecimal = usdcBalance.balanceDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO,
+                ethBalance = ethBalance.toPlainString(),
+                ethBalanceDecimal = ethBalance,
+                isLoading = false
+            ) }
+
+            validateForm()
         }
     }
 
@@ -70,24 +83,35 @@ class USDCSendViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
 
-            try {
-                val toAddress = state.value.toAddress
-                val amount = state.value.amountValue
+            val toAddress = state.value.toAddress
+            val amount = state.value.amountValue
 
-                // Validate only address format
-                if (!state.value.isValidAddress) {
-                    throw IllegalArgumentException("Invalid Ethereum address")
-                }
+            // Validate only address format
+            if (!state.value.isValidAddress) {
+                _state.update { it.copy(
+                    isLoading = false,
+                    error = "Invalid Ethereum address"
+                ) }
+                return@launch
+            }
 
-                val wallet = state.value.wallet ?: throw IllegalStateException("Wallet not loaded")
-                val result = sendUSDCUseCase(
-                    walletId = wallet.id,
-                    toAddress = toAddress,
-                    amount = amount
-                )
+            val wallet = state.value.wallet ?: run {
+                _state.update { it.copy(
+                    isLoading = false,
+                    error = "Wallet not loaded"
+                ) }
+                return@launch
+            }
 
-                if (result.isSuccess) {
-                    val broadcastResult = result.getOrThrow()
+            val result = sendUSDCUseCase(
+                walletId = wallet.id,
+                toAddress = toAddress,
+                amount = amount
+            )
+
+            when (result) {
+                is Result.Success -> {
+                    val broadcastResult = result.data
                     if (broadcastResult.success) {
                         _state.update { it.copy(
                             isLoading = false,
@@ -95,16 +119,21 @@ class USDCSendViewModel @Inject constructor(
                         ) }
                         onSuccess(broadcastResult.hash ?: "")
                     } else {
-                        throw Exception(broadcastResult.error ?: "Transaction failed")
+                        _state.update { it.copy(
+                            isLoading = false,
+                            error = broadcastResult.error ?: "Transaction failed"
+                        ) }
                     }
-                } else {
-                    throw result.exceptionOrNull() ?: Exception("Transaction failed")
                 }
-            } catch (e: Exception) {
-                _state.update { it.copy(
-                    isLoading = false,
-                    error = "Failed to send: ${e.message}"
-                ) }
+                is Result.Error -> {
+                    _state.update { it.copy(
+                        isLoading = false,
+                        error = result.message
+                    ) }
+                }
+                Result.Loading -> {
+                    // Already loading
+                }
             }
         }
     }
@@ -123,7 +152,6 @@ class USDCSendViewModel @Inject constructor(
             estimatedGas = "0.0005"
         ) }
     }
-
 
     fun updateAddress(address: String) {
         viewModelScope.launch {
