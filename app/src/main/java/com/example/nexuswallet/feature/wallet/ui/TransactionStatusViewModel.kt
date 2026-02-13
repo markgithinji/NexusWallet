@@ -19,7 +19,6 @@ class TransactionStatusViewModel @Inject constructor(
 ) : ViewModel() {
 
     data class StatusUiState(
-        val transaction: SendTransaction? = null,
         val isLoading: Boolean = false,
         val error: String? = null
     )
@@ -27,35 +26,12 @@ class TransactionStatusViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(StatusUiState())
     val uiState: StateFlow<StatusUiState> = _uiState.asStateFlow()
 
-    fun loadTransaction(transactionId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-
-            val result = getTransactionUseCase(transactionId)
-
-            when (result) {
-                is Result.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            transaction = result.data,
-                            isLoading = false,
-                            error = null
-                        )
-                    }
-                }
-                is Result.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            error = "Failed to load transaction: ${result.message}",
-                            isLoading = false,
-                            transaction = null
-                        )
-                    }
-                }
-                Result.Loading -> {
-                    // Already loading, no update needed
-                }
-            }
+    fun initialize(txHash: String) {
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                error = null
+            )
         }
     }
 
