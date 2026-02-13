@@ -303,20 +303,6 @@ fun Navigation() {
             )
         }
 
-        // Transaction Review Screen
-        composable(
-            route = "review/{transactionId}",
-            arguments = listOf(
-                navArgument("transactionId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
-            TransactionReviewScreen(
-                navController = navController,
-                transactionId = transactionId
-            )
-        }
-
         // Transaction Status Screen
         composable(
             route = "status/{transactionId}",
@@ -342,6 +328,43 @@ fun Navigation() {
             TransactionStatusScreen(
                 navController = navController,
                 transactionId = txHash
+            )
+        }
+
+        composable(
+            route = "review/{walletId}/{walletType}?toAddress={toAddress}&amount={amount}&feeLevel={feeLevel}",
+            arguments = listOf(
+                navArgument("walletId") { type = NavType.StringType },
+                navArgument("walletType") { type = NavType.StringType },
+                navArgument("toAddress") { type = NavType.StringType },
+                navArgument("amount") { type = NavType.StringType },
+                navArgument("feeLevel") {
+                    type = NavType.StringType
+                    nullable = true
+                }
+            )
+        ) { backStackEntry ->
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+            val walletTypeString = backStackEntry.arguments?.getString("walletType") ?: ""
+            val toAddress = backStackEntry.arguments?.getString("toAddress") ?: ""
+            val amount = backStackEntry.arguments?.getString("amount") ?: ""
+            val feeLevel = backStackEntry.arguments?.getString("feeLevel")
+
+            val walletType = when (walletTypeString) {
+                "BITCOIN" -> WalletType.BITCOIN
+                "SOLANA" -> WalletType.SOLANA
+                "USDC" -> WalletType.USDC
+                "ETHEREUM_SEPOLIA" -> WalletType.ETHEREUM_SEPOLIA
+                else -> WalletType.ETHEREUM
+            }
+
+            TransactionReviewScreen(
+                navController = navController,
+                walletId = walletId,
+                walletType = walletType,
+                toAddress = toAddress,
+                amount = amount,
+                feeLevel = feeLevel
             )
         }
     }

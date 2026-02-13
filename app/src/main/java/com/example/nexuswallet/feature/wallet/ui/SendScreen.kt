@@ -72,7 +72,6 @@ fun SendScreen(
     solanaViewModel: SolanaSendViewModel = hiltViewModel(),
     bitcoinViewModel: BitcoinSendViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
     var showMaxDialog by remember { mutableStateOf(false) }
 
     val ethereumUiState = ethereumViewModel.uiState.collectAsState()
@@ -87,27 +86,6 @@ fun SendScreen(
             WalletType.USDC -> usdcViewModel.init(walletId)
             WalletType.SOLANA -> solanaViewModel.init(walletId)
             WalletType.BITCOIN -> bitcoinViewModel.init(walletId)
-            else -> {}
-        }
-    }
-
-    // Transaction state handling
-    LaunchedEffect(walletType, ethereumUiState.value.transactionState) {
-        when (walletType) {
-            WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
-                when (val state = ethereumUiState.value.transactionState) {
-                    is TransactionState.Created -> {
-                        navController.navigate("review/${state.transaction.id}")
-                        ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ResetTransactionState)
-                    }
-                    is TransactionState.Error -> {
-                        if (ethereumUiState.value.error == null) {
-                            Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
-                        }
-                    }
-                    else -> {}
-                }
-            }
             else -> {}
         }
     }
@@ -154,60 +132,49 @@ fun SendScreen(
             )
         },
         bottomBar = {
-            when (walletType) {
-                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
-                    SendBottomBar(
-                        isValid = ethereumUiState.value.isValid,
-                        isLoading = ethereumUiState.value.isLoading,
-                        validationError = ethereumUiState.value.validationError,
-                        transactionState = ethereumUiState.value.transactionState,
-                        onSend = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.CreateTransaction) }
-                    )
-                }
-                WalletType.USDC -> {
-                    SendBottomBar(
-                        isValid = usdcState.value.isValidAddress && usdcState.value.amountValue > BigDecimal.ZERO,
-                        isLoading = usdcState.value.isLoading,
-                        validationError = if (!usdcState.value.isValidAddress && usdcState.value.toAddress.isNotEmpty())
-                            "Invalid address" else null,
-                        error = usdcState.value.error,
-                        onSend = {
-                            usdcViewModel.send { hash ->
-                                navController.navigate("transaction/$hash")
-                            }
+            SendBottomBar(
+                isValid = when (walletType) {
+                    WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA ->
+                        ethereumUiState.value.isValid
+                    WalletType.USDC ->
+                        usdcState.value.isValidAddress && usdcState.value.amountValue > BigDecimal.ZERO
+                    WalletType.SOLANA ->
+                        solanaState.value.isAddressValid && solanaState.value.amountValue > BigDecimal.ZERO
+                    WalletType.BITCOIN ->
+                        bitcoinState.value.isAddressValid && bitcoinState.value.amountValue > BigDecimal.ZERO
+                    else -> false
+                },
+                isLoading = isLoading,
+                validationError = when (walletType) {
+                    WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> ethereumUiState.value.validationError
+                    else -> null
+                },
+                error = when (walletType) {
+                    WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> ethereumUiState.value.error
+                    WalletType.USDC -> usdcState.value.error
+                    WalletType.SOLANA -> solanaState.value.error
+                    WalletType.BITCOIN -> bitcoinState.value.error
+                    else -> null
+                },
+                onSend = {
+                    // Navigate to review screen with all the input data
+                    when (walletType) {
+                        WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+                            navController.navigate("review/$walletId/${walletType.name}?toAddress=${ethereumUiState.value.toAddress}&amount=${ethereumUiState.value.amount}&feeLevel=${ethereumUiState.value.feeLevel.name}")
                         }
-                    )
-                }
-                WalletType.SOLANA -> {
-                    SendBottomBar(
-                        isValid = solanaState.value.isAddressValid && solanaState.value.amountValue > BigDecimal.ZERO,
-                        isLoading = solanaState.value.isLoading,
-                        validationError = solanaState.value.addressError ?:
-                        if (solanaState.value.amountValue <= BigDecimal.ZERO) "Enter amount" else null,
-                        error = solanaState.value.error,
-                        onSend = {
-                            solanaViewModel.send { hash ->
-                                navController.navigate("transaction/$hash")
-                            }
+                        WalletType.USDC -> {
+                            navController.navigate("review/$walletId/${walletType.name}?toAddress=${usdcState.value.toAddress}&amount=${usdcState.value.amount}")
                         }
-                    )
-                }
-                WalletType.BITCOIN -> {
-                    SendBottomBar(
-                        isValid = bitcoinState.value.isAddressValid && bitcoinState.value.amountValue > BigDecimal.ZERO,
-                        isLoading = bitcoinState.value.isLoading,
-                        validationError = bitcoinState.value.addressError ?:
-                        if (bitcoinState.value.amountValue <= BigDecimal.ZERO) "Enter amount" else null,
-                        error = bitcoinState.value.error,
-                        onSend = {
-                            bitcoinViewModel.send { hash ->
-                                navController.navigate("transaction/$hash")
-                            }
+                        WalletType.SOLANA -> {
+                            navController.navigate("review/$walletId/${walletType.name}?toAddress=${solanaState.value.toAddress}&amount=${solanaState.value.amount}")
                         }
-                    )
+                        WalletType.BITCOIN -> {
+                            navController.navigate("review/$walletId/${walletType.name}?toAddress=${bitcoinState.value.toAddress}&amount=${bitcoinState.value.amount}&feeLevel=${bitcoinState.value.feeLevel.name}")
+                        }
+                        else -> {}
+                    }
                 }
-                else -> {}
-            }
+            )
         }
     ) { padding ->
         Column(
@@ -424,73 +391,14 @@ fun SendScreen(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-
-            // Transaction Summary
-            when (walletType) {
-                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
-                    TransactionSummarySection(
-                        amount = ethereumUiState.value.amount,
-                        feeEstimate = ethereumUiState.value.feeEstimate,
-                        walletType = walletType,
-                        tokenSymbol = "ETH"
-                    )
-                }
-                WalletType.USDC -> {
-                    TransactionSummarySection(
-                        amount = usdcState.value.amount,
-                        feeEstimate = FeeEstimate(
-                            totalFee = "420000000000000",
-                            totalFeeDecimal = usdcState.value.estimatedGas,
-                            priority = FeeLevel.NORMAL,
-                            estimatedTime = 60,
-                            feePerByte = null,
-                            gasPrice = "30"
-                        ),
-                        walletType = walletType,
-                        tokenSymbol = "USDC"
-                    )
-                }
-                WalletType.SOLANA -> {
-                    TransactionSummarySection(
-                        amount = solanaState.value.amount,
-                        feeEstimate = FeeEstimate(
-                            totalFee = "5000",
-                            totalFeeDecimal = "0.000005",
-                            priority = FeeLevel.NORMAL,
-                            estimatedTime = 1,
-                            feePerByte = null,
-                            gasPrice = null
-                        ),
-                        walletType = walletType,
-                        tokenSymbol = "SOL"
-                    )
-                }
-                WalletType.BITCOIN -> {
-                    TransactionSummarySection(
-                        amount = bitcoinState.value.amount,
-                        feeEstimate = bitcoinState.value.feeEstimate,
-                        walletType = walletType,
-                        tokenSymbol = "BTC"
-                    )
-                }
-                else -> {}
-            }
         }
 
-        // Max Amount Dialog
         if (showMaxDialog) {
             when (walletType) {
                 WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
                     MaxAmountDialog(
                         balance = ethereumUiState.value.balance,
-                        feeEstimate = ethereumUiState.value.feeEstimate ?: FeeEstimate(
-                            totalFee = "630000000000000",
-                            totalFeeDecimal = "0.00063",
-                            priority = FeeLevel.NORMAL,
-                            estimatedTime = 300,
-                            feePerByte = null,
-                            gasPrice = "30"
-                        ),
+                        feeEstimate = ethereumUiState.value.feeEstimate,
                         tokenSymbol = "ETH",
                         onDismiss = { showMaxDialog = false },
                         onConfirm = { maxAmount ->
@@ -521,14 +429,7 @@ fun SendScreen(
                 WalletType.BITCOIN -> {
                     MaxAmountDialog(
                         balance = bitcoinState.value.balance,
-                        feeEstimate = bitcoinState.value.feeEstimate ?: FeeEstimate(
-                            totalFee = "10000",
-                            totalFeeDecimal = "0.0001",
-                            priority = FeeLevel.NORMAL,
-                            estimatedTime = 6,
-                            feePerByte = "10",
-                            gasPrice = null
-                        ),
+                        feeEstimate = bitcoinState.value.feeEstimate,
                         tokenSymbol = "BTC",
                         onDismiss = { showMaxDialog = false },
                         onConfirm = { maxAmount ->
@@ -1145,156 +1046,6 @@ fun FeeDetailsCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun NoteInputSection(
-    note: String,
-    onNoteChange: (String) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Note,
-                    contentDescription = "Note",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "Note (Optional)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = note,
-                onValueChange = onNoteChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Add a note for this transaction") },
-                shape = RoundedCornerShape(8.dp),
-                singleLine = false,
-                maxLines = 3,
-                keyboardOptions = KeyboardOptions.Default.copy(
-                    keyboardType = KeyboardType.Text
-                )
-            )
-        }
-    }
-}
-
-@Composable
-fun TransactionSummarySection(
-    amount: String,
-    feeEstimate: FeeEstimate?,
-    walletType: WalletType,
-    tokenSymbol: String
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "Transaction Summary",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Divider()
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Amount
-            SummaryRow(
-                label = "Amount",
-                value = if (amount.isNotEmpty()) "$amount $tokenSymbol" else "0.00 $tokenSymbol",
-                isBold = false
-            )
-
-            // Fee
-            feeEstimate?.let { fee ->
-                SummaryRow(
-                    label = "Network Fee",
-                    value = "${fee.totalFeeDecimal} $tokenSymbol",
-                    isBold = false
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Divider()
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Total
-            val totalAmount = try {
-                val amountValue = BigDecimal(amount)
-                val feeValue = feeEstimate?.totalFeeDecimal?.toBigDecimalOrNull() ?: BigDecimal.ZERO
-                amountValue + feeValue
-            } catch (e: Exception) {
-                BigDecimal.ZERO
-            }
-
-            SummaryRow(
-                label = "Total",
-                value = "${totalAmount.toPlainString()} $tokenSymbol",
-                isBold = true
-            )
-        }
-    }
-}
-
-@Composable
-fun SummaryRow(
-    label: String,
-    value: String,
-    isBold: Boolean
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = if (isBold) MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-            else MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Text(
-            text = value,
-            style = if (isBold) MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-            else MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }
 
