@@ -34,6 +34,7 @@ import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailViewModel
 import com.example.nexuswallet.feature.coin.usdc.USDCSendScreen
+import com.example.nexuswallet.feature.wallet.domain.WalletType
 
 @Composable
 fun Navigation() {
@@ -264,7 +265,7 @@ fun Navigation() {
             )
         }
 
-        // Add receive route
+        // Receive route
         composable(
             route = "receive/{walletId}",
             arguments = listOf(
@@ -278,69 +279,27 @@ fun Navigation() {
             )
         }
 
-        composable(
-            route = "send/{walletId}/solana",
-            arguments = listOf(
-                navArgument("walletId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: return@composable
-
-            SolanaSendScreen(
-                walletId = walletId,
-                onBack = { navController.navigateUp() },
-                onSuccess = { hash ->
-                    navController.navigateUp()
-                }
-            )
-        }
-
         // ===== SEND FLOW SCREENS =====
 
-        // Send Screen (Address & Amount Input)
         composable(
-            route = "send/{walletId}",
+            route = "send/{walletId}/{walletType}",
             arguments = listOf(
-                navArgument("walletId") { type = NavType.StringType }
+                navArgument("walletId") { type = NavType.StringType },
+                navArgument("walletType") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+            val walletTypeString = backStackEntry.arguments?.getString("walletType") ?: ""
+            val walletType = when (walletTypeString.lowercase()) {
+                "bitcoin" -> WalletType.BITCOIN
+                "solana" -> WalletType.SOLANA
+                "usdc" -> WalletType.USDC
+                else -> WalletType.ETHEREUM
+            }
             SendScreen(
                 navController = navController,
-                walletId = walletId
-            )
-        }
-
-        composable(
-            route = "send/{walletId}/bitcoin",
-            arguments = listOf(navArgument("walletId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: return@composable
-            BitcoinSendScreen(
                 walletId = walletId,
-                onBack = { navController.navigateUp() },
-                onSuccess = { hash ->
-                    // Show success dialog or navigate back
-                    navController.navigateUp()
-                }
-            )
-        }
-
-        // Send USDC Screen
-        composable(
-            route = "send/{walletId}/usdc",
-            arguments = listOf(
-                navArgument("walletId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: return@composable
-
-            USDCSendScreen (
-                walletId = walletId,
-                onBack = { navController.navigateUp() },
-                onSuccess = { hash ->
-                    navController.navigateUp()
-                }
+                walletType = walletType
             )
         }
 

@@ -181,8 +181,14 @@ fun WalletDetailContent(
                     is SolanaWallet -> navController.navigate("send/${wallet.id}/solana")
                     is BitcoinWallet -> navController.navigate("send/${wallet.id}/bitcoin")
                     is USDCWallet -> navController.navigate("send/${wallet.id}/usdc")
+                    is EthereumWallet -> {
+                        val walletType = if (wallet.network == EthereumNetwork.SEPOLIA)
+                            "ethereum_sepolia" else "ethereum"
+                        navController.navigate("send/${wallet.id}/$walletType")
+                    }
                     else -> {
-                        navController.navigate("send/${wallet.id}")
+                        // Default fallback
+                        navController.navigate("send/${wallet.id}/ethereum")
                     }
                 }
             },
