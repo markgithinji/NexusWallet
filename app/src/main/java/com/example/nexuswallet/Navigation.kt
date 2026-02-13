@@ -330,5 +330,19 @@ fun Navigation() {
                 transactionId = transactionId
             )
         }
+
+        // Transaction Status Screen
+        composable(
+            route = "transaction/{txHash}",
+            arguments = listOf(
+                navArgument("txHash") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val txHash = backStackEntry.arguments?.getString("txHash") ?: ""
+            TransactionStatusScreen(
+                navController = navController,
+                transactionId = txHash
+            )
+        }
     }
 }
