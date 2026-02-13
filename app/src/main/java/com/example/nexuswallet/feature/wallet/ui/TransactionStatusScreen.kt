@@ -1,7 +1,10 @@
 package com.example.nexuswallet.feature.wallet.ui
 
+import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,6 +33,7 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Note
+import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -73,7 +77,6 @@ import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionStatusScreen(
@@ -82,9 +85,10 @@ fun TransactionStatusScreen(
     viewModel: TransactionStatusViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        viewModel.loadTransaction(transactionId)
+        viewModel.initialize(transactionId)
     }
 
     Scaffold(
@@ -99,230 +103,134 @@ fun TransactionStatusScreen(
             )
         }
     ) { padding ->
-        if (uiState.isLoading) {
-            LoadingScreen()
-        } else {
-            uiState.transaction?.let { transaction ->
-                TransactionStatusContent(
-                    transaction = transaction,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                )
-            } ?: run {
-                EmptyTransactionView()
-            }
-        }
-    }
-}
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(32.dp))
 
-@Composable
-fun TransactionStatusContent(
-    transaction: SendTransaction,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // Status Icon
-        when (transaction.status) {
-            TransactionStatus.SUCCESS -> {
+            // Success Icon
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(CircleShape)
+                    .background(Color.Green.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Success",
                     tint = Color.Green,
-                    modifier = Modifier.size(100.dp)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Transaction Successful!",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Green
+                    modifier = Modifier.size(60.dp)
                 )
             }
 
-            TransactionStatus.PENDING -> {
-                CircularProgressIndicator(
-                    strokeWidth = 4.dp,
-                    modifier = Modifier.size(100.dp)
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Status Text
+            Text(
+                text = "Transaction Successful!",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.Green
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Your transaction has been broadcast to the network",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Transaction Hash Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Transaction Pending",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            TransactionStatus.FAILED -> {
-                Icon(
-                    imageVector = Icons.Default.Error,
-                    contentDescription = "Failed",
-                    tint = Color.Red,
-                    modifier = Modifier.size(100.dp)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Transaction Failed",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Red
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Transaction Details
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp)
             ) {
-                // Amount
-                Text(
-                    text = transaction.amountDecimal,
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
-
-                Text(
-                    text = "${transaction.walletType.name.take(3).uppercase()}",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Divider()
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Details
-                StatusDetailRow(
-                    label = "Transaction Hash",
-                    value = transaction.hash ?: "Pending",
-                    monospace = true
-                )
-
-                StatusDetailRow(
-                    label = "From",
-                    value = transaction.fromAddress,
-                    monospace = true
-                )
-
-                StatusDetailRow(
-                    label = "To",
-                    value = transaction.toAddress,
-                    monospace = true
-                )
-
-                StatusDetailRow(
-                    label = "Fee",
-                    value = "${transaction.feeDecimal} ${transaction.walletType.name.take(3).uppercase()}"
-                )
-
-                StatusDetailRow(
-                    label = "Date",
-                    value = SimpleDateFormat("MMM d, yyyy HH:mm:ss", Locale.getDefault())
-                        .format(Date(transaction.timestamp))
-                )
-
-                transaction.note?.let { note ->
-                    StatusDetailRow(
-                        label = "Note",
-                        value = note
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Action Buttons
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (transaction.hash != null) {
-                Button(
-                    onClick = { /* View on explorer */ },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                Column(
+                    modifier = Modifier.padding(16.dp)
                 ) {
-                    Icon(Icons.Default.Visibility, "View")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("View on Explorer")
-                }
+                    Text(
+                        text = "Transaction Hash",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = transactionId,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        IconButton(
+                            onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("Transaction Hash", transactionId)
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "Hash copied", Toast.LENGTH_SHORT).show()
+                            }
+                        ) {
+                            Icon(Icons.Default.ContentCopy, "Copy")
+                        }
+                    }
+                }
             }
 
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Explorer Button
             Button(
-                onClick = { /* Copy details */ },
+                onClick = {
+                    val url = when {
+                        transactionId.startsWith("0x") -> "https://sepolia.etherscan.io/tx/$transactionId"
+                        transactionId.length == 88 -> "https://solscan.io/tx/$transactionId"
+                        else -> "https://blockstream.info/testnet/tx/$transactionId"
+                    }
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    context.startActivity(intent)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.OpenInBrowser, "View")
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("View on Explorer")
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Done Button
+            Button(
+                onClick = {
+                    navController.popBackStack("main", false)
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Icon(Icons.Default.ContentCopy, "Copy")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Copy Details")
+                Text("Done")
             }
         }
-    }
-}
-
-@Composable
-fun StatusDetailRow(
-    label: String,
-    value: String,
-    monospace: Boolean = false
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = value,
-            style = if (monospace) MaterialTheme.typography.bodyMedium.copy(
-                fontFamily = FontFamily.Monospace
-            ) else MaterialTheme.typography.bodyMedium,
-            fontWeight = if (monospace) FontWeight.Normal else FontWeight.Medium,
-            maxLines = if (monospace) 2 else 1,
-            overflow = TextOverflow.Ellipsis
-        )
     }
 }
