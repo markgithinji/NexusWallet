@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -45,41 +46,84 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendViewModel
+import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.ethereum.TransactionState
+import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
+import com.example.nexuswallet.feature.coin.usdc.USDCSendViewModel
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
+import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.delay
+import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionReviewScreen(
     navController: NavController,
-    transactionId: String,
-    viewModel: TransactionReviewViewModel = hiltViewModel()
+    walletId: String,
+    walletType: WalletType,
+    toAddress: String,
+    amount: String,
+    feeLevel: String? = null,
+    ethereumViewModel: EthereumSendViewModel = hiltViewModel(),
+    usdcViewModel: USDCSendViewModel = hiltViewModel(),
+    solanaViewModel: SolanaSendViewModel = hiltViewModel(),
+    bitcoinViewModel: BitcoinSendViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val transaction = uiState.transaction
     val context = LocalContext.current
+    var isSending by remember { mutableStateOf(false) }
+    var sendError by remember { mutableStateOf<String?>(null) }
+    var txHash by remember { mutableStateOf<String?>(null) }
+    var txStatus by remember { mutableStateOf("") }
 
-    LaunchedEffect(uiState.currentStep) {
-        if (uiState.currentStep is TransactionReviewViewModel.TransactionStep.SUCCESS) {
-            delay(4000)
-            transaction?.let {
-                navController.navigate("walletDetail/${it.walletId}") {
-                    popUpTo("walletDetail/${it.walletId}") { inclusive = false }
-                }
+    // Get wallet info for display
+    val ethereumState = ethereumViewModel.uiState.collectAsState()
+    val usdcState = usdcViewModel.state.collectAsState()
+    val solanaState = solanaViewModel.state.collectAsState()
+    val bitcoinState = bitcoinViewModel.state.collectAsState()
+
+    // Initialize if needed
+    LaunchedEffect(Unit) {
+        when (walletType) {
+            WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+                ethereumViewModel.initialize(walletId)
             }
+            WalletType.USDC -> {
+                usdcViewModel.init(walletId)
+            }
+            WalletType.SOLANA -> {
+                solanaViewModel.init(walletId)
+            }
+            WalletType.BITCOIN -> {
+                bitcoinViewModel.init(walletId)
+            }
+            else -> {}
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.initialize(transactionId)
+    // Handle Ethereum transaction creation result
+    LaunchedEffect(ethereumState.value.transactionState) {
+        when (val state = ethereumState.value.transactionState) {
+            is TransactionState.Created -> {
+                // Transaction created successfully
+                txHash = state.transaction.hash ?: "pending"
+                txStatus = "Transaction sent!"
+                isSending = false
+                ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ResetTransactionState)
+            }
+            is TransactionState.Error -> {
+                sendError = state.message
+                isSending = false
+            }
+            else -> {}
+        }
     }
 
     Scaffold(
@@ -88,17 +132,18 @@ fun TransactionReviewScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = when (uiState.chainType) {
-                                ChainType.BITCOIN -> Icons.Default.CurrencyBitcoin
-                                ChainType.ETHEREUM, ChainType.ETHEREUM_SEPOLIA -> Icons.Default.CurrencyExchange
-                                ChainType.SOLANA -> Icons.Default.Star
+                            imageVector = when (walletType) {
+                                WalletType.BITCOIN -> Icons.Default.CurrencyBitcoin
+                                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> Icons.Default.CurrencyExchange
+                                WalletType.SOLANA -> Icons.Default.Star
+                                WalletType.USDC -> Icons.Default.AttachMoney
                                 else -> Icons.Default.AccountBalanceWallet
                             },
                             contentDescription = null,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Review ${uiState.chainType.displayName} Transaction")
+                        Text("Review Transaction")
                     }
                 },
                 navigationIcon = {
@@ -109,27 +154,114 @@ fun TransactionReviewScreen(
             )
         },
         bottomBar = {
-            when (uiState.currentStep) {
-                is TransactionReviewViewModel.TransactionStep.REVIEWING -> {
-                    ApprovalBottomBar(
-                        chainType = uiState.chainType,
-                        onApprove = { viewModel.onEvent(TransactionReviewViewModel.ReviewEvent.ApproveTransaction) }
-                    )
-                }
-                is TransactionReviewViewModel.TransactionStep.SUCCESS -> {
-                    DoneBottomBar(
-                        chainType = uiState.chainType,
-                        txHash = uiState.broadcastResult?.hash,
-                        onDone = {
-                            transaction?.let {
-                                navController.navigate("walletDetail/${it.walletId}") {
-                                    popUpTo("walletDetail/${it.walletId}") { inclusive = false }
+            if (txHash != null) {
+                // Transaction sent - show done button
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    tonalElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                navController.navigate("walletDetail/$walletId") {
+                                    popUpTo("walletDetail/$walletId") { inclusive = true }
                                 }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Done")
+                        }
+                    }
+                }
+            } else {
+                // Send button
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    tonalElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        sendError?.let { error ->
+                            Text(
+                                text = error,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                isSending = true
+                                sendError = null
+
+                                when (walletType) {
+                                    WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+                                        // Set values in ViewModel
+                                        ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ToAddressChanged(toAddress))
+                                        ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.AmountChanged(amount))
+                                        feeLevel?.let {
+                                            ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.FeeLevelChanged(
+                                                FeeLevel.valueOf(it)))
+                                        }
+                                        // Create transaction
+                                        ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.CreateTransaction)
+                                    }
+                                    WalletType.USDC -> {
+                                        usdcViewModel.updateAddress(toAddress)
+                                        usdcViewModel.updateAmount(amount)
+                                        usdcViewModel.send { hash ->
+                                            txHash = hash
+                                            txStatus = "Transaction sent!"
+                                            isSending = false
+                                        }
+                                    }
+                                    WalletType.SOLANA -> {
+                                        solanaViewModel.updateAddress(toAddress)
+                                        solanaViewModel.updateAmount(amount)
+                                        solanaViewModel.send { hash ->
+                                            txHash = hash
+                                            txStatus = "Transaction sent!"
+                                            isSending = false
+                                        }
+                                    }
+                                    WalletType.BITCOIN -> {
+                                        bitcoinViewModel.updateAddress(toAddress)
+                                        bitcoinViewModel.updateAmount(amount)
+                                        feeLevel?.let {
+                                            bitcoinViewModel.updateFeeLevel(FeeLevel.valueOf(it))
+                                        }
+                                        bitcoinViewModel.send { hash ->
+                                            txHash = hash
+                                            txStatus = "Transaction sent!"
+                                            isSending = false
+                                        }
+                                    }
+                                    else -> {}
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !isSending
+                        ) {
+                            if (isSending) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(txStatus.ifEmpty { "Sending..." })
+                            } else {
+                                Text("Confirm & Send")
                             }
                         }
-                    )
+                    }
                 }
-                else -> {}
             }
         }
     ) { padding ->
@@ -139,412 +271,188 @@ fun TransactionReviewScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            TransactionStepStatus(
-                currentStep = uiState.currentStep,
-                chainType = uiState.chainType
-            )
-
-            uiState.error?.let { error ->
-                ErrorMessage(error = error) {
-                    viewModel.onEvent(TransactionReviewViewModel.ReviewEvent.ClearError)
-                }
-            }
-
-            if (uiState.isLoading || uiState.currentStep is TransactionReviewViewModel.TransactionStep.LOADING) {
-                LoadingScreen()
-                return@Scaffold
-            }
-
-            transaction?.let { tx ->
-                TransactionReviewSummary(
-                    transaction = tx,
-                    chainType = uiState.chainType
+            // Transaction Summary Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                AddressesSection(
-                    transaction = tx,
-                    chainType = uiState.chainType
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                FeeDetailsSection(
-                    transaction = tx,
-                    chainType = uiState.chainType
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                if (!tx.note.isNullOrEmpty()) {
-                    NoteSection(note = tx.note)
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-
-                uiState.broadcastResult?.let { result ->
-                    BroadcastResultSection(
-                        broadcastResult = result,
-                        chainType = uiState.chainType
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "You are sending",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
 
-                    if (uiState.currentStep is TransactionReviewViewModel.TransactionStep.CHECKING_STATUS) {
-                        CheckingStatusSection(chainType = uiState.chainType)
-                    }
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                    if (uiState.currentStep is TransactionReviewViewModel.TransactionStep.SUCCESS) {
-                        TransactionFinalStatusSection(
-                            confirmed = uiState.transactionConfirmed,
-                            txHash = result.hash,
-                            chainType = uiState.chainType
-                        )
-                    }
+                    Text(
+                        text = "$amount ${getTokenSymbol(walletType)}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 }
-            } ?: run {
-                EmptyTransactionView()
             }
-        }
-    }
-}
-
-@Composable
-fun TransactionReviewSummary(
-    transaction: SendTransaction,
-    chainType: ChainType
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = transaction.amountDecimal,
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = getTokenSymbol(transaction, chainType),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            TransactionStatusChip(status = transaction.status)
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Divider()
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Total:",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-
-                Text(
-                    text = "${transaction.totalDecimal} ${getTokenSymbol(transaction, chainType)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun AddressesSection(
-    transaction: SendTransaction,
-    chainType: ChainType
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            AddressRow(
-                label = "From",
-                address = transaction.fromAddress,
-                chainType = chainType,
-                isSender = true
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowDownward,
-                    contentDescription = "To",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            AddressRow(
-                label = "To",
-                address = transaction.toAddress,
-                chainType = chainType,
-                isSender = false
-            )
-        }
-    }
-}
-
-@Composable
-fun AddressRow(
-    label: String,
-    address: String,
-    chainType: ChainType,
-    isSender: Boolean
-) {
-    val context = LocalContext.current
-
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (isSender) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.secondaryContainer
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = when {
-                        isSender -> Icons.Default.AccountBalanceWallet
-                        chainType == ChainType.SOLANA -> Icons.Default.Star
-                        chainType == ChainType.BITCOIN -> Icons.Default.CurrencyBitcoin
-                        else -> Icons.Default.Person
-                    },
-                    contentDescription = label,
-                    tint = if (isSender) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (address.length > 16) {
-                        when (chainType) {
-                            ChainType.SOLANA -> "${address.take(8)}...${address.takeLast(8)}"
-                            else -> "${address.take(8)}...${address.takeLast(8)}"
-                        }
-                    } else {
-                        address
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-
-                Text(
-                    text = address,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            IconButton(
-                onClick = {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clip = ClipData.newPlainText("Address", address)
-                    clipboard.setPrimaryClip(clip)
-                    Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
-                }
-            ) {
-                Icon(Icons.Default.ContentCopy, "Copy")
-            }
-        }
-    }
-}
-
-@Composable
-fun FeeDetailsSection(
-    transaction: SendTransaction,
-    chainType: ChainType
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "Transaction Details",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Network Fee
-            DetailRow(
-                label = "Network Fee",
-                value = "${transaction.feeDecimal} ${getTokenSymbol(transaction, chainType)}"
-            )
-
-            when (chainType) {
-                ChainType.ETHEREUM, ChainType.ETHEREUM_SEPOLIA -> {
-                    transaction.gasPrice?.let { gasPrice ->
-                        DetailRow(
-                            label = "Gas Price",
-                            value = "$gasPrice Gwei"
-                        )
-                    }
-                    transaction.gasLimit?.let { gasLimit ->
-                        DetailRow(
-                            label = "Gas Limit",
-                            value = gasLimit
-                        )
-                    }
-                    transaction.nonce?.let { nonce ->
-                        DetailRow(
-                            label = "Nonce",
-                            value = nonce.toString()
+            // From Address (show wallet address from state)
+            when (walletType) {
+                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+                    ethereumState.value.fromAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
+                        AddressCard(
+                            label = "From",
+                            address = fromAddress,
+                            walletType = walletType
                         )
                     }
                 }
-                ChainType.SOLANA -> {
-                    transaction.metadata?.get("blockhash")?.let { blockhash ->
-                        DetailRow(
-                            label = "Blockhash",
-                            value = "${blockhash.take(8)}..."
+                WalletType.USDC -> {
+                    usdcState.value.wallet?.address?.let { fromAddress ->
+                        AddressCard(
+                            label = "From",
+                            address = fromAddress,
+                            walletType = walletType
                         )
                     }
                 }
-                ChainType.BITCOIN -> {
-                    transaction.metadata?.get("feePerByte")?.let { feePerByte ->
-                        DetailRow(
-                            label = "Fee Rate",
-                            value = "$feePerByte sat/byte"
+                WalletType.SOLANA -> {
+                    solanaState.value.walletAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
+                        AddressCard(
+                            label = "From",
+                            address = fromAddress,
+                            walletType = walletType
                         )
                     }
-                    transaction.metadata?.get("estimatedSize")?.let { size ->
-                        DetailRow(
-                            label = "Size",
-                            value = "$size bytes"
+                }
+                WalletType.BITCOIN -> {
+                    bitcoinState.value.walletAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
+                        AddressCard(
+                            label = "From",
+                            address = fromAddress,
+                            walletType = walletType
                         )
                     }
                 }
                 else -> {}
             }
 
-            // Date
-            DetailRow(
-                label = "Date",
-                value = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault())
-                    .format(Date(transaction.timestamp))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // To Address Card
+            AddressCard(
+                label = "To",
+                address = toAddress,
+                walletType = walletType
             )
-        }
-    }
-}
 
-@Composable
-fun TransactionFinalStatusSection(
-    confirmed: Boolean,
-    txHash: String?,
-    chainType: ChainType
-) {
-    val context = LocalContext.current
+            Spacer(modifier = Modifier.height(8.dp))
 
-    val (color, text, icon) = if (confirmed) {
-        Triple(Color.Green, "Confirmed on chain", Icons.Default.CheckCircle)
-    } else {
-        Triple(Color.Yellow, "Sent (pending confirmation)", Icons.Default.Schedule)
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = "Status",
-                    tint = color,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = color
-                )
+            // Fee Preview (if available)
+            when (walletType) {
+                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+                    ethereumState.value.feeEstimate?.let { fee ->
+                        FeePreviewCard(
+                            fee = fee,
+                            walletType = walletType
+                        )
+                    }
+                }
+                WalletType.BITCOIN -> {
+                    bitcoinState.value.feeEstimate?.let { fee ->
+                        FeePreviewCard(
+                            fee = fee,
+                            walletType = walletType
+                        )
+                    }
+                }
+                else -> {
+                    // Show default fee for USDC and SOLANA
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Network Fee",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "≈ 0.0005 ${getTokenSymbol(walletType)}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
             }
 
-            if (txHash != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "View on ${getExplorerName(chainType)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Success Message
+            txHash?.let { hash ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.Green.copy(alpha = 0.1f)
                     )
-                    IconButton(
-                        onClick = {
-                            val url = getExplorerUrl(chainType, txHash)
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            context.startActivity(intent)
-                        }
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
                     ) {
-                        Icon(Icons.Default.OpenInBrowser, "View")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Success",
+                                tint = Color.Green
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Transaction Sent!",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color.Green
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Hash: ${hash.take(8)}...${hash.takeLast(8)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace
+                        )
+
+                        Button(
+                            onClick = {
+                                val url = getExplorerUrl(walletType, hash)
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.OpenInBrowser, "View", modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("View on ${getExplorerName(walletType)}")
+                        }
                     }
                 }
             }
@@ -553,308 +461,13 @@ fun TransactionFinalStatusSection(
 }
 
 @Composable
-fun TransactionStepStatus(
-    currentStep: TransactionReviewViewModel.TransactionStep,
-    chainType: ChainType
-) {
-    val (icon, text, color) = when (currentStep) {
-        is TransactionReviewViewModel.TransactionStep.LOADING ->
-            Triple(null, "Loading transaction...", MaterialTheme.colorScheme.primary)
-        is TransactionReviewViewModel.TransactionStep.REVIEWING ->
-            Triple(Icons.Default.Visibility, "Review transaction details", Color.Blue)
-        is TransactionReviewViewModel.TransactionStep.APPROVING ->
-            Triple(null, "Approving transaction...", Color.Cyan)
-        is TransactionReviewViewModel.TransactionStep.SIGNING ->
-            Triple(null, "Signing transaction...", Color.Yellow)
-        is TransactionReviewViewModel.TransactionStep.BROADCASTING ->
-            Triple(null, "Broadcasting to ${chainType.displayName} network...", Color.Magenta)
-        is TransactionReviewViewModel.TransactionStep.CHECKING_STATUS ->
-            Triple(null, "Confirming on blockchain...", Color.DarkGray)
-        is TransactionReviewViewModel.TransactionStep.SUCCESS ->
-            Triple(Icons.Default.CheckCircle, "Transaction successful!", Color.Green)
-        is TransactionReviewViewModel.TransactionStep.ERROR ->
-            Triple(Icons.Default.Error, "Error: ${currentStep.message}", Color.Red)
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (icon != null) {
-                Icon(icon, "Step", tint = color, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(12.dp))
-            } else {
-                CircularProgressIndicator(
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(20.dp),
-                    color = color
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-            }
-            Text(text, style = MaterialTheme.typography.bodyMedium, color = color)
-        }
-    }
-}
-
-@Composable
-fun ApprovalBottomBar(
-    chainType: ChainType,
-    onApprove: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        tonalElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Button(
-                onClick = onApprove,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Icon(
-                    imageVector = when (chainType) {
-                        ChainType.BITCOIN -> Icons.Default.CurrencyBitcoin
-                        ChainType.SOLANA -> Icons.Default.Star
-                        else -> Icons.Default.Send
-                    },
-                    contentDescription = "Send",
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Send ${chainType.displayName} Transaction",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun DoneBottomBar(
-    chainType: ChainType,
-    txHash: String? = null,
-    onDone: () -> Unit
+fun AddressCard(
+    label: String,
+    address: String,
+    walletType: WalletType
 ) {
     val context = LocalContext.current
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        tonalElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            if (txHash != null) {
-                Button(
-                    onClick = {
-                        val url = getExplorerUrl(chainType, txHash)
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.OpenInBrowser,
-                        contentDescription = "View"
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("View on ${getExplorerName(chainType)}")
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            Button(
-                onClick = onDone,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Text("Done")
-            }
-        }
-    }
-}
-
-@Composable
-fun BroadcastResultSection(
-    broadcastResult: BroadcastResult,
-    chainType: ChainType
-) {
-    val (color, icon, title) = if (broadcastResult.success) {
-        Triple(Color.Green, Icons.Default.CheckCircle, "Transaction Broadcasted!")
-    } else {
-        Triple(Color.Red, Icons.Default.Error, "Broadcast Failed")
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = "Broadcast Result",
-                    tint = color,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = color
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            broadcastResult.hash?.let { hash ->
-                Text(
-                    text = "TX Hash: ${hash.take(16)}...",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = FontFamily.Monospace
-                )
-            }
-
-            broadcastResult.error?.let { error ->
-                Text(
-                    text = "Error: $error",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Red
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun CheckingStatusSection(
-    chainType: ChainType
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            CircularProgressIndicator(
-                strokeWidth = 2.dp,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text("Confirming on ${chainType.displayName}...")
-        }
-    }
-}
-
-// ===== HELPER FUNCTIONS =====
-
-private fun getTokenSymbol(transaction: SendTransaction, chainType: ChainType): String {
-    return when {
-        transaction.metadata?.get("token") == "USDC" -> "USDC"
-        chainType == ChainType.BITCOIN -> "BTC"
-        chainType == ChainType.SOLANA -> "SOL"
-        chainType == ChainType.ETHEREUM_SEPOLIA -> "ETH (Sepolia)"
-        chainType == ChainType.ETHEREUM -> "ETH"
-        else -> "TOK"
-    }
-}
-
-private fun getExplorerName(chainType: ChainType): String {
-    return when (chainType) {
-        ChainType.BITCOIN -> "Blockstream"
-        ChainType.ETHEREUM -> "Etherscan"
-        ChainType.ETHEREUM_SEPOLIA -> "Sepolia Etherscan"
-        ChainType.SOLANA -> "Solscan"
-        else -> "Explorer"
-    }
-}
-
-private fun getExplorerUrl(chainType: ChainType, txHash: String): String {
-    return when (chainType) {
-        ChainType.BITCOIN -> "https://blockstream.info/tx/$txHash"
-        ChainType.ETHEREUM -> "https://etherscan.io/tx/$txHash"
-        ChainType.ETHEREUM_SEPOLIA -> "https://sepolia.etherscan.io/tx/$txHash"
-        ChainType.SOLANA -> "https://solscan.io/tx/$txHash"
-        else -> "https://etherscan.io/tx/$txHash"
-    }
-}
-
-val ChainType.displayName: String
-    get() = when (this) {
-        ChainType.BITCOIN -> "Bitcoin"
-        ChainType.ETHEREUM -> "Ethereum"
-        ChainType.ETHEREUM_SEPOLIA -> "Ethereum (Sepolia)"
-        ChainType.SOLANA -> "Solana"
-        else -> "Unknown"
-    }
-
-
-@Composable
-fun DetailRow(
-    label: String,
-    value: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-@Composable
-fun NoteSection(note: String) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -864,91 +477,119 @@ fun NoteSection(note: String) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Note,
-                    contentDescription = "Note",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
                 Text(
-                    text = "Note",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
+                    text = address,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.weight(1f)
                 )
+
+                IconButton(
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("Address", address)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Icon(Icons.Default.ContentCopy, "Copy", modifier = Modifier.size(16.dp))
+                }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = note,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 }
 
 @Composable
-fun EmptyTransactionView() {
-    Column(
+fun FeePreviewCard(
+    fee: FeeEstimate,
+    walletType: WalletType
+) {
+    Card(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Icon(
-            imageVector = Icons.Default.Error,
-            contentDescription = "No Transaction",
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.error
-        )
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Network Fee",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium
+            )
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = "Transaction Not Found",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = fee.priority.name.lowercase().replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
-        Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "${fee.totalFeeDecimal} ${getTokenSymbol(walletType)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
 
-        Text(
-            text = "The transaction you're looking for doesn't exist",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
+            if (fee.estimatedTime != null) {
+                Text(
+                    text = "≈ ${fee.estimatedTime} seconds",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 
-@Composable
-fun TransactionStatusChip(status: TransactionStatus) {
-    val (text, color) = when (status) {
-        TransactionStatus.PENDING -> Pair("Pending", Color.Yellow)
-        TransactionStatus.SUCCESS -> Pair("Success", Color.Green)
-        TransactionStatus.FAILED -> Pair("Failed", Color.Red)
+// Helper functions
+private fun getTokenSymbol(walletType: WalletType): String {
+    return when (walletType) {
+        WalletType.BITCOIN -> "BTC"
+        WalletType.SOLANA -> "SOL"
+        WalletType.USDC -> "USDC"
+        WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> "ETH"
+        else -> "TOKEN"
     }
+}
 
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(color.copy(alpha = 0.1f))
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            color = color,
-            fontWeight = FontWeight.Medium
-        )
+private fun getExplorerName(walletType: WalletType): String {
+    return when (walletType) {
+        WalletType.BITCOIN -> "Blockstream"
+        WalletType.ETHEREUM -> "Etherscan"
+        WalletType.ETHEREUM_SEPOLIA -> "Etherscan"
+        WalletType.SOLANA -> "Solscan"
+        WalletType.USDC -> "Etherscan"
+        else -> "Explorer"
+    }
+}
+
+private fun getExplorerUrl(walletType: WalletType, txHash: String): String {
+    return when (walletType) {
+        WalletType.BITCOIN -> "https://blockstream.info/tx/$txHash"
+        WalletType.ETHEREUM -> "https://etherscan.io/tx/$txHash"
+        WalletType.ETHEREUM_SEPOLIA -> "https://sepolia.etherscan.io/tx/$txHash"
+        WalletType.SOLANA -> "https://solscan.io/tx/$txHash"
+        WalletType.USDC -> "https://etherscan.io/tx/$txHash"
+        else -> "https://etherscan.io/tx/$txHash"
     }
 }
 
