@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.nexuswallet.NavigationViewModel
+import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
@@ -423,10 +424,9 @@ fun EmptyTokensView() {
         )
     }
 }
-
 @Composable
 fun TransactionsSection(
-    transactions: List<Transaction>,
+    transactions: List<SendTransaction>,
     wallet: CryptoWallet,
     onViewAll: () -> Unit
 ) {
@@ -450,8 +450,10 @@ fun TransactionsSection(
                     fontWeight = FontWeight.Bold
                 )
 
-                TextButton(onClick = onViewAll) {
-                    Text("View All")
+                if (transactions.isNotEmpty()) {
+                    TextButton(onClick = onViewAll) {
+                        Text("View All")
+                    }
                 }
             }
 
@@ -460,9 +462,12 @@ fun TransactionsSection(
             if (transactions.isEmpty()) {
                 EmptyTransactionsView()
             } else {
-                transactions.take(3).forEach { transaction ->
-                    TransactionItem(transaction = transaction, wallet = wallet)
-                    if (transactions.indexOf(transaction) < 2) {
+                transactions.take(3).forEachIndexed { index, transaction ->
+                    TransactionItem(
+                        transaction = transaction,
+                        wallet = wallet
+                    )
+                    if (index < 2) {
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
                     }
                 }
@@ -472,34 +477,39 @@ fun TransactionsSection(
 }
 
 @Composable
-fun TransactionItem(transaction: Transaction, wallet: CryptoWallet) {
+fun TransactionItem(
+    transaction: SendTransaction,
+    wallet: CryptoWallet
+) {
+    val isIncoming = transaction.toAddress == wallet.address
+    val symbol = getSymbolForWallet(wallet)
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Icon
         Box(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(
-                    color = when (transaction.status) {
+                    when (transaction.status) {
                         TransactionStatus.SUCCESS -> Color.Green.copy(alpha = 0.1f)
-                        TransactionStatus.PENDING -> Color.Yellow.copy(alpha = 0.1f)
+                        TransactionStatus.PENDING -> Color(0xFFFFA500).copy(alpha = 0.1f)
                         TransactionStatus.FAILED -> Color.Red.copy(alpha = 0.1f)
                     }
                 ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = if ((transaction.value.toDoubleOrNull() ?: 0.0) > 0) {
-                    Icons.Default.ArrowDownward
-                } else {
-                    Icons.Default.ArrowUpward
-                },
-                contentDescription = "Transaction",
+                imageVector = if (isIncoming) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                contentDescription = if (isIncoming) "Received" else "Sent",
                 tint = when (transaction.status) {
                     TransactionStatus.SUCCESS -> Color.Green
-                    TransactionStatus.PENDING -> Color.Yellow
+                    TransactionStatus.PENDING -> Color(0xFFFFA500)
                     TransactionStatus.FAILED -> Color.Red
                 }
             )
@@ -507,50 +517,66 @@ fun TransactionItem(transaction: Transaction, wallet: CryptoWallet) {
 
         Spacer(modifier = Modifier.width(12.dp))
 
+        // Details
         Column(
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text = if (transaction.value.toDoubleOrNull() ?: 0.0 > 0) "Received" else "Sent",
+                text = if (isIncoming) "Received $symbol" else "Sent $symbol",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = formatDate(transaction.timestamp),
+                text = formatTimestamp(transaction.timestamp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (transaction.hash != null) {
+                Text(
+                    text = "Hash: ${transaction.hash.take(8)}...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
         }
 
+        // Amount and Status
         Column(
             horizontalAlignment = Alignment.End
         ) {
-            // Show appropriate symbol based on wallet type
-            val symbol = when (wallet) {
-                is BitcoinWallet -> "BTC"
-                is EthereumWallet -> "ETH"
-                is SolanaWallet -> "SOL"
-                is USDCWallet -> "USDC"
-                else -> "CRYPTO"
-            }
-
             Text(
-                text = "${transaction.valueDecimal} $symbol",
+                text = "${if (isIncoming) "+" else "-"}${transaction.amountDecimal} $symbol",
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = if (isIncoming) Color.Green else MaterialTheme.colorScheme.onSurface
             )
-            Text(
-                text = transaction.status.name,
-                style = MaterialTheme.typography.labelSmall,
-                color = when (transaction.status) {
-                    TransactionStatus.SUCCESS -> Color.Green
-                    TransactionStatus.PENDING -> Color.Yellow
-                    TransactionStatus.FAILED -> Color.Red
-                }
-            )
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(
+                        when (transaction.status) {
+                            TransactionStatus.SUCCESS -> Color.Green.copy(alpha = 0.1f)
+                            TransactionStatus.PENDING -> Color(0xFFFFA500).copy(alpha = 0.1f)
+                            TransactionStatus.FAILED -> Color.Red.copy(alpha = 0.1f)
+                        }
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = transaction.status.name,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = when (transaction.status) {
+                        TransactionStatus.SUCCESS -> Color.Green
+                        TransactionStatus.PENDING -> Color(0xFFFFA500)
+                        TransactionStatus.FAILED -> Color.Red
+                    }
+                )
+            }
         }
     }
 }
+
 
 @Composable
 fun WalletHeaderCard(wallet: CryptoWallet, balance: WalletBalance?) {
@@ -1134,5 +1160,30 @@ private fun getNetworkDisplay(network: EthereumNetwork): String {
         EthereumNetwork.SEPOLIA -> "(Sepolia)"
         EthereumNetwork.MAINNET -> ""
         else -> "(${network.name})"
+    }
+}
+
+private fun getSymbolForWallet(wallet: CryptoWallet): String {
+    return when (wallet) {
+        is BitcoinWallet -> "BTC"
+        is EthereumWallet -> "ETH"
+        is SolanaWallet -> "SOL"
+        is USDCWallet -> "USDC"
+        else -> ""
+    }
+}
+
+private fun formatTimestamp(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+
+    return when {
+        diff < 60_000 -> "Just now"
+        diff < 3_600_000 -> "${diff / 60_000} min ago"
+        diff < 86_400_000 -> "${diff / 3_600_000} hr ago"
+        else -> {
+            val date = Date(timestamp)
+            SimpleDateFormat("MMM d", Locale.getDefault()).format(date)
+        }
     }
 }
