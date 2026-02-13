@@ -21,13 +21,26 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.coin.bitcoin.BroadcastBitcoinTransactionUseCase
+import com.example.nexuswallet.feature.coin.bitcoin.SignBitcoinTransactionUseCase
+import com.example.nexuswallet.feature.coin.solana.BroadcastSolanaTransactionUseCase
+import com.example.nexuswallet.feature.coin.solana.SignSolanaTransactionUseCase
+import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
 
 @HiltViewModel
 class TransactionReviewViewModel @Inject constructor(
     private val getTransactionUseCase: GetTransactionUseCase,
+    // Ethereum
     private val signEthereumTransactionUseCase: SignEthereumTransactionUseCase,
     private val broadcastTransactionUseCase: BroadcastTransactionUseCase,
-    private val ethereumBlockchainRepository: EthereumBlockchainRepository
+    private val ethereumBlockchainRepository: EthereumBlockchainRepository,
+    // Solana
+    private val signSolanaTransactionUseCase: SignSolanaTransactionUseCase,
+    private val broadcastSolanaTransactionUseCase: BroadcastSolanaTransactionUseCase,
+    // Bitcoin
+    private val signBitcoinTransactionUseCase: SignBitcoinTransactionUseCase,
+    private val broadcastBitcoinTransactionUseCase: BroadcastBitcoinTransactionUseCase,
 ) : ViewModel() {
 
     data class ReviewUiState(
@@ -37,7 +50,8 @@ class TransactionReviewViewModel @Inject constructor(
         val currentStep: TransactionStep = TransactionStep.LOADING,
         val broadcastResult: BroadcastResult? = null,
         val isApproved: Boolean = false,
-        val transactionConfirmed: Boolean = false
+        val transactionConfirmed: Boolean = false,
+        val chainType: ChainType = ChainType.ETHEREUM
     )
 
     private val _uiState = MutableStateFlow(ReviewUiState())
@@ -45,17 +59,17 @@ class TransactionReviewViewModel @Inject constructor(
 
     sealed class TransactionStep {
         data object LOADING : TransactionStep()
-        data object REVIEWING : TransactionStep()      // User reviewing
-        data object APPROVING : TransactionStep()      // Waiting for user approval
-        data object SIGNING : TransactionStep()        // Signing in progress
-        data object BROADCASTING : TransactionStep()   // Broadcasting in progress
-        data object SUCCESS : TransactionStep()        // Transaction successful
+        data object REVIEWING : TransactionStep()
+        data object APPROVING : TransactionStep()
+        data object SIGNING : TransactionStep()
+        data object BROADCASTING : TransactionStep()
+        data object SUCCESS : TransactionStep()
         data class ERROR(val message: String) : TransactionStep()
         data object CHECKING_STATUS : TransactionStep()
     }
 
     sealed class ReviewEvent {
-        object ApproveTransaction : ReviewEvent()  // User approves the transaction
+        object ApproveTransaction : ReviewEvent()
         object ClearError : ReviewEvent()
     }
 
@@ -76,6 +90,7 @@ class TransactionReviewViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             transaction = transactionResult.data,
+                            chainType = transactionResult.data.chain,
                             isLoading = false,
                             currentStep = TransactionStep.REVIEWING
                         )
@@ -90,9 +105,7 @@ class TransactionReviewViewModel @Inject constructor(
                         )
                     }
                 }
-                Result.Loading -> {
-                    // Already loading
-                }
+                Result.Loading -> {}
             }
         }
     }
@@ -108,22 +121,37 @@ class TransactionReviewViewModel @Inject constructor(
             )
         }
 
-        autoSignAndBroadcast(transaction.id)
+        when (transaction.chain) {
+            ChainType.ETHEREUM, ChainType.ETHEREUM_SEPOLIA -> {
+                autoSignAndBroadcastEthereum(transaction.id)
+            }
+            ChainType.SOLANA -> {
+                autoSignAndBroadcastSolana(transaction.id)
+            }
+            ChainType.BITCOIN -> {
+                autoSignAndBroadcastBitcoin(transaction.id)
+            }
+            else -> {
+                _uiState.update {
+                    it.copy(
+                        error = "Unsupported chain: ${transaction.chain}",
+                        currentStep = TransactionStep.ERROR("Unsupported chain")
+                    )
+                }
+            }
+        }
     }
 
-    private suspend fun autoSignAndBroadcast(transactionId: String) {
-        Log.d("TransactionReview", " START autoSignAndBroadcast for: $transactionId")
+    // ===== ETHEREUM =====
+    private suspend fun autoSignAndBroadcastEthereum(transactionId: String) {
+        Log.d("TransactionReview", "START Ethereum autoSignAndBroadcast for: $transactionId")
 
-        // Step 1: Sign
         _uiState.update { it.copy(currentStep = TransactionStep.SIGNING) }
-        Log.d("TransactionReview", "Step 1: Signing...")
 
         val signResult = signEthereumTransactionUseCase(transactionId)
-        Log.d("TransactionReview", "Sign result: ${if (signResult is Result.Success) "SUCCESS" else "FAILED"}")
 
         when (signResult) {
             is Result.Success -> {
-                // Get updated transaction
                 val updatedTransactionResult = getTransactionUseCase(transactionId)
 
                 when (updatedTransactionResult) {
@@ -135,50 +163,34 @@ class TransactionReviewViewModel @Inject constructor(
                             )
                         }
 
-                        Log.d("TransactionReview", "Step 2: Broadcasting...")
-                        Log.d("TransactionReview", "Transaction signed hex: ${updatedTransactionResult.data.signedHex?.take(50)}...")
-                        Log.d("TransactionReview", "Transaction hash: ${updatedTransactionResult.data.hash}")
-
-                        // Step 2: Broadcast
                         val broadcastResult = broadcastTransactionUseCase(transactionId)
-                        Log.d("TransactionReview", "Broadcast result: $broadcastResult")
 
                         when (broadcastResult) {
                             is Result.Success -> {
                                 val result = broadcastResult.data
-                                Log.d("TransactionReview", " Broadcast successful! Hash: ${result.hash}")
-
                                 _uiState.update {
                                     it.copy(
                                         broadcastResult = result,
                                         currentStep = TransactionStep.CHECKING_STATUS
                                     )
                                 }
-
-                                // Step 3: Check transaction status
-                                checkTransactionStatus(result.hash, transactionId)
+                                checkEthereumTransactionStatus(result.hash, transactionId)
                             }
                             is Result.Error -> {
-                                val error = broadcastResult.message
-                                Log.e("TransactionReview", " Broadcast failed: $error")
                                 _uiState.update {
                                     it.copy(
-                                        error = "Broadcast failed: $error",
+                                        error = "Broadcast failed: ${broadcastResult.message}",
                                         currentStep = TransactionStep.ERROR("Broadcast failed")
                                     )
                                 }
                             }
-                            Result.Loading -> {
-                                // Should not happen
-                            }
+                            Result.Loading -> {}
                         }
                     }
                     is Result.Error -> {
-                        val error = updatedTransactionResult.message
-                        Log.e("TransactionReview", " Failed to get updated transaction: $error")
                         _uiState.update {
                             it.copy(
-                                error = "Failed to get updated transaction: $error",
+                                error = "Failed to get updated transaction: ${updatedTransactionResult.message}",
                                 currentStep = TransactionStep.ERROR("Failed to update transaction")
                             )
                         }
@@ -187,25 +199,20 @@ class TransactionReviewViewModel @Inject constructor(
                 }
             }
             is Result.Error -> {
-                val error = signResult.message
-                Log.e("TransactionReview", " Signing failed: $error")
                 _uiState.update {
                     it.copy(
-                        error = "Signing failed: $error",
+                        error = "Signing failed: ${signResult.message}",
                         currentStep = TransactionStep.ERROR("Signing failed")
                     )
                 }
             }
-            Result.Loading -> {
-                // Should not happen
-            }
+            Result.Loading -> {}
         }
     }
 
-    private fun checkTransactionStatus(txHash: String?, transactionId: String) {
+    private fun checkEthereumTransactionStatus(txHash: String?, transactionId: String) {
         viewModelScope.launch {
             if (txHash == null) {
-                Log.e("TransactionReview", " No transaction hash available")
                 _uiState.update {
                     it.copy(
                         currentStep = TransactionStep.SUCCESS,
@@ -215,9 +222,6 @@ class TransactionReviewViewModel @Inject constructor(
                 return@launch
             }
 
-            Log.d("TransactionReview", " Checking transaction status for: $txHash")
-
-            // Get network from transaction
             val transactionResult = getTransactionUseCase(transactionId)
             val network = when (transactionResult) {
                 is Result.Success -> when (transactionResult.data.chain) {
@@ -227,22 +231,14 @@ class TransactionReviewViewModel @Inject constructor(
                 else -> EthereumNetwork.SEPOLIA
             }
 
-            // Try checking status 5 times with 3 second delays
             for (attempt in 1..5) {
-                Log.d("TransactionReview", "Status check attempt $attempt/5")
-
                 delay(3000)
-
                 val statusResult = ethereumBlockchainRepository.checkTransactionStatus(txHash, network)
 
                 when (statusResult) {
                     is Result.Success -> {
-                        val status = statusResult.data
-                        Log.d("TransactionReview", "Transaction status: $status")
-
-                        when (status) {
+                        when (statusResult.data) {
                             TransactionStatus.SUCCESS -> {
-                                Log.d("TransactionReview", " Transaction confirmed on chain!")
                                 _uiState.update {
                                     it.copy(
                                         currentStep = TransactionStep.SUCCESS,
@@ -252,7 +248,6 @@ class TransactionReviewViewModel @Inject constructor(
                                 return@launch
                             }
                             TransactionStatus.FAILED -> {
-                                Log.e("TransactionReview", " Transaction failed on chain")
                                 _uiState.update {
                                     it.copy(
                                         currentStep = TransactionStep.ERROR("Transaction failed"),
@@ -261,26 +256,155 @@ class TransactionReviewViewModel @Inject constructor(
                                 }
                                 return@launch
                             }
-                            else -> {
-                                Log.d("TransactionReview", " Transaction still pending...")
-                            }
+                            else -> {}
                         }
                     }
-                    is Result.Error -> {
-                        Log.e("TransactionReview", "Error checking status: ${statusResult.message}")
-                    }
-                    Result.Loading -> {}
+                    else -> {}
                 }
             }
 
-            // If we get here, still pending after all attempts
-            Log.d("TransactionReview", "⚠ Transaction still pending after 15 seconds")
             _uiState.update {
                 it.copy(
                     currentStep = TransactionStep.SUCCESS,
                     transactionConfirmed = false
                 )
             }
+        }
+    }
+
+    // ===== SOLANA =====
+    private suspend fun autoSignAndBroadcastSolana(transactionId: String) {
+        Log.d("TransactionReview", "START Solana autoSignAndBroadcast for: $transactionId")
+
+        _uiState.update { it.copy(currentStep = TransactionStep.SIGNING) }
+
+        val signResult = signSolanaTransactionUseCase(transactionId)
+
+        when (signResult) {
+            is Result.Success -> {
+                val updatedTransactionResult = getTransactionUseCase(transactionId)
+
+                when (updatedTransactionResult) {
+                    is Result.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                transaction = updatedTransactionResult.data,
+                                currentStep = TransactionStep.BROADCASTING
+                            )
+                        }
+
+                        val broadcastResult = broadcastSolanaTransactionUseCase(transactionId)
+
+                        when (broadcastResult) {
+                            is Result.Success -> {
+                                val result = broadcastResult.data
+                                _uiState.update {
+                                    it.copy(
+                                        broadcastResult = result,
+                                        currentStep = TransactionStep.SUCCESS,
+                                        transactionConfirmed = result.success
+                                    )
+                                }
+                            }
+                            is Result.Error -> {
+                                _uiState.update {
+                                    it.copy(
+                                        error = "Broadcast failed: ${broadcastResult.message}",
+                                        currentStep = TransactionStep.ERROR("Broadcast failed")
+                                    )
+                                }
+                            }
+                            Result.Loading -> {}
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                error = "Failed to get updated transaction: ${updatedTransactionResult.message}",
+                                currentStep = TransactionStep.ERROR("Failed to update transaction")
+                            )
+                        }
+                    }
+                    Result.Loading -> {}
+                }
+            }
+            is Result.Error -> {
+                _uiState.update {
+                    it.copy(
+                        error = "Signing failed: ${signResult.message}",
+                        currentStep = TransactionStep.ERROR("Signing failed")
+                    )
+                }
+            }
+            Result.Loading -> {}
+        }
+    }
+
+    // ===== BITCOIN =====
+    private suspend fun autoSignAndBroadcastBitcoin(transactionId: String) {
+        Log.d("TransactionReview", "START Bitcoin autoSignAndBroadcast for: $transactionId")
+
+        _uiState.update { it.copy(currentStep = TransactionStep.SIGNING) }
+
+        val signResult = signBitcoinTransactionUseCase(transactionId)
+
+        when (signResult) {
+            is Result.Success -> {
+                val updatedTransactionResult = getTransactionUseCase(transactionId)
+
+                when (updatedTransactionResult) {
+                    is Result.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                transaction = updatedTransactionResult.data,
+                                currentStep = TransactionStep.BROADCASTING
+                            )
+                        }
+
+                        val broadcastResult = broadcastBitcoinTransactionUseCase(transactionId)
+
+                        when (broadcastResult) {
+                            is Result.Success -> {
+                                val result = broadcastResult.data
+                                _uiState.update {
+                                    it.copy(
+                                        broadcastResult = result,
+                                        currentStep = TransactionStep.SUCCESS,
+                                        transactionConfirmed = result.success
+                                    )
+                                }
+                            }
+                            is Result.Error -> {
+                                _uiState.update {
+                                    it.copy(
+                                        error = "Broadcast failed: ${broadcastResult.message}",
+                                        currentStep = TransactionStep.ERROR("Broadcast failed")
+                                    )
+                                }
+                            }
+                            Result.Loading -> {}
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                error = "Failed to get updated transaction: ${updatedTransactionResult.message}",
+                                currentStep = TransactionStep.ERROR("Failed to update transaction")
+                            )
+                        }
+                    }
+                    Result.Loading -> {}
+                }
+            }
+            is Result.Error -> {
+                _uiState.update {
+                    it.copy(
+                        error = "Signing failed: ${signResult.message}",
+                        currentStep = TransactionStep.ERROR("Signing failed")
+                    )
+                }
+            }
+            Result.Loading -> {}
         }
     }
 
