@@ -22,11 +22,14 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.BroadcastBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.SignBitcoinTransactionUseCase
+import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
 import com.example.nexuswallet.feature.coin.solana.BroadcastSolanaTransactionUseCase
 import com.example.nexuswallet.feature.coin.solana.SignSolanaTransactionUseCase
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
 
 @HiltViewModel
 class TransactionReviewViewModel @Inject constructor(
@@ -43,15 +46,20 @@ class TransactionReviewViewModel @Inject constructor(
     private val broadcastBitcoinTransactionUseCase: BroadcastBitcoinTransactionUseCase,
 ) : ViewModel() {
 
+    sealed class TransactionType {
+        data class Ethereum(val transaction: EthereumTransaction) : TransactionType()
+        data class Bitcoin(val transaction: BitcoinTransaction) : TransactionType()
+        data class Solana(val transaction: SolanaTransaction) : TransactionType()
+    }
+
     data class ReviewUiState(
-        val transaction: SendTransaction? = null,
+        val transaction: TransactionType? = null,
         val isLoading: Boolean = false,
         val error: String? = null,
         val currentStep: TransactionStep = TransactionStep.LOADING,
         val broadcastResult: BroadcastResult? = null,
         val isApproved: Boolean = false,
-        val transactionConfirmed: Boolean = false,
-        val chainType: ChainType = ChainType.ETHEREUM
+        val transactionConfirmed: Boolean = false
     )
 
     private val _uiState = MutableStateFlow(ReviewUiState())
@@ -73,43 +81,6 @@ class TransactionReviewViewModel @Inject constructor(
         object ClearError : ReviewEvent()
     }
 
-    fun initialize(transactionId: String) {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    currentStep = TransactionStep.LOADING,
-                    isApproved = false
-                )
-            }
-
-            val transactionResult = getTransactionUseCase(transactionId)
-
-            when (transactionResult) {
-                is Result.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            transaction = transactionResult.data,
-                            chainType = transactionResult.data.chain,
-                            isLoading = false,
-                            currentStep = TransactionStep.REVIEWING
-                        )
-                    }
-                }
-                is Result.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            error = "Failed to load transaction: ${transactionResult.message}",
-                            isLoading = false,
-                            currentStep = TransactionStep.ERROR("Failed to load transaction")
-                        )
-                    }
-                }
-                Result.Loading -> {}
-            }
-        }
-    }
-
     private suspend fun approveTransaction() {
         val transaction = _uiState.value.transaction ?: return
 
@@ -121,23 +92,15 @@ class TransactionReviewViewModel @Inject constructor(
             )
         }
 
-        when (transaction.chain) {
-            ChainType.ETHEREUM, ChainType.ETHEREUM_SEPOLIA -> {
-                autoSignAndBroadcastEthereum(transaction.id)
+        when (transaction) {
+            is TransactionType.Ethereum -> {
+                autoSignAndBroadcastEthereum(transaction.transaction.id)
             }
-            ChainType.SOLANA -> {
-                autoSignAndBroadcastSolana(transaction.id)
+            is TransactionType.Solana -> {
+                autoSignAndBroadcastSolana(transaction.transaction.id)
             }
-            ChainType.BITCOIN -> {
-                autoSignAndBroadcastBitcoin(transaction.id)
-            }
-            else -> {
-                _uiState.update {
-                    it.copy(
-                        error = "Unsupported chain: ${transaction.chain}",
-                        currentStep = TransactionStep.ERROR("Unsupported chain")
-                    )
-                }
+            is TransactionType.Bitcoin -> {
+                autoSignAndBroadcastBitcoin(transaction.transaction.id)
             }
         }
     }
@@ -156,35 +119,38 @@ class TransactionReviewViewModel @Inject constructor(
 
                 when (updatedTransactionResult) {
                     is Result.Success -> {
-                        _uiState.update {
-                            it.copy(
-                                transaction = updatedTransactionResult.data,
-                                currentStep = TransactionStep.BROADCASTING
-                            )
-                        }
-
-                        val broadcastResult = broadcastTransactionUseCase(transactionId)
-
-                        when (broadcastResult) {
-                            is Result.Success -> {
-                                val result = broadcastResult.data
-                                _uiState.update {
-                                    it.copy(
-                                        broadcastResult = result,
-                                        currentStep = TransactionStep.CHECKING_STATUS
-                                    )
-                                }
-                                checkEthereumTransactionStatus(result.hash, transactionId)
+                        val updatedTransaction = updatedTransactionResult.data as? EthereumTransaction
+                        if (updatedTransaction != null) {
+                            _uiState.update {
+                                it.copy(
+                                    transaction = TransactionType.Ethereum(updatedTransaction),
+                                    currentStep = TransactionStep.BROADCASTING
+                                )
                             }
-                            is Result.Error -> {
-                                _uiState.update {
-                                    it.copy(
-                                        error = "Broadcast failed: ${broadcastResult.message}",
-                                        currentStep = TransactionStep.ERROR("Broadcast failed")
-                                    )
+
+                            val broadcastResult = broadcastTransactionUseCase(transactionId)
+
+                            when (broadcastResult) {
+                                is Result.Success -> {
+                                    val result = broadcastResult.data
+                                    _uiState.update {
+                                        it.copy(
+                                            broadcastResult = result,
+                                            currentStep = TransactionStep.CHECKING_STATUS
+                                        )
+                                    }
+                                    checkEthereumTransactionStatus(result.hash, updatedTransaction)
                                 }
+                                is Result.Error -> {
+                                    _uiState.update {
+                                        it.copy(
+                                            error = "Broadcast failed: ${broadcastResult.message}",
+                                            currentStep = TransactionStep.ERROR("Broadcast failed")
+                                        )
+                                    }
+                                }
+                                Result.Loading -> {}
                             }
-                            Result.Loading -> {}
                         }
                     }
                     is Result.Error -> {
@@ -210,7 +176,7 @@ class TransactionReviewViewModel @Inject constructor(
         }
     }
 
-    private fun checkEthereumTransactionStatus(txHash: String?, transactionId: String) {
+    private fun checkEthereumTransactionStatus(txHash: String?, transaction: EthereumTransaction) {
         viewModelScope.launch {
             if (txHash == null) {
                 _uiState.update {
@@ -222,13 +188,9 @@ class TransactionReviewViewModel @Inject constructor(
                 return@launch
             }
 
-            val transactionResult = getTransactionUseCase(transactionId)
-            val network = when (transactionResult) {
-                is Result.Success -> when (transactionResult.data.chain) {
-                    ChainType.ETHEREUM_SEPOLIA -> EthereumNetwork.SEPOLIA
-                    else -> EthereumNetwork.MAINNET
-                }
-                else -> EthereumNetwork.SEPOLIA
+            val network = when (transaction.network) {
+                "sepolia" -> EthereumNetwork.SEPOLIA
+                else -> EthereumNetwork.MAINNET
             }
 
             for (attempt in 1..5) {
@@ -286,35 +248,38 @@ class TransactionReviewViewModel @Inject constructor(
 
                 when (updatedTransactionResult) {
                     is Result.Success -> {
-                        _uiState.update {
-                            it.copy(
-                                transaction = updatedTransactionResult.data,
-                                currentStep = TransactionStep.BROADCASTING
-                            )
-                        }
-
-                        val broadcastResult = broadcastSolanaTransactionUseCase(transactionId)
-
-                        when (broadcastResult) {
-                            is Result.Success -> {
-                                val result = broadcastResult.data
-                                _uiState.update {
-                                    it.copy(
-                                        broadcastResult = result,
-                                        currentStep = TransactionStep.SUCCESS,
-                                        transactionConfirmed = result.success
-                                    )
-                                }
+                        val updatedTransaction = updatedTransactionResult.data as? SolanaTransaction
+                        if (updatedTransaction != null) {
+                            _uiState.update {
+                                it.copy(
+                                    transaction = TransactionType.Solana(updatedTransaction),
+                                    currentStep = TransactionStep.BROADCASTING
+                                )
                             }
-                            is Result.Error -> {
-                                _uiState.update {
-                                    it.copy(
-                                        error = "Broadcast failed: ${broadcastResult.message}",
-                                        currentStep = TransactionStep.ERROR("Broadcast failed")
-                                    )
+
+                            val broadcastResult = broadcastSolanaTransactionUseCase(transactionId)
+
+                            when (broadcastResult) {
+                                is Result.Success -> {
+                                    val result = broadcastResult.data
+                                    _uiState.update {
+                                        it.copy(
+                                            broadcastResult = result,
+                                            currentStep = TransactionStep.SUCCESS,
+                                            transactionConfirmed = result.success
+                                        )
+                                    }
                                 }
+                                is Result.Error -> {
+                                    _uiState.update {
+                                        it.copy(
+                                            error = "Broadcast failed: ${broadcastResult.message}",
+                                            currentStep = TransactionStep.ERROR("Broadcast failed")
+                                        )
+                                    }
+                                }
+                                Result.Loading -> {}
                             }
-                            Result.Loading -> {}
                         }
                     }
                     is Result.Error -> {
@@ -354,35 +319,38 @@ class TransactionReviewViewModel @Inject constructor(
 
                 when (updatedTransactionResult) {
                     is Result.Success -> {
-                        _uiState.update {
-                            it.copy(
-                                transaction = updatedTransactionResult.data,
-                                currentStep = TransactionStep.BROADCASTING
-                            )
-                        }
-
-                        val broadcastResult = broadcastBitcoinTransactionUseCase(transactionId)
-
-                        when (broadcastResult) {
-                            is Result.Success -> {
-                                val result = broadcastResult.data
-                                _uiState.update {
-                                    it.copy(
-                                        broadcastResult = result,
-                                        currentStep = TransactionStep.SUCCESS,
-                                        transactionConfirmed = result.success
-                                    )
-                                }
+                        val updatedTransaction = updatedTransactionResult.data as? BitcoinTransaction
+                        if (updatedTransaction != null) {
+                            _uiState.update {
+                                it.copy(
+                                    transaction = TransactionType.Bitcoin(updatedTransaction),
+                                    currentStep = TransactionStep.BROADCASTING
+                                )
                             }
-                            is Result.Error -> {
-                                _uiState.update {
-                                    it.copy(
-                                        error = "Broadcast failed: ${broadcastResult.message}",
-                                        currentStep = TransactionStep.ERROR("Broadcast failed")
-                                    )
+
+                            val broadcastResult = broadcastBitcoinTransactionUseCase(transactionId)
+
+                            when (broadcastResult) {
+                                is Result.Success -> {
+                                    val result = broadcastResult.data
+                                    _uiState.update {
+                                        it.copy(
+                                            broadcastResult = result,
+                                            currentStep = TransactionStep.SUCCESS,
+                                            transactionConfirmed = result.success
+                                        )
+                                    }
                                 }
+                                is Result.Error -> {
+                                    _uiState.update {
+                                        it.copy(
+                                            error = "Broadcast failed: ${broadcastResult.message}",
+                                            currentStep = TransactionStep.ERROR("Broadcast failed")
+                                        )
+                                    }
+                                }
+                                Result.Loading -> {}
                             }
-                            Result.Loading -> {}
                         }
                     }
                     is Result.Error -> {
