@@ -30,12 +30,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
 
-
 @Singleton
 class CreateBitcoinTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-    private val transactionLocalDataSource: TransactionLocalDataSource
+    private val bitcoinTransactionRepository: BitcoinTransactionRepository
 ) {
     suspend operator fun invoke(
         walletId: String,
@@ -43,7 +42,7 @@ class CreateBitcoinTransactionUseCase @Inject constructor(
         amount: BigDecimal,
         feeLevel: FeeLevel = FeeLevel.NORMAL,
         note: String? = null
-    ): Result<SendTransaction> {
+    ): Result<BitcoinTransaction> {
         return try {
             val wallet = walletRepository.getWallet(walletId) as? BitcoinWallet
                 ?: return Result.Error("Bitcoin wallet not found", IllegalArgumentException("Wallet not found"))
@@ -60,7 +59,7 @@ class CreateBitcoinTransactionUseCase @Inject constructor(
         amount: BigDecimal,
         feeLevel: FeeLevel,
         note: String?
-    ): Result<SendTransaction> = withContext(Dispatchers.IO) {
+    ): Result<BitcoinTransaction> = withContext(Dispatchers.IO) {
         try {
             Log.d("CreateBitcoinTxUC", " createBitcoinTransaction START")
             Log.d("CreateBitcoinTxUC", "Wallet: ${wallet.address}")
@@ -89,31 +88,27 @@ class CreateBitcoinTransactionUseCase @Inject constructor(
                     .toPlainString()
             }
 
-            val transaction = SendTransaction(
+            val transaction = BitcoinTransaction(
                 id = "btc_tx_${System.currentTimeMillis()}",
                 walletId = wallet.id,
-                walletType = WalletType.BITCOIN,
                 fromAddress = wallet.address,
                 toAddress = toAddress,
-                amount = satoshis.toString(),
-                amountDecimal = amount.toPlainString(),
-                fee = fee.toString(),
-                feeDecimal = totalFeeDecimal,
-                total = (satoshis + fee).toString(),
-                totalDecimal = (amount + BigDecimal(totalFeeDecimal)).toPlainString(),
-                chain = ChainType.BITCOIN,
+                amountSatoshis = satoshis,
+                amountBtc = amount,
+                feeSatoshis = fee,
+                feeBtc = BigDecimal(totalFeeDecimal),
+                feePerByte = feePerByte,
+                estimatedSize = estimatedSize,
+                signedHex = null,
+                txHash = null,
                 status = TransactionStatus.PENDING,
                 note = note,
                 timestamp = System.currentTimeMillis(),
                 feeLevel = feeLevel,
-                metadata = mapOf(
-                    "estimatedSize" to estimatedSize.toString(),
-                    "network" to wallet.network.name,
-                    "feePerByte" to feePerByte.toString()
-                )
+                network = wallet.network.name
             )
 
-            transactionLocalDataSource.saveSendTransaction(transaction)
+            bitcoinTransactionRepository.saveTransaction(transaction)
             Log.d("CreateBitcoinTxUC", " Saved LOCAL transaction")
             Result.Success(transaction)
 
@@ -123,22 +118,17 @@ class CreateBitcoinTransactionUseCase @Inject constructor(
         }
     }
 }
-
 @Singleton
 class SignBitcoinTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val keyManager: KeyManager,
-    private val transactionLocalDataSource: TransactionLocalDataSource
+    private val bitcoinTransactionRepository: BitcoinTransactionRepository
 ) {
-    suspend operator fun invoke(transactionId: String): Result<SignedTransaction> = withContext(Dispatchers.IO) {
+    suspend operator fun invoke(transactionId: String): Result<BitcoinTransaction> = withContext(Dispatchers.IO) {
         try {
-            val transaction = transactionLocalDataSource.getSendTransaction(transactionId)
+            val transaction = bitcoinTransactionRepository.getTransaction(transactionId)
                 ?: return@withContext Result.Error("Transaction not found", IllegalArgumentException("Transaction not found"))
-
-            if (transaction.walletType != WalletType.BITCOIN) {
-                return@withContext Result.Error("Only Bitcoin signing supported", IllegalArgumentException("Wrong wallet type"))
-            }
 
             val wallet = walletRepository.getWallet(transaction.walletId) as? BitcoinWallet
                 ?: return@withContext Result.Error("Bitcoin wallet not found", IllegalArgumentException("Wallet not found"))
@@ -176,7 +166,7 @@ class SignBitcoinTransactionUseCase @Inject constructor(
                 return@withContext Result.Error("Private key doesn't match wallet", IllegalStateException("Address mismatch"))
             }
 
-            val satoshis = transaction.amount.toLongOrNull() ?: 0L
+            val satoshis = transaction.amountSatoshis
             val toAddress = transaction.toAddress
 
             val signResult = bitcoinBlockchainRepository.createAndSignTransaction(
@@ -198,25 +188,15 @@ class SignBitcoinTransactionUseCase @Inject constructor(
             val txHash = signedTx.txId.toString()
             val signedHex = Utils.HEX.encode(signedTx.bitcoinSerialize())
 
-            val signedTransaction = SignedTransaction(
-                rawHex = signedHex,
-                hash = txHash,
-                chain = transaction.chain
-            )
-
             val updatedTransaction = transaction.copy(
                 status = TransactionStatus.PENDING,
-                hash = txHash,
-                signedHex = signedHex,
-                metadata = transaction.metadata + mapOf(
-                    "inputCount" to signedTx.inputs.size.toString(),
-                    "outputCount" to signedTx.outputs.size.toString(),
-                    "size" to signedTx.bitcoinSerialize().size.toString()
-                )
+                txHash = txHash,
+                signedHex = signedHex
             )
-            transactionLocalDataSource.saveSendTransaction(updatedTransaction)
 
-            Result.Success(signedTransaction)
+            bitcoinTransactionRepository.updateTransaction(updatedTransaction)
+
+            Result.Success(updatedTransaction)
 
         } catch (e: Exception) {
             Log.e("SignBitcoinTxUC", " Signing failed: ${e.message}", e)
@@ -224,27 +204,16 @@ class SignBitcoinTransactionUseCase @Inject constructor(
         }
     }
 }
-
 @Singleton
 class BroadcastBitcoinTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-    private val transactionLocalDataSource: TransactionLocalDataSource
+    private val bitcoinTransactionRepository: BitcoinTransactionRepository
 ) {
     suspend operator fun invoke(transactionId: String): Result<BroadcastResult> = withContext(Dispatchers.IO) {
         try {
-            val transaction = transactionLocalDataSource.getSendTransaction(transactionId)
+            val transaction = bitcoinTransactionRepository.getTransaction(transactionId)
                 ?: return@withContext Result.Error("Transaction not found", IllegalArgumentException("Transaction not found"))
-
-            if (transaction.chain != ChainType.BITCOIN) {
-                return@withContext Result.Success(
-                    BroadcastResult(
-                        success = false,
-                        error = "Chain ${transaction.chain} not supported",
-                        chain = transaction.chain
-                    )
-                )
-            }
 
             val signedHex = transaction.signedHex
                 ?: return@withContext Result.Error("Transaction not signed", IllegalStateException("Not signed"))
@@ -263,14 +232,14 @@ class BroadcastBitcoinTransactionUseCase @Inject constructor(
                     val updatedTransaction = if (result.success) {
                         transaction.copy(
                             status = TransactionStatus.SUCCESS,
-                            hash = result.hash ?: transaction.hash
+                            txHash = result.hash ?: transaction.txHash
                         )
                     } else {
                         transaction.copy(
                             status = TransactionStatus.FAILED
                         )
                     }
-                    transactionLocalDataSource.saveSendTransaction(updatedTransaction)
+                    bitcoinTransactionRepository.updateTransaction(updatedTransaction)
                     Result.Success(result)
                 }
                 is Result.Error -> Result.Error(broadcastResult.message, broadcastResult.throwable)
