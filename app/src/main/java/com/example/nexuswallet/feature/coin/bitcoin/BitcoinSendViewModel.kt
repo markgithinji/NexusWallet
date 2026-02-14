@@ -16,7 +16,6 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
-
 @HiltViewModel
 class BitcoinSendViewModel @Inject constructor(
     private val createBitcoinTransactionUseCase: CreateBitcoinTransactionUseCase,
@@ -31,6 +30,26 @@ class BitcoinSendViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(BitcoinSendState())
     val state: StateFlow<BitcoinSendState> = _state
+
+    data class BitcoinSendState(
+        val wallet: BitcoinWallet? = null,
+        val walletAddress: String = "",
+        val balance: BigDecimal = BigDecimal.ZERO,
+        val balanceFormatted: String = "0 BTC",
+        val toAddress: String = "",
+        val isAddressValid: Boolean = false,
+        val addressError: String? = null,
+        val amount: String = "",
+        val amountValue: BigDecimal = BigDecimal.ZERO,
+        val network: BitcoinNetwork = BitcoinNetwork.TESTNET,
+        val feeLevel: FeeLevel = FeeLevel.NORMAL,
+        val feeEstimate: FeeEstimate? = null,
+        val isLoading: Boolean = false,
+        val step: String = "",
+        val error: String? = null,
+        val info: String? = null,
+        val createdTransaction: BitcoinTransaction? = null
+    )
 
     fun init(walletId: String) {
         viewModelScope.launch {
@@ -151,14 +170,21 @@ class BitcoinSendViewModel @Inject constructor(
             when (createResult) {
                 is Result.Success -> {
                     val transaction = createResult.data
-                    _state.update { it.copy(step = "Signing transaction...") }
+                    _state.update { it.copy(
+                        step = "Signing transaction...",
+                        createdTransaction = transaction
+                    )}
 
                     // 2. Sign transaction
                     val signResult = signBitcoinTransactionUseCase(transaction.id)
 
                     when (signResult) {
                         is Result.Success -> {
-                            _state.update { it.copy(step = "Broadcasting transaction...") }
+                            val signedTransaction = signResult.data
+                            _state.update { it.copy(
+                                step = "Broadcasting transaction...",
+                                createdTransaction = signedTransaction
+                            )}
 
                             // 3. Broadcast transaction
                             val broadcastResult = broadcastBitcoinTransactionUseCase(transaction.id)
@@ -261,23 +287,8 @@ class BitcoinSendViewModel @Inject constructor(
             )
         }
     }
-}
 
-data class BitcoinSendState(
-    val wallet: BitcoinWallet? = null,
-    val walletAddress: String = "",
-    val balance: BigDecimal = BigDecimal.ZERO,
-    val balanceFormatted: String = "0 BTC",
-    val toAddress: String = "",
-    val isAddressValid: Boolean = false,
-    val addressError: String? = null,
-    val amount: String = "",
-    val amountValue: BigDecimal = BigDecimal.ZERO,
-    val network: BitcoinNetwork = BitcoinNetwork.TESTNET,
-    val feeLevel: FeeLevel = FeeLevel.NORMAL,
-    val feeEstimate: FeeEstimate? = null,
-    val isLoading: Boolean = false,
-    val step: String = "",
-    val error: String? = null,
-    val info: String? = null
-)
+    fun getCreatedTransaction(): BitcoinTransaction? {
+        return _state.value.createdTransaction
+    }
+}
