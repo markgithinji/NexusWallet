@@ -30,10 +30,10 @@ import java.math.RoundingMode
 import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.ethereum.CreateSendTransactionUseCase
+import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
 import com.example.nexuswallet.feature.coin.ethereum.GetFeeEstimateUseCase
 import com.example.nexuswallet.feature.coin.ethereum.GetTransactionUseCase
 import com.example.nexuswallet.feature.coin.ethereum.ValidateAddressUseCase
-
 @HiltViewModel
 class EthereumSendViewModel @Inject constructor(
     private val createSendTransactionUseCase: CreateSendTransactionUseCase,
@@ -60,6 +60,13 @@ class EthereumSendViewModel @Inject constructor(
         val validationError: String? = null,
         val transactionState: TransactionState = TransactionState.Idle
     )
+
+    sealed class TransactionState {
+        object Idle : TransactionState()
+        object Loading : TransactionState()
+        data class Created(val transaction: EthereumTransaction) : TransactionState()
+        data class Error(val message: String) : TransactionState()
+    }
 
     private val _uiState = MutableStateFlow(SendUiState())
     val uiState: StateFlow<SendUiState> = _uiState.asStateFlow()
@@ -128,12 +135,7 @@ class EthereumSendViewModel @Inject constructor(
                 }
             }
 
-            val chain = if (wallet.network == EthereumNetwork.SEPOLIA)
-                ChainType.ETHEREUM_SEPOLIA
-            else
-                ChainType.ETHEREUM
-
-            val feeEstimateResult = getFeeEstimateUseCase(chain, FeeLevel.NORMAL)
+            val feeEstimateResult = getFeeEstimateUseCase(FeeLevel.NORMAL)
             val feeEstimate = when (feeEstimateResult) {
                 is Result.Success -> feeEstimateResult.data
                 is Result.Error -> {
@@ -313,34 +315,15 @@ class EthereumSendViewModel @Inject constructor(
         }
 
         try {
-            val chain = if (state.walletType == WalletType.ETHEREUM_SEPOLIA)
-                ChainType.ETHEREUM_SEPOLIA
-            else
-                ChainType.ETHEREUM
-
-            val addressValidationResult = validateAddressUseCase(state.toAddress, chain)
-            when (addressValidationResult) {
-                is Result.Success -> {
-                    if (!addressValidationResult.data) {
-                        _uiState.update {
-                            it.copy(
-                                isValid = false,
-                                validationError = "Invalid Ethereum address"
-                            )
-                        }
-                        return
-                    }
+            val addressValidationResult = validateAddressUseCase(state.toAddress)
+            if (!addressValidationResult) {
+                _uiState.update {
+                    it.copy(
+                        isValid = false,
+                        validationError = "Invalid Ethereum address"
+                    )
                 }
-                is Result.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isValid = false,
-                            validationError = "Address validation failed: ${addressValidationResult.message}"
-                        )
-                    }
-                    return
-                }
-                Result.Loading -> return
+                return
             }
 
             val amount = try {
@@ -365,10 +348,7 @@ class EthereumSendViewModel @Inject constructor(
                 return
             }
 
-            val feeEstimateResult = getFeeEstimateUseCase(
-                chain = chain,
-                feeLevel = state.feeLevel
-            )
+            val feeEstimateResult = getFeeEstimateUseCase(state.feeLevel)
 
             when (feeEstimateResult) {
                 is Result.Success -> {
@@ -379,10 +359,19 @@ class EthereumSendViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isValid = false,
-                                validationError = "Insufficient ETH balance"
+                                validationError = "Insufficient ETH balance",
+                                feeEstimate = feeEstimate
                             )
                         }
                         return
+                    }
+
+                    _uiState.update {
+                        it.copy(
+                            isValid = true,
+                            validationError = null,
+                            feeEstimate = feeEstimate
+                        )
                     }
                 }
                 is Result.Error -> {
@@ -397,13 +386,6 @@ class EthereumSendViewModel @Inject constructor(
                 Result.Loading -> return
             }
 
-            _uiState.update {
-                it.copy(
-                    isValid = true,
-                    validationError = null
-                )
-            }
-
         } catch (e: Exception) {
             _uiState.update {
                 it.copy(
@@ -416,15 +398,11 @@ class EthereumSendViewModel @Inject constructor(
 
     private suspend fun updateFeeEstimate() {
         val state = _uiState.value
-        val chain = if (state.walletType == WalletType.ETHEREUM_SEPOLIA)
-            ChainType.ETHEREUM_SEPOLIA
-        else
-            ChainType.ETHEREUM
-
-        val feeEstimateResult = getFeeEstimateUseCase(chain, state.feeLevel)
+        val feeEstimateResult = getFeeEstimateUseCase(state.feeLevel)
         when (feeEstimateResult) {
             is Result.Success -> {
                 _uiState.update { it.copy(feeEstimate = feeEstimateResult.data) }
+                validateInputs() // Re-validate with new fee
             }
             is Result.Error -> {
                 Log.e("EthereumSendVM", "Error updating fee estimate: ${feeEstimateResult.message}")
@@ -441,7 +419,7 @@ class EthereumSendViewModel @Inject constructor(
         return "${_uiState.value.balance.setScale(6, RoundingMode.HALF_UP)} ETH"
     }
 
-    fun getCreatedTransaction(): SendTransaction? {
+    fun getCreatedTransaction(): EthereumTransaction? {
         return when (val state = _uiState.value.transactionState) {
             is TransactionState.Created -> state.transaction
             else -> null
