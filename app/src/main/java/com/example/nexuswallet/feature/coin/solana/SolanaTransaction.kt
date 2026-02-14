@@ -1,0 +1,112 @@
+package com.example.nexuswallet.feature.coin.solana
+
+import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import java.math.BigDecimal
+
+data class SolanaTransaction(
+    val id: String,
+    val walletId: String,
+    val fromAddress: String,
+    val toAddress: String,
+    val status: TransactionStatus,
+    val timestamp: Long,
+    val note: String?,
+    val feeLevel: FeeLevel,
+    val amountLamports: Long,
+    val amountSol: BigDecimal,
+    val feeLamports: Long,
+    val feeSol: BigDecimal,
+    val blockhash: String,
+    val signedData: ByteArray?,
+    val signature: ByteArray?,
+    val network: String // "mainnet", "devnet", "testnet"
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as SolanaTransaction
+
+        if (id != other.id) return false
+        if (walletId != other.walletId) return false
+        if (fromAddress != other.fromAddress) return false
+        if (toAddress != other.toAddress) return false
+        if (status != other.status) return false
+        if (timestamp != other.timestamp) return false
+        if (note != other.note) return false
+        if (feeLevel != other.feeLevel) return false
+        if (amountLamports != other.amountLamports) return false
+        if (amountSol != other.amountSol) return false
+        if (feeLamports != other.feeLamports) return false
+        if (feeSol != other.feeSol) return false
+        if (blockhash != other.blockhash) return false
+        if (network != other.network) return false
+        if (!signedData.contentEquals(other.signedData)) return false
+        if (!signature.contentEquals(other.signature)) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = id.hashCode()
+        result = 31 * result + walletId.hashCode()
+        result = 31 * result + fromAddress.hashCode()
+        result = 31 * result + toAddress.hashCode()
+        result = 31 * result + status.hashCode()
+        result = 31 * result + timestamp.hashCode()
+        result = 31 * result + (note?.hashCode() ?: 0)
+        result = 31 * result + feeLevel.hashCode()
+        result = 31 * result + amountLamports.hashCode()
+        result = 31 * result + amountSol.hashCode()
+        result = 31 * result + feeLamports.hashCode()
+        result = 31 * result + feeSol.hashCode()
+        result = 31 * result + blockhash.hashCode()
+        result = 31 * result + network.hashCode()
+        result = 31 * result + (signedData?.contentHashCode() ?: 0)
+        result = 31 * result + (signature?.contentHashCode() ?: 0)
+        return result
+    }
+}
+
+fun SolanaTransactionEntity.toDomain(): SolanaTransaction {
+    return SolanaTransaction(
+        id = id,
+        walletId = walletId,
+        fromAddress = fromAddress,
+        toAddress = toAddress,
+        status = TransactionStatus.valueOf(status),
+        timestamp = timestamp,
+        note = note,
+        feeLevel = FeeLevel.valueOf(feeLevel),
+        amountLamports = amountLamports,
+        amountSol = BigDecimal(amountSol),
+        feeLamports = feeLamports,
+        feeSol = BigDecimal(feeSol),
+        blockhash = blockhash,
+        signedData = signedData,
+        signature = signature,
+        network = network
+    )
+}
+
+fun SolanaTransaction.toEntity(): SolanaTransactionEntity {
+    return SolanaTransactionEntity(
+        id = id,
+        walletId = walletId,
+        fromAddress = fromAddress,
+        toAddress = toAddress,
+        status = status.name,
+        timestamp = timestamp,
+        note = note,
+        feeLevel = feeLevel.name,
+        amountLamports = amountLamports,
+        amountSol = amountSol.toPlainString(),
+        feeLamports = feeLamports,
+        feeSol = feeSol.toPlainString(),
+        blockhash = blockhash,
+        signedData = signedData,
+        signature = signature,
+        network = network
+    )
+}
