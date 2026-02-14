@@ -18,12 +18,12 @@ object BitcoinUseCaseModule {
     fun provideCreateBitcoinTransactionUseCase(
         walletRepository: WalletRepository,
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-        transactionLocalDataSource: TransactionLocalDataSource
+        bitcoinTransactionRepository: BitcoinTransactionRepository
     ): CreateBitcoinTransactionUseCase {
         return CreateBitcoinTransactionUseCase(
             walletRepository,
             bitcoinBlockchainRepository,
-            transactionLocalDataSource
+            bitcoinTransactionRepository
         )
     }
 
@@ -33,13 +33,13 @@ object BitcoinUseCaseModule {
         walletRepository: WalletRepository,
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
         keyManager: KeyManager,
-        transactionLocalDataSource: TransactionLocalDataSource
+        bitcoinTransactionRepository: BitcoinTransactionRepository
     ): SignBitcoinTransactionUseCase {
         return SignBitcoinTransactionUseCase(
             walletRepository,
             bitcoinBlockchainRepository,
             keyManager,
-            transactionLocalDataSource
+            bitcoinTransactionRepository
         )
     }
 
@@ -48,12 +48,13 @@ object BitcoinUseCaseModule {
     fun provideBroadcastBitcoinTransactionUseCase(
         walletRepository: WalletRepository,
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-        transactionLocalDataSource: TransactionLocalDataSource
+        bitcoinTransactionRepository: BitcoinTransactionRepository
+
     ): BroadcastBitcoinTransactionUseCase {
         return BroadcastBitcoinTransactionUseCase(
             walletRepository,
             bitcoinBlockchainRepository,
-            transactionLocalDataSource
+            bitcoinTransactionRepository
         )
     }
 
