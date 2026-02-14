@@ -31,13 +31,14 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
 import kotlinx.coroutines.flow.map
-
+import kotlinx.coroutines.withContext
+import java.math.RoundingMode
 
 @Singleton
 class CreateSendTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository,
-    private val transactionLocalDataSource: TransactionLocalDataSource
+    private val ethereumTransactionRepository: EthereumTransactionRepository
 ) {
     suspend operator fun invoke(
         walletId: String,
@@ -45,74 +46,15 @@ class CreateSendTransactionUseCase @Inject constructor(
         amount: BigDecimal,
         feeLevel: FeeLevel = FeeLevel.NORMAL,
         note: String? = null
-    ): Result<SendTransaction> {
+    ): Result<EthereumTransaction> {
         return try {
-            val wallet = walletRepository.getWallet(walletId)
-                ?: return Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
+            val wallet = walletRepository.getWallet(walletId) as? EthereumWallet
+                ?: return Result.Error("Ethereum wallet not found", IllegalArgumentException("Wallet not found"))
 
-            val transaction = when (wallet) {
-                is BitcoinWallet -> createBitcoinTransaction(
-                    wallet = wallet,
-                    toAddress = toAddress,
-                    amount = amount,
-                    feeLevel = feeLevel,
-                    note = note
-                )
-                is EthereumWallet -> createEthereumTransaction(
-                    wallet = wallet,
-                    toAddress = toAddress,
-                    amount = amount,
-                    feeLevel = feeLevel,
-                    note = note
-                )
-                else -> return Result.Error(
-                    "Unsupported wallet type: ${wallet.walletType}",
-                    IllegalArgumentException("Unsupported wallet type")
-                )
-            }
-
-            transactionLocalDataSource.saveSendTransaction(transaction)
-            Result.Success(transaction)
+            createEthereumTransaction(wallet, toAddress, amount, feeLevel, note)
         } catch (e: Exception) {
-            Log.e("CreateTxUseCase", "Failed to create transaction", e)
             Result.Error("Failed to create transaction: ${e.message}", e)
         }
-    }
-
-    private suspend fun createBitcoinTransaction(
-        wallet: BitcoinWallet,
-        toAddress: String,
-        amount: BigDecimal,
-        feeLevel: FeeLevel,
-        note: String?
-    ): SendTransaction {
-        val amountSat = amount.multiply(BigDecimal("100000000")).toLong()
-        val feeEstimate = ethereumBlockchainRepository.getBitcoinFeeEstimates()
-        val selectedFee = when (feeLevel) {
-            FeeLevel.SLOW -> feeEstimate.slow
-            FeeLevel.FAST -> feeEstimate.fast
-            else -> feeEstimate.normal
-        }
-        val feeSat = selectedFee.totalFee.toLong()
-
-        return SendTransaction(
-            id = "tx_${System.currentTimeMillis()}",
-            walletId = wallet.id,
-            walletType = WalletType.BITCOIN,
-            fromAddress = wallet.address,
-            toAddress = toAddress,
-            amount = amountSat.toString(),
-            amountDecimal = amount.toPlainString(),
-            fee = feeSat.toString(),
-            feeDecimal = selectedFee.totalFeeDecimal,
-            total = (amountSat + feeSat).toString(),
-            totalDecimal = (amount + BigDecimal(selectedFee.totalFeeDecimal)).toPlainString(),
-            chain = ChainType.BITCOIN,
-            status = TransactionStatus.PENDING,
-            note = note,
-            timestamp = System.currentTimeMillis(),
-            feeLevel = feeLevel
-        )
     }
 
     private suspend fun createEthereumTransaction(
@@ -121,52 +63,73 @@ class CreateSendTransactionUseCase @Inject constructor(
         amount: BigDecimal,
         feeLevel: FeeLevel,
         note: String?
-    ): SendTransaction {
-        Log.d("CreateTxUseCase", "Creating Ethereum transaction (local only)")
+    ): Result<EthereumTransaction> = withContext(Dispatchers.IO) {
+        try {
+            Log.d("CreateTxUseCase", "Creating Ethereum transaction")
 
-        val nonceResult = ethereumBlockchainRepository.getEthereumNonce(wallet.address, wallet.network)
-        val nonce = when (nonceResult) {
-            is Result.Success -> nonceResult.data
-            else -> 0
+            val nonceResult = ethereumBlockchainRepository.getEthereumNonce(wallet.address, wallet.network)
+            val nonce = when (nonceResult) {
+                is Result.Success -> nonceResult.data
+                is Result.Error -> return@withContext Result.Error(
+                    "Failed to get nonce: ${nonceResult.message}",
+                    nonceResult.throwable
+                )
+                Result.Loading -> return@withContext Result.Error("Timeout getting nonce", null)
+            }
+
+            val gasPriceResult = ethereumBlockchainRepository.getEthereumGasPrice(wallet.network)
+            val gasPrice = when (gasPriceResult) {
+                is Result.Success -> gasPriceResult.data
+                is Result.Error -> return@withContext Result.Error(
+                    "Failed to get gas price: ${gasPriceResult.message}",
+                    gasPriceResult.throwable
+                )
+                Result.Loading -> return@withContext Result.Error("Timeout getting gas price", null)
+            }
+
+            val selectedFee = when (feeLevel) {
+                FeeLevel.SLOW -> gasPrice.slow
+                FeeLevel.FAST -> gasPrice.fast
+                else -> gasPrice.normal
+            }
+
+            val amountWei = amount.multiply(BigDecimal("1000000000000000000")).toBigInteger()
+            val gasPriceWei = (BigDecimal(selectedFee.gasPrice) * BigDecimal("1000000000")).toBigInteger()
+            val gasLimit = 21000L
+            val feeWei = gasPriceWei.multiply(BigInteger.valueOf(gasLimit))
+            val feeEth = BigDecimal(feeWei).divide(BigDecimal("1000000000000000000"), 18, RoundingMode.HALF_UP)
+
+            val transaction = EthereumTransaction(
+                id = "tx_${System.currentTimeMillis()}",
+                walletId = wallet.id,
+                fromAddress = wallet.address,
+                toAddress = toAddress,
+                amountWei = amountWei,
+                amountEth = amount,
+                gasPriceWei = gasPriceWei,
+                gasPriceGwei = BigDecimal(selectedFee.gasPrice),
+                gasLimit = gasLimit,
+                feeWei = feeWei,
+                feeEth = feeEth,
+                nonce = nonce,
+                chainId = if (wallet.network == EthereumNetwork.SEPOLIA) 11155111L else 1L,
+                signedHex = null,
+                txHash = null,
+                status = TransactionStatus.PENDING,
+                note = note,
+                timestamp = System.currentTimeMillis(),
+                feeLevel = feeLevel,
+                network = wallet.network.name,
+                data = ""
+            )
+
+            ethereumTransactionRepository.saveTransaction(transaction)
+            Result.Success(transaction)
+
+        } catch (e: Exception) {
+            Log.e("CreateTxUseCase", "Failed to create transaction", e)
+            Result.Error("Failed to create transaction: ${e.message}", e)
         }
-
-        val gasPriceResult = ethereumBlockchainRepository.getEthereumGasPrice(wallet.network)
-        val gasPrice = when (gasPriceResult) {
-            is Result.Success -> gasPriceResult.data
-            else -> ethereumBlockchainRepository.getDemoEthereumFees()
-        }
-
-        val selectedFee = when (feeLevel) {
-            FeeLevel.SLOW -> gasPrice.slow
-            FeeLevel.FAST -> gasPrice.fast
-            else -> gasPrice.normal
-        }
-
-        val amountWei = amount.multiply(BigDecimal("1000000000000000000")).toBigInteger()
-
-        return SendTransaction(
-            id = "tx_${System.currentTimeMillis()}",
-            walletId = wallet.id,
-            walletType = WalletType.ETHEREUM,
-            fromAddress = wallet.address,
-            toAddress = toAddress,
-            amount = amountWei.toString(),
-            amountDecimal = amount.toPlainString(),
-            fee = selectedFee.totalFee,
-            feeDecimal = selectedFee.totalFeeDecimal,
-            total = (amountWei + BigDecimal(selectedFee.totalFee).toBigInteger()).toString(),
-            totalDecimal = (amount + BigDecimal(selectedFee.totalFeeDecimal)).toPlainString(),
-            chain = if (wallet.network == EthereumNetwork.SEPOLIA) ChainType.ETHEREUM_SEPOLIA else ChainType.ETHEREUM,
-            status = TransactionStatus.PENDING,
-            note = note,
-            gasPrice = selectedFee.gasPrice,
-            gasLimit = "21000",
-            signedHex = null,
-            nonce = nonce,
-            hash = null,
-            timestamp = System.currentTimeMillis(),
-            feeLevel = feeLevel
-        )
     }
 }
 @Singleton
@@ -174,21 +137,14 @@ class SignEthereumTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository,
     private val keyManager: KeyManager,
-    private val transactionLocalDataSource: TransactionLocalDataSource
+    private val ethereumTransactionRepository: EthereumTransactionRepository
 ) {
-    suspend operator fun invoke(transactionId: String): Result<SignedTransaction> {
+    suspend operator fun invoke(transactionId: String): Result<EthereumTransaction> {
         return try {
-            val transaction = transactionLocalDataSource.getSendTransaction(transactionId)
+            val transaction = ethereumTransactionRepository.getTransaction(transactionId)
                 ?: return Result.Error("Transaction not found", IllegalArgumentException("Transaction not found"))
 
-            if (transaction.walletType != WalletType.ETHEREUM) {
-                return Result.Error(
-                    "Only Ethereum signing supported",
-                    IllegalArgumentException("Only Ethereum signing supported")
-                )
-            }
-
-            signEthereumTransaction(transactionId)
+            signEthereumTransaction(transaction)
         } catch (e: Exception) {
             Log.e("SignTxUseCase", "Signing failed", e)
             Result.Error("Signing failed: ${e.message}", e)
@@ -196,32 +152,29 @@ class SignEthereumTransactionUseCase @Inject constructor(
     }
 
     private suspend fun signEthereumTransaction(
-        transactionId: String
-    ): Result<SignedTransaction> {
-        return try {
-            val transaction = transactionLocalDataSource.getSendTransaction(transactionId)
-                ?: return Result.Error("Transaction not found", IllegalArgumentException("Transaction not found"))
-
+        transaction: EthereumTransaction
+    ): Result<EthereumTransaction> = withContext(Dispatchers.IO) {
+        try {
             val wallet = walletRepository.getWallet(transaction.walletId) as? EthereumWallet
-                ?: return Result.Error("Ethereum wallet not found", IllegalArgumentException("Ethereum wallet not found"))
+                ?: return@withContext Result.Error("Ethereum wallet not found", IllegalArgumentException("Ethereum wallet not found"))
 
             Log.d("SignTxUseCase", "Signing transaction: ${transaction.id}")
 
             val nonceResult = ethereumBlockchainRepository.getEthereumNonce(wallet.address, wallet.network)
             val currentNonce = when (nonceResult) {
                 is Result.Success -> nonceResult.data
-                is Result.Error -> return Result.Error("Failed to get nonce: ${nonceResult.message}", nonceResult.throwable)
-                Result.Loading -> return Result.Error("Failed to get nonce", null)
+                is Result.Error -> return@withContext Result.Error("Failed to get nonce: ${nonceResult.message}", nonceResult.throwable)
+                Result.Loading -> return@withContext Result.Error("Failed to get nonce", null)
             }
 
             val gasPriceResult = ethereumBlockchainRepository.getCurrentGasPrice(wallet.network)
             val gasPrice = when (gasPriceResult) {
                 is Result.Success -> gasPriceResult.data
-                is Result.Error -> return Result.Error("Failed to get gas price: ${gasPriceResult.message}", gasPriceResult.throwable)
-                Result.Loading -> return Result.Error("Failed to get gas price", null)
+                is Result.Error -> return@withContext Result.Error("Failed to get gas price: ${gasPriceResult.message}", gasPriceResult.throwable)
+                Result.Loading -> return@withContext Result.Error("Failed to get gas price", null)
             }
 
-            val selectedGasPrice = when (transaction.feeLevel ?: FeeLevel.NORMAL) {
+            val selectedGasPrice = when (transaction.feeLevel) {
                 FeeLevel.SLOW -> gasPrice.safe
                 FeeLevel.FAST -> gasPrice.fast
                 else -> gasPrice.propose
@@ -231,7 +184,7 @@ class SignEthereumTransactionUseCase @Inject constructor(
 
             val privateKeyResult = keyManager.getPrivateKeyForSigning(transaction.walletId)
             if (privateKeyResult.isFailure) {
-                return Result.Error(
+                return@withContext Result.Error(
                     privateKeyResult.exceptionOrNull()?.message ?: "No private key",
                     privateKeyResult.exceptionOrNull()
                 )
@@ -240,48 +193,36 @@ class SignEthereumTransactionUseCase @Inject constructor(
 
             val credentials = Credentials.create(privateKey)
             if (credentials.address.lowercase() != wallet.address.lowercase()) {
-                return Result.Error("Private key doesn't match wallet", IllegalStateException("Private key doesn't match wallet"))
-            }
-
-            val amountWei = try {
-                BigDecimal(transaction.amount).toBigInteger()
-            } catch (e: Exception) {
-                return Result.Error("Invalid amount format", e)
+                return@withContext Result.Error("Private key doesn't match wallet", IllegalStateException("Private key doesn't match wallet"))
             }
 
             val rawTransaction = RawTransaction.createTransaction(
                 BigInteger.valueOf(currentNonce.toLong()),
                 gasPriceWei,
-                BigInteger("21000"),
+                BigInteger.valueOf(transaction.gasLimit),
                 transaction.toAddress,
-                amountWei,
-                ""
+                transaction.amountWei,
+                transaction.data
             )
 
-            val chainId = if (wallet.network == EthereumNetwork.SEPOLIA) 11155111L else 1L
+            val chainId = transaction.chainId
             val signedMessage = TransactionEncoder.signMessage(rawTransaction, chainId, credentials)
             val signedHex = Numeric.toHexString(signedMessage)
 
             val txHashBytes = Hash.sha3(Numeric.hexStringToByteArray(signedHex))
             val calculatedHash = Numeric.toHexString(txHashBytes)
 
-            val signedTransaction = SignedTransaction(
-                rawHex = signedHex,
-                hash = calculatedHash,
-                chain = transaction.chain
-            )
-
             val updatedTransaction = transaction.copy(
                 status = TransactionStatus.PENDING,
-                hash = calculatedHash,
+                txHash = calculatedHash,
                 signedHex = signedHex,
                 nonce = currentNonce,
-                gasPrice = selectedGasPrice,
-                gasLimit = "21000"
+                gasPriceGwei = BigDecimal(selectedGasPrice),
+                gasPriceWei = gasPriceWei
             )
 
-            transactionLocalDataSource.saveSendTransaction(updatedTransaction)
-            Result.Success(signedTransaction)
+            ethereumTransactionRepository.updateTransaction(updatedTransaction)
+            Result.Success(updatedTransaction)
 
         } catch (e: Exception) {
             Log.e("SignTxUseCase", "Signing failed: ${e.message}", e)
@@ -293,25 +234,16 @@ class SignEthereumTransactionUseCase @Inject constructor(
 class BroadcastTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository,
-    private val transactionLocalDataSource: TransactionLocalDataSource
+    private val ethereumTransactionRepository: EthereumTransactionRepository
 ) {
     suspend operator fun invoke(transactionId: String): Result<BroadcastResult> {
         Log.d("BroadcastUseCase", "Broadcasting transaction: $transactionId")
 
         return try {
-            val transaction = transactionLocalDataSource.getSendTransaction(transactionId)
+            val transaction = ethereumTransactionRepository.getTransaction(transactionId)
                 ?: return Result.Error("Transaction not found", IllegalArgumentException("Transaction not found"))
 
-            when (transaction.chain) {
-                ChainType.ETHEREUM_SEPOLIA -> broadcastEthereumTransaction(transactionId)
-                else -> Result.Success(
-                    BroadcastResult(
-                        success = false,
-                        error = "Chain ${transaction.chain} broadcasting not implemented",
-                        chain = transaction.chain
-                    )
-                )
-            }
+            broadcastEthereumTransaction(transaction)
         } catch (e: Exception) {
             Log.e("BroadcastUseCase", "Broadcast failed: ${e.message}", e)
             Result.Error("Broadcast failed: ${e.message}", e)
@@ -319,36 +251,33 @@ class BroadcastTransactionUseCase @Inject constructor(
     }
 
     private suspend fun broadcastEthereumTransaction(
-        transactionId: String
-    ): Result<BroadcastResult> {
-        val transaction = transactionLocalDataSource.getSendTransaction(transactionId)
-            ?: return Result.Error("Transaction not found", IllegalArgumentException("Transaction not found"))
-
+        transaction: EthereumTransaction
+    ): Result<BroadcastResult> = withContext(Dispatchers.IO) {
         val signedHex = transaction.signedHex
-            ?: return Result.Error("Transaction not signed", IllegalStateException("Transaction not signed"))
+            ?: return@withContext Result.Error("Transaction not signed", IllegalStateException("Transaction not signed"))
 
         val wallet = walletRepository.getWallet(transaction.walletId) as? EthereumWallet
-            ?: return Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
+            ?: return@withContext Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
 
         val broadcastResult = ethereumBlockchainRepository.broadcastEthereumTransaction(
             signedHex,
             wallet.network
         )
 
-        return when (broadcastResult) {
+        return@withContext when (broadcastResult) {
             is Result.Success -> {
                 val result = broadcastResult.data
                 val updatedTransaction = if (result.success) {
                     transaction.copy(
                         status = TransactionStatus.SUCCESS,
-                        hash = result.hash ?: transaction.hash
+                        txHash = result.hash ?: transaction.txHash
                     )
                 } else {
                     transaction.copy(
                         status = TransactionStatus.FAILED
                     )
                 }
-                transactionLocalDataSource.saveSendTransaction(updatedTransaction)
+                ethereumTransactionRepository.updateTransaction(updatedTransaction)
                 Result.Success(result)
             }
             is Result.Error -> {
@@ -363,11 +292,11 @@ class BroadcastTransactionUseCase @Inject constructor(
 
 @Singleton
 class GetTransactionUseCase @Inject constructor(
-    private val transactionLocalDataSource: TransactionLocalDataSource
+    private val ethereumTransactionRepository: EthereumTransactionRepository
 ) {
-    suspend operator fun invoke(transactionId: String): Result<SendTransaction> {
+    suspend operator fun invoke(transactionId: String): Result<EthereumTransaction> {
         return try {
-            val transaction = transactionLocalDataSource.getSendTransaction(transactionId)
+            val transaction = ethereumTransactionRepository.getTransaction(transactionId)
             if (transaction != null) {
                 Result.Success(transaction)
             } else {
@@ -378,13 +307,12 @@ class GetTransactionUseCase @Inject constructor(
         }
     }
 }
-
 @Singleton
 class GetWalletTransactionsUseCase @Inject constructor(
-    private val transactionLocalDataSource: TransactionLocalDataSource
+    private val ethereumTransactionRepository: EthereumTransactionRepository
 ) {
-    fun invoke(walletId: String): Flow<Result<List<SendTransaction>>> {
-        return transactionLocalDataSource.getSendTransactions(walletId)
+    fun invoke(walletId: String): Flow<Result<List<EthereumTransaction>>> {
+        return ethereumTransactionRepository.getTransactions(walletId)
             .map { transactions ->
                 try {
                     Result.Success(transactions)
@@ -394,14 +322,13 @@ class GetWalletTransactionsUseCase @Inject constructor(
             }
     }
 }
-
 @Singleton
 class GetPendingTransactionsUseCase @Inject constructor(
-    private val transactionLocalDataSource: TransactionLocalDataSource
+    private val ethereumTransactionRepository: EthereumTransactionRepository
 ) {
-    suspend operator fun invoke(): Result<List<SendTransaction>> {
+    suspend operator fun invoke(): Result<List<EthereumTransaction>> {
         return try {
-            val transactions = transactionLocalDataSource.getPendingTransactions()
+            val transactions = ethereumTransactionRepository.getPendingTransactions()
             Result.Success(transactions)
         } catch (e: Exception) {
             Result.Error("Failed to get pending transactions: ${e.message}", e)
@@ -411,87 +338,50 @@ class GetPendingTransactionsUseCase @Inject constructor(
 
 @Singleton
 class ValidateAddressUseCase @Inject constructor() {
-    operator fun invoke(address: String, chain: ChainType): Result<Boolean> {
-        return try {
-            val isValid = when (chain) {
-                ChainType.BITCOIN -> address.startsWith("1") || address.startsWith("3") || address.startsWith("bc1")
-                ChainType.ETHEREUM, ChainType.ETHEREUM_SEPOLIA -> address.startsWith("0x") && address.length == 42
-                else -> true
-            }
-            Result.Success(isValid)
-        } catch (e: Exception) {
-            Result.Error("Address validation failed: ${e.message}", e)
-        }
+    operator fun invoke(address: String): Boolean {
+        return address.startsWith("0x") && address.length == 42
     }
 }
 
 @Singleton
-class GetFeeEstimateUseCase @Inject constructor() {
-    operator fun invoke(chain: ChainType, feeLevel: FeeLevel): Result<FeeEstimate> {
+class GetFeeEstimateUseCase @Inject constructor(
+    private val ethereumBlockchainRepository: EthereumBlockchainRepository
+) {
+    suspend operator fun invoke(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<FeeEstimate> {
         return try {
-            val estimate = when (chain) {
-                ChainType.BITCOIN -> when (feeLevel) {
-                    FeeLevel.SLOW -> FeeEstimate(
-                        feePerByte = "10",
-                        gasPrice = null,
-                        totalFee = "2000",
-                        totalFeeDecimal = "0.00002",
-                        estimatedTime = 3600,
-                        priority = FeeLevel.SLOW
+
+            val gasPriceResult = ethereumBlockchainRepository.getEthereumGasPrice(EthereumNetwork.SEPOLIA)
+
+            when (gasPriceResult) {
+                is Result.Success -> {
+                    val gasPrice = gasPriceResult.data
+
+                    // Get the appropriate fee based on level
+                    val selectedFee = when (feeLevel) {
+                        FeeLevel.SLOW -> gasPrice.slow
+                        FeeLevel.FAST -> gasPrice.fast
+                        else -> gasPrice.normal
+                    }
+
+                    // Convert to FeeEstimate format
+                    val estimate = FeeEstimate(
+                        feePerByte = null,
+                        gasPrice = selectedFee.gasPrice,
+                        totalFee = selectedFee.totalFee,
+                        totalFeeDecimal = selectedFee.totalFeeDecimal,
+                        estimatedTime = when (feeLevel) {
+                            FeeLevel.SLOW -> 900
+                            FeeLevel.FAST -> 60
+                            else -> 300
+                        },
+                        priority = feeLevel
                     )
-                    FeeLevel.FAST -> FeeEstimate(
-                        feePerByte = "50",
-                        gasPrice = null,
-                        totalFee = "10000",
-                        totalFeeDecimal = "0.0001",
-                        estimatedTime = 120,
-                        priority = FeeLevel.FAST
-                    )
-                    else -> FeeEstimate(
-                        feePerByte = "25",
-                        gasPrice = null,
-                        totalFee = "5000",
-                        totalFeeDecimal = "0.00005",
-                        estimatedTime = 600,
-                        priority = FeeLevel.NORMAL
-                    )
+
+                    Result.Success(estimate)
                 }
-                ChainType.ETHEREUM, ChainType.ETHEREUM_SEPOLIA -> when (feeLevel) {
-                    FeeLevel.SLOW -> FeeEstimate(
-                        feePerByte = null,
-                        gasPrice = "20",
-                        totalFee = "420000000000000",
-                        totalFeeDecimal = "0.00042",
-                        estimatedTime = 900,
-                        priority = FeeLevel.SLOW
-                    )
-                    FeeLevel.FAST -> FeeEstimate(
-                        feePerByte = null,
-                        gasPrice = "50",
-                        totalFee = "1050000000000000",
-                        totalFeeDecimal = "0.00105",
-                        estimatedTime = 60,
-                        priority = FeeLevel.FAST
-                    )
-                    else -> FeeEstimate(
-                        feePerByte = null,
-                        gasPrice = "30",
-                        totalFee = "630000000000000",
-                        totalFeeDecimal = "0.00063",
-                        estimatedTime = 300,
-                        priority = FeeLevel.NORMAL
-                    )
-                }
-                else -> FeeEstimate(
-                    feePerByte = null,
-                    gasPrice = null,
-                    totalFee = "0",
-                    totalFeeDecimal = "0",
-                    estimatedTime = 60,
-                    priority = FeeLevel.NORMAL
-                )
+                is Result.Error -> Result.Error(gasPriceResult.message, gasPriceResult.throwable)
+                Result.Loading -> Result.Error("Timeout getting gas price", null)
             }
-            Result.Success(estimate)
         } catch (e: Exception) {
             Result.Error("Failed to get fee estimate: ${e.message}", e)
         }

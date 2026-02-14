@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
 import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
+import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
@@ -19,12 +20,12 @@ object UseCaseModule {
     fun provideCreateSendTransactionUseCase(
         walletRepository: WalletRepository,
         ethereumBlockchainRepository: EthereumBlockchainRepository,
-        transactionLocalDataSource: TransactionLocalDataSource
+        ethereumTransactionRepository: EthereumTransactionRepository
     ): CreateSendTransactionUseCase {
         return CreateSendTransactionUseCase(
             walletRepository = walletRepository,
             ethereumBlockchainRepository = ethereumBlockchainRepository,
-            transactionLocalDataSource = transactionLocalDataSource
+            ethereumTransactionRepository = ethereumTransactionRepository
         )
     }
 
@@ -35,13 +36,13 @@ object UseCaseModule {
         walletRepository: WalletRepository,
         ethereumBlockchainRepository: EthereumBlockchainRepository,
         keyManager: KeyManager,
-        transactionLocalDataSource: TransactionLocalDataSource
+        ethereumTransactionRepository: EthereumTransactionRepository
     ): SignEthereumTransactionUseCase {
         return SignEthereumTransactionUseCase(
             walletRepository = walletRepository,
             ethereumBlockchainRepository = ethereumBlockchainRepository,
             keyManager = keyManager,
-            transactionLocalDataSource = transactionLocalDataSource
+            ethereumTransactionRepository
         )
     }
 
@@ -51,12 +52,12 @@ object UseCaseModule {
     fun provideBroadcastTransactionUseCase(
         walletRepository: WalletRepository,
         ethereumBlockchainRepository: EthereumBlockchainRepository,
-        transactionLocalDataSource: TransactionLocalDataSource
+        ethereumTransactionRepository: EthereumTransactionRepository
     ): BroadcastTransactionUseCase {
         return BroadcastTransactionUseCase(
             walletRepository = walletRepository,
             ethereumBlockchainRepository = ethereumBlockchainRepository,
-            transactionLocalDataSource = transactionLocalDataSource
+            ethereumTransactionRepository
         )
     }
 
@@ -64,30 +65,30 @@ object UseCaseModule {
     @Provides
     @Singleton
     fun provideGetTransactionUseCase(
-        transactionLocalDataSource: TransactionLocalDataSource
+        ethereumTransactionRepository: EthereumTransactionRepository
     ): GetTransactionUseCase {
         return GetTransactionUseCase(
-            transactionLocalDataSource = transactionLocalDataSource
+           ethereumTransactionRepository
         )
     }
 
     @Provides
     @Singleton
     fun provideGetWalletTransactionsUseCase(
-        transactionLocalDataSource: TransactionLocalDataSource
+        ethereumTransactionRepository: EthereumTransactionRepository
     ): GetWalletTransactionsUseCase {
         return GetWalletTransactionsUseCase(
-            transactionLocalDataSource = transactionLocalDataSource
+            ethereumTransactionRepository
         )
     }
 
     @Provides
     @Singleton
     fun provideGetPendingTransactionsUseCase(
-        transactionLocalDataSource: TransactionLocalDataSource
+        ethereumTransactionRepository: EthereumTransactionRepository
     ): GetPendingTransactionsUseCase {
         return GetPendingTransactionsUseCase(
-            transactionLocalDataSource = transactionLocalDataSource
+            ethereumTransactionRepository
         )
     }
 
@@ -100,7 +101,25 @@ object UseCaseModule {
 
     @Provides
     @Singleton
-    fun provideGetFeeEstimateUseCase(): GetFeeEstimateUseCase {
-        return GetFeeEstimateUseCase()
+    fun provideGetFeeEstimateUseCase(
+        ethereumBlockchainRepository: EthereumBlockchainRepository
+    ): GetFeeEstimateUseCase {
+        return GetFeeEstimateUseCase(
+            ethereumBlockchainRepository
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideEthereumTransactionDao(database: WalletDatabase): EthereumTransactionDao {
+        return database.ethereumTransactionDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideEthereumTransactionRepository(
+        ethereumTransactionDao: EthereumTransactionDao
+    ): EthereumTransactionRepository {
+        return EthereumTransactionRepository(ethereumTransactionDao)
     }
 }
