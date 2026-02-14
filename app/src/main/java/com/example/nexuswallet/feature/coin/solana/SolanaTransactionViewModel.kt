@@ -15,7 +15,6 @@ import java.math.BigDecimal
 import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
 import java.math.RoundingMode
-
 @HiltViewModel
 class SolanaSendViewModel @Inject constructor(
     private val createSolanaTransactionUseCase: CreateSolanaTransactionUseCase,
@@ -29,6 +28,24 @@ class SolanaSendViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(SendState())
     val state: StateFlow<SendState> = _state
+
+    data class SendState(
+        val wallet: SolanaWallet? = null,
+        val walletAddress: String = "",
+        val balance: BigDecimal = BigDecimal.ZERO,
+        val balanceFormatted: String = "0 SOL",
+        val toAddress: String = "",
+        val isAddressValid: Boolean = false,
+        val addressError: String? = null,
+        val amount: String = "",
+        val amountValue: BigDecimal = BigDecimal.ZERO,
+        val isLoading: Boolean = false,
+        val step: String = "",
+        val error: String? = null,
+        val airdropSuccess: Boolean = false,
+        val airdropMessage: String? = null,
+        val createdTransaction: SolanaTransaction? = null
+    )
 
     fun init(walletId: String) {
         viewModelScope.launch {
@@ -158,14 +175,21 @@ class SolanaSendViewModel @Inject constructor(
             when (createResult) {
                 is Result.Success -> {
                     val transaction = createResult.data
-                    _state.update { it.copy(step = "Signing transaction...") }
+                    _state.update { it.copy(
+                        step = "Signing transaction...",
+                        createdTransaction = transaction
+                    )}
 
                     // 2. Sign transaction
                     val signResult = signSolanaTransactionUseCase(transaction.id)
 
                     when (signResult) {
                         is Result.Success -> {
-                            _state.update { it.copy(step = "Broadcasting transaction...") }
+                            val signedTransaction = signResult.data
+                            _state.update { it.copy(
+                                step = "Broadcasting transaction...",
+                                createdTransaction = signedTransaction
+                            )}
 
                             // 3. Broadcast transaction
                             val broadcastResult = broadcastSolanaTransactionUseCase(transaction.id)
@@ -260,21 +284,8 @@ class SolanaSendViewModel @Inject constructor(
             )
         }
     }
-}
 
-data class SendState(
-    val wallet: SolanaWallet? = null,
-    val walletAddress: String = "",
-    val balance: BigDecimal = BigDecimal.ZERO,
-    val balanceFormatted: String = "0 SOL",
-    val toAddress: String = "",
-    val isAddressValid: Boolean = false,
-    val addressError: String? = null,
-    val amount: String = "",
-    val amountValue: BigDecimal = BigDecimal.ZERO,
-    val isLoading: Boolean = false,
-    val step: String = "",
-    val error: String? = null,
-    val airdropSuccess: Boolean = false,
-    val airdropMessage: String? = null
-)
+    fun getCreatedTransaction(): SolanaTransaction? {
+        return _state.value.createdTransaction
+    }
+}
