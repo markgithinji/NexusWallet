@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.coin.solana
 
 import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
+import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
@@ -18,12 +19,12 @@ object SolanaUseCaseModule {
     fun provideCreateSolanaTransactionUseCase(
         walletRepository: WalletRepository,
         solanaBlockchainRepository: SolanaBlockchainRepository,
-        transactionLocalDataSource: TransactionLocalDataSource
+        solanaTransactionRepository: SolanaTransactionRepository,
     ): CreateSolanaTransactionUseCase {
         return CreateSolanaTransactionUseCase(
             walletRepository,
             solanaBlockchainRepository,
-            transactionLocalDataSource
+            solanaTransactionRepository
         )
     }
 
@@ -33,13 +34,13 @@ object SolanaUseCaseModule {
         walletRepository: WalletRepository,
         solanaBlockchainRepository: SolanaBlockchainRepository,
         keyManager: KeyManager,
-        transactionLocalDataSource: TransactionLocalDataSource
+        solanaTransactionRepository: SolanaTransactionRepository,
     ): SignSolanaTransactionUseCase {
         return SignSolanaTransactionUseCase(
             walletRepository,
             solanaBlockchainRepository,
             keyManager,
-            transactionLocalDataSource
+            solanaTransactionRepository
         )
     }
 
@@ -47,11 +48,11 @@ object SolanaUseCaseModule {
     @Singleton
     fun provideBroadcastSolanaTransactionUseCase(
         solanaBlockchainRepository: SolanaBlockchainRepository,
-        transactionLocalDataSource: TransactionLocalDataSource
+        solanaTransactionRepository: SolanaTransactionRepository,
     ): BroadcastSolanaTransactionUseCase {
         return BroadcastSolanaTransactionUseCase(
             solanaBlockchainRepository,
-            transactionLocalDataSource
+            solanaTransactionRepository
         )
     }
 
@@ -101,5 +102,19 @@ object SolanaUseCaseModule {
         solanaBlockchainRepository: SolanaBlockchainRepository
     ): ValidateSolanaAddressUseCase {
         return ValidateSolanaAddressUseCase(solanaBlockchainRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSolanaTransactionDao(database: WalletDatabase): SolanaTransactionDao {
+        return database.solanaTransactionDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSolanaTransactionRepository(
+        solanaTransactionDao: SolanaTransactionDao
+    ): SolanaTransactionRepository {
+        return SolanaTransactionRepository(solanaTransactionDao)
     }
 }

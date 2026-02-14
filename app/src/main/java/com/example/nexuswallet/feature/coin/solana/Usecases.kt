@@ -26,7 +26,7 @@ import com.example.nexuswallet.feature.coin.Result
 class CreateSolanaTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
-    private val transactionLocalDataSource: TransactionLocalDataSource
+    private val solanaTransactionRepository: SolanaTransactionRepository
 ) {
     suspend operator fun invoke(
         walletId: String,
@@ -34,7 +34,7 @@ class CreateSolanaTransactionUseCase @Inject constructor(
         amount: BigDecimal,
         feeLevel: FeeLevel = FeeLevel.NORMAL,
         note: String? = null
-    ): Result<SendTransaction> {
+    ): Result<SolanaTransaction> {
         return try {
             val wallet = walletRepository.getWallet(walletId) as? SolanaWallet
                 ?: return Result.Error("Solana wallet not found", IllegalArgumentException("Wallet not found"))
@@ -51,56 +51,60 @@ class CreateSolanaTransactionUseCase @Inject constructor(
         amount: BigDecimal,
         feeLevel: FeeLevel,
         note: String?
-    ): Result<SendTransaction> {
-        Log.d("CreateSolanaTxUseCase", "Creating Solana transaction...")
+    ): Result<SolanaTransaction> = withContext(Dispatchers.IO) {
+        try {
+            Log.d("CreateSolanaTxUseCase", "Creating Solana transaction...")
 
-        val blockhashResult = solanaBlockchainRepository.getRecentBlockhash()
-        val blockhash = when (blockhashResult) {
-            is Result.Success -> blockhashResult.data
-            is Result.Error -> return Result.Error(
-                "Failed to get blockhash: ${blockhashResult.message}",
-                blockhashResult.throwable
+            val blockhashResult = solanaBlockchainRepository.getRecentBlockhash()
+            val blockhash = when (blockhashResult) {
+                is Result.Success -> blockhashResult.data
+                is Result.Error -> return@withContext Result.Error(
+                    "Failed to get blockhash: ${blockhashResult.message}",
+                    blockhashResult.throwable
+                )
+                Result.Loading -> return@withContext Result.Error("Timeout getting blockhash", null)
+            }
+
+            val feeResult = solanaBlockchainRepository.getFeeEstimate(feeLevel)
+            val feeEstimate = when (feeResult) {
+                is Result.Success -> feeResult.data
+                is Result.Error -> return@withContext Result.Error(
+                    "Failed to get fee estimate: ${feeResult.message}",
+                    feeResult.throwable
+                )
+                Result.Loading -> return@withContext Result.Error("Timeout getting fee", null)
+            }
+
+            val lamports = amount.multiply(BigDecimal("1000000000")).toLong()
+            val feeLamports = feeEstimate.totalFee.toLong()
+
+            val transaction = SolanaTransaction(
+                id = "sol_tx_${System.currentTimeMillis()}",
+                walletId = wallet.id,
+                fromAddress = wallet.address,
+                toAddress = toAddress,
+                amountLamports = lamports,
+                amountSol = amount,
+                feeLamports = feeLamports,
+                feeSol = BigDecimal(feeEstimate.totalFeeDecimal),
+                blockhash = blockhash,
+                signedData = null,
+                signature = null,
+                status = TransactionStatus.PENDING,
+                note = note,
+                timestamp = System.currentTimeMillis(),
+                feeLevel = feeLevel,
+                network = "mainnet" // or get from wallet TODO: use enum
             )
-            Result.Loading -> return Result.Error("Timeout getting blockhash", null)
+
+            solanaTransactionRepository.saveTransaction(transaction)
+            Log.d("CreateSolanaTxUseCase", "Saved Solana transaction")
+            Result.Success(transaction)
+
+        } catch (e: Exception) {
+            Log.e("CreateSolanaTxUseCase", "Error: ${e.message}", e)
+            Result.Error("Failed to create transaction: ${e.message}", e)
         }
-
-        val feeResult = solanaBlockchainRepository.getFeeEstimate(feeLevel)
-        val feeEstimate = when (feeResult) {
-            is Result.Success -> feeResult.data
-            is Result.Error -> return Result.Error(
-                "Failed to get fee estimate: ${feeResult.message}",
-                feeResult.throwable
-            )
-            Result.Loading -> return Result.Error("Timeout getting fee", null)
-        }
-
-        val lamports = amount.multiply(BigDecimal("1000000000")).toLong()
-
-        val transaction = SendTransaction(
-            id = "sol_tx_${System.currentTimeMillis()}",
-            walletId = wallet.id,
-            walletType = WalletType.SOLANA,
-            fromAddress = wallet.address,
-            toAddress = toAddress,
-            amount = lamports.toString(),
-            amountDecimal = amount.toPlainString(),
-            fee = feeEstimate.totalFee,
-            feeDecimal = feeEstimate.totalFeeDecimal,
-            total = (lamports + feeEstimate.totalFee.toLong()).toString(),
-            totalDecimal = (amount + BigDecimal(feeEstimate.totalFeeDecimal)).toPlainString(),
-            chain = ChainType.SOLANA,
-            status = TransactionStatus.PENDING,
-            note = note,
-            timestamp = System.currentTimeMillis(),
-            feeLevel = feeLevel,
-            metadata = mapOf(
-                "blockhash" to blockhash,
-                "feePayer" to wallet.address
-            )
-        )
-
-        transactionLocalDataSource.saveSendTransaction(transaction)
-        return Result.Success(transaction)
     }
 }
 @Singleton
@@ -108,16 +112,12 @@ class SignSolanaTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
     private val keyManager: KeyManager,
-    private val transactionLocalDataSource: TransactionLocalDataSource
+    private val solanaTransactionRepository: SolanaTransactionRepository
 ) {
-    suspend operator fun invoke(transactionId: String): Result<SignedTransaction> {
+    suspend operator fun invoke(transactionId: String): Result<SolanaTransaction> {
         return try {
-            val transaction = transactionLocalDataSource.getSendTransaction(transactionId)
+            val transaction = solanaTransactionRepository.getTransaction(transactionId)
                 ?: return Result.Error("Transaction not found", IllegalArgumentException("Transaction not found"))
-
-            if (transaction.walletType != WalletType.SOLANA) {
-                return Result.Error("Only Solana signing supported", IllegalArgumentException("Wrong wallet type"))
-            }
 
             signSolanaTransaction(transaction)
         } catch (e: Exception) {
@@ -126,8 +126,8 @@ class SignSolanaTransactionUseCase @Inject constructor(
     }
 
     private suspend fun signSolanaTransaction(
-        transaction: SendTransaction
-    ): Result<SignedTransaction> = withContext(Dispatchers.IO) {
+        transaction: SolanaTransaction
+    ): Result<SolanaTransaction> = withContext(Dispatchers.IO) {
 
         val wallet = walletRepository.getWallet(transaction.walletId) as? SolanaWallet
             ?: return@withContext Result.Error("Solana wallet not found", IllegalArgumentException("Wallet not found"))
@@ -142,16 +142,6 @@ class SignSolanaTransactionUseCase @Inject constructor(
                 blockhashResult.throwable
             )
             Result.Loading -> return@withContext Result.Error("Timeout getting blockhash", null)
-        }
-
-        val feeResult = solanaBlockchainRepository.getFeeEstimate()
-        val fee = when (feeResult) {
-            is Result.Success -> feeResult.data
-            is Result.Error -> return@withContext Result.Error(
-                "Failed to get fee: ${feeResult.message}",
-                feeResult.throwable
-            )
-            Result.Loading -> return@withContext Result.Error("Timeout getting fee", null)
         }
 
         val privateKeyResult = keyManager.getPrivateKeyForSigning(
@@ -178,12 +168,10 @@ class SignSolanaTransactionUseCase @Inject constructor(
             )
         }
 
-        val lamports = transaction.amount.toLongOrNull() ?: 0L
-
         val signedTxResult = solanaBlockchainRepository.createAndSignTransaction(
             fromKeypair = keypair,
             toAddress = transaction.toAddress,
-            lamports = lamports
+            lamports = transaction.amountLamports
         )
 
         val signedTx = when (signedTxResult) {
@@ -198,25 +186,15 @@ class SignSolanaTransactionUseCase @Inject constructor(
         val signatureBytes = signedTx.signature
         val txHash = signatureBytes.toHexString()
 
-        val signedTransaction = SignedTransaction(
-            rawHex = signedTx.serialize().toHexString(),
-            hash = txHash,
-            chain = transaction.chain
-        )
-
         val updatedTransaction = transaction.copy(
             status = TransactionStatus.PENDING,
-            hash = txHash,
-            signedHex = signedTransaction.rawHex,
-            metadata = transaction.metadata + mapOf(
-                "blockhash" to currentBlockhash,
-                "signature" to txHash,
-                "feePayer" to wallet.address
-            )
+            signature = signatureBytes,
+            signedData = signedTx.serialize(),
+            blockhash = currentBlockhash
         )
 
-        transactionLocalDataSource.saveSendTransaction(updatedTransaction)
-        Result.Success(signedTransaction)
+        solanaTransactionRepository.updateTransaction(updatedTransaction)
+        Result.Success(updatedTransaction)
     }
 
     private fun createSolanaKeypair(privateKeyHex: String): Keypair? = try {
@@ -246,28 +224,24 @@ class SignSolanaTransactionUseCase @Inject constructor(
         return joinToString("") { "%02x".format(it) }
     }
 }
+
 @Singleton
 class BroadcastSolanaTransactionUseCase @Inject constructor(
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
-    private val transactionLocalDataSource: TransactionLocalDataSource
+    private val solanaTransactionRepository: SolanaTransactionRepository
 ) {
     suspend operator fun invoke(transactionId: String): Result<BroadcastResult> = withContext(Dispatchers.IO) {
         Log.d("BroadcastSolanaUseCase", "Broadcasting transaction: $transactionId")
 
-        val transaction = transactionLocalDataSource.getSendTransaction(transactionId)
+        val transaction = solanaTransactionRepository.getTransaction(transactionId)
             ?: return@withContext Result.Error("Transaction not found", IllegalArgumentException("Transaction not found"))
 
-        if (transaction.chain != ChainType.SOLANA) {
-            return@withContext Result.Error("Not a Solana transaction", IllegalArgumentException("Wrong chain"))
-        }
-
-        val signedHex = transaction.signedHex
+        val signedData = transaction.signedData
             ?: return@withContext Result.Error("Transaction not signed", IllegalStateException("Not signed"))
 
-        val signatureBytes = signedHex.hexToByteArray()
         val solanaSignedTx = SolanaBlockchainRepository.SolanaSignedTransaction(
-            signature = signatureBytes.take(64).toByteArray(),
-            serialize = { signatureBytes }
+            signature = transaction.signature ?: ByteArray(0),
+            serialize = { signedData }
         )
 
         val broadcastResult = solanaBlockchainRepository.broadcastTransaction(solanaSignedTx)
@@ -278,23 +252,19 @@ class BroadcastSolanaTransactionUseCase @Inject constructor(
                 val updatedTransaction = if (result.success) {
                     transaction.copy(
                         status = TransactionStatus.SUCCESS,
-                        hash = result.hash ?: transaction.hash
+                        signature = transaction.signature
                     )
                 } else {
                     transaction.copy(
                         status = TransactionStatus.FAILED
                     )
                 }
-                transactionLocalDataSource.saveSendTransaction(updatedTransaction)
+                solanaTransactionRepository.updateTransaction(updatedTransaction)
                 Result.Success(result)
             }
             is Result.Error -> Result.Error(broadcastResult.message, broadcastResult.throwable)
             Result.Loading -> Result.Error("Broadcast timeout", null)
         }
-    }
-
-    private fun String.hexToByteArray(): ByteArray {
-        return chunked(2).map { it.toInt(16).toByte() }.toByteArray()
     }
 }
 
