@@ -68,7 +68,7 @@ import java.util.Locale
 fun TransactionReviewScreen(
     navController: NavController,
     walletId: String,
-    walletType: WalletType,
+    coinType: String, // "ETH", "BTC", "SOL", "USDC"
     toAddress: String,
     amount: String,
     feeLevel: String? = null,
@@ -91,34 +91,31 @@ fun TransactionReviewScreen(
 
     // Initialize if needed
     LaunchedEffect(Unit) {
-        when (walletType) {
-            WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+        when (coinType) {
+            "ETH" -> {
                 ethereumViewModel.initialize(walletId)
             }
-            WalletType.USDC -> {
+            "USDC" -> {
                 usdcViewModel.init(walletId)
             }
-            WalletType.SOLANA -> {
+            "SOL" -> {
                 solanaViewModel.init(walletId)
             }
-            WalletType.BITCOIN -> {
+            "BTC" -> {
                 bitcoinViewModel.init(walletId)
             }
-            else -> {}
         }
     }
 
-    // Handle Ethereum transaction creation result
     LaunchedEffect(ethereumState.value.transactionState) {
         when (val state = ethereumState.value.transactionState) {
-            is TransactionState.Created -> {
-                // Transaction created successfully
-                txHash = state.transaction.hash ?: "pending"
+            is EthereumSendViewModel.TransactionState.Created -> {
+                txHash = state.transaction.txHash ?: "pending"
                 txStatus = "Transaction sent!"
                 isSending = false
                 ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ResetTransactionState)
             }
-            is TransactionState.Error -> {
+            is EthereumSendViewModel.TransactionState.Error -> {
                 sendError = state.message
                 isSending = false
             }
@@ -132,11 +129,11 @@ fun TransactionReviewScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = when (walletType) {
-                                WalletType.BITCOIN -> Icons.Default.CurrencyBitcoin
-                                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> Icons.Default.CurrencyExchange
-                                WalletType.SOLANA -> Icons.Default.Star
-                                WalletType.USDC -> Icons.Default.AttachMoney
+                            imageVector = when (coinType) {
+                                "BTC" -> Icons.Default.CurrencyBitcoin
+                                "ETH" -> Icons.Default.CurrencyExchange
+                                "SOL" -> Icons.Default.Star
+                                "USDC" -> Icons.Default.AttachMoney
                                 else -> Icons.Default.AccountBalanceWallet
                             },
                             contentDescription = null,
@@ -199,19 +196,17 @@ fun TransactionReviewScreen(
                                 isSending = true
                                 sendError = null
 
-                                when (walletType) {
-                                    WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
-                                        // Set values in ViewModel
+                                when (coinType) {
+                                    "ETH" -> {
                                         ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ToAddressChanged(toAddress))
                                         ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.AmountChanged(amount))
                                         feeLevel?.let {
                                             ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.FeeLevelChanged(
                                                 FeeLevel.valueOf(it)))
                                         }
-                                        // Create transaction
                                         ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.CreateTransaction)
                                     }
-                                    WalletType.USDC -> {
+                                    "USDC" -> {
                                         usdcViewModel.updateAddress(toAddress)
                                         usdcViewModel.updateAmount(amount)
                                         usdcViewModel.send { hash ->
@@ -220,7 +215,7 @@ fun TransactionReviewScreen(
                                             isSending = false
                                         }
                                     }
-                                    WalletType.SOLANA -> {
+                                    "SOL" -> {
                                         solanaViewModel.updateAddress(toAddress)
                                         solanaViewModel.updateAmount(amount)
                                         solanaViewModel.send { hash ->
@@ -229,7 +224,7 @@ fun TransactionReviewScreen(
                                             isSending = false
                                         }
                                     }
-                                    WalletType.BITCOIN -> {
+                                    "BTC" -> {
                                         bitcoinViewModel.updateAddress(toAddress)
                                         bitcoinViewModel.updateAmount(amount)
                                         feeLevel?.let {
@@ -241,7 +236,6 @@ fun TransactionReviewScreen(
                                             isSending = false
                                         }
                                     }
-                                    else -> {}
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -294,7 +288,7 @@ fun TransactionReviewScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "$amount ${getTokenSymbol(walletType)}",
+                        text = "$amount ${getTokenSymbol(coinType)}",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -305,44 +299,43 @@ fun TransactionReviewScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             // From Address (show wallet address from state)
-            when (walletType) {
-                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+            when (coinType) {
+                "ETH" -> {
                     ethereumState.value.fromAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
                         AddressCard(
                             label = "From",
                             address = fromAddress,
-                            walletType = walletType
+                            coinType = coinType
                         )
                     }
                 }
-                WalletType.USDC -> {
-                    usdcState.value.wallet?.address?.let { fromAddress ->
+                "USDC" -> {
+                    usdcState.value.fromAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
                         AddressCard(
                             label = "From",
                             address = fromAddress,
-                            walletType = walletType
+                            coinType = coinType
                         )
                     }
                 }
-                WalletType.SOLANA -> {
+                "SOL" -> {
                     solanaState.value.walletAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
                         AddressCard(
                             label = "From",
                             address = fromAddress,
-                            walletType = walletType
+                            coinType = coinType
                         )
                     }
                 }
-                WalletType.BITCOIN -> {
+                "BTC" -> {
                     bitcoinState.value.walletAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
                         AddressCard(
                             label = "From",
                             address = fromAddress,
-                            walletType = walletType
+                            coinType = coinType
                         )
                     }
                 }
-                else -> {}
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -351,31 +344,31 @@ fun TransactionReviewScreen(
             AddressCard(
                 label = "To",
                 address = toAddress,
-                walletType = walletType
+                coinType = coinType
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             // Fee Preview (if available)
-            when (walletType) {
-                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+            when (coinType) {
+                "ETH" -> {
                     ethereumState.value.feeEstimate?.let { fee ->
                         FeePreviewCard(
                             fee = fee,
-                            walletType = walletType
+                            coinType = coinType
                         )
                     }
                 }
-                WalletType.BITCOIN -> {
+                "BTC" -> {
                     bitcoinState.value.feeEstimate?.let { fee ->
                         FeePreviewCard(
                             fee = fee,
-                            walletType = walletType
+                            coinType = coinType
                         )
                     }
                 }
                 else -> {
-                    // Show default fee for USDC and SOLANA
+                    // Show default fee for USDC and SOL
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -392,7 +385,7 @@ fun TransactionReviewScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "≈ 0.0005 ${getTokenSymbol(walletType)}",
+                                text = "≈ 0.0005 ${getTokenSymbol(coinType)}",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
@@ -442,7 +435,7 @@ fun TransactionReviewScreen(
 
                         Button(
                             onClick = {
-                                val url = getExplorerUrl(walletType, hash)
+                                val url = getExplorerUrl(coinType, hash)
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                                 context.startActivity(intent)
                             },
@@ -451,7 +444,7 @@ fun TransactionReviewScreen(
                         ) {
                             Icon(Icons.Default.OpenInBrowser, "View", modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("View on ${getExplorerName(walletType)}")
+                            Text("View on ${getExplorerName(coinType)}")
                         }
                     }
                 }
@@ -464,7 +457,7 @@ fun TransactionReviewScreen(
 fun AddressCard(
     label: String,
     address: String,
-    walletType: WalletType
+    coinType: String
 ) {
     val context = LocalContext.current
 
@@ -513,7 +506,7 @@ fun AddressCard(
 @Composable
 fun FeePreviewCard(
     fee: FeeEstimate,
-    walletType: WalletType
+    coinType: String
 ) {
     Card(
         modifier = Modifier
@@ -543,7 +536,7 @@ fun FeePreviewCard(
                 )
 
                 Text(
-                    text = "${fee.totalFeeDecimal} ${getTokenSymbol(walletType)}",
+                    text = "${fee.totalFeeDecimal} ${getTokenSymbol(coinType)}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
@@ -557,6 +550,37 @@ fun FeePreviewCard(
                 )
             }
         }
+    }
+}
+
+// Helper functions
+private fun getTokenSymbol(coinType: String): String {
+    return when (coinType) {
+        "BTC" -> "BTC"
+        "SOL" -> "SOL"
+        "USDC" -> "USDC"
+        "ETH" -> "ETH"
+        else -> "TOKEN"
+    }
+}
+
+private fun getExplorerName(coinType: String): String {
+    return when (coinType) {
+        "BTC" -> "Blockstream"
+        "ETH" -> "Etherscan"
+        "SOL" -> "Solscan"
+        "USDC" -> "Etherscan"
+        else -> "Explorer"
+    }
+}
+
+private fun getExplorerUrl(coinType: String, txHash: String): String {
+    return when (coinType) {
+        "BTC" -> "https://blockstream.info/tx/$txHash"
+        "ETH" -> "https://etherscan.io/tx/$txHash"
+        "SOL" -> "https://solscan.io/tx/$txHash"
+        "USDC" -> "https://etherscan.io/tx/$txHash"
+        else -> "https://etherscan.io/tx/$txHash"
     }
 }
 

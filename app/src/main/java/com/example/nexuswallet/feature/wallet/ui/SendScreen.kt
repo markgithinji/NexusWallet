@@ -60,13 +60,12 @@ import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import java.math.BigDecimal
 import java.math.RoundingMode
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SendScreen(
     navController: NavController,
     walletId: String,
-    walletType: WalletType,
+    coinType: String, // "ETH", "BTC", "SOL", "USDC"
     ethereumViewModel: EthereumSendViewModel = hiltViewModel(),
     usdcViewModel: USDCSendViewModel = hiltViewModel(),
     solanaViewModel: SolanaSendViewModel = hiltViewModel(),
@@ -81,21 +80,20 @@ fun SendScreen(
 
     // Initialize ViewModels
     LaunchedEffect(Unit) {
-        when (walletType) {
-            WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> ethereumViewModel.initialize(walletId)
-            WalletType.USDC -> usdcViewModel.init(walletId)
-            WalletType.SOLANA -> solanaViewModel.init(walletId)
-            WalletType.BITCOIN -> bitcoinViewModel.init(walletId)
-            else -> {}
+        when (coinType) {
+            "ETH" -> ethereumViewModel.initialize(walletId)
+            "USDC" -> usdcViewModel.init(walletId)
+            "SOL" -> solanaViewModel.init(walletId)
+            "BTC" -> bitcoinViewModel.init(walletId)
         }
     }
 
     // Determine loading state
-    val isLoading = when (walletType) {
-        WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> ethereumUiState.value.isLoading
-        WalletType.USDC -> usdcState.value.isLoading
-        WalletType.SOLANA -> solanaState.value.isLoading
-        WalletType.BITCOIN -> bitcoinState.value.isLoading
+    val isLoading = when (coinType) {
+        "ETH" -> ethereumUiState.value.isLoading
+        "USDC" -> usdcState.value.isLoading
+        "SOL" -> solanaState.value.isLoading
+        "BTC" -> bitcoinState.value.isLoading
         else -> false
     }
 
@@ -105,18 +103,18 @@ fun SendScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = when (walletType) {
-                                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> Icons.Default.CurrencyExchange
-                                WalletType.USDC -> Icons.Default.AttachMoney
-                                WalletType.SOLANA -> Icons.Default.Star
-                                WalletType.BITCOIN -> Icons.Default.CurrencyBitcoin
+                            imageVector = when (coinType) {
+                                "BTC" -> Icons.Default.CurrencyBitcoin
+                                "ETH" -> Icons.Default.CurrencyExchange
+                                "SOL" -> Icons.Default.Star
+                                "USDC" -> Icons.Default.AttachMoney
                                 else -> Icons.Default.AccountBalanceWallet
                             },
                             contentDescription = null,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Send ${walletType.displayName}")
+                        Text("Send ${getDisplayName(coinType)}")
                     }
                 },
                 navigationIcon = {
@@ -133,45 +131,40 @@ fun SendScreen(
         },
         bottomBar = {
             SendBottomBar(
-                isValid = when (walletType) {
-                    WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA ->
-                        ethereumUiState.value.isValid
-                    WalletType.USDC ->
-                        usdcState.value.isValidAddress && usdcState.value.amountValue > BigDecimal.ZERO
-                    WalletType.SOLANA ->
-                        solanaState.value.isAddressValid && solanaState.value.amountValue > BigDecimal.ZERO
-                    WalletType.BITCOIN ->
-                        bitcoinState.value.isAddressValid && bitcoinState.value.amountValue > BigDecimal.ZERO
+                isValid = when (coinType) {
+                    "ETH" -> ethereumUiState.value.isValid
+                    "USDC" -> usdcState.value.isValidAddress && usdcState.value.amountValue > BigDecimal.ZERO
+                    "SOL" -> solanaState.value.isAddressValid && solanaState.value.amountValue > BigDecimal.ZERO
+                    "BTC" -> bitcoinState.value.isAddressValid && bitcoinState.value.amountValue > BigDecimal.ZERO
                     else -> false
                 },
                 isLoading = isLoading,
-                validationError = when (walletType) {
-                    WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> ethereumUiState.value.validationError
+                validationError = when (coinType) {
+                    "ETH" -> ethereumUiState.value.validationError
                     else -> null
                 },
-                error = when (walletType) {
-                    WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> ethereumUiState.value.error
-                    WalletType.USDC -> usdcState.value.error
-                    WalletType.SOLANA -> solanaState.value.error
-                    WalletType.BITCOIN -> bitcoinState.value.error
+                error = when (coinType) {
+                    "ETH" -> ethereumUiState.value.error
+                    "USDC" -> usdcState.value.error
+                    "SOL" -> solanaState.value.error
+                    "BTC" -> bitcoinState.value.error
                     else -> null
                 },
                 onSend = {
                     // Navigate to review screen with all the input data
-                    when (walletType) {
-                        WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
-                            navController.navigate("review/$walletId/${walletType.name}?toAddress=${ethereumUiState.value.toAddress}&amount=${ethereumUiState.value.amount}&feeLevel=${ethereumUiState.value.feeLevel.name}")
+                    when (coinType) {
+                        "ETH" -> {
+                            navController.navigate("review/$walletId/ETH?toAddress=${ethereumUiState.value.toAddress}&amount=${ethereumUiState.value.amount}&feeLevel=${ethereumUiState.value.feeLevel.name}")
                         }
-                        WalletType.USDC -> {
-                            navController.navigate("review/$walletId/${walletType.name}?toAddress=${usdcState.value.toAddress}&amount=${usdcState.value.amount}")
+                        "USDC" -> {
+                            navController.navigate("review/$walletId/USDC?toAddress=${usdcState.value.toAddress}&amount=${usdcState.value.amount}")
                         }
-                        WalletType.SOLANA -> {
-                            navController.navigate("review/$walletId/${walletType.name}?toAddress=${solanaState.value.toAddress}&amount=${solanaState.value.amount}")
+                        "SOL" -> {
+                            navController.navigate("review/$walletId/SOL?toAddress=${solanaState.value.toAddress}&amount=${solanaState.value.amount}")
                         }
-                        WalletType.BITCOIN -> {
-                            navController.navigate("review/$walletId/${walletType.name}?toAddress=${bitcoinState.value.toAddress}&amount=${bitcoinState.value.amount}&feeLevel=${bitcoinState.value.feeLevel.name}")
+                        "BTC" -> {
+                            navController.navigate("review/$walletId/BTC?toAddress=${bitcoinState.value.toAddress}&amount=${bitcoinState.value.amount}&feeLevel=${bitcoinState.value.feeLevel.name}")
                         }
-                        else -> {}
                     }
                 }
             )
@@ -184,56 +177,58 @@ fun SendScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             // Balance Card
-            when (walletType) {
-                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+            when (coinType) {
+                "ETH" -> {
                     BalanceCard(
                         balance = ethereumUiState.value.balance,
                         balanceFormatted = "${ethereumUiState.value.balance.setScale(6, RoundingMode.HALF_UP)} ETH",
-                        walletType = walletType,
-                        address = ethereumUiState.value.fromAddress
+                        coinType = coinType,
+                        address = ethereumUiState.value.fromAddress,
+                        network = ethereumUiState.value.network
                     )
                 }
-                WalletType.USDC -> {
+                "USDC" -> {
                     BalanceCard(
                         balance = usdcState.value.usdcBalanceDecimal,
                         balanceFormatted = "${usdcState.value.usdcBalanceDecimal.setScale(2, RoundingMode.HALF_UP)} USDC",
-                        walletType = walletType,
-                        address = usdcState.value.wallet?.address ?: "",
+                        coinType = coinType,
+                        address = usdcState.value.fromAddress,
                         secondaryBalance = usdcState.value.ethBalanceDecimal,
-                        secondaryBalanceFormatted = "${usdcState.value.ethBalanceDecimal.setScale(4, RoundingMode.HALF_UP)} ETH"
+                        secondaryBalanceFormatted = "${usdcState.value.ethBalanceDecimal.setScale(4, RoundingMode.HALF_UP)} ETH",
+                        network = usdcState.value.network.name
                     )
                 }
-                WalletType.SOLANA -> {
+                "SOL" -> {
                     BalanceCard(
                         balance = solanaState.value.balance,
                         balanceFormatted = solanaState.value.balanceFormatted,
-                        walletType = walletType,
+                        coinType = coinType,
                         address = solanaState.value.walletAddress
                     )
                 }
-                WalletType.BITCOIN -> {
+                "BTC" -> {
                     BalanceCard(
                         balance = bitcoinState.value.balance,
                         balanceFormatted = bitcoinState.value.balanceFormatted,
-                        walletType = walletType,
-                        address = bitcoinState.value.walletAddress
+                        coinType = coinType,
+                        address = bitcoinState.value.walletAddress,
+                        network = bitcoinState.value.network.name
                     )
                 }
-                else -> {}
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Error Message
-            when (walletType) {
-                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+            // Error/Info Messages
+            when (coinType) {
+                "ETH" -> {
                     ethereumUiState.value.error?.let { error ->
                         ErrorMessage(error = error) {
                             ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ClearError)
                         }
                     }
                 }
-                WalletType.USDC -> {
+                "USDC" -> {
                     usdcState.value.error?.let { error ->
                         ErrorMessage(error = error) {
                             usdcViewModel.clearError()
@@ -245,7 +240,7 @@ fun SendScreen(
                         }
                     }
                 }
-                WalletType.SOLANA -> {
+                "SOL" -> {
                     solanaState.value.error?.let { error ->
                         ErrorMessage(error = error) {
                             solanaViewModel.clearError()
@@ -257,7 +252,7 @@ fun SendScreen(
                         }
                     }
                 }
-                WalletType.BITCOIN -> {
+                "BTC" -> {
                     bitcoinState.value.error?.let { error ->
                         ErrorMessage(error = error) {
                             bitcoinViewModel.clearError()
@@ -269,123 +264,117 @@ fun SendScreen(
                         }
                     }
                 }
-                else -> {}
             }
 
             // Address Input
-            when (walletType) {
-                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+            when (coinType) {
+                "ETH" -> {
                     AddressInputSection(
                         toAddress = ethereumUiState.value.toAddress,
                         onAddressChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ToAddressChanged(it)) },
-                        walletType = walletType,
+                        coinType = coinType,
                         isValid = ethereumUiState.value.validationError?.contains("address") == false,
                         errorMessage = if (ethereumUiState.value.validationError?.contains("address") == true)
                             ethereumUiState.value.validationError else null
                     )
                 }
-                WalletType.USDC -> {
+                "USDC" -> {
                     AddressInputSection(
                         toAddress = usdcState.value.toAddress,
                         onAddressChange = { usdcViewModel.updateAddress(it) },
-                        walletType = walletType,
+                        coinType = coinType,
                         isValid = usdcState.value.isValidAddress,
                         errorMessage = if (!usdcState.value.isValidAddress && usdcState.value.toAddress.isNotEmpty())
                             "Invalid Ethereum address" else null
                     )
                 }
-                WalletType.SOLANA -> {
+                "SOL" -> {
                     AddressInputSection(
                         toAddress = solanaState.value.toAddress,
                         onAddressChange = { solanaViewModel.updateAddress(it) },
-                        walletType = walletType,
+                        coinType = coinType,
                         isValid = solanaState.value.isAddressValid,
                         errorMessage = solanaState.value.addressError
                     )
                 }
-                WalletType.BITCOIN -> {
+                "BTC" -> {
                     AddressInputSection(
                         toAddress = bitcoinState.value.toAddress,
                         onAddressChange = { bitcoinViewModel.updateAddress(it) },
-                        walletType = walletType,
+                        coinType = coinType,
                         isValid = bitcoinState.value.isAddressValid,
                         errorMessage = bitcoinState.value.addressError,
                         network = bitcoinState.value.network
                     )
                 }
-                else -> {}
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Amount Input
-            when (walletType) {
-                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+            when (coinType) {
+                "ETH" -> {
                     AmountInputSection(
                         amount = ethereumUiState.value.amount,
                         onAmountChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.AmountChanged(it)) },
                         balance = ethereumUiState.value.balance,
-                        walletType = walletType,
+                        coinType = coinType,
                         onMaxClick = { showMaxDialog = true },
                         errorMessage = if (ethereumUiState.value.validationError?.contains("balance") == true)
                             ethereumUiState.value.validationError else null
                     )
                 }
-                WalletType.USDC -> {
+                "USDC" -> {
                     AmountInputSection(
                         amount = usdcState.value.amount,
                         onAmountChange = { usdcViewModel.updateAmount(it) },
                         balance = usdcState.value.usdcBalanceDecimal,
-                        walletType = walletType,
+                        coinType = coinType,
                         tokenSymbol = "USDC",
                         onMaxClick = { usdcViewModel.updateAmount(usdcState.value.usdcBalanceDecimal.toPlainString()) }
                     )
                 }
-                WalletType.SOLANA -> {
+                "SOL" -> {
                     AmountInputSection(
                         amount = solanaState.value.amount,
                         onAmountChange = { solanaViewModel.updateAmount(it) },
                         balance = solanaState.value.balance,
-                        walletType = walletType,
+                        coinType = coinType,
                         onMaxClick = { showMaxDialog = true }
                     )
                 }
-                WalletType.BITCOIN -> {
+                "BTC" -> {
                     AmountInputSection(
                         amount = bitcoinState.value.amount,
                         onAmountChange = { bitcoinViewModel.updateAmount(it) },
                         balance = bitcoinState.value.balance,
-                        walletType = walletType,
+                        coinType = coinType,
                         onMaxClick = { showMaxDialog = true }
                     )
                 }
-                else -> {}
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Fee Selection (for ETH and BTC)
-            if (walletType == WalletType.ETHEREUM || walletType == WalletType.ETHEREUM_SEPOLIA ||
-                walletType == WalletType.BITCOIN) {
-
-                when (walletType) {
-                    WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+            if (coinType == "ETH" || coinType == "BTC") {
+                when (coinType) {
+                    "ETH" -> {
                         FeeSelectionSection(
                             feeLevel = ethereumUiState.value.feeLevel,
                             onFeeLevelChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.FeeLevelChanged(it)) },
                             feeEstimate = ethereumUiState.value.feeEstimate,
-                            walletType = walletType
+                            coinType = coinType
                         )
                     }
-                    WalletType.BITCOIN -> {
+                    "BTC" -> {
                         FeeSelectionSection(
                             feeLevel = bitcoinState.value.feeLevel,
                             onFeeLevelChange = { bitcoinViewModel.updateFeeLevel(it) },
                             feeEstimate = bitcoinState.value.feeEstimate,
-                            walletType = walletType
+                            coinType = coinType
                         )
                     }
-                    else -> {}
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -394,8 +383,8 @@ fun SendScreen(
         }
 
         if (showMaxDialog) {
-            when (walletType) {
-                WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> {
+            when (coinType) {
+                "ETH" -> {
                     MaxAmountDialog(
                         balance = ethereumUiState.value.balance,
                         feeEstimate = ethereumUiState.value.feeEstimate,
@@ -407,7 +396,7 @@ fun SendScreen(
                         }
                     )
                 }
-                WalletType.SOLANA -> {
+                "SOL" -> {
                     MaxAmountDialog(
                         balance = solanaState.value.balance,
                         feeEstimate = FeeEstimate(
@@ -426,7 +415,7 @@ fun SendScreen(
                         }
                     )
                 }
-                WalletType.BITCOIN -> {
+                "BTC" -> {
                     MaxAmountDialog(
                         balance = bitcoinState.value.balance,
                         feeEstimate = bitcoinState.value.feeEstimate,
@@ -448,10 +437,11 @@ fun SendScreen(
 fun BalanceCard(
     balance: BigDecimal,
     balanceFormatted: String,
-    walletType: WalletType,
+    coinType: String,
     address: String,
     secondaryBalance: BigDecimal? = null,
-    secondaryBalanceFormatted: String? = null
+    secondaryBalanceFormatted: String? = null,
+    network: String? = null
 ) {
     Card(
         modifier = Modifier
@@ -478,7 +468,7 @@ fun BalanceCard(
                     )
 
                     Text(
-                        text = "$${String.format("%.2f", balance.toDouble() * getUsdRate(walletType))}",
+                        text = "$${String.format("%.2f", balance.toDouble() * getUsdRate(coinType))}",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -496,6 +486,14 @@ fun BalanceCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+
+                    if (network != null && network != "MAINNET" && network != "Mainnet") {
+                        Text(
+                            text = "Network: $network",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 Box(
@@ -506,11 +504,11 @@ fun BalanceCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = when (walletType) {
-                            WalletType.BITCOIN -> Icons.Default.CurrencyBitcoin
-                            WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> Icons.Default.CurrencyExchange
-                            WalletType.SOLANA -> Icons.Default.Star
-                            WalletType.USDC -> Icons.Default.AttachMoney
+                        imageVector = when (coinType) {
+                            "BTC" -> Icons.Default.CurrencyBitcoin
+                            "ETH" -> Icons.Default.CurrencyExchange
+                            "SOL" -> Icons.Default.Star
+                            "USDC" -> Icons.Default.AttachMoney
                             else -> Icons.Default.AccountBalanceWallet
                         },
                         contentDescription = "Wallet",
@@ -537,7 +535,7 @@ fun BalanceCard(
 fun AddressInputSection(
     toAddress: String,
     onAddressChange: (String) -> Unit,
-    walletType: WalletType,
+    coinType: String,
     isValid: Boolean = true,
     errorMessage: String? = null,
     network: BitcoinNetwork? = null
@@ -581,15 +579,14 @@ fun AddressInputSection(
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = {
                     Text(
-                        text = when (walletType) {
-                            WalletType.BITCOIN -> {
+                        text = when (coinType) {
+                            "BTC" -> {
                                 val networkHint = if (network == BitcoinNetwork.TESTNET)
                                     " (testnet: m/n, 2, tb1)" else ""
                                 "Enter Bitcoin address$networkHint"
                             }
-                            WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> "Enter Ethereum address (0x...)"
-                            WalletType.SOLANA -> "Enter Solana address"
-                            WalletType.USDC -> "Enter Ethereum address (0x...)"
+                            "ETH", "USDC" -> "Enter Ethereum address (0x...)"
+                            "SOL" -> "Enter Solana address"
                             else -> "Enter wallet address"
                         }
                     )
@@ -677,18 +674,12 @@ fun AmountInputSection(
     amount: String,
     onAmountChange: (String) -> Unit,
     balance: BigDecimal,
-    walletType: WalletType,
+    coinType: String,
     tokenSymbol: String? = null,
     onMaxClick: () -> Unit,
     errorMessage: String? = null
 ) {
-    val symbol = tokenSymbol ?: when (walletType) {
-        WalletType.BITCOIN -> "BTC"
-        WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> "ETH"
-        WalletType.SOLANA -> "SOL"
-        WalletType.USDC -> "USDC"
-        else -> "TOK"
-    }
+    val symbol = tokenSymbol ?: coinType
 
     Card(
         modifier = Modifier
@@ -782,7 +773,7 @@ fun AmountInputSection(
                     BigDecimal.ZERO
                 }
 
-                val usdAmount = amountValue.toDouble() * getUsdRate(walletType, symbol)
+                val usdAmount = amountValue.toDouble() * getUsdRate(coinType, symbol)
 
                 Text(
                     text = "≈ $${String.format("%.2f", usdAmount)} USD",
@@ -801,7 +792,7 @@ fun FeeSelectionSection(
     feeLevel: FeeLevel,
     onFeeLevelChange: (FeeLevel) -> Unit,
     feeEstimate: FeeEstimate?,
-    walletType: WalletType
+    coinType: String
 ) {
     Card(
         modifier = Modifier
@@ -844,7 +835,7 @@ fun FeeSelectionSection(
             feeEstimate?.let { fee ->
                 FeeDetailsCard(
                     feeEstimate = fee,
-                    walletType = walletType
+                    coinType = coinType
                 )
             }
         }
@@ -930,15 +921,9 @@ fun FeeLevelButton(
 @Composable
 fun FeeDetailsCard(
     feeEstimate: FeeEstimate,
-    walletType: WalletType
+    coinType: String
 ) {
-    val symbol = when (walletType) {
-        WalletType.BITCOIN -> "BTC"
-        WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> "ETH"
-        WalletType.SOLANA -> "SOL"
-        WalletType.USDC -> "ETH"
-        else -> "TOK"
-    }
+    val symbol = coinType
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -980,7 +965,7 @@ fun FeeDetailsCard(
                 )
 
                 val feeUsd = feeEstimate.totalFeeDecimal.toDoubleOrNull() ?: 0.0
-                val usdValue = feeUsd * getUsdRate(walletType, symbol)
+                val usdValue = feeUsd * getUsdRate(coinType, symbol)
 
                 Text(
                     text = "$${String.format("%.2f", usdValue)}",
@@ -1046,6 +1031,28 @@ fun FeeDetailsCard(
                 }
             }
         }
+    }
+}
+
+// Helper functions
+private fun getDisplayName(coinType: String): String {
+    return when (coinType) {
+        "BTC" -> "Bitcoin"
+        "ETH" -> "Ethereum"
+        "SOL" -> "Solana"
+        "USDC" -> "USDC"
+        else -> coinType
+    }
+}
+
+private fun getUsdRate(coinType: String, tokenSymbol: String? = null): Double {
+    val symbol = tokenSymbol ?: coinType
+    return when {
+        symbol == "BTC" -> 45000.0
+        symbol == "ETH" -> 3000.0
+        symbol == "SOL" -> 30.0
+        symbol == "USDC" -> 1.0
+        else -> 1.0
     }
 }
 
