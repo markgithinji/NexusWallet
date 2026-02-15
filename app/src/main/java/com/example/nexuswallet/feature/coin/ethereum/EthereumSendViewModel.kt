@@ -1,24 +1,12 @@
-package com.example.nexuswallet.feature.wallet.ui
+package com.example.nexuswallet.feature.coin.ethereum
 
 import android.util.Log
-import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.TransactionState
+import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
-import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
-import com.example.nexuswallet.feature.wallet.domain.WalletType
-import com.example.nexuswallet.feature.coin.usdc.domain.GetUSDCBalanceUseCase
-import com.example.nexuswallet.feature.coin.usdc.domain.SendUSDCUseCase
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,14 +16,8 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.ethereum.BroadcastTransactionUseCase
-import com.example.nexuswallet.feature.coin.ethereum.CreateSendTransactionUseCase
-import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
-import com.example.nexuswallet.feature.coin.ethereum.GetFeeEstimateUseCase
-import com.example.nexuswallet.feature.coin.ethereum.GetTransactionUseCase
-import com.example.nexuswallet.feature.coin.ethereum.SignEthereumTransactionUseCase
-import com.example.nexuswallet.feature.coin.ethereum.ValidateAddressUseCase
+import kotlin.plus
+
 @HiltViewModel
 class EthereumSendViewModel @Inject constructor(
     private val createSendTransactionUseCase: CreateSendTransactionUseCase,
