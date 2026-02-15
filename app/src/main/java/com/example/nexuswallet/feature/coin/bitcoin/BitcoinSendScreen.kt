@@ -58,16 +58,16 @@ fun BitcoinSendScreen(
             )
         },
         bottomBar = {
-            if (state.wallet != null) {
-                BottomSendBar(
-                    enabled = state.toAddress.isNotBlank() &&
-                            state.amountValue > BigDecimal.ZERO &&
-                            !state.isLoading,
-                    isLoading = state.isLoading,
-                    onClick = { viewModel.send(onSuccess) },
-                    label = "Send BTC"
-                )
-            }
+//            if (state.wallet != null) {
+//                BottomSendBar(
+//                    enabled = state.toAddress.isNotBlank() &&
+//                            state.amountValue > BigDecimal.ZERO &&
+//                            !state.isLoading,
+//                    isLoading = state.isLoading,
+//                    onClick = { viewModel.send(onSuccess) },
+//                    label = "Send BTC"
+//                )
+//            }
         }
     ) { padding ->
         Column(
@@ -123,49 +123,49 @@ fun BitcoinSendScreen(
                 }
             }
 
-            // Wallet Info
-            state.wallet?.let { wallet ->
-                Card {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("From:", style = MaterialTheme.typography.labelMedium)
-                        Text(
-                            wallet.address.take(8) + "..." + wallet.address.takeLast(8),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                "Wallet: ${wallet.name}",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            SuggestionChip(
-                                onClick = {},
-                                label = {
-                                    Text(
-                                        when (wallet.network) {
-                                            BitcoinNetwork.MAINNET -> "MAINNET"
-                                            BitcoinNetwork.TESTNET -> "TESTNET"
-                                            BitcoinNetwork.REGTEST -> "REGTEST"
-                                        }
-                                    )
-                                },
-                                colors = SuggestionChipDefaults.suggestionChipColors(
-                                    containerColor = when (wallet.network) {
-                                        BitcoinNetwork.MAINNET -> MaterialTheme.colorScheme.errorContainer
-                                        BitcoinNetwork.TESTNET -> MaterialTheme.colorScheme.tertiaryContainer
-                                        BitcoinNetwork.REGTEST -> MaterialTheme.colorScheme.secondaryContainer
-                                    }
-                                )
-                            )
-                        }
-                    }
-                }
-            }
+//            // Wallet Info
+//            state.wallet?.let { wallet ->
+//                Card {
+//                    Column(
+//                        modifier = Modifier.padding(16.dp),
+//                        verticalArrangement = Arrangement.spacedBy(8.dp)
+//                    ) {
+//                        Text("From:", style = MaterialTheme.typography.labelMedium)
+//                        Text(
+//                            wallet.address.take(8) + "..." + wallet.address.takeLast(8),
+//                            style = MaterialTheme.typography.bodyMedium
+//                        )
+//                        Row(
+//                            horizontalArrangement = Arrangement.SpaceBetween,
+//                            modifier = Modifier.fillMaxWidth()
+//                        ) {
+//                            Text(
+//                                "Wallet: ${wallet.name}",
+//                                style = MaterialTheme.typography.bodySmall
+//                            )
+//                            SuggestionChip(
+//                                onClick = {},
+//                                label = {
+//                                    Text(
+//                                        when (wallet.network) {
+//                                            BitcoinNetwork.MAINNET -> "MAINNET"
+//                                            BitcoinNetwork.TESTNET -> "TESTNET"
+//                                            BitcoinNetwork.REGTEST -> "REGTEST"
+//                                        }
+//                                    )
+//                                },
+//                                colors = SuggestionChipDefaults.suggestionChipColors(
+//                                    containerColor = when (wallet.network) {
+//                                        BitcoinNetwork.MAINNET -> MaterialTheme.colorScheme.errorContainer
+//                                        BitcoinNetwork.TESTNET -> MaterialTheme.colorScheme.tertiaryContainer
+//                                        BitcoinNetwork.REGTEST -> MaterialTheme.colorScheme.secondaryContainer
+//                                    }
+//                                )
+//                            )
+//                        }
+//                    }
+//                }
+//            }
 
             // Testnet Faucet Button
             if (state.network == BitcoinNetwork.TESTNET) {

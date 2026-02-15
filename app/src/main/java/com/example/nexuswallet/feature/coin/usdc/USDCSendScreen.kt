@@ -60,18 +60,18 @@ fun USDCSendScreen(
             )
         },
         bottomBar = {
-            if (state.wallet != null) {
-                BottomSendBar(
-                    enabled = state.toAddress.isNotBlank() &&
-                            state.amountValue > BigDecimal.ZERO &&
-                            !state.isLoading &&
-                            state.hasSufficientBalance &&
-                            state.hasSufficientGas,
-                    isLoading = state.isLoading,
-                    onClick = { viewModel.send(onSuccess) },
-                    label = "Send USDC"
-                )
-            }
+//            if (state.wallet != null) {
+//                BottomSendBar(
+//                    enabled = state.toAddress.isNotBlank() &&
+//                            state.amountValue > BigDecimal.ZERO &&
+//                            !state.isLoading &&
+//                            state.hasSufficientBalance &&
+//                            state.hasSufficientGas,
+//                    isLoading = state.isLoading,
+//                    onClick = { viewModel.send(onSuccess) },
+//                    label = "Send USDC"
+//                )
+//            }
         }
     ) { padding ->
         Column(
@@ -154,27 +154,27 @@ fun USDCSendScreen(
                     )
                 }
             }
-
-            // Wallet Info
-            state.wallet?.let { wallet ->
-                Card {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("From:", style = MaterialTheme.typography.labelMedium)
-                        Text(
-                            wallet.address.take(8) + "..." + wallet.address.takeLast(8),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = FontFamily.Monospace
-                        )
-                        Text(
-                            "Wallet: ${wallet.name}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
+//
+//            // Wallet Info
+//            state.wallet?.let { wallet ->
+//                Card {
+//                    Column(
+//                        modifier = Modifier.padding(16.dp),
+//                        verticalArrangement = Arrangement.spacedBy(8.dp)
+//                    ) {
+//                        Text("From:", style = MaterialTheme.typography.labelMedium)
+//                        Text(
+//                            wallet.address.take(8) + "..." + wallet.address.takeLast(8),
+//                            style = MaterialTheme.typography.bodyMedium,
+//                            fontFamily = FontFamily.Monospace
+//                        )
+//                        Text(
+//                            "Wallet: ${wallet.name}",
+//                            style = MaterialTheme.typography.bodySmall
+//                        )
+//                    }
+//                }
+//            }
 
             // To Address
             OutlinedTextField(
