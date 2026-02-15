@@ -64,7 +64,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.launch
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReceiveScreen(
@@ -74,7 +73,6 @@ fun ReceiveScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Initialize once
@@ -95,7 +93,7 @@ fun ReceiveScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Receive ${uiState.walletType.name}") },
+                title = { Text("Receive ${uiState.coinType}") },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.Default.ArrowBack, "Back")
@@ -158,7 +156,7 @@ private fun ReceiveContent(
     ) {
         // Header
         Text(
-            text = "Receive ${uiState.walletType.name}",
+            text = "Receive ${uiState.coinType}",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -174,16 +172,22 @@ private fun ReceiveContent(
         // QR Code Section
         QrCodeSection(
             address = uiState.address,
-            walletType = uiState.walletType,
+            coinType = uiState.coinType,
             onViewFullQR = onViewFullQR
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Network Badge
+        if (uiState.network != "MAINNET" && uiState.network != "Mainnet") {
+            NetworkBadge(network = uiState.network)
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         // Address Card
         AddressCard(
             address = uiState.address,
-            walletType = uiState.walletType,
+            coinType = uiState.coinType,
             onCopy = onCopy
         )
 
@@ -199,14 +203,31 @@ private fun ReceiveContent(
         Spacer(modifier = Modifier.height(32.dp))
 
         // Security Tips
-        SecurityTips(walletType = uiState.walletType)
+        SecurityTips(coinType = uiState.coinType)
+    }
+}
+
+@Composable
+private fun NetworkBadge(network: String) {
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Text(
+            text = network,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            color = MaterialTheme.colorScheme.onSecondaryContainer
+        )
     }
 }
 
 @Composable
 private fun QrCodeSection(
     address: String,
-    walletType: WalletType,
+    coinType: String,
     onViewFullQR: () -> Unit
 ) {
     Card(
@@ -231,7 +252,6 @@ private fun QrCodeSection(
                     .border(2.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                // TODO: Replace with actual QR code generation
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -252,7 +272,7 @@ private fun QrCodeSection(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Scan to receive ${walletType.name}",
+                text = "Scan to receive $coinType",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -269,7 +289,7 @@ private fun QrCodeSection(
 @Composable
 private fun AddressCard(
     address: String,
-    walletType: WalletType,
+    coinType: String,
     onCopy: () -> Unit
 ) {
     Card(
@@ -296,7 +316,7 @@ private fun AddressCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Your ${walletType.name} Address",
+                    text = "Your $coinType Address",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -393,7 +413,7 @@ private fun ActionButtons(
 }
 
 @Composable
-private fun SecurityTips(walletType: WalletType) {
+private fun SecurityTips(coinType: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -414,7 +434,7 @@ private fun SecurityTips(walletType: WalletType) {
             )
 
             SecurityTip(
-                text = "Only send ${walletType.name} to this address"
+                text = "Only send $coinType to this address"
             )
             SecurityTip(
                 text = "Double-check the address before sending"

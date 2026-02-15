@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
 @HiltViewModel
 class ReceiveViewModel @Inject constructor(
     private val walletRepository: WalletRepository
@@ -24,7 +23,7 @@ class ReceiveViewModel @Inject constructor(
         val walletId: String = "",
         val walletName: String = "",
         val address: String = "",
-        val walletType: WalletType = WalletType.BITCOIN,
+        val coinType: String = "",
         val network: String = "Mainnet",
         val isLoading: Boolean = false,
         val error: String? = null,
@@ -42,25 +41,36 @@ class ReceiveViewModel @Inject constructor(
             try {
                 val wallet = walletRepository.getWallet(walletId)
                 if (wallet != null) {
-                    val address = when (wallet) {
-                        is BitcoinWallet -> wallet.address
-                        is EthereumWallet -> wallet.address
-                        is MultiChainWallet -> wallet.ethereumWallet?.address
-                            ?: wallet.bitcoinWallet?.address
-                            ?: ""
-                        else -> ""
+                    // Get the first available address (prioritize BTC, ETH, SOL, USDC in that order)
+                    val address = wallet.bitcoin?.address
+                        ?: wallet.ethereum?.address
+                        ?: wallet.solana?.address
+                        ?: wallet.usdc?.address
+                        ?: ""
+
+                    // Determine coin type and network
+                    val (coinType, network) = when {
+                        wallet.bitcoin != null -> {
+                            "BTC" to wallet.bitcoin.network.name
+                        }
+                        wallet.ethereum != null -> {
+                            "ETH" to wallet.ethereum.network.name
+                        }
+                        wallet.solana != null -> {
+                            "SOL" to "Mainnet" // TODO: use network enum
+                        }
+                        wallet.usdc != null -> {
+                            "USDC" to wallet.usdc.network.name
+                        }
+                        else -> "Unknown" to "Unknown"
                     }
 
-                    val network = when (wallet) {
-                        is BitcoinWallet -> wallet.network.name
-                        is EthereumWallet -> wallet.network.name
-                        else -> "Mainnet"
-                    }
-
-                    // Create share URL
-                    val shareUrl = when (wallet.walletType) {
-                        WalletType.BITCOIN -> "bitcoin:$address"
-                        WalletType.ETHEREUM -> "ethereum:$address"
+                    // Create share URL based on coin type
+                    val shareUrl = when {
+                        wallet.bitcoin != null -> "bitcoin:$address"
+                        wallet.ethereum != null -> "ethereum:$address"
+                        wallet.solana != null -> "solana:$address"
+                        wallet.usdc != null -> "ethereum:$address" // USDC uses ETH addresses
                         else -> address
                     }
 
@@ -69,7 +79,7 @@ class ReceiveViewModel @Inject constructor(
                             walletId = walletId,
                             walletName = wallet.name,
                             address = address,
-                            walletType = wallet.walletType,
+                            coinType = coinType,
                             network = network,
                             shareUrl = shareUrl,
                             isLoading = false
@@ -97,7 +107,6 @@ class ReceiveViewModel @Inject constructor(
     fun onCopyClicked() {
         _uiState.update { it.copy(copiedToClipboard = true) }
         viewModelScope.launch {
-            // Reset after 2 seconds
             kotlinx.coroutines.delay(2000)
             _uiState.update { it.copy(copiedToClipboard = false) }
         }
