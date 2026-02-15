@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.authentication.domain.AuthAction
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.collections.isNotEmpty
 
 @HiltViewModel
 class NavigationViewModel @Inject constructor(
@@ -22,7 +24,7 @@ class NavigationViewModel @Inject constructor(
     private val securityManager: SecurityManager
 ) : ViewModel() {
 
-    val wallets: StateFlow<List<CryptoWallet>> = walletRepository.walletsFlow
+    val wallets: StateFlow<List<Wallet>> = walletRepository.walletsFlow
 
     val hasWallets: StateFlow<Boolean> = wallets.map { it.isNotEmpty() }
         .stateIn(
@@ -56,5 +58,9 @@ class NavigationViewModel @Inject constructor(
         viewModelScope.launch {
             _shouldNavigateToAuth.value = null
         }
+    }
+
+    fun getWalletById(walletId: String): Wallet? {
+        return wallets.value.find { it.id == walletId }
     }
 }

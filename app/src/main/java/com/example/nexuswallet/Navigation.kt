@@ -35,6 +35,7 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailViewModel
 import com.example.nexuswallet.feature.coin.usdc.USDCSendScreen
 import com.example.nexuswallet.feature.wallet.domain.WalletType
+import com.example.nexuswallet.feature.wallet.ui.CoinDetailScreen
 
 @Composable
 fun Navigation() {
@@ -107,29 +108,29 @@ fun Navigation() {
         }
 
         // Wallet Detail
-        composable(
-            route = "walletDetail/{walletId}",
-            arguments = listOf(
-                navArgument("walletId") {
-                    type = NavType.StringType
-                }
-            )
-        ) { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            val walletViewModel = hiltViewModel<WalletDetailViewModel>()
-            val blockchainViewModel = hiltViewModel<BlockchainViewModel>()
-
-            LaunchedEffect(walletId) {
-                if (walletId.isNotBlank()) {
-                    walletViewModel.loadWallet(walletId)
-                }
-            }
-
-            WalletDetailScreen(
-                navController = navController,
-                walletViewModel = walletViewModel
-            )
-        }
+//        composable(
+//            route = "walletDetail/{walletId}",
+//            arguments = listOf(
+//                navArgument("walletId") {
+//                    type = NavType.StringType
+//                }
+//            )
+//        ) { backStackEntry ->
+//            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+//            val walletViewModel = hiltViewModel<WalletDetailViewModel>()
+//            val blockchainViewModel = hiltViewModel<BlockchainViewModel>()
+//
+//            LaunchedEffect(walletId) {
+//                if (walletId.isNotBlank()) {
+//                    walletViewModel.loadWallet(walletId)
+//                }
+//            }
+//
+//            WalletDetailScreen(
+//                navController = navController,
+//                walletViewModel = walletViewModel
+//            )
+//        }
 
         composable(
             route = "qrCode/{walletId}",
@@ -279,30 +280,51 @@ fun Navigation() {
             )
         }
 
-        // ===== SEND FLOW SCREENS =====
-
         composable(
-            route = "send/{walletId}/{walletType}",
-            arguments = listOf(
-                navArgument("walletId") { type = NavType.StringType },
-                navArgument("walletType") { type = NavType.StringType }
-            )
+            route = "walletDetail/{walletId}",
+            arguments = listOf(navArgument("walletId") { type = NavType.StringType })
         ) { backStackEntry ->
             val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            val walletTypeString = backStackEntry.arguments?.getString("walletType") ?: ""
-            val walletType = when (walletTypeString.lowercase()) {
-                "bitcoin" -> WalletType.BITCOIN
-                "solana" -> WalletType.SOLANA
-                "usdc" -> WalletType.USDC
-                else -> WalletType.ETHEREUM
-            }
-            SendScreen(
+            WalletDetailScreen(
                 navController = navController,
-                walletId = walletId,
-                walletType = walletType
+                walletId = walletId
             )
         }
 
+        composable(
+            route = "coin/{walletId}/{coinType}",
+            arguments = listOf(
+                navArgument("walletId") { type = NavType.StringType },
+                navArgument("coinType") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+            val coinType = backStackEntry.arguments?.getString("coinType") ?: ""
+            CoinDetailScreen(
+                navController = navController,
+                walletId = walletId,
+                coinType = coinType
+            )
+        }
+
+        // ===== SEND FLOW SCREENS =====
+
+        composable(
+            route = "send/{walletId}/{coinType}",
+            arguments = listOf(
+                navArgument("walletId") { type = NavType.StringType },
+                navArgument("coinType") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+            val coinType = backStackEntry.arguments?.getString("coinType")?.uppercase() ?: "ETH"
+
+            SendScreen(
+                navController = navController,
+                walletId = walletId,
+                coinType = coinType
+            )
+        }
         // Transaction Status Screen
         composable(
             route = "status/{transactionId}",
@@ -332,10 +354,10 @@ fun Navigation() {
         }
 
         composable(
-            route = "review/{walletId}/{walletType}?toAddress={toAddress}&amount={amount}&feeLevel={feeLevel}",
+            route = "review/{walletId}/{coinType}?toAddress={toAddress}&amount={amount}&feeLevel={feeLevel}",
             arguments = listOf(
                 navArgument("walletId") { type = NavType.StringType },
-                navArgument("walletType") { type = NavType.StringType },
+                navArgument("coinType") { type = NavType.StringType },
                 navArgument("toAddress") { type = NavType.StringType },
                 navArgument("amount") { type = NavType.StringType },
                 navArgument("feeLevel") {
@@ -345,23 +367,15 @@ fun Navigation() {
             )
         ) { backStackEntry ->
             val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            val walletTypeString = backStackEntry.arguments?.getString("walletType") ?: ""
+            val coinType = backStackEntry.arguments?.getString("coinType") ?: "ETH"
             val toAddress = backStackEntry.arguments?.getString("toAddress") ?: ""
             val amount = backStackEntry.arguments?.getString("amount") ?: ""
             val feeLevel = backStackEntry.arguments?.getString("feeLevel")
 
-            val walletType = when (walletTypeString) {
-                "BITCOIN" -> WalletType.BITCOIN
-                "SOLANA" -> WalletType.SOLANA
-                "USDC" -> WalletType.USDC
-                "ETHEREUM_SEPOLIA" -> WalletType.ETHEREUM_SEPOLIA
-                else -> WalletType.ETHEREUM
-            }
-
             TransactionReviewScreen(
                 navController = navController,
                 walletId = walletId,
-                walletType = walletType,
+                coinType = coinType,
                 toAddress = toAddress,
                 amount = amount,
                 feeLevel = feeLevel
