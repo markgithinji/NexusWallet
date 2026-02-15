@@ -15,8 +15,7 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
-import com.example.nexuswallet.feature.coin.Result
-@HiltViewModel
+import com.example.nexuswallet.feature.coin.Result@HiltViewModel
 class BitcoinSendViewModel @Inject constructor(
     private val createBitcoinTransactionUseCase: CreateBitcoinTransactionUseCase,
     private val signBitcoinTransactionUseCase: SignBitcoinTransactionUseCase,
@@ -32,7 +31,8 @@ class BitcoinSendViewModel @Inject constructor(
     val state: StateFlow<BitcoinSendState> = _state
 
     data class BitcoinSendState(
-        val wallet: BitcoinWallet? = null,
+        val walletId: String = "",
+        val walletName: String = "",
         val walletAddress: String = "",
         val balance: BigDecimal = BigDecimal.ZERO,
         val balanceFormatted: String = "0 BTC",
@@ -53,16 +53,35 @@ class BitcoinSendViewModel @Inject constructor(
 
     fun init(walletId: String) {
         viewModelScope.launch {
-            val wallet = walletRepository.getWallet(walletId) as? BitcoinWallet
-            wallet?.let {
-                _state.update { it.copy(
-                    wallet = wallet,
-                    walletAddress = wallet.address,
-                    network = wallet.network
-                )}
-                loadBalance(wallet.address, wallet.network)
-                loadFeeEstimate()
+            _state.update { it.copy(isLoading = true) }
+
+            // Get wallet from repository
+            val wallet = walletRepository.getWallet(walletId)
+
+            // Check if Bitcoin is enabled for this wallet
+            val bitcoinCoin = wallet?.bitcoin
+            if (bitcoinCoin == null) {
+                _state.update {
+                    it.copy(
+                        error = "Bitcoin not enabled for this wallet",
+                        isLoading = false
+                    )
+                }
+                return@launch
             }
+
+            _state.update {
+                it.copy(
+                    walletId = wallet.id,
+                    walletName = wallet.name,
+                    walletAddress = bitcoinCoin.address,
+                    network = bitcoinCoin.network
+                )
+            }
+
+            // Load balance and fee estimate
+            loadBalance(bitcoinCoin.address, bitcoinCoin.network)
+            loadFeeEstimate()
         }
     }
 
@@ -71,17 +90,25 @@ class BitcoinSendViewModel @Inject constructor(
         when (balanceResult) {
             is Result.Success -> {
                 val balance = balanceResult.data
-                _state.update { it.copy(
-                    balance = balance,
-                    balanceFormatted = "${balance.setScale(8, RoundingMode.HALF_UP)} BTC"
-                )}
+                _state.update {
+                    it.copy(
+                        balance = balance,
+                        balanceFormatted = "${balance.setScale(8, RoundingMode.HALF_UP)} BTC",
+                        isLoading = false
+                    )
+                }
+                Log.d("BitcoinSendVM", "Balance loaded: $balance BTC")
             }
             is Result.Error -> {
                 Log.e("BitcoinSendVM", "Error loading balance: ${balanceResult.message}")
-                _state.update { it.copy(
-                    balance = BigDecimal.ZERO,
-                    balanceFormatted = "0 BTC"
-                )}
+                _state.update {
+                    it.copy(
+                        balance = BigDecimal.ZERO,
+                        balanceFormatted = "0 BTC",
+                        error = "Failed to load balance: ${balanceResult.message}",
+                        isLoading = false
+                    )
+                }
             }
             Result.Loading -> {}
         }
@@ -140,7 +167,6 @@ class BitcoinSendViewModel @Inject constructor(
     }
 
     fun getTestnetCoins() {
-        val wallet = _state.value.wallet ?: return
         _state.update { it.copy(
             info = "Get testnet BTC from: https://bitcoinfaucet.uo1.net"
         )}
@@ -148,7 +174,12 @@ class BitcoinSendViewModel @Inject constructor(
 
     fun send(onSuccess: (String) -> Unit) {
         viewModelScope.launch {
-            val wallet = _state.value.wallet ?: return@launch
+            val walletId = _state.value.walletId
+            if (walletId.isEmpty()) {
+                _state.update { it.copy(error = "Wallet not loaded") }
+                return@launch
+            }
+
             val toAddress = _state.value.toAddress
             val amount = _state.value.amountValue
 
@@ -160,7 +191,7 @@ class BitcoinSendViewModel @Inject constructor(
 
             // 1. Create transaction
             val createResult = createBitcoinTransactionUseCase(
-                walletId = wallet.id,
+                walletId = walletId,
                 toAddress = toAddress,
                 amount = amount,
                 feeLevel = _state.value.feeLevel,
@@ -279,7 +310,8 @@ class BitcoinSendViewModel @Inject constructor(
     fun resetState() {
         _state.update {
             BitcoinSendState(
-                wallet = _state.value.wallet,
+                walletId = _state.value.walletId,
+                walletName = _state.value.walletName,
                 walletAddress = _state.value.walletAddress,
                 network = _state.value.network,
                 balance = _state.value.balance,
