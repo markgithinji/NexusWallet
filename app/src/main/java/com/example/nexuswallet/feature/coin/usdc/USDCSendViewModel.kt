@@ -18,11 +18,10 @@ import java.math.BigDecimal
 import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
 import kotlinx.coroutines.flow.asStateFlow
-
 @HiltViewModel
 class USDCSendViewModel @Inject constructor(
-    private val getUSDCBalanceUseCase: GetUSDCBalanceUseCase,
     private val sendUSDCUseCase: SendUSDCUseCase,
+    private val getUSDCBalanceUseCase: GetUSDCBalanceUseCase,
     private val getETHBalanceForGasUseCase: GetETHBalanceForGasUseCase,
     private val walletRepository: WalletRepository
 ) : ViewModel() {
@@ -46,7 +45,8 @@ class USDCSendViewModel @Inject constructor(
         val hasSufficientGas: Boolean = false,
         val isLoading: Boolean = false,
         val error: String? = null,
-        val info: String? = null
+        val info: String? = null,
+        val step: String = ""
     )
 
     private val _state = MutableStateFlow(USDCSendState())
@@ -58,20 +58,13 @@ class USDCSendViewModel @Inject constructor(
 
             val wallet = walletRepository.getWallet(walletId)
             if (wallet == null) {
-                _state.update { it.copy(
-                    error = "Wallet not found",
-                    isLoading = false
-                ) }
+                _state.update { it.copy(error = "Wallet not found", isLoading = false) }
                 return@launch
             }
 
-            // Check if USDC is enabled for this wallet
             val usdcCoin = wallet.usdc
             if (usdcCoin == null) {
-                _state.update { it.copy(
-                    error = "USDC not enabled for this wallet",
-                    isLoading = false
-                ) }
+                _state.update { it.copy(error = "USDC not enabled for this wallet", isLoading = false) }
                 return@launch
             }
 
@@ -80,10 +73,7 @@ class USDCSendViewModel @Inject constructor(
             val usdcBalance = when (usdcBalanceResult) {
                 is Result.Success -> usdcBalanceResult.data
                 is Result.Error -> {
-                    _state.update { it.copy(
-                        error = usdcBalanceResult.message,
-                        isLoading = false
-                    ) }
+                    _state.update { it.copy(error = usdcBalanceResult.message, isLoading = false) }
                     return@launch
                 }
                 Result.Loading -> return@launch
@@ -94,27 +84,26 @@ class USDCSendViewModel @Inject constructor(
             val ethBalance = when (ethBalanceResult) {
                 is Result.Success -> ethBalanceResult.data
                 is Result.Error -> {
-                    _state.update { it.copy(
-                        error = ethBalanceResult.message,
-                        isLoading = false
-                    ) }
+                    _state.update { it.copy(error = ethBalanceResult.message, isLoading = false) }
                     return@launch
                 }
                 Result.Loading -> return@launch
             }
 
-            _state.update { it.copy(
-                walletId = wallet.id,
-                walletName = wallet.name,
-                fromAddress = usdcCoin.address,
-                network = usdcCoin.network,
-                contractAddress = usdcCoin.contractAddress,
-                usdcBalance = usdcBalance.amountDecimal,
-                usdcBalanceDecimal = usdcBalance.amountDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO,
-                ethBalance = ethBalance.toPlainString(),
-                ethBalanceDecimal = ethBalance,
-                isLoading = false
-            ) }
+            _state.update {
+                it.copy(
+                    walletId = wallet.id,
+                    walletName = wallet.name,
+                    fromAddress = usdcCoin.address,
+                    network = usdcCoin.network,
+                    contractAddress = usdcCoin.contractAddress,
+                    usdcBalance = usdcBalance.amountDecimal,
+                    usdcBalanceDecimal = usdcBalance.amountDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO,
+                    ethBalance = ethBalance.toPlainString(),
+                    ethBalanceDecimal = ethBalance,
+                    isLoading = false
+                )
+            }
 
             validateForm()
         }
@@ -122,78 +111,58 @@ class USDCSendViewModel @Inject constructor(
 
     fun send(onSuccess: (String) -> Unit) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
-
-            val toAddress = state.value.toAddress
-            val amount = state.value.amountValue
-
-            // Validate address format
-            if (!state.value.isValidAddress) {
-                _state.update { it.copy(
-                    isLoading = false,
-                    error = "Invalid Ethereum address"
-                ) }
+            val state = _state.value
+            if (state.walletId.isEmpty()) {
+                _state.update { it.copy(error = "Wallet not loaded") }
                 return@launch
             }
 
-            // Validate amount
-            if (amount <= BigDecimal.ZERO) {
-                _state.update { it.copy(
-                    isLoading = false,
-                    error = "Amount must be greater than 0"
-                ) }
+            val toAddress = state.toAddress
+            val amount = state.amountValue
+
+            if (!validateForm()) {
                 return@launch
             }
 
-            // Check sufficient balance
-            if (amount > state.value.usdcBalanceDecimal) {
-                _state.update { it.copy(
-                    isLoading = false,
-                    error = "Insufficient USDC balance"
-                ) }
-                return@launch
-            }
-
-            // Check sufficient ETH for gas (assuming ~0.0005 ETH) TODO: Get real values
-            val estimatedGasEth = BigDecimal("0.0005")
-            if (state.value.ethBalanceDecimal < estimatedGasEth) {
-                _state.update { it.copy(
-                    isLoading = false,
-                    error = "Insufficient ETH for gas. Need at least 0.0005 ETH"
-                ) }
-                return@launch
-            }
+            _state.update { it.copy(isLoading = true, error = null, step = "Sending USDC...") }
 
             val result = sendUSDCUseCase(
-                walletId = state.value.walletId,
+                walletId = state.walletId,
                 toAddress = toAddress,
                 amount = amount
             )
 
             when (result) {
                 is Result.Success -> {
-                    val broadcastResult = result.data
-                    if (broadcastResult.success) {
-                        _state.update { it.copy(
-                            isLoading = false,
-                            info = "Transaction sent! Hash: ${broadcastResult.hash?.take(10)}..."
-                        ) }
-                        onSuccess(broadcastResult.hash ?: "")
-
-                        // Refresh balances after successful send
+                    val sendResult = result.data
+                    if (sendResult.success) {
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
+                                step = "Sent!",
+                                info = "Transaction sent! Hash: ${sendResult.txHash.take(10)}..."
+                            )
+                        }
+                        onSuccess(sendResult.txHash)
                         refreshBalances()
                     } else {
-                        _state.update { it.copy(
-                            isLoading = false,
-                            error = broadcastResult.error ?: "Transaction failed"
-                        ) }
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
+                                error = sendResult.error ?: "Send failed",
+                                step = ""
+                            )
+                        }
                     }
                 }
                 is Result.Error -> {
-                    _state.update { it.copy(
-                        isLoading = false,
-                        error = result.message
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = result.message,
+                            step = ""
+                        )
+                    }
                 }
                 Result.Loading -> {}
             }
@@ -202,47 +171,58 @@ class USDCSendViewModel @Inject constructor(
 
     private suspend fun refreshBalances() {
         // Refresh USDC balance
-        val usdcBalanceResult = getUSDCBalanceUseCase(state.value.walletId)
+        val usdcBalanceResult = getUSDCBalanceUseCase(_state.value.walletId)
         if (usdcBalanceResult is Result.Success) {
             val usdcBalance = usdcBalanceResult.data
-            _state.update { it.copy(
-                usdcBalance = usdcBalance.amountDecimal,
-                usdcBalanceDecimal = usdcBalance.amountDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO
-            ) }
+            _state.update {
+                it.copy(
+                    usdcBalance = usdcBalance.amountDecimal,
+                    usdcBalanceDecimal = usdcBalance.amountDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO
+                )
+            }
         }
 
         // Refresh ETH balance
-        val ethBalanceResult = getETHBalanceForGasUseCase(state.value.walletId)
+        val ethBalanceResult = getETHBalanceForGasUseCase(_state.value.walletId)
         if (ethBalanceResult is Result.Success) {
             val ethBalance = ethBalanceResult.data
-            _state.update { it.copy(
-                ethBalance = ethBalance.toPlainString(),
-                ethBalanceDecimal = ethBalance
-            ) }
+            _state.update {
+                it.copy(
+                    ethBalance = ethBalance.toPlainString(),
+                    ethBalanceDecimal = ethBalance
+                )
+            }
         }
     }
 
-    private fun validateForm() {
+    private fun validateForm(): Boolean {
         val currentState = _state.value
 
         // Validate address format (Ethereum address)
         val isValidAddress = currentState.toAddress.startsWith("0x") &&
                 currentState.toAddress.length == 42
 
+        // Check amount > 0
+        val isAmountValid = currentState.amountValue > BigDecimal.ZERO
+
         // Check sufficient balance
         val hasSufficientBalance = currentState.amountValue <= currentState.usdcBalanceDecimal &&
-                currentState.amountValue > BigDecimal.ZERO
+                isAmountValid
 
         // Check sufficient ETH for gas (assuming ~0.0005 ETH)
         val estimatedGasEth = BigDecimal("0.0005")
         val hasSufficientGas = currentState.ethBalanceDecimal >= estimatedGasEth
 
-        _state.update { it.copy(
-            isValidAddress = isValidAddress,
-            hasSufficientBalance = hasSufficientBalance,
-            hasSufficientGas = hasSufficientGas,
-            estimatedGas = estimatedGasEth.toPlainString()
-        ) }
+        _state.update {
+            it.copy(
+                isValidAddress = isValidAddress,
+                hasSufficientBalance = hasSufficientBalance,
+                hasSufficientGas = hasSufficientGas,
+                estimatedGas = estimatedGasEth.toPlainString()
+            )
+        }
+
+        return isValidAddress && hasSufficientBalance && hasSufficientGas
     }
 
     fun updateAddress(address: String) {
@@ -251,20 +231,24 @@ class USDCSendViewModel @Inject constructor(
     }
 
     fun updateAmount(amount: String) {
-        _state.update { it.copy(amount = amount) }
-
         val amountValue = try {
             amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
         } catch (e: Exception) {
             BigDecimal.ZERO
         }
-
-        _state.update { it.copy(amountValue = amountValue) }
+        _state.update {
+            it.copy(
+                amount = amount,
+                amountValue = amountValue
+            )
+        }
         validateForm()
     }
 
     fun debug() {
-        _state.update { it.copy(info = "Debug: USDC at ${state.value.contractAddress} on ${state.value.network}") }
+        _state.update {
+            it.copy(info = "Debug: USDC at ${state.value.contractAddress} on ${state.value.network}")
+        }
     }
 
     fun getTestnetUSDC() {
