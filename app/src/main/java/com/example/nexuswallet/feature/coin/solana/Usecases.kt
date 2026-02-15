@@ -21,6 +21,7 @@ import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
 
 @Singleton
 class CreateSolanaTransactionUseCase @Inject constructor(
@@ -36,17 +37,21 @@ class CreateSolanaTransactionUseCase @Inject constructor(
         note: String? = null
     ): Result<SolanaTransaction> {
         return try {
-            val wallet = walletRepository.getWallet(walletId) as? SolanaWallet
-                ?: return Result.Error("Solana wallet not found", IllegalArgumentException("Wallet not found"))
+            val wallet = walletRepository.getWallet(walletId)
+                ?: return Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
 
-            createSolanaTransaction(wallet, toAddress, amount, feeLevel, note)
+            val solanaCoin = wallet.solana
+                ?: return Result.Error("Solana not enabled for this wallet", IllegalArgumentException("Solana not enabled"))
+
+            createSolanaTransaction(wallet.id, solanaCoin, toAddress, amount, feeLevel, note)
         } catch (e: Exception) {
             Result.Error("Failed to create transaction: ${e.message}", e)
         }
     }
 
     private suspend fun createSolanaTransaction(
-        wallet: SolanaWallet,
+        walletId: String,
+        solanaCoin: SolanaCoin,
         toAddress: String,
         amount: BigDecimal,
         feeLevel: FeeLevel,
@@ -80,13 +85,13 @@ class CreateSolanaTransactionUseCase @Inject constructor(
 
             val transaction = SolanaTransaction(
                 id = "sol_tx_${System.currentTimeMillis()}",
-                walletId = wallet.id,
-                fromAddress = wallet.address,
+                walletId = walletId,
+                fromAddress = solanaCoin.address,
                 toAddress = toAddress,
                 amountLamports = lamports,
-                amountSol = amount,
+                amountSol = amount.toPlainString(),
                 feeLamports = feeLamports,
-                feeSol = BigDecimal(feeEstimate.totalFeeDecimal),
+                feeSol = BigDecimal(feeEstimate.totalFeeDecimal).toPlainString(),
                 blockhash = blockhash,
                 signedData = null,
                 signature = null,
@@ -94,7 +99,7 @@ class CreateSolanaTransactionUseCase @Inject constructor(
                 note = note,
                 timestamp = System.currentTimeMillis(),
                 feeLevel = feeLevel,
-                network = "mainnet" // or get from wallet TODO: use enum
+                network = "mainnet"
             )
 
             solanaTransactionRepository.saveTransaction(transaction)
@@ -129,8 +134,11 @@ class SignSolanaTransactionUseCase @Inject constructor(
         transaction: SolanaTransaction
     ): Result<SolanaTransaction> = withContext(Dispatchers.IO) {
 
-        val wallet = walletRepository.getWallet(transaction.walletId) as? SolanaWallet
-            ?: return@withContext Result.Error("Solana wallet not found", IllegalArgumentException("Wallet not found"))
+        val wallet = walletRepository.getWallet(transaction.walletId)
+            ?: return@withContext Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
+
+        val solanaCoin = wallet.solana
+            ?: return@withContext Result.Error("Solana not enabled for this wallet", IllegalArgumentException("Solana not enabled"))
 
         Log.d("SignSolanaTxUseCase", "Signing transaction: ${transaction.id}")
 
@@ -161,7 +169,7 @@ class SignSolanaTransactionUseCase @Inject constructor(
             ?: return@withContext Result.Error("Invalid private key format", IllegalArgumentException("Invalid key"))
 
         val derivedAddress = keypair.publicKey.toString()
-        if (derivedAddress != wallet.address) {
+        if (derivedAddress != solanaCoin.address) {
             return@withContext Result.Error(
                 "Private key doesn't match wallet",
                 IllegalStateException("Address mismatch")

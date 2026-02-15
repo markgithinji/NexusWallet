@@ -2,11 +2,14 @@ package com.example.nexuswallet.feature.coin.solana
 
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 
+@Serializable
 data class SolanaTransaction(
     val id: String,
     val walletId: String,
+    val coinType: String = "SOLANA",
     val fromAddress: String,
     val toAddress: String,
     val status: TransactionStatus,
@@ -14,13 +17,13 @@ data class SolanaTransaction(
     val note: String?,
     val feeLevel: FeeLevel,
     val amountLamports: Long,
-    val amountSol: BigDecimal,
+    val amountSol: String,
     val feeLamports: Long,
-    val feeSol: BigDecimal,
+    val feeSol: String,
     val blockhash: String,
-    val signedData: ByteArray?,
-    val signature: ByteArray?,
-    val network: String // "mainnet", "devnet", "testnet"
+    @Transient val signedData: ByteArray? = null,
+    @Transient val signature: ByteArray? = null,
+    val network: String
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -80,9 +83,9 @@ fun SolanaTransactionEntity.toDomain(): SolanaTransaction {
         note = note,
         feeLevel = FeeLevel.valueOf(feeLevel),
         amountLamports = amountLamports,
-        amountSol = BigDecimal(amountSol),
+        amountSol = amountSol,
         feeLamports = feeLamports,
-        feeSol = BigDecimal(feeSol),
+        feeSol = feeSol,
         blockhash = blockhash,
         signedData = signedData,
         signature = signature,
@@ -101,9 +104,9 @@ fun SolanaTransaction.toEntity(): SolanaTransactionEntity {
         note = note,
         feeLevel = feeLevel.name,
         amountLamports = amountLamports,
-        amountSol = amountSol.toPlainString(),
+        amountSol = amountSol,
         feeLamports = feeLamports,
-        feeSol = feeSol.toPlainString(),
+        feeSol = feeSol,
         blockhash = blockhash,
         signedData = signedData,
         signature = signature,
