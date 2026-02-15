@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
+import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
@@ -11,9 +13,9 @@ import com.example.nexuswallet.feature.wallet.domain.WalletType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
 @HiltViewModel
 class WalletCreationViewModel @Inject constructor(
     private val walletRepository: WalletRepository
@@ -31,9 +33,18 @@ class WalletCreationViewModel @Inject constructor(
     private val _mnemonic = MutableStateFlow<List<String>>(emptyList())
     val mnemonic: StateFlow<List<String>> = _mnemonic
 
-    // Selected wallet type
-    private val _selectedWalletType = MutableStateFlow(WalletType.MULTICHAIN)
-    val selectedWalletType: StateFlow<WalletType> = _selectedWalletType
+    // Coin selection state
+    data class CoinSelection(
+        var includeBitcoin: Boolean = true,
+        var includeEthereum: Boolean = true,
+        var includeSolana: Boolean = true,
+        var includeUSDC: Boolean = false,
+        var ethereumNetwork: EthereumNetwork = EthereumNetwork.SEPOLIA,
+        var bitcoinNetwork: BitcoinNetwork = BitcoinNetwork.TESTNET
+    )
+
+    private val _coinSelection = MutableStateFlow(CoinSelection())
+    val coinSelection: StateFlow<CoinSelection> = _coinSelection
 
     // Wallet name
     private val _walletName = MutableStateFlow("")
@@ -47,7 +58,6 @@ class WalletCreationViewModel @Inject constructor(
     private val _isMnemonicGenerated = MutableStateFlow(false)
     val isMnemonicGenerated: StateFlow<Boolean> = _isMnemonicGenerated
 
-
     fun generateMnemonic() {
         viewModelScope.launch {
             _uiState.value = WalletCreationUiState.Loading
@@ -57,15 +67,30 @@ class WalletCreationViewModel @Inject constructor(
                 _isMnemonicGenerated.value = true
                 _uiState.value = WalletCreationUiState.MnemonicGenerated
             } catch (e: Exception) {
-                _uiState.value =
-                    WalletCreationUiState.Error(e.message ?: "Failed to generate wallet")
+                _uiState.value = WalletCreationUiState.Error(e.message ?: "Failed to generate wallet")
                 _isMnemonicGenerated.value = false
             }
         }
     }
 
-    fun setWalletType(type: WalletType) {
-        _selectedWalletType.value = type
+    fun updateCoinSelection(
+        includeBitcoin: Boolean? = null,
+        includeEthereum: Boolean? = null,
+        includeSolana: Boolean? = null,
+        includeUSDC: Boolean? = null,
+        ethereumNetwork: EthereumNetwork? = null,
+        bitcoinNetwork: BitcoinNetwork? = null
+    ) {
+        _coinSelection.update { current ->
+            current.copy(
+                includeBitcoin = includeBitcoin ?: current.includeBitcoin,
+                includeEthereum = includeEthereum ?: current.includeEthereum,
+                includeSolana = includeSolana ?: current.includeSolana,
+                includeUSDC = includeUSDC ?: current.includeUSDC,
+                ethereumNetwork = ethereumNetwork ?: current.ethereumNetwork,
+                bitcoinNetwork = bitcoinNetwork ?: current.bitcoinNetwork
+            )
+        }
     }
 
     fun setWalletName(name: String) {
@@ -89,10 +114,8 @@ class WalletCreationViewModel @Inject constructor(
     fun completeVerificationAndMoveNext(): Boolean {
         val isVerified = verifyMnemonic()
         if (isVerified) {
-            // Clear entered words
             _enteredWords.value = emptyList()
-            // Move to next step
-            _currentStep.value = 3
+            _currentStep.value = 2 // Move to name step
         }
         return isVerified
     }
@@ -100,168 +123,18 @@ class WalletCreationViewModel @Inject constructor(
     fun nextStep() {
         when (_currentStep.value) {
             0 -> {
-                // From type selection: Generate mnemonic and move to backup
                 if (!_isMnemonicGenerated.value) {
                     generateMnemonic()
                 }
                 _currentStep.value = 1
             }
             1 -> {
-                // From backup: Move to verification if mnemonic exists
                 if (_mnemonic.value.isNotEmpty()) {
                     _currentStep.value = 2
                 }
             }
             2 -> {
-                // Just move to step 3 (will be validated separately)
                 _currentStep.value = 3
-            }
-            3 -> {
-                // From name: Move to success
-                _currentStep.value = 4
-            }
-            else -> {
-                if (_currentStep.value < 4) {
-                    _currentStep.value = _currentStep.value + 1
-                }
-            }
-        }
-    }
-
-    suspend fun createSepoliaWallet(
-        mnemonic: List<String>,
-        name: String = "Sepolia Testnet"
-    ): Result<EthereumWallet> {
-        return try {
-            Log.d("WalletCreationVM", "Creating Sepolia testnet wallet...")
-
-            val walletResult = walletRepository.createEthereumWallet(
-                mnemonic = mnemonic,
-                name = name,
-                network = EthereumNetwork.SEPOLIA
-            )
-
-            if (walletResult.isSuccess) {
-                val wallet = walletResult.getOrThrow()
-                walletRepository.saveWallet(wallet)
-                Log.d("WalletCreationVM", "Sepolia wallet created successfully: ${wallet.address}")
-                Result.success(wallet)
-            } else {
-                Result.failure(walletResult.exceptionOrNull() ?:
-                IllegalStateException("Failed to create Sepolia wallet"))
-            }
-        } catch (e: Exception) {
-            Log.e("WalletCreationVM", "Error creating Sepolia wallet: ${e.message}", e)
-            Result.failure(e)
-        }
-    }
-
-    fun createWallet() {
-        viewModelScope.launch {
-            _uiState.value = WalletCreationUiState.Loading
-            try {
-                val mnemonicList = _mnemonic.value
-                val name = if (_walletName.value.isBlank()) "My Wallet" else _walletName.value
-
-                val walletResult: Result<CryptoWallet> = when (_selectedWalletType.value) {
-                    WalletType.BITCOIN -> {
-                        val bitcoinWallet = walletRepository.createBitcoinWallet(mnemonicList, name)
-                        Result.success(bitcoinWallet)
-                    }
-
-                    WalletType.ETHEREUM -> {
-                        val ethereumResult = walletRepository.createEthereumWallet(
-                            mnemonicList,
-                            name,
-                            EthereumNetwork.MAINNET
-                        )
-                        if (ethereumResult.isSuccess) {
-                            Result.success(ethereumResult.getOrThrow())
-                        } else {
-                            Result.failure(ethereumResult.exceptionOrNull() ?:
-                            IllegalStateException("Failed to create Ethereum wallet"))
-                        }
-                    }
-
-                    WalletType.ETHEREUM_SEPOLIA -> {
-                        val sepoliaResult = walletRepository.createEthereumWallet(
-                            mnemonicList,
-                            name,
-                            EthereumNetwork.SEPOLIA
-                        )
-                        if (sepoliaResult.isSuccess) {
-                            Result.success(sepoliaResult.getOrThrow())
-                        } else {
-                            Result.failure(sepoliaResult.exceptionOrNull() ?:
-                            IllegalStateException("Failed to create Sepolia wallet"))
-                        }
-                    }
-
-                    WalletType.MULTICHAIN -> {
-                        val multiChainResult = walletRepository.createMultiChainWallet(mnemonicList, name)
-                        if (multiChainResult.isSuccess) {
-                            Result.success(multiChainResult.getOrThrow())
-                        } else {
-                            Result.failure(multiChainResult.exceptionOrNull() ?:
-                            IllegalStateException("Failed to create MultiChain wallet"))
-                        }
-                    }
-
-
-                    WalletType.SOLANA -> {
-                        val solanaResult = walletRepository.createSolanaWallet(mnemonicList, name)
-                        if (solanaResult.isSuccess) {
-                            Result.success(solanaResult.getOrThrow())
-                        } else {
-                            Result.failure(solanaResult.exceptionOrNull() ?:
-                            IllegalStateException("Failed to create Solana wallet"))
-                        }
-                    }
-
-                    WalletType.USDC -> {
-                        val usdcWalletResult = walletRepository.createUSDCWallet(
-                            mnemonicList,
-                            name,
-                            EthereumNetwork.SEPOLIA
-                        )
-
-                        if (usdcWalletResult.isSuccess) {
-                            val ethWallet = usdcWalletResult.getOrThrow()
-                            Result.success(ethWallet)
-                        } else {
-                            Result.failure(usdcWalletResult.exceptionOrNull() ?:
-                            IllegalStateException("Failed to create USDC wallet"))
-                        }
-                    }
-
-                    else -> {
-                        val multiChainResult = walletRepository.createMultiChainWallet(mnemonicList, name)
-                        if (multiChainResult.isSuccess) {
-                            Result.success(multiChainResult.getOrThrow())
-                        } else {
-                            Result.failure(multiChainResult.exceptionOrNull() ?:
-                            IllegalStateException("Failed to create wallet"))
-                        }
-                    }
-                }
-
-                if (walletResult.isFailure) {
-                    val error = walletResult.exceptionOrNull()
-                    _uiState.value = WalletCreationUiState.Error(
-                        error?.message ?: "Failed to create wallet"
-                    )
-                    return@launch
-                }
-
-                val wallet = walletResult.getOrThrow()
-
-                walletRepository.saveWallet(wallet)
-
-                // Update UI state
-                _uiState.value = WalletCreationUiState.WalletCreated(wallet)
-
-            } catch (e: Exception) {
-                _uiState.value = WalletCreationUiState.Error(e.message ?: "Failed to create wallet")
             }
         }
     }
@@ -272,11 +145,45 @@ class WalletCreationViewModel @Inject constructor(
         }
     }
 
+    fun createWallet() {
+        viewModelScope.launch {
+            _uiState.value = WalletCreationUiState.Loading
+            try {
+                val mnemonicList = _mnemonic.value
+                val name = if (_walletName.value.isBlank()) "My Wallet" else _walletName.value
+                val selection = _coinSelection.value
+
+                val result = walletRepository.createWallet(
+                    mnemonic = mnemonicList,
+                    name = name,
+                    includeBitcoin = selection.includeBitcoin,
+                    includeEthereum = selection.includeEthereum,
+                    includeSolana = selection.includeSolana,
+                    includeUSDC = selection.includeUSDC,
+                    ethereumNetwork = selection.ethereumNetwork,
+                    bitcoinNetwork = selection.bitcoinNetwork
+                )
+
+                if (result.isSuccess) {
+                    val wallet = result.getOrThrow()
+                    _uiState.value = WalletCreationUiState.WalletCreated(wallet)
+                } else {
+                    val error = result.exceptionOrNull()
+                    _uiState.value = WalletCreationUiState.Error(
+                        error?.message ?: "Failed to create wallet"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = WalletCreationUiState.Error(e.message ?: "Failed to create wallet")
+            }
+        }
+    }
+
     fun reset() {
         _uiState.value = WalletCreationUiState.Idle
         _currentStep.value = 0
         _mnemonic.value = emptyList()
-        _selectedWalletType.value = WalletType.MULTICHAIN
+        _coinSelection.value = CoinSelection()
         _walletName.value = ""
         _enteredWords.value = emptyList()
         _isMnemonicGenerated.value = false
@@ -287,6 +194,7 @@ sealed class WalletCreationUiState {
     object Idle : WalletCreationUiState()
     object Loading : WalletCreationUiState()
     object MnemonicGenerated : WalletCreationUiState()
-    data class WalletCreated(val wallet: CryptoWallet) : WalletCreationUiState()
+    data class WalletCreated(val wallet: Wallet) : WalletCreationUiState()
     data class Error(val message: String) : WalletCreationUiState()
 }
+
