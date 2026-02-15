@@ -29,14 +29,18 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.ethereum.BroadcastTransactionUseCase
 import com.example.nexuswallet.feature.coin.ethereum.CreateSendTransactionUseCase
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
 import com.example.nexuswallet.feature.coin.ethereum.GetFeeEstimateUseCase
 import com.example.nexuswallet.feature.coin.ethereum.GetTransactionUseCase
+import com.example.nexuswallet.feature.coin.ethereum.SignEthereumTransactionUseCase
 import com.example.nexuswallet.feature.coin.ethereum.ValidateAddressUseCase
 @HiltViewModel
 class EthereumSendViewModel @Inject constructor(
     private val createSendTransactionUseCase: CreateSendTransactionUseCase,
+    private val signEthereumTransactionUseCase: SignEthereumTransactionUseCase,
+    private val broadcastTransactionUseCase: BroadcastTransactionUseCase,
     private val validateAddressUseCase: ValidateAddressUseCase,
     private val getFeeEstimateUseCase: GetFeeEstimateUseCase,
     private val getTransactionUseCase: GetTransactionUseCase,
@@ -49,6 +53,7 @@ class EthereumSendViewModel @Inject constructor(
         val fromAddress: String = "",
         val toAddress: String = "",
         val amount: String = "",
+        val amountValue: BigDecimal = BigDecimal.ZERO,
         val note: String = "",
         val feeLevel: FeeLevel = FeeLevel.NORMAL,
         val isLoading: Boolean = false,
@@ -57,16 +62,10 @@ class EthereumSendViewModel @Inject constructor(
         val balance: BigDecimal = BigDecimal.ZERO,
         val isValid: Boolean = false,
         val validationError: String? = null,
-        val transactionState: TransactionState = TransactionState.Idle,
-        val network: String = ""
+        val network: String = "",
+        val step: String = "",
+        val createdTransaction: EthereumTransaction? = null
     )
-
-    sealed class TransactionState {
-        object Idle : TransactionState()
-        object Loading : TransactionState()
-        data class Created(val transaction: EthereumTransaction) : TransactionState()
-        data class Error(val message: String) : TransactionState()
-    }
 
     private val _uiState = MutableStateFlow(SendUiState())
     val uiState: StateFlow<SendUiState> = _uiState.asStateFlow()
@@ -77,10 +76,7 @@ class EthereumSendViewModel @Inject constructor(
         data class NoteChanged(val note: String) : SendEvent()
         data class FeeLevelChanged(val feeLevel: FeeLevel) : SendEvent()
         object Validate : SendEvent()
-        object CreateTransaction : SendEvent()
         object ClearError : SendEvent()
-        object ResetTransactionState : SendEvent()
-        object FetchTransaction : SendEvent()
     }
 
     fun initialize(walletId: String) {
@@ -88,7 +84,7 @@ class EthereumSendViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isLoading = true,
-                    transactionState = TransactionState.Idle
+                    error = null
                 )
             }
 
@@ -97,8 +93,7 @@ class EthereumSendViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         error = "Wallet not found",
-                        isLoading = false,
-                        transactionState = TransactionState.Error("Wallet not found")
+                        isLoading = false
                     )
                 }
                 return@launch
@@ -109,8 +104,7 @@ class EthereumSendViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         error = "Ethereum not enabled for this wallet",
-                        isLoading = false,
-                        transactionState = TransactionState.Error("Ethereum not enabled")
+                        isLoading = false
                     )
                 }
                 return@launch
@@ -153,8 +147,7 @@ class EthereumSendViewModel @Inject constructor(
                     balance = ethBalance,
                     feeEstimate = feeEstimate,
                     network = ethereumCoin.network.name,
-                    isLoading = false,
-                    transactionState = TransactionState.Idle
+                    isLoading = false
                 )
             }
 
@@ -171,7 +164,17 @@ class EthereumSendViewModel @Inject constructor(
                 }
 
                 is SendEvent.AmountChanged -> {
-                    _uiState.update { it.copy(amount = event.amount) }
+                    val amountValue = try {
+                        event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
+                    } catch (e: Exception) {
+                        BigDecimal.ZERO
+                    }
+                    _uiState.update {
+                        it.copy(
+                            amount = event.amount,
+                            amountValue = amountValue
+                        )
+                    }
                     validateInputs()
                 }
 
@@ -188,135 +191,200 @@ class EthereumSendViewModel @Inject constructor(
                     validateInputs()
                 }
 
-                SendEvent.CreateTransaction -> {
-                    createTransaction()
-                }
-
-                SendEvent.FetchTransaction -> {
-                    fetchCreatedTransaction()
-                }
-
                 SendEvent.ClearError -> {
                     _uiState.update {
                         it.copy(
                             error = null,
-                            validationError = null,
-                            transactionState = TransactionState.Idle
+                            validationError = null
                         )
                     }
                 }
-
-                SendEvent.ResetTransactionState -> {
-                    _uiState.update { it.copy(transactionState = TransactionState.Idle) }
-                }
             }
         }
     }
 
-    private suspend fun createTransaction() {
-        val state = _uiState.value
+    fun send(onSuccess: (String) -> Unit) {
+        viewModelScope.launch {
+            val state = _uiState.value
+            val walletId = state.walletId
+            if (walletId.isEmpty()) {
+                Log.e("EthereumSendVM", " send failed: Wallet not loaded")
+                _uiState.update { it.copy(error = "Wallet not loaded") }
+                return@launch
+            }
 
-        _uiState.update {
-            it.copy(
-                isLoading = true,
-                transactionState = TransactionState.Loading,
-                error = null,
-                validationError = null
-            )
-        }
+            val toAddress = state.toAddress
+            val amount = state.amountValue
 
-        Log.d("EthereumSendVM", "Creating Ethereum transaction...")
+            Log.d("EthereumSendVM", "========== SEND TRANSACTION START ==========")
+            Log.d("EthereumSendVM", "Wallet ID: $walletId")
+            Log.d("EthereumSendVM", "To Address: $toAddress")
+            Log.d("EthereumSendVM", "Amount: $amount ETH")
+            Log.d("EthereumSendVM", "Fee Level: ${state.feeLevel}")
 
-        try {
-            val amount = BigDecimal(state.amount)
-            Log.d("EthereumSendVM", "Amount: $amount ETH, To: ${state.toAddress}")
+            if (!validateInputs()) {
+                Log.e("EthereumSendVM", " send failed: Input validation failed")
+                return@launch
+            }
 
-            createEthTransaction(state, amount)
-        } catch (e: Exception) {
-            Log.e("EthereumSendVM", " Error: ${e.message}", e)
             _uiState.update {
                 it.copy(
-                    isLoading = false,
-                    error = "Error: ${e.message}",
-                    transactionState = TransactionState.Error("Error: ${e.message}")
+                    isLoading = true,
+                    error = null,
+                    step = "Creating transaction..."
                 )
             }
-        }
-    }
+            Log.d("EthereumSendVM", "Step 1: Creating transaction...")
 
-    private suspend fun createEthTransaction(state: SendUiState, amount: BigDecimal) {
-        val result = createSendTransactionUseCase(
-            walletId = state.walletId,
-            toAddress = state.toAddress,
-            amount = amount,
-            feeLevel = state.feeLevel,
-            note = state.note.takeIf { it.isNotEmpty() }
-        )
+            // 1. Create transaction
+            Log.d("EthereumSendVM", "Calling createSendTransactionUseCase...")
+            val createResult = createSendTransactionUseCase(
+                walletId = walletId,
+                toAddress = toAddress,
+                amount = amount,
+                feeLevel = state.feeLevel,
+                note = state.note.takeIf { it.isNotEmpty() }
+            )
 
-        when (result) {
-            is Result.Success -> {
-                val transaction = result.data
-                Log.d("EthereumSendVM", "ETH Transaction created: ${transaction.id}")
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        transactionState = TransactionState.Created(transaction)
-                    )
-                }
-            }
-            is Result.Error -> {
-                val error = result.message
-                Log.e("EthereumSendVM", "Transaction failed: $error")
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = error,
-                        transactionState = TransactionState.Error(error)
-                    )
-                }
-            }
-            Result.Loading -> {}
-        }
-    }
-
-    private suspend fun fetchCreatedTransaction() {
-        val transactionState = _uiState.value.transactionState
-        if (transactionState is TransactionState.Created) {
-            val transactionId = transactionState.transaction.id
-            val result = getTransactionUseCase(transactionId)
-            when (result) {
+            when (createResult) {
                 is Result.Success -> {
-                    val transaction = result.data
-                    Log.d("EthereumSendVM", "Fetched transaction: ${transaction.id}, status: ${transaction.status}")
+                    val transaction = createResult.data
+                    Log.d("EthereumSendVM", " Transaction created: ${transaction.id}")
+                    Log.d("EthereumSendVM", "   From: ${transaction.fromAddress}")
+                    Log.d("EthereumSendVM", "   Amount: ${transaction.amountEth} ETH")
+                    Log.d("EthereumSendVM", "   Fee: ${transaction.feeEth} ETH")
+
                     _uiState.update {
                         it.copy(
-                            transactionState = TransactionState.Created(transaction)
+                            step = "Signing transaction...",
+                            createdTransaction = transaction
                         )
+                    }
+                    Log.d("EthereumSendVM", "Step 2: Signing transaction...")
+
+                    // 2. Sign transaction
+                    Log.d("EthereumSendVM", "Calling signEthereumTransactionUseCase for: ${transaction.id}")
+                    val signResult = signEthereumTransactionUseCase(transaction.id)
+
+                    when (signResult) {
+                        is Result.Success -> {
+                            val signedTransaction = signResult.data
+                            Log.d("EthereumSendVM", " Transaction signed successfully")
+                            Log.d("EthereumSendVM", "   Signed Hash: ${signedTransaction.txHash}")
+
+                            _uiState.update {
+                                it.copy(
+                                    step = "Broadcasting transaction...",
+                                    createdTransaction = signedTransaction
+                                )
+                            }
+                            Log.d("EthereumSendVM", "Step 3: Broadcasting transaction...")
+
+                            // 3. Broadcast transaction
+                            Log.d("EthereumSendVM", "Calling broadcastTransactionUseCase for: ${transaction.id}")
+                            val broadcastResult = broadcastTransactionUseCase(transaction.id)
+
+                            when (broadcastResult) {
+                                is Result.Success -> {
+                                    val result = broadcastResult.data
+                                    Log.d("EthereumSendVM", " Transaction broadcast result:")
+                                    Log.d("EthereumSendVM", "   Success: ${result.success}")
+                                    Log.d("EthereumSendVM", "   Hash: ${result.hash}")
+                                    Log.d("EthereumSendVM", "   Error: ${result.error}")
+
+                                    if (result.success) {
+                                        _uiState.update {
+                                            it.copy(
+                                                step = "Transaction sent!",
+                                                isLoading = false
+                                            )
+                                        }
+                                        Log.d("EthereumSendVM", "🎉 Transaction sent successfully!")
+                                        Log.d("EthereumSendVM", "========== SEND COMPLETE ==========")
+                                        onSuccess(result.hash ?: "unknown")
+                                    } else {
+                                        Log.e("EthereumSendVM", " Broadcast failed: ${result.error}")
+                                        _uiState.update {
+                                            it.copy(
+                                                error = result.error ?: "Broadcast failed",
+                                                isLoading = false
+                                            )
+                                        }
+                                    }
+                                }
+                                is Result.Error -> {
+                                    Log.e("EthereumSendVM", " Broadcast error: ${broadcastResult.message}")
+                                    broadcastResult.throwable?.let {
+                                        Log.e("EthereumSendVM", "   Exception: ${it.message}")
+                                        it.printStackTrace()
+                                    }
+                                    _uiState.update {
+                                        it.copy(
+                                            error = "Broadcast failed: ${broadcastResult.message}",
+                                            isLoading = false
+                                        )
+                                    }
+                                }
+                                Result.Loading -> {
+                                    Log.d("EthereumSendVM", " Broadcast loading...")
+                                }
+                            }
+                        }
+                        is Result.Error -> {
+                            Log.e("EthereumSendVM", " Signing error: ${signResult.message}")
+                            signResult.throwable?.let {
+                                Log.e("EthereumSendVM", "   Exception: ${it.message}")
+                                it.printStackTrace()
+                            }
+                            _uiState.update {
+                                it.copy(
+                                    error = "Signing failed: ${signResult.message}",
+                                    isLoading = false
+                                )
+                            }
+                        }
+                        Result.Loading -> {
+                            Log.d("EthereumSendVM", " Signing loading...")
+                        }
                     }
                 }
                 is Result.Error -> {
-                    Log.e("EthereumSendVM", "Error fetching transaction: ${result.message}")
+                    Log.e("EthereumSendVM", " Create transaction error: ${createResult.message}")
+                    createResult.throwable?.let {
+                        Log.e("EthereumSendVM", "   Exception: ${it.message}")
+                        it.printStackTrace()
+                    }
+                    _uiState.update {
+                        it.copy(
+                            error = "Failed to create transaction: ${createResult.message}",
+                            isLoading = false
+                        )
+                    }
                 }
-                Result.Loading -> {}
+                Result.Loading -> {
+                    Log.d("EthereumSendVM", " Create transaction loading...")
+                }
             }
         }
     }
 
-    private suspend fun validateInputs() {
+    private suspend fun validateInputs(): Boolean {
         val state = _uiState.value
+        val toAddress = state.toAddress
+        val amount = state.amountValue
 
-        if (state.toAddress.isEmpty() || state.amount.isEmpty()) {
+        if (toAddress.isEmpty() || amount == BigDecimal.ZERO) {
             _uiState.update {
                 it.copy(
                     isValid = false,
-                    validationError = "Please enter address and amount"
+                    validationError = if (toAddress.isEmpty()) "Please enter address" else "Please enter amount"
                 )
             }
-            return
+            return false
         }
 
         try {
-            val addressValidationResult = validateAddressUseCase(state.toAddress)
+            val addressValidationResult = validateAddressUseCase(toAddress)
             if (!addressValidationResult) {
                 _uiState.update {
                     it.copy(
@@ -324,19 +392,7 @@ class EthereumSendViewModel @Inject constructor(
                         validationError = "Invalid Ethereum address"
                     )
                 }
-                return
-            }
-
-            val amount = try {
-                BigDecimal(state.amount)
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isValid = false,
-                        validationError = "Invalid amount"
-                    )
-                }
-                return
+                return false
             }
 
             if (amount <= BigDecimal.ZERO) {
@@ -346,7 +402,17 @@ class EthereumSendViewModel @Inject constructor(
                         validationError = "Amount must be greater than 0"
                     )
                 }
-                return
+                return false
+            }
+
+            if (toAddress == state.fromAddress) {
+                _uiState.update {
+                    it.copy(
+                        isValid = false,
+                        validationError = "Cannot send to yourself"
+                    )
+                }
+                return false
             }
 
             val feeEstimateResult = getFeeEstimateUseCase(state.feeLevel)
@@ -360,11 +426,11 @@ class EthereumSendViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isValid = false,
-                                validationError = "Insufficient ETH balance",
+                                validationError = "Insufficient balance (including fees)",
                                 feeEstimate = feeEstimate
                             )
                         }
-                        return
+                        return false
                     }
 
                     _uiState.update {
@@ -374,6 +440,7 @@ class EthereumSendViewModel @Inject constructor(
                             feeEstimate = feeEstimate
                         )
                     }
+                    return true
                 }
                 is Result.Error -> {
                     _uiState.update {
@@ -382,9 +449,9 @@ class EthereumSendViewModel @Inject constructor(
                             validationError = "Failed to get fee estimate: ${feeEstimateResult.message}"
                         )
                     }
-                    return
+                    return false
                 }
-                Result.Loading -> return
+                Result.Loading -> return false
             }
 
         } catch (e: Exception) {
@@ -394,6 +461,7 @@ class EthereumSendViewModel @Inject constructor(
                     validationError = "Validation error: ${e.message}"
                 )
             }
+            return false
         }
     }
 
@@ -403,7 +471,7 @@ class EthereumSendViewModel @Inject constructor(
         when (feeEstimateResult) {
             is Result.Success -> {
                 _uiState.update { it.copy(feeEstimate = feeEstimateResult.data) }
-                validateInputs() // Re-validate with new fee
+                validateInputs()
             }
             is Result.Error -> {
                 Log.e("EthereumSendVM", "Error updating fee estimate: ${feeEstimateResult.message}")
@@ -426,9 +494,10 @@ class EthereumSendViewModel @Inject constructor(
     }
 
     fun getCreatedTransaction(): EthereumTransaction? {
-        return when (val state = _uiState.value.transactionState) {
-            is TransactionState.Created -> state.transaction
-            else -> null
-        }
+        return _uiState.value.createdTransaction
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null, validationError = null) }
     }
 }

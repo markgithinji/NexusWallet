@@ -63,6 +63,7 @@ import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionReviewScreen(
@@ -104,22 +105,6 @@ fun TransactionReviewScreen(
             "BTC" -> {
                 bitcoinViewModel.init(walletId)
             }
-        }
-    }
-
-    LaunchedEffect(ethereumState.value.transactionState) {
-        when (val state = ethereumState.value.transactionState) {
-            is EthereumSendViewModel.TransactionState.Created -> {
-                txHash = state.transaction.txHash ?: "pending"
-                txStatus = "Transaction sent!"
-                isSending = false
-                ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ResetTransactionState)
-            }
-            is EthereumSendViewModel.TransactionState.Error -> {
-                sendError = state.message
-                isSending = false
-            }
-            else -> {}
         }
     }
 
@@ -201,10 +186,15 @@ fun TransactionReviewScreen(
                                         ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ToAddressChanged(toAddress))
                                         ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.AmountChanged(amount))
                                         feeLevel?.let {
-                                            ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.FeeLevelChanged(
-                                                FeeLevel.valueOf(it)))
+                                            ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
                                         }
-                                        ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.CreateTransaction)
+
+                                        // Then call send
+                                        ethereumViewModel.send { hash ->
+                                            txHash = hash
+                                            txStatus = "Transaction sent!"
+                                            isSending = false
+                                        }
                                     }
                                     "USDC" -> {
                                         usdcViewModel.updateAddress(toAddress)
