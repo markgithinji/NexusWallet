@@ -29,6 +29,7 @@ import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 
 @Singleton
 class CreateBitcoinTransactionUseCase @Inject constructor(
@@ -44,17 +45,21 @@ class CreateBitcoinTransactionUseCase @Inject constructor(
         note: String? = null
     ): Result<BitcoinTransaction> {
         return try {
-            val wallet = walletRepository.getWallet(walletId) as? BitcoinWallet
-                ?: return Result.Error("Bitcoin wallet not found", IllegalArgumentException("Wallet not found"))
+            val wallet = walletRepository.getWallet(walletId)
+                ?: return Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
 
-            createBitcoinTransaction(wallet, toAddress, amount, feeLevel, note)
+            val bitcoinCoin = wallet.bitcoin
+                ?: return Result.Error("Bitcoin not enabled for this wallet", IllegalArgumentException("Bitcoin not enabled"))
+
+            createBitcoinTransaction(wallet.id, bitcoinCoin, toAddress, amount, feeLevel, note)
         } catch (e: Exception) {
             Result.Error("Failed to create transaction: ${e.message}", e)
         }
     }
 
     private suspend fun createBitcoinTransaction(
-        wallet: BitcoinWallet,
+        walletId: String,
+        bitcoinCoin: BitcoinCoin,
         toAddress: String,
         amount: BigDecimal,
         feeLevel: FeeLevel,
@@ -62,7 +67,7 @@ class CreateBitcoinTransactionUseCase @Inject constructor(
     ): Result<BitcoinTransaction> = withContext(Dispatchers.IO) {
         try {
             Log.d("CreateBitcoinTxUC", " createBitcoinTransaction START")
-            Log.d("CreateBitcoinTxUC", "Wallet: ${wallet.address}")
+            Log.d("CreateBitcoinTxUC", "Wallet: ${bitcoinCoin.address}")
             Log.d("CreateBitcoinTxUC", "Amount: $amount BTC to $toAddress")
 
             val feeResult = bitcoinBlockchainRepository.getFeeEstimate(feeLevel)
@@ -90,13 +95,13 @@ class CreateBitcoinTransactionUseCase @Inject constructor(
 
             val transaction = BitcoinTransaction(
                 id = "btc_tx_${System.currentTimeMillis()}",
-                walletId = wallet.id,
-                fromAddress = wallet.address,
+                walletId = walletId,
+                fromAddress = bitcoinCoin.address,
                 toAddress = toAddress,
                 amountSatoshis = satoshis,
-                amountBtc = amount,
+                amountBtc = amount.toPlainString(),
                 feeSatoshis = fee,
-                feeBtc = BigDecimal(totalFeeDecimal),
+                feeBtc = BigDecimal(totalFeeDecimal).toPlainString(),
                 feePerByte = feePerByte,
                 estimatedSize = estimatedSize,
                 signedHex = null,
@@ -105,7 +110,7 @@ class CreateBitcoinTransactionUseCase @Inject constructor(
                 note = note,
                 timestamp = System.currentTimeMillis(),
                 feeLevel = feeLevel,
-                network = wallet.network.name
+                network = bitcoinCoin.network.name
             )
 
             bitcoinTransactionRepository.saveTransaction(transaction)
@@ -118,6 +123,7 @@ class CreateBitcoinTransactionUseCase @Inject constructor(
         }
     }
 }
+
 @Singleton
 class SignBitcoinTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
@@ -130,8 +136,11 @@ class SignBitcoinTransactionUseCase @Inject constructor(
             val transaction = bitcoinTransactionRepository.getTransaction(transactionId)
                 ?: return@withContext Result.Error("Transaction not found", IllegalArgumentException("Transaction not found"))
 
-            val wallet = walletRepository.getWallet(transaction.walletId) as? BitcoinWallet
-                ?: return@withContext Result.Error("Bitcoin wallet not found", IllegalArgumentException("Wallet not found"))
+            val wallet = walletRepository.getWallet(transaction.walletId)
+                ?: return@withContext Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
+
+            val bitcoinCoin = wallet.bitcoin
+                ?: return@withContext Result.Error("Bitcoin not enabled for this wallet", IllegalArgumentException("Bitcoin not enabled"))
 
             Log.d("SignBitcoinTxUC", " Signing transaction: ${transaction.id}")
 
@@ -149,7 +158,7 @@ class SignBitcoinTransactionUseCase @Inject constructor(
 
             val privateKeyWIF = privateKeyResult.getOrThrow()
 
-            val networkParams = when (wallet.network) {
+            val networkParams = when (bitcoinCoin.network) {
                 BitcoinNetwork.MAINNET -> MainNetParams.get()
                 BitcoinNetwork.TESTNET -> TestNet3Params.get()
                 BitcoinNetwork.REGTEST -> RegTestParams.get()
@@ -162,7 +171,7 @@ class SignBitcoinTransactionUseCase @Inject constructor(
             }
 
             val derivedAddress = LegacyAddress.fromKey(networkParams, ecKey).toString()
-            if (derivedAddress != wallet.address) {
+            if (derivedAddress != bitcoinCoin.address) {
                 return@withContext Result.Error("Private key doesn't match wallet", IllegalStateException("Address mismatch"))
             }
 
@@ -173,7 +182,7 @@ class SignBitcoinTransactionUseCase @Inject constructor(
                 fromKey = ecKey,
                 toAddress = toAddress,
                 satoshis = satoshis,
-                network = wallet.network
+                network = bitcoinCoin.network
             )
 
             val signedTx = when (signResult) {
@@ -204,6 +213,7 @@ class SignBitcoinTransactionUseCase @Inject constructor(
         }
     }
 }
+
 @Singleton
 class BroadcastBitcoinTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
@@ -218,12 +228,15 @@ class BroadcastBitcoinTransactionUseCase @Inject constructor(
             val signedHex = transaction.signedHex
                 ?: return@withContext Result.Error("Transaction not signed", IllegalStateException("Not signed"))
 
-            val wallet = walletRepository.getWallet(transaction.walletId) as? BitcoinWallet
-                ?: return@withContext Result.Error("Bitcoin wallet not found", IllegalArgumentException("Wallet not found"))
+            val wallet = walletRepository.getWallet(transaction.walletId)
+                ?: return@withContext Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
+
+            val bitcoinCoin = wallet.bitcoin
+                ?: return@withContext Result.Error("Bitcoin not enabled for this wallet", IllegalArgumentException("Bitcoin not enabled"))
 
             val broadcastResult = bitcoinBlockchainRepository.broadcastTransaction(
                 signedHex = signedHex,
-                network = wallet.network
+                network = bitcoinCoin.network
             )
 
             when (broadcastResult) {
