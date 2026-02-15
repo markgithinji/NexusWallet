@@ -30,6 +30,7 @@ import java.math.BigInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumCoin
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.math.RoundingMode
@@ -48,17 +49,21 @@ class CreateSendTransactionUseCase @Inject constructor(
         note: String? = null
     ): Result<EthereumTransaction> {
         return try {
-            val wallet = walletRepository.getWallet(walletId) as? EthereumWallet
-                ?: return Result.Error("Ethereum wallet not found", IllegalArgumentException("Wallet not found"))
+            val wallet = walletRepository.getWallet(walletId)
+                ?: return Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
 
-            createEthereumTransaction(wallet, toAddress, amount, feeLevel, note)
+            val ethereumCoin = wallet.ethereum
+                ?: return Result.Error("Ethereum not enabled for this wallet", IllegalArgumentException("Ethereum not enabled"))
+
+            createEthereumTransaction(wallet.id, ethereumCoin, toAddress, amount, feeLevel, note)
         } catch (e: Exception) {
             Result.Error("Failed to create transaction: ${e.message}", e)
         }
     }
 
     private suspend fun createEthereumTransaction(
-        wallet: EthereumWallet,
+        walletId: String,
+        ethereumCoin: EthereumCoin,
         toAddress: String,
         amount: BigDecimal,
         feeLevel: FeeLevel,
@@ -67,7 +72,7 @@ class CreateSendTransactionUseCase @Inject constructor(
         try {
             Log.d("CreateTxUseCase", "Creating Ethereum transaction")
 
-            val nonceResult = ethereumBlockchainRepository.getEthereumNonce(wallet.address, wallet.network)
+            val nonceResult = ethereumBlockchainRepository.getEthereumNonce(ethereumCoin.address, ethereumCoin.network)
             val nonce = when (nonceResult) {
                 is Result.Success -> nonceResult.data
                 is Result.Error -> return@withContext Result.Error(
@@ -77,7 +82,7 @@ class CreateSendTransactionUseCase @Inject constructor(
                 Result.Loading -> return@withContext Result.Error("Timeout getting nonce", null)
             }
 
-            val gasPriceResult = ethereumBlockchainRepository.getEthereumGasPrice(wallet.network)
+            val gasPriceResult = ethereumBlockchainRepository.getEthereumGasPrice(ethereumCoin.network)
             val gasPrice = when (gasPriceResult) {
                 is Result.Success -> gasPriceResult.data
                 is Result.Error -> return@withContext Result.Error(
@@ -101,25 +106,25 @@ class CreateSendTransactionUseCase @Inject constructor(
 
             val transaction = EthereumTransaction(
                 id = "tx_${System.currentTimeMillis()}",
-                walletId = wallet.id,
-                fromAddress = wallet.address,
+                walletId = walletId,
+                fromAddress = ethereumCoin.address,
                 toAddress = toAddress,
-                amountWei = amountWei,
-                amountEth = amount,
-                gasPriceWei = gasPriceWei,
-                gasPriceGwei = BigDecimal(selectedFee.gasPrice),
+                amountWei = amountWei.toString(),
+                amountEth = amount.toPlainString(),
+                gasPriceWei = gasPriceWei.toString(),
+                gasPriceGwei = BigDecimal(selectedFee.gasPrice).toPlainString(),
                 gasLimit = gasLimit,
-                feeWei = feeWei,
-                feeEth = feeEth,
+                feeWei = feeWei.toString(),
+                feeEth = feeEth.toPlainString(),
                 nonce = nonce,
-                chainId = if (wallet.network == EthereumNetwork.SEPOLIA) 11155111L else 1L,
+                chainId = if (ethereumCoin.network == EthereumNetwork.SEPOLIA) 11155111L else 1L,
                 signedHex = null,
                 txHash = null,
                 status = TransactionStatus.PENDING,
                 note = note,
                 timestamp = System.currentTimeMillis(),
                 feeLevel = feeLevel,
-                network = wallet.network.name,
+                network = ethereumCoin.network.name,
                 data = ""
             )
 
@@ -132,6 +137,7 @@ class CreateSendTransactionUseCase @Inject constructor(
         }
     }
 }
+
 @Singleton
 class SignEthereumTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
@@ -155,19 +161,22 @@ class SignEthereumTransactionUseCase @Inject constructor(
         transaction: EthereumTransaction
     ): Result<EthereumTransaction> = withContext(Dispatchers.IO) {
         try {
-            val wallet = walletRepository.getWallet(transaction.walletId) as? EthereumWallet
-                ?: return@withContext Result.Error("Ethereum wallet not found", IllegalArgumentException("Ethereum wallet not found"))
+            val wallet = walletRepository.getWallet(transaction.walletId)
+                ?: return@withContext Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
+
+            val ethereumCoin = wallet.ethereum
+                ?: return@withContext Result.Error("Ethereum not enabled for this wallet", IllegalArgumentException("Ethereum not enabled"))
 
             Log.d("SignTxUseCase", "Signing transaction: ${transaction.id}")
 
-            val nonceResult = ethereumBlockchainRepository.getEthereumNonce(wallet.address, wallet.network)
+            val nonceResult = ethereumBlockchainRepository.getEthereumNonce(ethereumCoin.address, ethereumCoin.network)
             val currentNonce = when (nonceResult) {
                 is Result.Success -> nonceResult.data
                 is Result.Error -> return@withContext Result.Error("Failed to get nonce: ${nonceResult.message}", nonceResult.throwable)
                 Result.Loading -> return@withContext Result.Error("Failed to get nonce", null)
             }
 
-            val gasPriceResult = ethereumBlockchainRepository.getCurrentGasPrice(wallet.network)
+            val gasPriceResult = ethereumBlockchainRepository.getCurrentGasPrice(ethereumCoin.network)
             val gasPrice = when (gasPriceResult) {
                 is Result.Success -> gasPriceResult.data
                 is Result.Error -> return@withContext Result.Error("Failed to get gas price: ${gasPriceResult.message}", gasPriceResult.throwable)
@@ -192,7 +201,7 @@ class SignEthereumTransactionUseCase @Inject constructor(
             val privateKey = privateKeyResult.getOrThrow()
 
             val credentials = Credentials.create(privateKey)
-            if (credentials.address.lowercase() != wallet.address.lowercase()) {
+            if (credentials.address.lowercase() != ethereumCoin.address.lowercase()) {
                 return@withContext Result.Error("Private key doesn't match wallet", IllegalStateException("Private key doesn't match wallet"))
             }
 
@@ -201,7 +210,7 @@ class SignEthereumTransactionUseCase @Inject constructor(
                 gasPriceWei,
                 BigInteger.valueOf(transaction.gasLimit),
                 transaction.toAddress,
-                transaction.amountWei,
+                BigInteger(transaction.amountWei),
                 transaction.data
             )
 
@@ -217,8 +226,8 @@ class SignEthereumTransactionUseCase @Inject constructor(
                 txHash = calculatedHash,
                 signedHex = signedHex,
                 nonce = currentNonce,
-                gasPriceGwei = BigDecimal(selectedGasPrice),
-                gasPriceWei = gasPriceWei
+                gasPriceGwei = BigDecimal(selectedGasPrice).toPlainString(),
+                gasPriceWei = gasPriceWei.toString()
             )
 
             ethereumTransactionRepository.updateTransaction(updatedTransaction)
@@ -230,6 +239,7 @@ class SignEthereumTransactionUseCase @Inject constructor(
         }
     }
 }
+
 @Singleton
 class BroadcastTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
@@ -256,12 +266,15 @@ class BroadcastTransactionUseCase @Inject constructor(
         val signedHex = transaction.signedHex
             ?: return@withContext Result.Error("Transaction not signed", IllegalStateException("Transaction not signed"))
 
-        val wallet = walletRepository.getWallet(transaction.walletId) as? EthereumWallet
+        val wallet = walletRepository.getWallet(transaction.walletId)
             ?: return@withContext Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
+
+        val ethereumCoin = wallet.ethereum
+            ?: return@withContext Result.Error("Ethereum not enabled for this wallet", IllegalArgumentException("Ethereum not enabled"))
 
         val broadcastResult = ethereumBlockchainRepository.broadcastEthereumTransaction(
             signedHex,
-            wallet.network
+            ethereumCoin.network
         )
 
         return@withContext when (broadcastResult) {
