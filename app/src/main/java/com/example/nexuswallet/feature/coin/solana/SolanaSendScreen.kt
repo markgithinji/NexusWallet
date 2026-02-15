@@ -43,15 +43,15 @@ fun SolanaSendScreen(
             )
         },
         bottomBar = {
-            if (state.wallet != null) {
-                BottomSendBar(
-                    enabled = state.toAddress.isNotBlank() &&
-                            state.amountValue > BigDecimal.ZERO &&
-                            !state.isLoading,
-                    isLoading = state.isLoading,
-                    onClick = { viewModel.send(onSuccess) }
-                )
-            }
+//            if (state.wallet != null) {
+//                BottomSendBar(
+//                    enabled = state.toAddress.isNotBlank() &&
+//                            state.amountValue > BigDecimal.ZERO &&
+//                            !state.isLoading,
+//                    isLoading = state.isLoading,
+//                    onClick = { viewModel.send(onSuccess) }
+//                )
+//            }
         }
     ) { padding ->
         Column(
@@ -63,21 +63,21 @@ fun SolanaSendScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Wallet Info
-            state.wallet?.let { wallet ->
-                Card {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("From:", style = MaterialTheme.typography.labelMedium)
-                        Text(
-                            wallet.address.take(8) + "..." + wallet.address.takeLast(8),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text("Wallet: ${wallet.name}", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
+//            state.wallet?.let { wallet ->
+//                Card {
+//                    Column(
+//                        modifier = Modifier.padding(16.dp),
+//                        verticalArrangement = Arrangement.spacedBy(8.dp)
+//                    ) {
+//                        Text("From:", style = MaterialTheme.typography.labelMedium)
+//                        Text(
+//                            wallet.address.take(8) + "..." + wallet.address.takeLast(8),
+//                            style = MaterialTheme.typography.bodyMedium
+//                        )
+//                        Text("Wallet: ${wallet.name}", style = MaterialTheme.typography.bodySmall)
+//                    }
+//                }
+//            }
 
             Button(
                 onClick = {

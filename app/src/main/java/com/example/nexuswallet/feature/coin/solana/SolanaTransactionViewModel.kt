@@ -14,12 +14,11 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
+import kotlinx.coroutines.flow.asStateFlow
 import java.math.RoundingMode
 @HiltViewModel
 class SolanaSendViewModel @Inject constructor(
-    private val createSolanaTransactionUseCase: CreateSolanaTransactionUseCase,
-    private val signSolanaTransactionUseCase: SignSolanaTransactionUseCase,
-    private val broadcastSolanaTransactionUseCase: BroadcastSolanaTransactionUseCase,
+    private val sendSolanaUseCase: SendSolanaUseCase,
     private val getSolanaBalanceUseCase: GetSolanaBalanceUseCase,
     private val validateSolanaAddressUseCase: ValidateSolanaAddressUseCase,
     private val requestSolanaAirdropUseCase: RequestSolanaAirdropUseCase,
@@ -27,10 +26,11 @@ class SolanaSendViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SendState())
-    val state: StateFlow<SendState> = _state
+    val state: StateFlow<SendState> = _state.asStateFlow()
 
     data class SendState(
-        val wallet: SolanaWallet? = null,
+        val walletId: String = "",
+        val walletName: String = "",
         val walletAddress: String = "",
         val balance: BigDecimal = BigDecimal.ZERO,
         val balanceFormatted: String = "0 SOL",
@@ -43,20 +43,33 @@ class SolanaSendViewModel @Inject constructor(
         val step: String = "",
         val error: String? = null,
         val airdropSuccess: Boolean = false,
-        val airdropMessage: String? = null,
-        val createdTransaction: SolanaTransaction? = null
+        val airdropMessage: String? = null
     )
 
     fun init(walletId: String) {
         viewModelScope.launch {
-            val wallet = walletRepository.getWallet(walletId) as? SolanaWallet
-            wallet?.let {
-                _state.update { it.copy(
-                    wallet = wallet,
-                    walletAddress = wallet.address
-                )}
-                loadBalance(wallet.address)
+            _state.update { it.copy(isLoading = true, error = null) }
+
+            val wallet = walletRepository.getWallet(walletId)
+            if (wallet == null) {
+                _state.update { it.copy(error = "Wallet not found", isLoading = false) }
+                return@launch
             }
+
+            val solanaCoin = wallet.solana
+            if (solanaCoin == null) {
+                _state.update { it.copy(error = "Solana not enabled", isLoading = false) }
+                return@launch
+            }
+
+            _state.update {
+                it.copy(
+                    walletId = wallet.id,
+                    walletName = wallet.name,
+                    walletAddress = solanaCoin.address
+                )
+            }
+            loadBalance(solanaCoin.address)
         }
     }
 
@@ -64,17 +77,26 @@ class SolanaSendViewModel @Inject constructor(
         val balanceResult = getSolanaBalanceUseCase(address)
         when (balanceResult) {
             is Result.Success -> {
-                _state.update { it.copy(
-                    balance = balanceResult.data,
-                    balanceFormatted = "${balanceResult.data.setScale(4, RoundingMode.HALF_UP)} SOL"
-                )}
+                val balance = balanceResult.data
+                _state.update {
+                    it.copy(
+                        balance = balance,
+                        balanceFormatted = "${balance.setScale(4, RoundingMode.HALF_UP)} SOL",
+                        isLoading = false
+                    )
+                }
+                Log.d("SolanaSendVM", "Balance loaded: $balance SOL")
             }
             is Result.Error -> {
                 Log.e("SolanaSendVM", "Error loading balance: ${balanceResult.message}")
-                _state.update { it.copy(
-                    balance = BigDecimal.ZERO,
-                    balanceFormatted = "0 SOL"
-                )}
+                _state.update {
+                    it.copy(
+                        balance = BigDecimal.ZERO,
+                        balanceFormatted = "0 SOL",
+                        error = "Failed to load balance: ${balanceResult.message}",
+                        isLoading = false
+                    )
+                }
             }
             Result.Loading -> {}
         }
@@ -113,7 +135,7 @@ class SolanaSendViewModel @Inject constructor(
 
     fun updateAmount(amount: String) {
         val amountValue = try {
-            BigDecimal(amount)
+            amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
         } catch (e: Exception) {
             BigDecimal.ZERO
         }
@@ -125,25 +147,31 @@ class SolanaSendViewModel @Inject constructor(
 
     fun requestAirdrop() {
         viewModelScope.launch {
-            val wallet = _state.value.wallet ?: return@launch
-            _state.update { it.copy(isLoading = true, error = null) }
+            if (_state.value.walletAddress.isEmpty()) {
+                _state.update { it.copy(error = "Wallet not loaded") }
+                return@launch
+            }
 
-            val result = requestSolanaAirdropUseCase(wallet.address)
+            _state.update { it.copy(isLoading = true, error = null, step = "Requesting airdrop...") }
+
+            val result = requestSolanaAirdropUseCase(_state.value.walletAddress)
 
             when (result) {
                 is Result.Success -> {
                     _state.update { it.copy(
                         isLoading = false,
                         airdropSuccess = true,
-                        airdropMessage = "1 SOL requested. It may take a moment."
+                        airdropMessage = "1 SOL requested. It may take a moment.",
+                        step = ""
                     )}
                     // Reload balance after airdrop
-                    loadBalance(wallet.address)
+                    loadBalance(_state.value.walletAddress)
                 }
                 is Result.Error -> {
                     _state.update { it.copy(
                         isLoading = false,
-                        error = "Airdrop failed: ${result.message}"
+                        error = "Airdrop failed: ${result.message}",
+                        step = ""
                     )}
                 }
                 Result.Loading -> {}
@@ -153,76 +181,52 @@ class SolanaSendViewModel @Inject constructor(
 
     fun send(onSuccess: (String) -> Unit) {
         viewModelScope.launch {
-            val wallet = _state.value.wallet ?: return@launch
-            val toAddress = _state.value.toAddress
-            val amount = _state.value.amountValue
+            val state = _state.value
+            if (state.walletId.isEmpty()) {
+                _state.update { it.copy(error = "Wallet not loaded") }
+                return@launch
+            }
+
+            val toAddress = state.toAddress
+            val amount = state.amountValue
 
             if (!validateInputs(toAddress, amount)) {
                 return@launch
             }
 
-            _state.update { it.copy(isLoading = true, error = null, step = "Creating transaction...") }
+            _state.update { it.copy(isLoading = true, error = null, step = "Sending...") }
 
-            // 1. Create transaction
-            val createResult = createSolanaTransactionUseCase(
-                walletId = wallet.id,
+            val result = sendSolanaUseCase(
+                walletId = state.walletId,
                 toAddress = toAddress,
                 amount = amount,
                 feeLevel = FeeLevel.NORMAL,
                 note = null
             )
 
-            when (createResult) {
+            when (result) {
                 is Result.Success -> {
-                    val transaction = createResult.data
-                    _state.update { it.copy(
-                        step = "Signing transaction...",
-                        createdTransaction = transaction
-                    )}
-
-                    // 2. Sign transaction
-                    val signResult = signSolanaTransactionUseCase(transaction.id)
-
-                    when (signResult) {
-                        is Result.Success -> {
-                            val signedTransaction = signResult.data
-                            _state.update { it.copy(
-                                step = "Broadcasting transaction...",
-                                createdTransaction = signedTransaction
-                            )}
-
-                            // 3. Broadcast transaction
-                            val broadcastResult = broadcastSolanaTransactionUseCase(transaction.id)
-
-                            when (broadcastResult) {
-                                is Result.Success -> {
-                                    val result = broadcastResult.data
-                                    if (result.success) {
-                                        _state.update { it.copy(step = "Transaction sent!") }
-                                        onSuccess(result.hash ?: "unknown")
-                                    } else {
-                                        _state.update { it.copy(error = result.error ?: "Broadcast failed") }
-                                    }
-                                }
-                                is Result.Error -> {
-                                    _state.update { it.copy(error = "Broadcast failed: ${broadcastResult.message}") }
-                                }
-                                Result.Loading -> {}
-                            }
-                        }
-                        is Result.Error -> {
-                            _state.update { it.copy(error = "Signing failed: ${signResult.message}") }
-                        }
-                        Result.Loading -> {}
+                    val sendResult = result.data
+                    if (sendResult.success) {
+                        _state.update { it.copy(isLoading = false, step = "Sent!") }
+                        onSuccess(sendResult.txHash)
+                    } else {
+                        _state.update { it.copy(
+                            isLoading = false,
+                            error = sendResult.error ?: "Send failed",
+                            step = ""
+                        ) }
                     }
                 }
                 is Result.Error -> {
-                    _state.update { it.copy(error = "Failed to create transaction: ${createResult.message}") }
+                    _state.update { it.copy(
+                        isLoading = false,
+                        error = result.message,
+                        step = ""
+                    ) }
                 }
                 Result.Loading -> {}
             }
-
-            _state.update { it.copy(isLoading = false, step = "") }
         }
     }
 
@@ -232,19 +236,9 @@ class SolanaSendViewModel @Inject constructor(
             return false
         }
 
-        val validationResult = validateSolanaAddressUseCase(toAddress)
-        when (validationResult) {
-            is Result.Success -> {
-                if (!validationResult.data) {
-                    _state.update { it.copy(error = "Invalid Solana address format") }
-                    return false
-                }
-            }
-            is Result.Error -> {
-                _state.update { it.copy(error = "Address validation failed") }
-                return false
-            }
-            Result.Loading -> return false
+        if (!_state.value.isAddressValid) {
+            _state.update { it.copy(error = "Invalid Solana address format") }
+            return false
         }
 
         if (amount <= BigDecimal.ZERO) {
@@ -257,7 +251,6 @@ class SolanaSendViewModel @Inject constructor(
             return false
         }
 
-        // Check balance
         if (amount > _state.value.balance) {
             _state.update { it.copy(error = "Insufficient balance") }
             return false
@@ -277,15 +270,12 @@ class SolanaSendViewModel @Inject constructor(
     fun resetState() {
         _state.update {
             SendState(
-                wallet = _state.value.wallet,
+                walletId = _state.value.walletId,
+                walletName = _state.value.walletName,
                 walletAddress = _state.value.walletAddress,
                 balance = _state.value.balance,
                 balanceFormatted = _state.value.balanceFormatted
             )
         }
-    }
-
-    fun getCreatedTransaction(): SolanaTransaction? {
-        return _state.value.createdTransaction
     }
 }

@@ -117,4 +117,22 @@ object SolanaUseCaseModule {
     ): SolanaTransactionRepository {
         return SolanaTransactionRepository(solanaTransactionDao)
     }
+
+    @Provides
+    @Singleton
+    fun provideSendSolanaUseCase(
+        createSolanaTransactionUseCase: CreateSolanaTransactionUseCase,
+        signSolanaTransactionUseCase: SignSolanaTransactionUseCase,
+        broadcastSolanaTransactionUseCase: BroadcastSolanaTransactionUseCase,
+        walletRepository: WalletRepository,
+        solanaTransactionRepository: SolanaTransactionRepository
+    ): SendSolanaUseCase {
+        return SendSolanaUseCase(
+            createSolanaTransactionUseCase = createSolanaTransactionUseCase,
+            signSolanaTransactionUseCase = signSolanaTransactionUseCase,
+            broadcastSolanaTransactionUseCase = broadcastSolanaTransactionUseCase,
+            walletRepository = walletRepository,
+            solanaTransactionRepository = solanaTransactionRepository
+        )
+    }
 }

@@ -24,6 +24,105 @@ import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
 
 @Singleton
+class SendSolanaUseCase @Inject constructor(
+    private val createSolanaTransactionUseCase: CreateSolanaTransactionUseCase,
+    private val signSolanaTransactionUseCase: SignSolanaTransactionUseCase,
+    private val broadcastSolanaTransactionUseCase: BroadcastSolanaTransactionUseCase,
+    private val walletRepository: WalletRepository,
+    private val solanaTransactionRepository: SolanaTransactionRepository
+) {
+    suspend operator fun invoke(
+        walletId: String,
+        toAddress: String,
+        amount: BigDecimal,
+        feeLevel: FeeLevel = FeeLevel.NORMAL,
+        note: String? = null
+    ): Result<SendSolanaResult> = withContext(Dispatchers.IO) {
+        try {
+            Log.d("SendSolanaUC", "========== SEND SOLANA START ==========")
+            Log.d("SendSolanaUC", "WalletId: $walletId, To: $toAddress, Amount: $amount SOL")
+
+            // 1. Create transaction
+            Log.d("SendSolanaUC", "Step 1: Creating transaction...")
+            val createResult = createSolanaTransactionUseCase(
+                walletId = walletId,
+                toAddress = toAddress,
+                amount = amount,
+                feeLevel = feeLevel,
+                note = note
+            )
+
+            if (createResult is Result.Error) {
+                Log.e("SendSolanaUC", " Create failed: ${createResult.message}")
+                return@withContext createResult
+            }
+
+            val transaction = (createResult as Result.Success).data
+            Log.d("SendSolanaUC", " Transaction created: ${transaction.id}")
+
+            // 2. Sign transaction
+            Log.d("SendSolanaUC", "Step 2: Signing transaction...")
+            val signResult = signSolanaTransactionUseCase(transaction.id)
+
+            if (signResult is Result.Error) {
+                Log.e("SendSolanaUC", " Sign failed: ${signResult.message}")
+                return@withContext signResult
+            }
+
+            val signedTransaction = (signResult as Result.Success).data
+            Log.d("SendSolanaUC", " Transaction signed: ${signedTransaction.signature?.toHexString()}")
+
+            // 3. Broadcast transaction
+            Log.d("SendSolanaUC", "Step 3: Broadcasting transaction...")
+            val broadcastResult = broadcastSolanaTransactionUseCase(transaction.id)
+
+            when (broadcastResult) {
+                is Result.Success -> {
+                    val result = broadcastResult.data
+                    val txHash = result.hash ?: signedTransaction.signature?.toHexString() ?: ""
+
+                    Log.d("SendSolanaUC", " Broadcast result: success=${result.success}, hash=${txHash}")
+
+                    val sendResult = SendSolanaResult(
+                        transactionId = transaction.id,
+                        txHash = txHash,
+                        success = result.success,
+                        error = result.error
+                    )
+
+                    Log.d("SendSolanaUC", "========== SEND COMPLETE ==========")
+                    Result.Success(sendResult)
+                }
+                is Result.Error -> {
+                    Log.e("SendSolanaUC", " Broadcast failed: ${broadcastResult.message}")
+                    broadcastResult
+                }
+                Result.Loading -> {
+                    Log.d("SendSolanaUC", " Broadcast loading...")
+                    Result.Error("Broadcast timeout", null)
+                }
+            }
+
+        } catch (e: Exception) {
+            Log.e("SendSolanaUC", " Exception: ${e.message}", e)
+            Result.Error("Send failed: ${e.message}", e)
+        }
+    }
+}
+
+data class SendSolanaResult(
+    val transactionId: String,
+    val txHash: String,
+    val success: Boolean,
+    val error: String? = null
+)
+
+// Helper extension for ByteArray to hex
+private fun ByteArray.toHexString(): String {
+    return joinToString("") { "%02x".format(it) }
+}
+
+@Singleton
 class CreateSolanaTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
