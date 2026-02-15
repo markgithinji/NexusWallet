@@ -46,7 +46,6 @@ class EthereumSendViewModel @Inject constructor(
 
     data class SendUiState(
         val walletId: String = "",
-        val walletType: WalletType = WalletType.ETHEREUM_SEPOLIA,
         val fromAddress: String = "",
         val toAddress: String = "",
         val amount: String = "",
@@ -58,7 +57,8 @@ class EthereumSendViewModel @Inject constructor(
         val balance: BigDecimal = BigDecimal.ZERO,
         val isValid: Boolean = false,
         val validationError: String? = null,
-        val transactionState: TransactionState = TransactionState.Idle
+        val transactionState: TransactionState = TransactionState.Idle,
+        val network: String = ""
     )
 
     sealed class TransactionState {
@@ -104,12 +104,13 @@ class EthereumSendViewModel @Inject constructor(
                 return@launch
             }
 
-            if (wallet !is EthereumWallet) {
+            val ethereumCoin = wallet.ethereum
+            if (ethereumCoin == null) {
                 _uiState.update {
                     it.copy(
-                        error = "Not an Ethereum wallet",
+                        error = "Ethereum not enabled for this wallet",
                         isLoading = false,
-                        transactionState = TransactionState.Error("Not an Ethereum wallet")
+                        transactionState = TransactionState.Error("Ethereum not enabled")
                     )
                 }
                 return@launch
@@ -118,12 +119,12 @@ class EthereumSendViewModel @Inject constructor(
             val walletBalance = walletRepository.getWalletBalance(walletId)
 
             // Get ETH balance
-            val ethBalance = if (walletBalance != null) {
-                walletBalance.nativeBalanceDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO
+            val ethBalance = if (walletBalance?.ethereum != null) {
+                walletBalance.ethereum.eth.toBigDecimalOrNull() ?: BigDecimal.ZERO
             } else {
                 val balanceResult = ethereumBlockchainRepository.getEthereumBalance(
-                    wallet.address,
-                    wallet.network
+                    ethereumCoin.address,
+                    ethereumCoin.network
                 )
                 when (balanceResult) {
                     is Result.Success -> balanceResult.data
@@ -148,10 +149,10 @@ class EthereumSendViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     walletId = walletId,
-                    walletType = wallet.walletType,
-                    fromAddress = wallet.address,
+                    fromAddress = ethereumCoin.address,
                     balance = ethBalance,
                     feeEstimate = feeEstimate,
+                    network = ethereumCoin.network.name,
                     isLoading = false,
                     transactionState = TransactionState.Idle
                 )
@@ -416,7 +417,12 @@ class EthereumSendViewModel @Inject constructor(
     }
 
     fun getBalanceDisplay(): String {
-        return "${_uiState.value.balance.setScale(6, RoundingMode.HALF_UP)} ETH"
+        val network = if (_uiState.value.network.equals("SEPOLIA", ignoreCase = true)) {
+            " (Sepolia)"
+        } else {
+            ""
+        }
+        return "${_uiState.value.balance.setScale(6, RoundingMode.HALF_UP)} ETH$network"
     }
 
     fun getCreatedTransaction(): EthereumTransaction? {
