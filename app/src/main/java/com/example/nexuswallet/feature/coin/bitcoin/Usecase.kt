@@ -32,6 +32,98 @@ import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 
 @Singleton
+class SendBitcoinUseCase @Inject constructor(
+    private val createBitcoinTransactionUseCase: CreateBitcoinTransactionUseCase,
+    private val signBitcoinTransactionUseCase: SignBitcoinTransactionUseCase,
+    private val broadcastBitcoinTransactionUseCase: BroadcastBitcoinTransactionUseCase,
+    private val walletRepository: WalletRepository,
+    private val bitcoinTransactionRepository: BitcoinTransactionRepository
+) {
+    suspend operator fun invoke(
+        walletId: String,
+        toAddress: String,
+        amount: BigDecimal,
+        feeLevel: FeeLevel = FeeLevel.NORMAL,
+        note: String? = null
+    ): Result<SendBitcoinResult> = withContext(Dispatchers.IO) {
+        try {
+            Log.d("SendBitcoinUC", "========== SEND BITCOIN START ==========")
+            Log.d("SendBitcoinUC", "WalletId: $walletId, To: $toAddress, Amount: $amount BTC")
+
+            // 1. Create transaction
+            Log.d("SendBitcoinUC", "Step 1: Creating transaction...")
+            val createResult = createBitcoinTransactionUseCase(
+                walletId = walletId,
+                toAddress = toAddress,
+                amount = amount,
+                feeLevel = feeLevel,
+                note = note
+            )
+
+            if (createResult is Result.Error) {
+                Log.e("SendBitcoinUC", " Create failed: ${createResult.message}")
+                return@withContext createResult
+            }
+
+            val transaction = (createResult as Result.Success).data
+            Log.d("SendBitcoinUC", " Transaction created: ${transaction.id}")
+
+            // 2. Sign transaction
+            Log.d("SendBitcoinUC", "Step 2: Signing transaction...")
+            val signResult = signBitcoinTransactionUseCase(transaction.id)
+
+            if (signResult is Result.Error) {
+                Log.e("SendBitcoinUC", " Sign failed: ${signResult.message}")
+                return@withContext signResult
+            }
+
+            val signedTransaction = (signResult as Result.Success).data
+            Log.d("SendBitcoinUC", " Transaction signed: ${signedTransaction.txHash}")
+
+            // 3. Broadcast transaction
+            Log.d("SendBitcoinUC", "Step 3: Broadcasting transaction...")
+            val broadcastResult = broadcastBitcoinTransactionUseCase(transaction.id)
+
+            when (broadcastResult) {
+                is Result.Success -> {
+                    val result = broadcastResult.data
+                    Log.d("SendBitcoinUC", " Broadcast result: success=${result.success}, hash=${result.hash}")
+
+                    val sendResult = SendBitcoinResult(
+                        transactionId = transaction.id,
+                        txHash = result.hash ?: signedTransaction.txHash ?: "",
+                        success = result.success,
+                        error = result.error
+                    )
+
+                    Log.d("SendBitcoinUC", "========== SEND COMPLETE ==========")
+                    Result.Success(sendResult)
+                }
+                is Result.Error -> {
+                    Log.e("SendBitcoinUC", " Broadcast failed: ${broadcastResult.message}")
+                    broadcastResult
+                }
+                Result.Loading -> {
+                    Log.d("SendBitcoinUC", " Broadcast loading...")
+                    Result.Error("Broadcast timeout", null)
+                }
+            }
+
+        } catch (e: Exception) {
+            Log.e("SendBitcoinUC", " Exception: ${e.message}", e)
+            Result.Error("Send failed: ${e.message}", e)
+        }
+    }
+}
+
+data class SendBitcoinResult(
+    val transactionId: String,
+    val txHash: String,
+    val success: Boolean,
+    val error: String? = null
+)
+
+@Singleton
 class CreateBitcoinTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
