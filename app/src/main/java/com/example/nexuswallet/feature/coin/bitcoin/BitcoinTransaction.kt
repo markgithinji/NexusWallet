@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
+import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.serialization.Serializable
 import java.math.BigDecimal
@@ -8,7 +9,7 @@ import java.math.BigDecimal
 data class BitcoinTransaction(
     val id: String,
     val walletId: String,
-    val coinType: String = "BITCOIN",
+    val coinType: CoinType = CoinType.BITCOIN,
     val fromAddress: String,
     val toAddress: String,
     val status: TransactionStatus,

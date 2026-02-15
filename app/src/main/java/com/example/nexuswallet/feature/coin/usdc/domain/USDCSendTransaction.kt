@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.coin.usdc.domain
 
+import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionEntity
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
@@ -11,6 +12,7 @@ import kotlinx.serialization.Serializable
 data class USDCSendTransaction(
     val id: String,
     val walletId: String,
+    val coinType: CoinType = CoinType.USDC,
     val fromAddress: String,
     val toAddress: String,
     val status: TransactionStatus,

@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.coin.ethereum
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import java.math.BigDecimal
@@ -37,7 +38,6 @@ fun EthereumTransactionEntity.toDomain(): EthereumTransaction {
     return EthereumTransaction(
         id = id,
         walletId = walletId,
-        coinType = "ETHEREUM",
         fromAddress = fromAddress,
         toAddress = toAddress,
         status = TransactionStatus.valueOf(status),
