@@ -35,6 +35,8 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalance
+
 @Singleton
 class USDCBlockchainRepository @Inject constructor(
     private val etherscanApi: EtherscanApiService,
@@ -65,11 +67,10 @@ class USDCBlockchainRepository @Inject constructor(
         private const val USDC_DECIMALS = 6
         private const val USDC_DECIMALS_DIVISOR = "1000000"
     }
-
     suspend fun getUSDCBalance(
         address: String,
         network: EthereumNetwork = EthereumNetwork.SEPOLIA
-    ): Result<TokenBalance> {
+    ): Result<USDCBalance> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("USDC_DEBUG", "====== GET USDC BALANCE (Web3j Only) ======")
@@ -79,10 +80,18 @@ class USDCBlockchainRepository @Inject constructor(
                 // Get balance
                 val usdcBalance = getUSDCBalanceViaWeb3j(address, network)
 
-                Log.d("USDC_DEBUG", "Web3j Balance Result: ${usdcBalance.balanceDecimal} USDC")
+                // Convert TokenBalance to USDCBalance
+                val result = USDCBalance(
+                    address = address,
+                    amount = usdcBalance.balance,
+                    amountDecimal = usdcBalance.balanceDecimal,
+                    usdValue = usdcBalance.usdValue
+                )
+
+                Log.d("USDC_DEBUG", "Web3j Balance Result: ${result.amountDecimal} USDC")
                 Log.d("USDC_DEBUG", "====== END ======")
 
-                return@withContext Result.Success(usdcBalance)
+                return@withContext Result.Success(result)
 
             } catch (e: Exception) {
                 Log.e("USDC_DEBUG", "Error getting USDC balance via Web3j: ${e.message}")
