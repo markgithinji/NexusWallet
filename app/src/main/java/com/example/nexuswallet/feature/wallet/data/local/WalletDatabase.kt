@@ -12,6 +12,8 @@ import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionDao
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionEntity
 import com.example.nexuswallet.feature.coin.solana.SolanaTransactionDao
 import com.example.nexuswallet.feature.coin.solana.SolanaTransactionEntity
+import com.example.nexuswallet.feature.coin.usdc.USDCTransactionDao
+import com.example.nexuswallet.feature.coin.usdc.USDCTransactionEntity
 import com.example.nexuswallet.feature.wallet.data.model.BackupEntity
 import com.example.nexuswallet.feature.wallet.data.model.BalanceEntity
 import com.example.nexuswallet.feature.wallet.data.model.MnemonicEntity
@@ -31,9 +33,10 @@ import com.example.nexuswallet.feature.wallet.data.model.WalletEntity
         SendTransactionEntity::class,
         BitcoinTransactionEntity::class,
         EthereumTransactionEntity::class,
-        SolanaTransactionEntity::class
+        SolanaTransactionEntity::class,
+        USDCTransactionEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class WalletDatabase : RoomDatabase() {
@@ -47,6 +50,7 @@ abstract class WalletDatabase : RoomDatabase() {
     abstract fun bitcoinTransactionDao(): BitcoinTransactionDao
     abstract fun ethereumTransactionDao(): EthereumTransactionDao
     abstract fun solanaTransactionDao(): SolanaTransactionDao
+    abstract fun usdcTransactionDao(): USDCTransactionDao
 
     companion object {
         @Volatile
@@ -59,18 +63,18 @@ abstract class WalletDatabase : RoomDatabase() {
                     WalletDatabase::class.java,
                     "wallet_database"
                 )
-                    .addMigrations(MIGRATION_4_5)
+                    .addMigrations(MIGRATION_5_6)
                     .build()
                 INSTANCE = instance
                 instance
             }
         }
 
-        // Migration from 4 to 5 (adding SolanaTransaction table)
-        val MIGRATION_4_5 = object : Migration(4, 5) {
+        // Migration from 5 to 6 (adding USDCTransaction table)
+        val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("""
-                    CREATE TABLE IF NOT EXISTS `SolanaTransaction` (
+                    CREATE TABLE IF NOT EXISTS `USDCSendTransaction` (
                         `id` TEXT PRIMARY KEY NOT NULL,
                         `walletId` TEXT NOT NULL,
                         `fromAddress` TEXT NOT NULL,
@@ -79,14 +83,20 @@ abstract class WalletDatabase : RoomDatabase() {
                         `timestamp` INTEGER NOT NULL,
                         `note` TEXT,
                         `feeLevel` TEXT NOT NULL,
-                        `amountLamports` INTEGER NOT NULL,
-                        `amountSol` TEXT NOT NULL,
-                        `feeLamports` INTEGER NOT NULL,
-                        `feeSol` TEXT NOT NULL,
-                        `blockhash` TEXT NOT NULL,
-                        `signedData` BLOB,
-                        `signature` BLOB,
-                        `network` TEXT NOT NULL
+                        `amount` TEXT NOT NULL,
+                        `amountDecimal` TEXT NOT NULL,
+                        `contractAddress` TEXT NOT NULL,
+                        `network` TEXT NOT NULL,
+                        `gasPriceWei` TEXT NOT NULL,
+                        `gasPriceGwei` TEXT NOT NULL,
+                        `gasLimit` INTEGER NOT NULL,
+                        `feeWei` TEXT NOT NULL,
+                        `feeEth` TEXT NOT NULL,
+                        `nonce` INTEGER NOT NULL,
+                        `chainId` INTEGER NOT NULL,
+                        `signedHex` TEXT,
+                        `txHash` TEXT,
+                        `ethereumTransactionId` TEXT
                     )
                 """)
             }
