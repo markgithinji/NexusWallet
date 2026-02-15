@@ -32,10 +32,12 @@ import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import java.math.BigDecimal
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nexuswallet.NavigationViewModel
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
 import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 
@@ -231,9 +233,9 @@ fun EmptyWalletsView(onCreateWallet: () -> Unit) {
 
 @Composable
 fun WalletsList(
-    wallets: List<CryptoWallet>,
-    balances: Map<String, WalletBalance>,
-    onWalletClick: (CryptoWallet) -> Unit,
+    wallets: List<Wallet>,
+    balances: Map<String, com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance>,
+    onWalletClick: (Wallet) -> Unit,
     onDeleteWallet: (String) -> Unit
 ) {
     LazyColumn(
@@ -251,10 +253,11 @@ fun WalletsList(
         }
     }
 }
+
 @Composable
 fun WalletCard(
-    wallet: CryptoWallet,
-    balance: WalletBalance?,
+    wallet: Wallet,
+    balance: com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance?,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -303,56 +306,67 @@ fun WalletCard(
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    // Add USDC badge if needed
-                    if (wallet is USDCWallet) {
-                        Box(
-                            modifier = Modifier
-                                .background(Color.Blue.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "USDC",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.Blue,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                    // Show badges for enabled coins
+                    wallet.bitcoin?.let {
+                        Badge(text = "BTC", color = Color(0xFFF7931A))
+                    }
+                    wallet.ethereum?.let {
+                        Badge(text = "ETH", color = Color(0xFF627EEA))
+                    }
+                    wallet.solana?.let {
+                        Badge(text = "SOL", color = Color(0xFF00FFA3))
+                    }
+                    wallet.usdc?.let {
+                        Badge(text = "USDC", color = Color(0xFF2775CA))
                     }
                 }
 
-                Text(
-                    text = getWalletTypeDisplay(wallet),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                // Show primary address
+                val primaryAddress = wallet.ethereum?.address
+                    ?: wallet.bitcoin?.address
+                    ?: wallet.solana?.address
+                    ?: wallet.usdc?.address
 
+                primaryAddress?.let {
+                    Text(
+                        text = it.take(8) + "..." + it.takeLast(6),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+
+                // Show balances
                 balance?.let {
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // For USDC wallets, show USDC amount instead of USD value
-                    if (wallet is USDCWallet && it.nativeBalanceDecimal != "0") {
-                        Row(
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Text(
-                                text = "${it.nativeBalanceDecimal} USDC",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "$${String.format("%.2f", it.usdValue)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    } else {
-                        // For other wallets, show USD value
-                        Text(
-                            text = "$${String.format("%.2f", it.usdValue)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                    // Show each coin's balance
+                    it.bitcoin?.let { btc ->
+                        BalanceRow(
+                            symbol = "BTC",
+                            amount = btc.btc,
+                            usdValue = btc.usdValue
+                        )
+                    }
+                    it.ethereum?.let { eth ->
+                        BalanceRow(
+                            symbol = "ETH",
+                            amount = eth.eth,
+                            usdValue = eth.usdValue
+                        )
+                    }
+                    it.solana?.let { sol ->
+                        BalanceRow(
+                            symbol = "SOL",
+                            amount = sol.sol,
+                            usdValue = sol.usdValue
+                        )
+                    }
+                    it.usdc?.let { usdc ->
+                        BalanceRow(
+                            symbol = "USDC",
+                            amount = usdc.amountDecimal,
+                            usdValue = usdc.usdValue
                         )
                     }
                 }
@@ -373,16 +387,47 @@ fun WalletCard(
 }
 
 @Composable
-fun WalletIcon(wallet: CryptoWallet) {
-    val (icon, color) = when (wallet) {
-        is BitcoinWallet -> Pair(Icons.Default.CurrencyBitcoin, Color(0xFFF7931A))
-        is EthereumWallet -> Pair(Icons.Default.Diamond, Color(0xFF627EEA))
-        is SolanaWallet -> Pair(Icons.Default.FlashOn, Color(0xFF00FFA3))
-        is USDCWallet -> Pair(Icons.Default.AttachMoney, Color(0xFF2775CA))
-        is MultiChainWallet -> Pair(
-            Icons.Default.AccountBalanceWallet,
-            MaterialTheme.colorScheme.primary
+fun Badge(text: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .background(color.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            fontWeight = FontWeight.Bold
         )
+    }
+}
+
+@Composable
+fun BalanceRow(symbol: String, amount: String, usdValue: Double) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "$amount $symbol",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium
+        )
+        Text(
+            text = "$${String.format("%.2f", usdValue)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
+fun WalletIcon(wallet: Wallet) {
+    val (icon, color) = when {
+        wallet.bitcoin != null -> Pair(Icons.Default.CurrencyBitcoin, Color(0xFFF7931A))
+        wallet.ethereum != null -> Pair(Icons.Default.Diamond, Color(0xFF627EEA))
+        wallet.solana != null -> Pair(Icons.Default.FlashOn, Color(0xFF00FFA3))
+        wallet.usdc != null -> Pair(Icons.Default.AttachMoney, Color(0xFF2775CA))
         else -> Pair(Icons.Default.AccountBalanceWallet, MaterialTheme.colorScheme.primary)
     }
 

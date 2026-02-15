@@ -1,13 +1,13 @@
 package com.example.nexuswallet.feature.wallet.ui
 
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
-import com.example.nexuswallet.feature.wallet.domain.WalletBalance
+import  com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
 
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
+import kotlin.collections.forEach
+import kotlin.collections.isNotEmpty
 
 @HiltViewModel
 class WalletDashboardViewModel @Inject constructor(
@@ -22,8 +24,8 @@ class WalletDashboardViewModel @Inject constructor(
 ) : ViewModel() {
 
     // Wallets list
-    private val _wallets = MutableStateFlow<List<CryptoWallet>>(emptyList())
-    val wallets: StateFlow<List<CryptoWallet>> = _wallets
+    private val _wallets = MutableStateFlow<List<Wallet>>(emptyList())
+    val wallets: StateFlow<List<Wallet>> = _wallets
 
     // Balances map
     private val _balances = MutableStateFlow<Map<String, WalletBalance>>(emptyMap())
@@ -47,15 +49,16 @@ class WalletDashboardViewModel @Inject constructor(
             walletRepository.walletsFlow.collectLatest { walletsList ->
                 _wallets.value = walletsList
                 loadBalances(walletsList)
+                calculateTotalPortfolio(walletsList)
             }
         }
     }
 
-    private fun loadBalances(wallets: List<CryptoWallet>) {
+    private fun loadBalances(wallets: List<Wallet>) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val balancesMap = mutableMapOf<String, WalletBalance>()
+                val balancesMap = mutableMapOf<String, com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance>()
                 wallets.forEach { wallet ->
                     val balance = walletRepository.getWalletBalance(wallet.id)
                     if (balance != null) {
@@ -63,13 +66,29 @@ class WalletDashboardViewModel @Inject constructor(
                     }
                 }
                 _balances.value = balancesMap
-
                 _error.value = null
             } catch (e: Exception) {
                 _error.value = "Failed to load balances: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+
+    private fun calculateTotalPortfolio(wallets: List<Wallet>) {
+        viewModelScope.launch {
+            var total = BigDecimal.ZERO
+            wallets.forEach { wallet ->
+                val balance = walletRepository.getWalletBalance(wallet.id)
+                balance?.let {
+                    // Add up all coin USD values
+                    total += BigDecimal(it.bitcoin?.usdValue ?: 0.0)
+                    total += BigDecimal(it.ethereum?.usdValue ?: 0.0)
+                    total += BigDecimal(it.solana?.usdValue ?: 0.0)
+                    total += BigDecimal(it.usdc?.usdValue ?: 0.0)
+                }
+            }
+            _totalPortfolioValue.value = total
         }
     }
 
@@ -95,8 +114,8 @@ class WalletDashboardViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Force refresh by reloading balances
                 loadBalances(_wallets.value)
+                calculateTotalPortfolio(_wallets.value)
             } catch (e: Exception) {
                 _error.value = "Failed to refresh: ${e.message}"
             } finally {
