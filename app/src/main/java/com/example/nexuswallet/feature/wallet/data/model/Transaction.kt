@@ -65,8 +65,7 @@ data class SignedTransaction(
 data class BroadcastResult(
     val success: Boolean,
     val hash: String? = null,
-    val error: String? = null,
-    val chain: ChainType
+    val error: String? = null
 )
 
 @Serializable

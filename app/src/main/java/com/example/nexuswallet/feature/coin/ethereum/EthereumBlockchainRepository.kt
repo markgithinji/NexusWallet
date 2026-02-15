@@ -291,8 +291,7 @@ class EthereumBlockchainRepository @Inject constructor(
                     Result.Success(
                         BroadcastResult(
                             success = true,
-                            hash = result,
-                            chain = getChainTypeForNetwork(network)
+                            hash = result
                         )
                     )
                 }
@@ -301,8 +300,7 @@ class EthereumBlockchainRepository @Inject constructor(
                     Result.Success(
                         BroadcastResult(
                             success = false,
-                            error = "Nonce error: $result",
-                            chain = getChainTypeForNetwork(network)
+                            error = "Nonce error: $result"
                         )
                     )
                 }
@@ -311,8 +309,7 @@ class EthereumBlockchainRepository @Inject constructor(
                     Result.Success(
                         BroadcastResult(
                             success = false,
-                            error = "Insufficient balance: $result",
-                            chain = getChainTypeForNetwork(network)
+                            error = "Insufficient balance: $result"
                         )
                     )
                 }
@@ -324,8 +321,7 @@ class EthereumBlockchainRepository @Inject constructor(
                         BroadcastResult(
                             success = hash != null,
                             hash = hash,
-                            error = if (hash == null) result else null,
-                            chain = getChainTypeForNetwork(network)
+                            error = if (hash == null) result else null
                         )
                     )
                 }
@@ -334,8 +330,7 @@ class EthereumBlockchainRepository @Inject constructor(
                     Result.Success(
                         BroadcastResult(
                             success = false,
-                            error = "Broadcast failed: $result",
-                            chain = getChainTypeForNetwork(network)
+                            error = "Broadcast failed: $result"
                         )
                     )
                 }
@@ -345,8 +340,7 @@ class EthereumBlockchainRepository @Inject constructor(
             Result.Success(
                 BroadcastResult(
                     success = false,
-                    error = "Network error: ${e.message}",
-                    chain = getChainTypeForNetwork(network)
+                    error = "Network error: ${e.message}"
                 )
             )
         }

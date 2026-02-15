@@ -346,8 +346,7 @@ class USDCBlockchainRepository @Inject constructor(
                         Result.Success(
                             BroadcastResult(
                                 success = true,
-                                hash = result,
-                                chain = getChainTypeForNetwork(network)
+                                hash = result
                             )
                         )
                     }
@@ -406,8 +405,7 @@ class USDCBlockchainRepository @Inject constructor(
                     Result.Success(
                         BroadcastResult(
                             success = true,
-                            hash = txHash,
-                            chain = getChainTypeForNetwork(network)
+                            hash = txHash
                         )
                     )
                 }

@@ -159,8 +159,7 @@ class SolanaBlockchainRepository @Inject constructor() {
             Result.Success(
                 BroadcastResult(
                     success = true,
-                    hash = signature,
-                    chain = ChainType.SOLANA
+                    hash = signature
                 )
             )
 
@@ -169,8 +168,7 @@ class SolanaBlockchainRepository @Inject constructor() {
             Result.Success(
                 BroadcastResult(
                     success = false,
-                    error = e.message ?: "Broadcast failed",
-                    chain = ChainType.SOLANA
+                    error = e.message ?: "Broadcast failed"
                 )
             )
         }

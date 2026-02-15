@@ -4,7 +4,7 @@ import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.ChainType
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -422,8 +422,7 @@ class BitcoinBlockchainRepository @Inject constructor() {
                     Result.Success(
                         BroadcastResult(
                             success = true,
-                            hash = txId,
-                            chain = ChainType.BITCOIN
+                            hash = txId
                         )
                     )
                 } else {
@@ -432,8 +431,7 @@ class BitcoinBlockchainRepository @Inject constructor() {
                     Result.Success(
                         BroadcastResult(
                             success = false,
-                            error = error,
-                            chain = ChainType.BITCOIN
+                            error = error
                         )
                     )
                 }
@@ -443,8 +441,7 @@ class BitcoinBlockchainRepository @Inject constructor() {
                 Result.Success(
                     BroadcastResult(
                         success = false,
-                        error = e.message ?: "Broadcast failed",
-                        chain = ChainType.BITCOIN
+                        error = e.message ?: "Broadcast failed"
                     )
                 )
             }
