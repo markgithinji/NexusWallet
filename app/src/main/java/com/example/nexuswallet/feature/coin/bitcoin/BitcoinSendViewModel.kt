@@ -15,11 +15,12 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
-import com.example.nexuswallet.feature.coin.Result@HiltViewModel
+import com.example.nexuswallet.feature.coin.Result
+import kotlinx.coroutines.flow.asStateFlow
+
+@HiltViewModel
 class BitcoinSendViewModel @Inject constructor(
-    private val createBitcoinTransactionUseCase: CreateBitcoinTransactionUseCase,
-    private val signBitcoinTransactionUseCase: SignBitcoinTransactionUseCase,
-    private val broadcastBitcoinTransactionUseCase: BroadcastBitcoinTransactionUseCase,
+    private val sendBitcoinUseCase: SendBitcoinUseCase,
     private val getBitcoinBalanceUseCase: GetBitcoinBalanceUseCase,
     private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase,
     private val validateBitcoinAddressUseCase: ValidateBitcoinAddressUseCase,
@@ -28,7 +29,7 @@ class BitcoinSendViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BitcoinSendState())
-    val state: StateFlow<BitcoinSendState> = _state
+    val state: StateFlow<BitcoinSendState> = _state.asStateFlow()
 
     data class BitcoinSendState(
         val walletId: String = "",
@@ -47,13 +48,12 @@ class BitcoinSendViewModel @Inject constructor(
         val isLoading: Boolean = false,
         val step: String = "",
         val error: String? = null,
-        val info: String? = null,
-        val createdTransaction: BitcoinTransaction? = null
+        val info: String? = null
     )
 
     fun init(walletId: String) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.update { it.copy(isLoading = true, error = null) }
 
             // Get wallet from repository
             val wallet = walletRepository.getWallet(walletId)
@@ -149,7 +149,7 @@ class BitcoinSendViewModel @Inject constructor(
 
     fun updateAmount(amount: String) {
         val amountValue = try {
-            BigDecimal(amount)
+            amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
         } catch (e: Exception) {
             BigDecimal.ZERO
         }
@@ -174,81 +174,51 @@ class BitcoinSendViewModel @Inject constructor(
 
     fun send(onSuccess: (String) -> Unit) {
         viewModelScope.launch {
-            val walletId = _state.value.walletId
+            val state = _state.value
+            val walletId = state.walletId
             if (walletId.isEmpty()) {
                 _state.update { it.copy(error = "Wallet not loaded") }
                 return@launch
             }
 
-            val toAddress = _state.value.toAddress
-            val amount = _state.value.amountValue
+            val toAddress = state.toAddress
+            val amount = state.amountValue
 
             if (!validateInputs(toAddress, amount)) {
                 return@launch
             }
 
-            _state.update { it.copy(isLoading = true, error = null, step = "Creating transaction...") }
+            _state.update { it.copy(isLoading = true, error = null, step = "Sending...") }
 
-            // 1. Create transaction
-            val createResult = createBitcoinTransactionUseCase(
+            val result = sendBitcoinUseCase(
                 walletId = walletId,
                 toAddress = toAddress,
                 amount = amount,
-                feeLevel = _state.value.feeLevel,
+                feeLevel = state.feeLevel,
                 note = null
             )
 
-            when (createResult) {
+            when (result) {
                 is Result.Success -> {
-                    val transaction = createResult.data
-                    _state.update { it.copy(
-                        step = "Signing transaction...",
-                        createdTransaction = transaction
-                    )}
-
-                    // 2. Sign transaction
-                    val signResult = signBitcoinTransactionUseCase(transaction.id)
-
-                    when (signResult) {
-                        is Result.Success -> {
-                            val signedTransaction = signResult.data
-                            _state.update { it.copy(
-                                step = "Broadcasting transaction...",
-                                createdTransaction = signedTransaction
-                            )}
-
-                            // 3. Broadcast transaction
-                            val broadcastResult = broadcastBitcoinTransactionUseCase(transaction.id)
-
-                            when (broadcastResult) {
-                                is Result.Success -> {
-                                    val result = broadcastResult.data
-                                    if (result.success) {
-                                        _state.update { it.copy(step = "Transaction sent!") }
-                                        onSuccess(result.hash ?: "unknown")
-                                    } else {
-                                        _state.update { it.copy(error = result.error ?: "Broadcast failed") }
-                                    }
-                                }
-                                is Result.Error -> {
-                                    _state.update { it.copy(error = "Broadcast failed: ${broadcastResult.message}") }
-                                }
-                                Result.Loading -> {}
-                            }
-                        }
-                        is Result.Error -> {
-                            _state.update { it.copy(error = "Signing failed: ${signResult.message}") }
-                        }
-                        Result.Loading -> {}
+                    val sendResult = result.data
+                    if (sendResult.success) {
+                        _state.update { it.copy(isLoading = false, step = "Sent!") }
+                        onSuccess(sendResult.txHash)
+                    } else {
+                        _state.update { it.copy(
+                            isLoading = false,
+                            error = sendResult.error ?: "Send failed"
+                        ) }
                     }
                 }
                 is Result.Error -> {
-                    _state.update { it.copy(error = "Failed to create transaction: ${createResult.message}") }
+                    _state.update { it.copy(
+                        isLoading = false,
+                        error = result.message
+                    ) }
                 }
                 Result.Loading -> {}
             }
-
-            _state.update { it.copy(isLoading = false, step = "") }
         }
     }
 
@@ -318,9 +288,5 @@ class BitcoinSendViewModel @Inject constructor(
                 balanceFormatted = _state.value.balanceFormatted
             )
         }
-    }
-
-    fun getCreatedTransaction(): BitcoinTransaction? {
-        return _state.value.createdTransaction
     }
 }

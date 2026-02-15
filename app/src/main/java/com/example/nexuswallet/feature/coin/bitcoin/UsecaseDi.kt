@@ -79,4 +79,22 @@ object BitcoinUseCaseModule {
     fun provideValidateBitcoinAddressUseCase(): ValidateBitcoinAddressUseCase {
         return ValidateBitcoinAddressUseCase()
     }
+    @Provides
+    @Singleton
+    fun provideSendBitcoinUseCase(
+        createBitcoinTransactionUseCase: CreateBitcoinTransactionUseCase,
+        signBitcoinTransactionUseCase: SignBitcoinTransactionUseCase,
+        broadcastBitcoinTransactionUseCase: BroadcastBitcoinTransactionUseCase,
+        walletRepository: WalletRepository,
+        bitcoinTransactionRepository: BitcoinTransactionRepository
+    ): SendBitcoinUseCase {
+        return SendBitcoinUseCase(
+            createBitcoinTransactionUseCase = createBitcoinTransactionUseCase,
+            signBitcoinTransactionUseCase = signBitcoinTransactionUseCase,
+            broadcastBitcoinTransactionUseCase = broadcastBitcoinTransactionUseCase,
+            walletRepository = walletRepository,
+            bitcoinTransactionRepository = bitcoinTransactionRepository
+        )
+    }
+
 }
