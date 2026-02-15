@@ -77,6 +77,7 @@ import java.math.RoundingMode
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletDetailScreen(
@@ -357,11 +358,10 @@ data class CoinInfo(
     val balanceAmount: String,
     val usdValue: Double
 )
-
 @Composable
 fun WalletHeaderCard(
     wallet: Wallet,
-    balance: com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance?,
+    balance: WalletBalance?,
     viewModel: WalletDetailViewModel
 ) {
     Card(
@@ -376,18 +376,17 @@ fun WalletHeaderCard(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Wallet Icon
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(viewModel.getCoinColor().copy(alpha = 0.1f)),
+                        .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = viewModel.getCoinIcon(),
-                        contentDescription = "Wallet Type",
-                        tint = viewModel.getCoinColor(),
+                        imageVector = Icons.Default.AccountBalanceWallet,
+                        contentDescription = "Wallet",
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -400,18 +399,13 @@ fun WalletHeaderCard(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        text = "${viewModel.getCoinSymbol()} ${viewModel.getNetworkName()}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text = "Balance",
+                text = "Total Balance",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -420,12 +414,6 @@ fun WalletHeaderCard(
                 text = "$${String.format("%.2f", viewModel.getTotalUsdValue())}",
                 style = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = viewModel.getDisplayBalance(),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
             )
         }
     }
