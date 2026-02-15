@@ -36,6 +36,96 @@ import kotlinx.coroutines.withContext
 import java.math.RoundingMode
 
 @Singleton
+class SendEthereumUseCase @Inject constructor(
+    private val createSendTransactionUseCase: CreateSendTransactionUseCase,
+    private val signEthereumTransactionUseCase: SignEthereumTransactionUseCase,
+    private val broadcastTransactionUseCase: BroadcastTransactionUseCase
+) {
+    suspend operator fun invoke(
+        walletId: String,
+        toAddress: String,
+        amount: BigDecimal,
+        feeLevel: FeeLevel = FeeLevel.NORMAL,
+        note: String? = null
+    ): Result<SendEthereumResult> = withContext(Dispatchers.IO) {
+        try {
+            Log.d("SendEthereumUC", "========== SEND ETHEREUM START ==========")
+            Log.d("SendEthereumUC", "WalletId: $walletId, To: $toAddress, Amount: $amount ETH")
+
+            // 1. Create transaction
+            Log.d("SendEthereumUC", "Step 1: Creating transaction...")
+            val createResult = createSendTransactionUseCase(
+                walletId = walletId,
+                toAddress = toAddress,
+                amount = amount,
+                feeLevel = feeLevel,
+                note = note
+            )
+
+            if (createResult is Result.Error) {
+                Log.e("SendEthereumUC", " Create failed: ${createResult.message}")
+                return@withContext createResult
+            }
+
+            val transaction = (createResult as Result.Success).data
+            Log.d("SendEthereumUC", " Transaction created: ${transaction.id}")
+
+            // 2. Sign transaction
+            Log.d("SendEthereumUC", "Step 2: Signing transaction...")
+            val signResult = signEthereumTransactionUseCase(transaction.id)
+
+            if (signResult is Result.Error) {
+                Log.e("SendEthereumUC", " Sign failed: ${signResult.message}")
+                return@withContext signResult
+            }
+
+            val signedTransaction = (signResult as Result.Success).data
+            Log.d("SendEthereumUC", " Transaction signed: ${signedTransaction.txHash}")
+
+            // 3. Broadcast transaction
+            Log.d("SendEthereumUC", "Step 3: Broadcasting transaction...")
+            val broadcastResult = broadcastTransactionUseCase(transaction.id)
+
+            when (broadcastResult) {
+                is Result.Success -> {
+                    val result = broadcastResult.data
+                    Log.d("SendEthereumUC", " Broadcast result: success=${result.success}, hash=${result.hash}")
+
+                    val sendResult = SendEthereumResult(
+                        transactionId = transaction.id,
+                        txHash = result.hash ?: signedTransaction.txHash ?: "",
+                        success = result.success,
+                        error = result.error
+                    )
+
+                    Log.d("SendEthereumUC", "========== SEND COMPLETE ==========")
+                    Result.Success(sendResult)
+                }
+                is Result.Error -> {
+                    Log.e("SendEthereumUC", " Broadcast failed: ${broadcastResult.message}")
+                    broadcastResult
+                }
+                Result.Loading -> {
+                    Log.d("SendEthereumUC", " Broadcast loading...")
+                    Result.Error("Broadcast timeout", null)
+                }
+            }
+
+        } catch (e: Exception) {
+            Log.e("SendEthereumUC", " Exception: ${e.message}", e)
+            Result.Error("Send failed: ${e.message}", e)
+        }
+    }
+}
+
+data class SendEthereumResult(
+    val transactionId: String,
+    val txHash: String,
+    val success: Boolean,
+    val error: String? = null
+)
+
+@Singleton
 class CreateSendTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository,

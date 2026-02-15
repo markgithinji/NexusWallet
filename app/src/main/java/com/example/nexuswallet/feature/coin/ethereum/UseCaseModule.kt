@@ -122,4 +122,18 @@ object UseCaseModule {
     ): EthereumTransactionRepository {
         return EthereumTransactionRepository(ethereumTransactionDao)
     }
+
+    @Provides
+    @Singleton
+    fun provideSendEthereumUseCase(
+    createSendTransactionUseCase: CreateSendTransactionUseCase,
+    signEthereumTransactionUseCase: SignEthereumTransactionUseCase,
+    broadcastTransactionUseCase: BroadcastTransactionUseCase
+    ): SendEthereumUseCase {
+        return SendEthereumUseCase(
+            createSendTransactionUseCase,
+            signEthereumTransactionUseCase,
+            broadcastTransactionUseCase
+        )
+    }
 }
