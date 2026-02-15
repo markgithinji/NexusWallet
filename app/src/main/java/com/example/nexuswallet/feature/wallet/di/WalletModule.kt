@@ -89,7 +89,6 @@ object DatabaseModule {
         settingsDao: SettingsDao,
         backupDao: BackupDao,
         mnemonicDao: MnemonicDao,
-        sendTransactionDao: SendTransactionDao
     ): WalletLocalDataSource {
         return WalletLocalDataSource(
             walletDao = walletDao,
@@ -98,7 +97,6 @@ object DatabaseModule {
             settingsDao = settingsDao,
             backupDao = backupDao,
             mnemonicDao = mnemonicDao,
-            sendTransactionDao = sendTransactionDao
         )
     }
 
