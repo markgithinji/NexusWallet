@@ -5,6 +5,7 @@ import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepositor
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
+import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -32,14 +33,14 @@ object UseCaseModule {
         usdcBlockchainRepository: USDCBlockchainRepository,
         ethereumBlockchainRepository: EthereumBlockchainRepository,
         keyManager: KeyManager,
-        transactionLocalDataSource: TransactionLocalDataSource
+        usdcTransactionRepository: USDCTransactionRepository
     ): SendUSDCUseCase {
         return SendUSDCUseCase(
             walletRepository,
             usdcBlockchainRepository,
             ethereumBlockchainRepository,
             keyManager,
-            transactionLocalDataSource
+            usdcTransactionRepository
         )
     }
 
