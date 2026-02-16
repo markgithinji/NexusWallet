@@ -16,48 +16,6 @@ object SolanaUseCaseModule {
 
     @Provides
     @Singleton
-    fun provideCreateSolanaTransactionUseCase(
-        walletRepository: WalletRepository,
-        solanaBlockchainRepository: SolanaBlockchainRepository,
-        solanaTransactionRepository: SolanaTransactionRepository,
-    ): CreateSolanaTransactionUseCase {
-        return CreateSolanaTransactionUseCase(
-            walletRepository,
-            solanaBlockchainRepository,
-            solanaTransactionRepository
-        )
-    }
-
-    @Provides
-    @Singleton
-    fun provideSignSolanaTransactionUseCase(
-        walletRepository: WalletRepository,
-        solanaBlockchainRepository: SolanaBlockchainRepository,
-        keyManager: KeyManager,
-        solanaTransactionRepository: SolanaTransactionRepository,
-    ): SignSolanaTransactionUseCase {
-        return SignSolanaTransactionUseCase(
-            walletRepository,
-            solanaBlockchainRepository,
-            keyManager,
-            solanaTransactionRepository
-        )
-    }
-
-    @Provides
-    @Singleton
-    fun provideBroadcastSolanaTransactionUseCase(
-        solanaBlockchainRepository: SolanaBlockchainRepository,
-        solanaTransactionRepository: SolanaTransactionRepository,
-    ): BroadcastSolanaTransactionUseCase {
-        return BroadcastSolanaTransactionUseCase(
-            solanaBlockchainRepository,
-            solanaTransactionRepository
-        )
-    }
-
-    @Provides
-    @Singleton
     fun provideGetSolanaBalanceUseCase(
         solanaBlockchainRepository: SolanaBlockchainRepository
     ): GetSolanaBalanceUseCase {
@@ -121,18 +79,16 @@ object SolanaUseCaseModule {
     @Provides
     @Singleton
     fun provideSendSolanaUseCase(
-        createSolanaTransactionUseCase: CreateSolanaTransactionUseCase,
-        signSolanaTransactionUseCase: SignSolanaTransactionUseCase,
-        broadcastSolanaTransactionUseCase: BroadcastSolanaTransactionUseCase,
         walletRepository: WalletRepository,
-        solanaTransactionRepository: SolanaTransactionRepository
+        solanaBlockchainRepository: SolanaBlockchainRepository,
+        solanaTransactionRepository: SolanaTransactionRepository,
+        keyManager: KeyManager
     ): SendSolanaUseCase {
         return SendSolanaUseCase(
-            createSolanaTransactionUseCase = createSolanaTransactionUseCase,
-            signSolanaTransactionUseCase = signSolanaTransactionUseCase,
-            broadcastSolanaTransactionUseCase = broadcastSolanaTransactionUseCase,
-            walletRepository = walletRepository,
-            solanaTransactionRepository = solanaTransactionRepository
+            walletRepository,
+            solanaBlockchainRepository,
+            solanaTransactionRepository,
+            keyManager
         )
     }
 }
