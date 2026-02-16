@@ -61,17 +61,6 @@ interface EtherscanApiService {
     ): TransactionReceiptStatusResponse
 
     @GET("v2/api")
-    suspend fun getTokenBalance(
-        @Query("chainid") chainId: String,
-        @Query("module") module: String = "account",
-        @Query("action") action: String = "tokenbalance",
-        @Query("contractaddress") contractAddress: String,
-        @Query("address") address: String,
-        @Query("tag") tag: String = "latest",
-        @Query("apikey") apiKey: String
-    ): EtherscanBalanceResponse
-
-    @GET("v2/api")
     suspend fun getTokenTransfers(
         @Query("chainid") chainId: String,
         @Query("module") module: String = "account",
@@ -81,30 +70,4 @@ interface EtherscanApiService {
         @Query("sort") sort: String = "desc",
         @Query("apikey") apiKey: String
     ): EtherscanTokenTransfersResponse
-
-    @GET("v2/api")
-    suspend fun getContractABI(
-        @Query("chainid") chainId: String,
-        @Query("module") module: String = "contract",
-        @Query("action") action: String = "getabi",
-        @Query("address") address: String,
-        @Query("apikey") apiKey: String
-    ): EtherscanContractABIResponse
-
-    @GET("v2/api")
-    suspend fun getTokenTotalSupply(
-        @Query("chainid") chainId: String,
-        @Query("module") module: String = "stats",
-        @Query("action") action: String = "tokensupply",
-        @Query("contractaddress") contractAddress: String,
-        @Query("apikey") apiKey: String
-    ): EtherscanTokenSupplyResponse
-
-    @GET("v2/api")
-    suspend fun getGasOracle(
-        @Query("chainid") chainId: String,
-        @Query("module") module: String = "gastracker",
-        @Query("action") action: String = "gasoracle",
-        @Query("apikey") apiKey: String
-    ): GasPriceResponse
 }

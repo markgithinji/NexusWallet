@@ -55,7 +55,6 @@ import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendViewModel
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendViewModel
-import com.example.nexuswallet.feature.coin.ethereum.TransactionState
 import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
 import com.example.nexuswallet.feature.coin.usdc.USDCSendViewModel
 import com.example.nexuswallet.feature.wallet.domain.WalletType

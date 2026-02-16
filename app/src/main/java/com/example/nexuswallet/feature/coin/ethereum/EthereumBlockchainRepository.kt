@@ -397,21 +397,6 @@ class EthereumBlockchainRepository @Inject constructor(
         return BigDecimal.valueOf(simulatedBalance)
     }
 
-    private fun getChainTypeForNetwork(network: EthereumNetwork): ChainType {
-        return when (network) {
-            EthereumNetwork.SEPOLIA -> ChainType.ETHEREUM_SEPOLIA
-            else -> ChainType.ETHEREUM
-        }
-    }
-
-    fun isValidEthereumAddress(address: String): Boolean {
-        return address.matches(Regex("^0x[a-fA-F0-9]{40}\$"))
-    }
-
-    fun isValidBitcoinAddress(address: String): Boolean {
-        return address.matches(Regex("^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,39}\$"))
-    }
-
     private fun calculateEthFee(gasPrice: String, gasLimit: Int = GAS_LIMIT_STANDARD): String {
         val gasPriceWei = BigDecimal(gasPrice).multiply(BigDecimal("1000000000"))
         return gasPriceWei.multiply(BigDecimal(gasLimit)).toPlainString()
@@ -421,36 +406,6 @@ class EthereumBlockchainRepository @Inject constructor(
         val feeWei = calculateEthFee(gasPrice, gasLimit).toBigDecimal()
         return feeWei.divide(BigDecimal("1000000000000000000"), 8, RoundingMode.HALF_UP)
             .toPlainString()
-    }
-
-    fun getBitcoinFeeEstimates(): TransactionFee {
-        return TransactionFee(
-            chain = ChainType.BITCOIN,
-            slow = FeeEstimate(
-                feePerByte = "10",
-                gasPrice = null,
-                totalFee = "2000",
-                totalFeeDecimal = "0.00002",
-                estimatedTime = 3600,
-                priority = FeeLevel.SLOW
-            ),
-            normal = FeeEstimate(
-                feePerByte = "25",
-                gasPrice = null,
-                totalFee = "5000",
-                totalFeeDecimal = "0.00005",
-                estimatedTime = 600,
-                priority = FeeLevel.NORMAL
-            ),
-            fast = FeeEstimate(
-                feePerByte = "50",
-                gasPrice = null,
-                totalFee = "10000",
-                totalFeeDecimal = "0.0001",
-                estimatedTime = 120,
-                priority = FeeLevel.FAST
-            )
-        )
     }
 
     suspend fun getEthereumGasPrice(network: EthereumNetwork = EthereumNetwork.MAINNET): Result<TransactionFee> {
@@ -533,12 +488,4 @@ class EthereumBlockchainRepository @Inject constructor(
             )
         )
     }
-}
-
-sealed class TransactionState {
-    data object Idle : TransactionState()
-    data object Loading : TransactionState()
-    data class Created(val transaction: SendTransaction) : TransactionState()
-    data class Success(val hash: String) : TransactionState()
-    data class Error(val message: String) : TransactionState()
 }

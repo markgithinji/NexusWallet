@@ -112,17 +112,3 @@ data class TokenTransaction(
     val input: String,
     val confirmations: String
 )
-
-@Serializable
-data class EtherscanContractABIResponse(
-    val status: String,
-    val message: String,
-    val result: String
-)
-
-@Serializable
-data class EtherscanTokenSupplyResponse(
-    val status: String,
-    val message: String,
-    val result: String
-)

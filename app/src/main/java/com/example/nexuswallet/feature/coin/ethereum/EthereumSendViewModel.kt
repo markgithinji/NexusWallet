@@ -17,6 +17,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
 import kotlin.plus
+
 @HiltViewModel
 class EthereumSendViewModel @Inject constructor(
     private val sendEthereumUseCase: SendEthereumUseCase,
@@ -229,11 +230,6 @@ class EthereumSendViewModel @Inject constructor(
             _uiState.update { it.copy(feeEstimate = feeEstimateResult.data) }
             validateInputs()
         }
-    }
-
-    fun getBalanceDisplay(): String {
-        val network = if (_uiState.value.network.equals("SEPOLIA", ignoreCase = true)) " (Sepolia)" else ""
-        return "${_uiState.value.balance.setScale(6, RoundingMode.HALF_UP)} ETH$network"
     }
 
     fun clearError() = _uiState.update { it.copy(error = null, validationError = null) }

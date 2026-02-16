@@ -7,11 +7,10 @@ import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.bitcoin.SendBitcoinUseCase
-import com.example.nexuswallet.feature.coin.ethereum.BroadcastTransactionUseCase
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
 import com.example.nexuswallet.feature.coin.ethereum.GetTransactionUseCase
-import com.example.nexuswallet.feature.coin.ethereum.SignEthereumTransactionUseCase
+import com.example.nexuswallet.feature.coin.ethereum.SendEthereumUseCase
 import com.example.nexuswallet.feature.coin.solana.BroadcastSolanaTransactionUseCase
 import com.example.nexuswallet.feature.coin.solana.SignSolanaTransactionUseCase
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
@@ -32,8 +31,7 @@ import javax.inject.Inject
 class TransactionReviewViewModel @Inject constructor(
     private val getTransactionUseCase: GetTransactionUseCase,
     // Ethereum
-    private val signEthereumTransactionUseCase: SignEthereumTransactionUseCase,
-    private val broadcastTransactionUseCase: BroadcastTransactionUseCase,
+    private val sendEthereumUseCase: SendEthereumUseCase,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository,
     // Solana
     private val signSolanaTransactionUseCase: SignSolanaTransactionUseCase,
@@ -82,81 +80,6 @@ class TransactionReviewViewModel @Inject constructor(
         object ClearError : ReviewEvent()
     }
 
-    fun initialize(
-        walletId: String,
-        coinType: String,
-        toAddress: String,
-        amount: String,
-        feeLevel: String?
-    ) {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    currentStep = TransactionStep.LOADING,
-                    walletId = walletId,
-                    coinType = coinType,
-                    toAddress = toAddress,
-                    amount = amount,
-                    feeLevel = feeLevel?.let { FeeLevel.valueOf(it) } ?: FeeLevel.NORMAL
-                )
-            }
-
-            // For Bitcoin, we don't need to load an existing transaction
-            // since SendBitcoinUseCase will create it
-            if (coinType == "BTC") {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        currentStep = TransactionStep.REVIEWING
-                    )
-                }
-                return@launch
-            }
-
-            // load the existing transaction
-            val transactionResult = getTransactionUseCase(walletId)
-
-            when (transactionResult) {
-                is Result.Success -> {
-                    val transaction = transactionResult.data
-                    val transactionType = when (transaction) {
-                        is EthereumTransaction -> TransactionType.Ethereum(transaction)
-                        else -> null
-                    }
-
-                    if (transactionType != null) {
-                        _uiState.update {
-                            it.copy(
-                                transaction = transactionType,
-                                isLoading = false,
-                                currentStep = TransactionStep.REVIEWING
-                            )
-                        }
-                    } else {
-                        _uiState.update {
-                            it.copy(
-                                error = "Unsupported transaction type",
-                                isLoading = false,
-                                currentStep = TransactionStep.ERROR("Unsupported transaction type")
-                            )
-                        }
-                    }
-                }
-                is Result.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            error = "Failed to load transaction: ${transactionResult.message}",
-                            isLoading = false,
-                            currentStep = TransactionStep.ERROR("Failed to load transaction")
-                        )
-                    }
-                }
-                Result.Loading -> {}
-            }
-        }
-    }
-
     private suspend fun approveTransaction() {
         val state = _uiState.value
 
@@ -173,17 +96,7 @@ class TransactionReviewViewModel @Inject constructor(
                 sendBitcoin()
             }
             "ETH" -> {
-                val transaction = state.transaction as? TransactionType.Ethereum
-                if (transaction != null) {
-                    autoSignAndBroadcastEthereum(transaction.transaction.id)
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            error = "Ethereum transaction not found",
-                            currentStep = TransactionStep.ERROR("Transaction not found")
-                        )
-                    }
-                }
+                sendEthereum()
             }
             "SOL" -> {
                 val transaction = state.transaction as? TransactionType.Solana
@@ -209,7 +122,7 @@ class TransactionReviewViewModel @Inject constructor(
         }
     }
 
-    // ===== BITCOIN (UPDATED) =====
+    // ===== BITCOIN =====
     private suspend fun sendBitcoin() {
         val state = _uiState.value
         val walletId = state.walletId
@@ -253,70 +166,48 @@ class TransactionReviewViewModel @Inject constructor(
         }
     }
 
-    // ===== ETHEREUM (KEEP EXISTING) =====
-    private suspend fun autoSignAndBroadcastEthereum(transactionId: String) {
-        Log.d("TransactionReview", "START Ethereum autoSignAndBroadcast for: $transactionId")
+    // ===== ETHEREUM (UPDATED) =====
+    private suspend fun sendEthereum() {
+        val state = _uiState.value
+        val walletId = state.walletId
+        val toAddress = state.toAddress
+        val amount = state.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
+        val feeLevel = state.feeLevel
 
         _uiState.update { it.copy(currentStep = TransactionStep.SIGNING) }
 
-        val signResult = signEthereumTransactionUseCase(transactionId)
+        val result = sendEthereumUseCase(
+            walletId = walletId,
+            toAddress = toAddress,
+            amount = amount,
+            feeLevel = feeLevel,
+            note = null
+        )
 
-        when (signResult) {
+        when (result) {
             is Result.Success -> {
-                val updatedTransactionResult = getTransactionUseCase(transactionId)
+                val sendResult = result.data
+                _uiState.update {
+                    it.copy(
+                        broadcastResult = BroadcastResult(
+                            success = sendResult.success,
+                            hash = sendResult.txHash,
+                            error = sendResult.error
+                        ),
+                        currentStep = if (sendResult.success) TransactionStep.SUCCESS else TransactionStep.ERROR(sendResult.error ?: "Send failed")
+                    )
+                }
 
-                when (updatedTransactionResult) {
-                    is Result.Success -> {
-                        val updatedTransaction = updatedTransactionResult.data as? EthereumTransaction
-                        if (updatedTransaction != null) {
-                            _uiState.update {
-                                it.copy(
-                                    transaction = TransactionType.Ethereum(updatedTransaction),
-                                    currentStep = TransactionStep.BROADCASTING
-                                )
-                            }
-
-                            val broadcastResult = broadcastTransactionUseCase(transactionId)
-
-                            when (broadcastResult) {
-                                is Result.Success -> {
-                                    val result = broadcastResult.data
-                                    _uiState.update {
-                                        it.copy(
-                                            broadcastResult = result,
-                                            currentStep = TransactionStep.CHECKING_STATUS
-                                        )
-                                    }
-                                    checkEthereumTransactionStatus(result.hash, updatedTransaction)
-                                }
-                                is Result.Error -> {
-                                    _uiState.update {
-                                        it.copy(
-                                            error = "Broadcast failed: ${broadcastResult.message}",
-                                            currentStep = TransactionStep.ERROR("Broadcast failed")
-                                        )
-                                    }
-                                }
-                                Result.Loading -> {}
-                            }
-                        }
-                    }
-                    is Result.Error -> {
-                        _uiState.update {
-                            it.copy(
-                                error = "Failed to get updated transaction: ${updatedTransactionResult.message}",
-                                currentStep = TransactionStep.ERROR("Failed to update transaction")
-                            )
-                        }
-                    }
-                    Result.Loading -> {}
+                // Check transaction status if successful
+                if (sendResult.success) {
+                    checkEthereumTransactionStatus(sendResult.txHash)
                 }
             }
             is Result.Error -> {
                 _uiState.update {
                     it.copy(
-                        error = "Signing failed: ${signResult.message}",
-                        currentStep = TransactionStep.ERROR("Signing failed")
+                        error = result.message,
+                        currentStep = TransactionStep.ERROR(result.message ?: "Send failed")
                     )
                 }
             }
@@ -324,22 +215,12 @@ class TransactionReviewViewModel @Inject constructor(
         }
     }
 
-    private fun checkEthereumTransactionStatus(txHash: String?, transaction: EthereumTransaction) {
+    private fun checkEthereumTransactionStatus(txHash: String) {
         viewModelScope.launch {
-            if (txHash == null) {
-                _uiState.update {
-                    it.copy(
-                        currentStep = TransactionStep.SUCCESS,
-                        transactionConfirmed = false
-                    )
-                }
-                return@launch
-            }
+            _uiState.update { it.copy(currentStep = TransactionStep.CHECKING_STATUS) }
 
-            val network = when (transaction.network) {
-                "sepolia" -> EthereumNetwork.SEPOLIA
-                else -> EthereumNetwork.MAINNET
-            }
+            // You might want to get the network from somewhere
+            val network = EthereumNetwork.SEPOLIA // Default to Sepolia for now
 
             for (attempt in 1..5) {
                 delay(3000)
