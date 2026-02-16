@@ -36,7 +36,7 @@ import com.example.nexuswallet.feature.wallet.data.model.WalletEntity
         SolanaTransactionEntity::class,
         USDCTransactionEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class WalletDatabase : RoomDatabase() {
@@ -63,7 +63,7 @@ abstract class WalletDatabase : RoomDatabase() {
                     WalletDatabase::class.java,
                     "wallet_database"
                 )
-                    .addMigrations(MIGRATION_5_6)
+                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7)
                     .build()
                 INSTANCE = instance
                 instance
@@ -99,6 +99,55 @@ abstract class WalletDatabase : RoomDatabase() {
                         `ethereumTransactionId` TEXT
                     )
                 """)
+            }
+        }
+
+        // Migration from 6 to 7 (convert SolanaTransaction BLOB columns to TEXT)
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create new table with TEXT columns instead of BLOB
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `SolanaTransaction_new` (
+                        `id` TEXT PRIMARY KEY NOT NULL,
+                        `walletId` TEXT NOT NULL,
+                        `fromAddress` TEXT NOT NULL,
+                        `toAddress` TEXT NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `timestamp` INTEGER NOT NULL,
+                        `note` TEXT,
+                        `feeLevel` TEXT NOT NULL,
+                        `amountLamports` INTEGER NOT NULL,
+                        `amountSol` TEXT NOT NULL,
+                        `feeLamports` INTEGER NOT NULL,
+                        `feeSol` TEXT NOT NULL,
+                        `blockhash` TEXT NOT NULL,
+                        `signedData` TEXT,
+                        `signature` TEXT,
+                        `network` TEXT NOT NULL
+                    )
+                """)
+
+                // Copy data from old table to new table, converting BLOB to HEX string
+                database.execSQL("""
+                    INSERT INTO SolanaTransaction_new (
+                        id, walletId, fromAddress, toAddress, status, timestamp, note, feeLevel,
+                        amountLamports, amountSol, feeLamports, feeSol, blockhash,
+                        signedData, signature, network
+                    )
+                    SELECT 
+                        id, walletId, fromAddress, toAddress, status, timestamp, note, feeLevel,
+                        amountLamports, amountSol, feeLamports, feeSol, blockhash,
+                        CASE WHEN signedData IS NOT NULL THEN hex(signedData) ELSE NULL END,
+                        CASE WHEN signature IS NOT NULL THEN hex(signature) ELSE NULL END,
+                        network
+                    FROM SolanaTransaction
+                """)
+
+                // Drop the old table
+                database.execSQL("DROP TABLE SolanaTransaction")
+
+                // Rename new table to original name
+                database.execSQL("ALTER TABLE SolanaTransaction_new RENAME TO SolanaTransaction")
             }
         }
     }
