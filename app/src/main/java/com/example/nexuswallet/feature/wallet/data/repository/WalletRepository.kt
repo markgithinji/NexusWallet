@@ -4,9 +4,9 @@ package com.example.nexuswallet.feature.wallet.data.repository
 import android.util.Log
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
-import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
@@ -299,7 +299,6 @@ class WalletRepository @Inject constructor(
         val params = when (network) {
             BitcoinNetwork.MAINNET -> MainNetParams.get()
             BitcoinNetwork.TESTNET -> TestNet3Params.get()
-            BitcoinNetwork.REGTEST -> RegTestParams.get()
         }
 
         val seed = DeterministicSeed(mnemonic, null, "", 0L)
@@ -359,7 +358,7 @@ class WalletRepository @Inject constructor(
             val params = when (coin.network) {
                 BitcoinNetwork.MAINNET -> MainNetParams.get()
                 BitcoinNetwork.TESTNET -> TestNet3Params.get()
-                BitcoinNetwork.REGTEST -> RegTestParams.get()
+                else -> MainNetParams.get() // Fallback to mainnet
             }
             val seed = DeterministicSeed(mnemonic, null, "", 0L)
             val btcWallet = BitcoinJWallet.fromSeed(params, seed)

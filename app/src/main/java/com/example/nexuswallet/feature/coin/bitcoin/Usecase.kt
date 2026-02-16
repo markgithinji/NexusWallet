@@ -8,7 +8,7 @@ import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
+
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
@@ -30,6 +30,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
+import org.bitcoinj.core.Address
 
 @Singleton
 class SendBitcoinUseCase @Inject constructor(
@@ -253,7 +254,7 @@ class SignBitcoinTransactionUseCase @Inject constructor(
             val networkParams = when (bitcoinCoin.network) {
                 BitcoinNetwork.MAINNET -> MainNetParams.get()
                 BitcoinNetwork.TESTNET -> TestNet3Params.get()
-                BitcoinNetwork.REGTEST -> RegTestParams.get()
+                else -> MainNetParams.get()
             }
 
             val ecKey = try {
@@ -383,19 +384,9 @@ class ValidateBitcoinAddressUseCase @Inject constructor() {
             val params = when (network) {
                 BitcoinNetwork.MAINNET -> MainNetParams.get()
                 BitcoinNetwork.TESTNET -> TestNet3Params.get()
-                BitcoinNetwork.REGTEST -> RegTestParams.get()
             }
-            try {
-                LegacyAddress.fromBase58(params, address)
-                true
-            } catch (e: AddressFormatException) {
-                try {
-                    Bech32.decode(address)
-                    true
-                } catch (e: AddressFormatException) {
-                    false
-                }
-            }
+            Address.fromString(params, address)
+            true
         } catch (e: Exception) {
             false
         }

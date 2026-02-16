@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendViewModel
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
@@ -57,7 +58,6 @@ import com.example.nexuswallet.feature.coin.ethereum.EthereumSendViewModel
 import com.example.nexuswallet.feature.coin.ethereum.TransactionState
 import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
 import com.example.nexuswallet.feature.coin.usdc.USDCSendViewModel
-import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import java.math.BigDecimal
 import java.math.RoundingMode

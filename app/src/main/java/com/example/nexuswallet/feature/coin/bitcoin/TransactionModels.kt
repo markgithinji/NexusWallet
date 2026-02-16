@@ -2,6 +2,9 @@ package com.example.nexuswallet.feature.coin.bitcoin
 
 import com.example.nexuswallet.feature.wallet.data.model.BitcoinOutput
 import kotlinx.serialization.Serializable
+import org.bitcoinj.core.Coin
+import org.bitcoinj.core.TransactionOutPoint
+import org.bitcoinj.script.Script
 import java.math.BigDecimal
 
 
@@ -21,18 +24,18 @@ data class BitcoinInput(
     val scriptPubKey: String,
     val address: String
 )
-
-@Serializable
 data class UTXO(
-    val txid: String,
-    val vout: Int,
-    val amount: Long,
-    val scriptPubKey: String,
-    val confirmations: Int
+    val outPoint: TransactionOutPoint,
+    val value: Coin,
+    val script: Script
 )
 
 enum class FeeLevel {
     SLOW, NORMAL, FAST
+}
+
+enum class BitcoinNetwork {
+    MAINNET, TESTNET
 }
 
 sealed class ValidationResult {

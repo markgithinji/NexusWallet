@@ -1,5 +1,5 @@
 package com.example.nexuswallet.feature.wallet.data.walletsrefactor
-import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.WalletType

@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -262,10 +261,10 @@ class BitcoinSendViewModel @Inject constructor(
 
     fun debug() {
         viewModelScope.launch {
-            bitcoinBlockchainRepository.debugCheckUTXOsDirect(
-                address = "my5mRT8cb5q9ScTyJDz46LtG7RNTfi1xF5",
-                network = BitcoinNetwork.TESTNET
-            )
+//            bitcoinBlockchainRepository.debugCheckUTXOsDirect(
+//                address = "my5mRT8cb5q9ScTyJDz46LtG7RNTfi1xF5",
+//                network = BitcoinNetwork.TESTNET
+//            )
         }
     }
 

@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain
 
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -114,10 +115,6 @@ data class USDCWallet(
 
 enum class WalletType {
     BITCOIN, ETHEREUM, MULTICHAIN, SOLANA, ETHEREUM_SEPOLIA, USDC
-}
-
-enum class BitcoinNetwork {
-    MAINNET, TESTNET, REGTEST
 }
 
 enum class EthereumNetwork {
