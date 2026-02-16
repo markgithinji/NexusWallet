@@ -31,6 +31,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumCoin
+import com.example.nexuswallet.feature.wallet.ui.SendResult
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.math.RoundingMode
@@ -335,11 +336,11 @@ class SendEthereumUseCase @Inject constructor(
 }
 
 data class SendEthereumResult(
-    val transactionId: String,
-    val txHash: String,
-    val success: Boolean,
-    val error: String? = null
-)
+    override val transactionId: String,
+    override val txHash: String,
+    override val success: Boolean,
+    override val error: String? = null
+) : SendResult
 
 @Singleton
 class GetTransactionUseCase @Inject constructor(

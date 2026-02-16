@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.ui.SendResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bitcoinj.core.Address
@@ -299,11 +300,11 @@ class SendBitcoinUseCase @Inject constructor(
 }
 
 data class SendBitcoinResult(
-    val transactionId: String,
-    val txHash: String,
-    val success: Boolean,
-    val error: String? = null
-)
+    override val transactionId: String,
+    override val txHash: String,
+    override val success: Boolean,
+    override val error: String? = null
+) : SendResult
 
 @Singleton
 class GetBitcoinFeeEstimateUseCase @Inject constructor(

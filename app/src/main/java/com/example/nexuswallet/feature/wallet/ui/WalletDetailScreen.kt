@@ -684,7 +684,7 @@ fun TransactionItem(
                 symbol = "SOL",
                 status = transaction.status,
                 timestamp = transaction.timestamp,
-                hash = transaction.signature?.let { it.toHexString() }
+                hash = transaction.signature?.let { it }
             )
         }
         is USDCSendTransaction -> {

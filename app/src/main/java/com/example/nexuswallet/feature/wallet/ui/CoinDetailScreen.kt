@@ -449,7 +449,7 @@ fun CoinTransactionItem(
                 amount = transaction.amountSol,
                 status = transaction.status,
                 timestamp = transaction.timestamp,
-                hash = transaction.signature?.toHexString()
+                hash = transaction.signature
             )
         }
         is USDCSendTransaction -> {
