@@ -14,54 +14,6 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object UseCaseModule {
 
-    // Transaction Creation
-    @Provides
-    @Singleton
-    fun provideCreateSendTransactionUseCase(
-        walletRepository: WalletRepository,
-        ethereumBlockchainRepository: EthereumBlockchainRepository,
-        ethereumTransactionRepository: EthereumTransactionRepository
-    ): CreateSendTransactionUseCase {
-        return CreateSendTransactionUseCase(
-            walletRepository = walletRepository,
-            ethereumBlockchainRepository = ethereumBlockchainRepository,
-            ethereumTransactionRepository = ethereumTransactionRepository
-        )
-    }
-
-    // Signing
-    @Provides
-    @Singleton
-    fun provideSignEthereumTransactionUseCase(
-        walletRepository: WalletRepository,
-        ethereumBlockchainRepository: EthereumBlockchainRepository,
-        keyManager: KeyManager,
-        ethereumTransactionRepository: EthereumTransactionRepository
-    ): SignEthereumTransactionUseCase {
-        return SignEthereumTransactionUseCase(
-            walletRepository = walletRepository,
-            ethereumBlockchainRepository = ethereumBlockchainRepository,
-            keyManager = keyManager,
-            ethereumTransactionRepository
-        )
-    }
-
-    // Broadcasting
-    @Provides
-    @Singleton
-    fun provideBroadcastTransactionUseCase(
-        walletRepository: WalletRepository,
-        ethereumBlockchainRepository: EthereumBlockchainRepository,
-        ethereumTransactionRepository: EthereumTransactionRepository
-    ): BroadcastTransactionUseCase {
-        return BroadcastTransactionUseCase(
-            walletRepository = walletRepository,
-            ethereumBlockchainRepository = ethereumBlockchainRepository,
-            ethereumTransactionRepository
-        )
-    }
-
-    // Transaction Queries
     @Provides
     @Singleton
     fun provideGetTransactionUseCase(
@@ -126,14 +78,16 @@ object UseCaseModule {
     @Provides
     @Singleton
     fun provideSendEthereumUseCase(
-    createSendTransactionUseCase: CreateSendTransactionUseCase,
-    signEthereumTransactionUseCase: SignEthereumTransactionUseCase,
-    broadcastTransactionUseCase: BroadcastTransactionUseCase
+        walletRepository: WalletRepository,
+        ethereumBlockchainRepository: EthereumBlockchainRepository,
+        ethereumTransactionRepository: EthereumTransactionRepository,
+        keyManager: KeyManager
     ): SendEthereumUseCase {
         return SendEthereumUseCase(
-            createSendTransactionUseCase,
-            signEthereumTransactionUseCase,
-            broadcastTransactionUseCase
+            walletRepository,
+            ethereumBlockchainRepository,
+            ethereumTransactionRepository,
+            keyManager
         )
     }
 }
