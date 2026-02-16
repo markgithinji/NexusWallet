@@ -3,8 +3,8 @@ package com.example.nexuswallet.feature.coin.usdc.domain
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionEntity
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 
@@ -51,7 +51,7 @@ fun USDCTransactionEntity.toDomain(): USDCSendTransaction {
         amount = amount,
         amountDecimal = amountDecimal,
         contractAddress = contractAddress,
-        network = EthereumNetwork.valueOf(network),
+        network = network.toEthereumNetwork(),
         gasPriceWei = gasPriceWei,
         gasPriceGwei = gasPriceGwei,
         gasLimit = gasLimit,
@@ -78,7 +78,7 @@ fun USDCSendTransaction.toEntity(): USDCTransactionEntity {
         amount = amount,
         amountDecimal = amountDecimal,
         contractAddress = contractAddress,
-        network = network.name,
+        network = network.toNetworkString(),
         gasPriceWei = gasPriceWei,
         gasPriceGwei = gasPriceGwei,
         gasLimit = gasLimit,
@@ -90,4 +90,46 @@ fun USDCSendTransaction.toEntity(): USDCTransactionEntity {
         txHash = txHash,
         ethereumTransactionId = ethereumTransactionId
     )
+}
+
+// Extension functions for conversion
+fun String.toEthereumNetwork(): EthereumNetwork {
+    return when (this.lowercase()) {
+        "mainnet" -> EthereumNetwork.Mainnet
+        "sepolia" -> EthereumNetwork.Sepolia
+        else -> throw IllegalArgumentException("Unknown Ethereum network: $this")
+    }
+}
+
+fun EthereumNetwork.toNetworkString(): String {
+    return when (this) {
+        is EthereumNetwork.Mainnet -> "mainnet"
+        is EthereumNetwork.Sepolia -> "sepolia"
+    }
+}
+
+@Serializable
+sealed class EthereumNetwork {
+    abstract val chainId: String
+    abstract val usdcContractAddress: String
+    abstract val isTestnet: Boolean
+    abstract val displayName: String
+
+    @Serializable
+    @SerialName("Mainnet")
+    data object Mainnet : EthereumNetwork() {
+        override val chainId = "1"
+        override val usdcContractAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        override val isTestnet = false
+        override val displayName = "Mainnet"
+    }
+
+    @Serializable
+    @SerialName("Sepolia")
+    data object Sepolia : EthereumNetwork() {
+        override val chainId = "11155111"
+        override val usdcContractAddress = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+        override val isTestnet = true
+        override val displayName = "Sepolia"
+    }
 }

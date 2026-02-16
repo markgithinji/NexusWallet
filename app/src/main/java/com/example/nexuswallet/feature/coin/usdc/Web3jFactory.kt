@@ -7,15 +7,13 @@ import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -36,10 +34,8 @@ class Web3jFactory @Inject constructor() {
         val alchemyApiKey = BuildConfig.ALCHEMY_API_KEY
 
         val rpcUrl = when (network) {
-            EthereumNetwork.MAINNET -> "https://eth-mainnet.g.alchemy.com/v2/$alchemyApiKey"
-            EthereumNetwork.SEPOLIA -> "https://eth-sepolia.g.alchemy.com/v2/$alchemyApiKey"
-            EthereumNetwork.POLYGON -> "https://polygon-mainnet.g.alchemy.com/v2/$alchemyApiKey"
-            else -> "https://eth-sepolia.g.alchemy.com/v2/$alchemyApiKey"
+            EthereumNetwork.Mainnet -> "https://eth-mainnet.g.alchemy.com/v2/$alchemyApiKey"
+            EthereumNetwork.Sepolia -> "https://eth-sepolia.g.alchemy.com/v2/$alchemyApiKey"
         }
 
         return Web3j.build(

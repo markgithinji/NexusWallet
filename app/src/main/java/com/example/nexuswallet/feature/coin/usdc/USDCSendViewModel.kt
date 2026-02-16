@@ -7,8 +7,6 @@ import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCa
 import com.example.nexuswallet.feature.coin.usdc.domain.GetUSDCBalanceUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.SendUSDCUseCase
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +15,7 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import kotlinx.coroutines.flow.asStateFlow
 @HiltViewModel
 class USDCSendViewModel @Inject constructor(
@@ -30,7 +29,7 @@ class USDCSendViewModel @Inject constructor(
         val walletId: String = "",
         val walletName: String = "",
         val fromAddress: String = "",
-        val network: EthereumNetwork = EthereumNetwork.SEPOLIA,
+        val network: EthereumNetwork = EthereumNetwork.Sepolia,
         val contractAddress: String = "",
         val toAddress: String = "",
         val amount: String = "",

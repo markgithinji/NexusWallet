@@ -26,7 +26,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
+import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import java.math.BigDecimal
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -49,7 +49,7 @@ fun USDCSendScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Send USDC${if (state.network == EthereumNetwork.SEPOLIA) " (Testnet)" else ""}"
+                        "Send USDC${if (state.network == EthereumNetwork.Sepolia) " (Testnet)" else ""}"
                     )
                 },
                 navigationIcon = {
@@ -94,7 +94,7 @@ fun USDCSendScreen(
             }
 
             // Testnet Faucet Button
-            if (state.network == EthereumNetwork.SEPOLIA) {
+            if (state.network == EthereumNetwork.Sepolia) {
                 Button(
                     onClick = {
                         viewModel.getTestnetUSDC()
@@ -121,25 +121,25 @@ fun USDCSendScreen(
                             "Network:",
                             style = MaterialTheme.typography.labelMedium
                         )
-                        SuggestionChip(
-                            onClick = {},
-                            label = {
-                                Text(
-                                    when (state.network) {
-                                        EthereumNetwork.SEPOLIA -> "SEPOLIA TESTNET"
-                                        EthereumNetwork.MAINNET -> "MAINNET"
-                                        else -> state.network.name
-                                    }
-                                )
-                            },
-                            colors = SuggestionChipDefaults.suggestionChipColors(
-                                containerColor = when (state.network) {
-                                    EthereumNetwork.SEPOLIA -> MaterialTheme.colorScheme.tertiaryContainer
-                                    EthereumNetwork.MAINNET -> MaterialTheme.colorScheme.errorContainer
-                                    else -> MaterialTheme.colorScheme.secondaryContainer
-                                }
-                            )
-                        )
+//                        SuggestionChip(
+//                            onClick = {},
+//                            label = {
+//                                Text(
+//                                    when (state.network) {
+//                                        EthereumNetwork.SEPOLIA -> "SEPOLIA TESTNET"
+//                                        EthereumNetwork.MAINNET -> "MAINNET"
+//                                        else -> state.network.name
+//                                    }
+//                                )
+//                            },
+//                            colors = SuggestionChipDefaults.suggestionChipColors(
+//                                containerColor = when (state.network) {
+//                                    EthereumNetwork.SEPOLIA -> MaterialTheme.colorScheme.tertiaryContainer
+//                                    EthereumNetwork.MAINNET -> MaterialTheme.colorScheme.errorContainer
+//                                    else -> MaterialTheme.colorScheme.secondaryContainer
+//                                }
+//                            )
+//                        )
                     }
 
                     // Contract Address

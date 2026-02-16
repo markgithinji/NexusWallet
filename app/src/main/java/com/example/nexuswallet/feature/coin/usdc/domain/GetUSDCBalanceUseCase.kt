@@ -11,12 +11,9 @@ import com.example.nexuswallet.feature.coin.usdc.Web3jFactory
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,7 +27,6 @@ import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionReposito
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalance
 import javax.inject.Singleton
-
 
 @Singleton
 class SendUSDCUseCase @Inject constructor(
@@ -62,7 +58,7 @@ class SendUSDCUseCase @Inject constructor(
                 ethereumCoin != null -> {
                     val contract = getUSDCContractAddress(ethereumCoin.network)
                         ?: return@withContext Result.Error(
-                            message = "USDC not supported on ${ethereumCoin.network}",
+                            message = "USDC not supported on ${ethereumCoin.network.displayName}",
                             throwable = IllegalArgumentException("Unsupported network for USDC")
                         )
                     Triple(ethereumCoin.address, ethereumCoin.network, contract)
@@ -73,7 +69,7 @@ class SendUSDCUseCase @Inject constructor(
                 )
             }
 
-            Log.d("SendUSDCUC", "Address: $address, Network: $network")
+            Log.d("SendUSDCUC", "Address: $address, Network: ${network.displayName}")
 
             // 3. Get private key
             val privateKeyResult = keyManager.getPrivateKeyForSigning(walletId)
@@ -114,14 +110,8 @@ class SendUSDCUseCase @Inject constructor(
             }
             Log.d("SendUSDCUC", "Nonce: $nonce")
 
-            // 6. Get chainId
-            val chainId = when (network) {
-                EthereumNetwork.MAINNET -> 1L
-                EthereumNetwork.SEPOLIA -> 11155111L
-                EthereumNetwork.POLYGON -> 137L
-                EthereumNetwork.BSC -> 56L
-                else -> 11155111L
-            }
+            // 6. Get chainId (now from the sealed class)
+            val chainId = network.chainId.toLong()
 
             // 7. Create and sign transaction
             Log.d("SendUSDCUC", "Creating and signing USDC transfer...")
@@ -236,10 +226,8 @@ class SendUSDCUseCase @Inject constructor(
 
     private fun getUSDCContractAddress(network: EthereumNetwork): String? {
         return when (network) {
-            EthereumNetwork.MAINNET -> "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            EthereumNetwork.SEPOLIA -> "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
-            EthereumNetwork.POLYGON -> "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
-            EthereumNetwork.BSC -> "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
+            is EthereumNetwork.Mainnet -> network.usdcContractAddress
+            is EthereumNetwork.Sepolia -> network.usdcContractAddress
             else -> null
         }
     }
@@ -251,6 +239,7 @@ data class SendUSDCResult(
     val success: Boolean,
     val error: String? = null
 )
+
 @Singleton
 class GetUSDCBalanceUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
@@ -280,10 +269,8 @@ class GetUSDCBalanceUseCase @Inject constructor(
 
     private fun getUSDCContractAddress(network: EthereumNetwork): String? {
         return when (network) {
-            EthereumNetwork.MAINNET -> "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            EthereumNetwork.SEPOLIA -> "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
-            EthereumNetwork.POLYGON -> "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
-            EthereumNetwork.BSC -> "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
+            is EthereumNetwork.Mainnet -> network.usdcContractAddress
+            is EthereumNetwork.Sepolia -> network.usdcContractAddress
             else -> null
         }
     }
