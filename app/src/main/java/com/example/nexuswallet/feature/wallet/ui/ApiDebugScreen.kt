@@ -45,11 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.nexuswallet.NavigationViewModel
-import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
-import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
-import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
@@ -503,17 +498,17 @@ fun ApiSelectorButton(
     }
 }
 
-fun CryptoWallet.getDisplayAddress(): String {
-    val address = when (this) {
-        is BitcoinWallet -> this.address
-        is EthereumWallet -> this.address
-        is MultiChainWallet -> this.ethereumWallet?.address ?: this.bitcoinWallet?.address ?: ""
-        is SolanaWallet -> this.address
-        else -> ""
-    }
-    return if (address.length > 10) {
-        "${address.take(6)}...${address.takeLast(4)}"
-    } else {
-        address
-    }
-}
+//fun CryptoWallet.getDisplayAddress(): String {
+//    val address = when (this) {
+//        is BitcoinWallet -> this.address
+//        is EthereumWallet -> this.address
+//        is MultiChainWallet -> this.ethereumWallet?.address ?: this.bitcoinWallet?.address ?: ""
+//        is SolanaWallet -> this.address
+//        else -> ""
+//    }
+//    return if (address.length > 10) {
+//        "${address.take(6)}...${address.takeLast(4)}"
+//    } else {
+//        address
+//    }
+//}

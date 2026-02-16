@@ -60,6 +60,7 @@ import com.example.nexuswallet.feature.coin.usdc.USDCSendViewModel
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import java.math.BigDecimal
 import java.math.RoundingMode
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SendScreen(
@@ -195,7 +196,7 @@ fun SendScreen(
                         address = usdcState.value.fromAddress,
                         secondaryBalance = usdcState.value.ethBalanceDecimal,
                         secondaryBalanceFormatted = "${usdcState.value.ethBalanceDecimal.setScale(4, RoundingMode.HALF_UP)} ETH",
-                        network = usdcState.value.network.name
+                        network = usdcState.value.network.displayName
                     )
                 }
                 "SOL" -> {

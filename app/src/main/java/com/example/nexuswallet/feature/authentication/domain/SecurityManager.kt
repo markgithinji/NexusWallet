@@ -6,7 +6,6 @@ import android.content.Context
 import android.util.Log
 import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -233,58 +232,58 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
     /**
      * Create encrypted backup of wallet
      */
-    suspend fun createEncryptedBackup(walletId: String, wallet: CryptoWallet): BackupResult {
-        return try {
-            _securityState.value = SecurityState.BACKING_UP
-
-            // Get mnemonic first
-            val mnemonic = retrieveMnemonic(walletId)
-            if (mnemonic == null) {
-                throw IllegalStateException("No mnemonic found for wallet")
-            }
-
-            // Create backup data
-            val backupData = WalletBackup(
-                walletId = walletId,
-                encryptedMnemonic = "encrypted_placeholder",
-                encryptedPrivateKey = "encrypted_placeholder",
-                encryptionIV = "",
-                backupDate = System.currentTimeMillis(),
-                walletType = wallet.walletType,
-                metadata = mapOf(
-                    "walletName" to wallet.name,
-                    "address" to wallet.address,
-                    "createdAt" to wallet.createdAt.toString()
-                )
-            )
-
-            // Encrypt entire backup
-            val backupJson = Json.encodeToString(backupData)
-            val (encryptedHex, ivHex) = keyStoreRepository.encryptString(backupJson)
-
-            // Update backup with actual encrypted data
-            val finalBackup = backupData.copy(
-                encryptedMnemonic = encryptedHex,
-                encryptionIV = ivHex
-            )
-
-            // Store backup
-            securityPreferencesRepository.storeEncryptedBackup(
-                walletId = walletId,
-                backupData = finalBackup,
-                encryptedData = encryptedHex,
-                iv = hexToBytes(ivHex)
-            )
-
-            _securityState.value = SecurityState.IDLE
-            BackupResult.Success(finalBackup)
-
-        } catch (e: Exception) {
-            Log.e("SecurityManager", "Failed to create backup", e)
-            _securityState.value = SecurityState.ERROR(e.message ?: "Backup failed")
-            BackupResult.Error(e)
-        }
-    }
+//    suspend fun createEncryptedBackup(walletId: String, wallet: CryptoWallet): BackupResult {
+//        return try {
+//            _securityState.value = SecurityState.BACKING_UP
+//
+//            // Get mnemonic first
+//            val mnemonic = retrieveMnemonic(walletId)
+//            if (mnemonic == null) {
+//                throw IllegalStateException("No mnemonic found for wallet")
+//            }
+//
+//            // Create backup data
+//            val backupData = WalletBackup(
+//                walletId = walletId,
+//                encryptedMnemonic = "encrypted_placeholder",
+//                encryptedPrivateKey = "encrypted_placeholder",
+//                encryptionIV = "",
+//                backupDate = System.currentTimeMillis(),
+//                walletType = wallet.walletType,
+//                metadata = mapOf(
+//                    "walletName" to wallet.name,
+//                    "address" to wallet.address,
+//                    "createdAt" to wallet.createdAt.toString()
+//                )
+//            )
+//
+//            // Encrypt entire backup
+//            val backupJson = Json.encodeToString(backupData)
+//            val (encryptedHex, ivHex) = keyStoreRepository.encryptString(backupJson)
+//
+//            // Update backup with actual encrypted data
+//            val finalBackup = backupData.copy(
+//                encryptedMnemonic = encryptedHex,
+//                encryptionIV = ivHex
+//            )
+//
+//            // Store backup
+//            securityPreferencesRepository.storeEncryptedBackup(
+//                walletId = walletId,
+//                backupData = finalBackup,
+//                encryptedData = encryptedHex,
+//                iv = hexToBytes(ivHex)
+//            )
+//
+//            _securityState.value = SecurityState.IDLE
+//            BackupResult.Success(finalBackup)
+//
+//        } catch (e: Exception) {
+//            Log.e("SecurityManager", "Failed to create backup", e)
+//            _securityState.value = SecurityState.ERROR(e.message ?: "Backup failed")
+//            BackupResult.Error(e)
+//        }
+//    }
 
     /**
      * Restore wallet from encrypted backup

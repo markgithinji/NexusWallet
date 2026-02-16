@@ -25,11 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
-import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
-import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import java.math.BigDecimal
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.font.FontFamily
@@ -38,8 +33,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nexuswallet.NavigationViewModel
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
-import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
-import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

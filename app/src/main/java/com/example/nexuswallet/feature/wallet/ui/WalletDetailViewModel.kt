@@ -15,12 +15,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
+
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import com.example.nexuswallet.feature.wallet.domain.Transaction
-import com.example.nexuswallet.feature.wallet.domain.USDCWallet
+
 
 import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.GetUSDCBalanceUseCase
@@ -342,15 +340,7 @@ class WalletDetailViewModel @Inject constructor(
         }
     }
 
-    fun getNetworkName(): String {
-        val wallet = _wallet.value ?: return ""
-        return when {
-            wallet.ethereum != null -> wallet.ethereum.network.name
-            wallet.bitcoin != null -> wallet.bitcoin.network.name
-            wallet.usdc != null -> wallet.usdc.network.name
-            else -> ""
-        }
-    }
+
 
     @Composable
     fun getCoinColor(): Color {

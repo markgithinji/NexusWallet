@@ -2,7 +2,6 @@ package com.example.nexuswallet.feature.wallet.data.model
 
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.serialization.Serializable
@@ -84,25 +83,3 @@ data class EthereumTransactionData(
     val data: String = "0x",
     val chainId: Long
 )
-
-@Serializable
-data class EthereumTransactionParams(
-    val nonce: String,
-    val gasPrice: String,
-    val gasLimit: String,
-    val to: String,
-    val value: String,
-    val data: String = "0x",
-    val network: EthereumNetwork = EthereumNetwork.MAINNET
-) {
-    fun getChainId(): Long {
-        return when (network) {
-            EthereumNetwork.MAINNET -> 1L
-            EthereumNetwork.GOERLI -> 5L
-            EthereumNetwork.SEPOLIA -> 11155111L
-            EthereumNetwork.POLYGON -> 137L
-            EthereumNetwork.BSC -> 56L
-            else -> 1L
-        }
-    }
-}

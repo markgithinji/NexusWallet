@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.wallet.data.local
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -22,6 +23,8 @@ import com.example.nexuswallet.feature.wallet.data.model.SendTransactionEntity
 import com.example.nexuswallet.feature.wallet.data.model.SettingsEntity
 import com.example.nexuswallet.feature.wallet.data.model.TransactionEntity
 import com.example.nexuswallet.feature.wallet.data.model.WalletEntity
+import org.json.JSONObject
+
 @Database(
     entities = [
         WalletEntity::class,
@@ -36,7 +39,7 @@ import com.example.nexuswallet.feature.wallet.data.model.WalletEntity
         SolanaTransactionEntity::class,
         USDCTransactionEntity::class
     ],
-    version = 7,
+    version = 8,  // Incremented from 7 to 8
     exportSchema = false
 )
 abstract class WalletDatabase : RoomDatabase() {
@@ -63,7 +66,11 @@ abstract class WalletDatabase : RoomDatabase() {
                     WalletDatabase::class.java,
                     "wallet_database"
                 )
-                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(
+                        MIGRATION_5_6,
+                        MIGRATION_6_7,
+                        MIGRATION_7_8
+                    )
                     .build()
                 INSTANCE = instance
                 instance
@@ -148,6 +155,109 @@ abstract class WalletDatabase : RoomDatabase() {
 
                 // Rename new table to original name
                 database.execSQL("ALTER TABLE SolanaTransaction_new RENAME TO SolanaTransaction")
+            }
+        }
+
+        // Migration from 7 to 8 (convert EthereumNetwork from string to sealed class)
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+
+                database.query("SELECT id, walletJson FROM wallets").use { cursor ->
+                    val idIndex = cursor.getColumnIndex("id")
+                    val jsonIndex = cursor.getColumnIndex("walletJson")
+
+                    var successCount = 0
+                    var errorCount = 0
+
+                    while (cursor.moveToNext()) {
+                        val id = cursor.getString(idIndex)
+                        val oldJson = cursor.getString(jsonIndex)
+
+                        try {
+                            val newJson = convertWalletJsonForMigration(oldJson)
+                            database.execSQL(
+                                "UPDATE wallets SET walletJson = ? WHERE id = ?",
+                                arrayOf(newJson, id)
+                            )
+                            successCount++
+                        } catch (e: Exception) {
+                            errorCount++
+                        }
+                    }
+                }
+            }
+
+            private fun convertWalletJsonForMigration(oldJson: String): String {
+                val jsonObject = JSONObject(oldJson)
+
+                // Convert ethereum network if present
+                if (jsonObject.has("ethereum")) {
+                    val ethObj = jsonObject.getJSONObject("ethereum")
+                    if (ethObj.has("network")) {
+                        val oldNetwork = ethObj.getString("network")
+                        val newNetworkObj = convertOldNetworkToNew(oldNetwork)
+                        ethObj.put("network", newNetworkObj)
+                    }
+                }
+
+                // Convert usdc network if present
+                if (jsonObject.has("usdc")) {
+                    val usdcObj = jsonObject.getJSONObject("usdc")
+                    if (usdcObj.has("network")) {
+                        val oldNetwork = usdcObj.getString("network")
+                        val newNetworkObj = convertOldNetworkToNew(oldNetwork)
+                        usdcObj.put("network", newNetworkObj)
+                    }
+                }
+
+                return jsonObject.toString()
+            }
+
+            private fun convertOldNetworkToNew(oldNetwork: String): JSONObject {
+                return when (oldNetwork.uppercase()) {
+                    "MAINNET" -> JSONObject().apply {
+                        put("type", "Mainnet")
+                        put("chainId", "1")
+                        put("usdcContractAddress", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
+                        put("isTestnet", false)
+                        put("displayName", "Mainnet")
+                    }
+                    "SEPOLIA" -> JSONObject().apply {
+                        put("type", "Sepolia")
+                        put("chainId", "11155111")
+                        put("usdcContractAddress", "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238")
+                        put("isTestnet", true)
+                        put("displayName", "Sepolia")
+                    }
+                    // Handle other networks by mapping to appropriate defaults
+                    "POLYGON", "BSC", "ARBITRUM", "OPTIMISM" -> {
+                        JSONObject().apply {
+                            put("type", "Mainnet")
+                            put("chainId", "1")
+                            put("usdcContractAddress", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
+                            put("isTestnet", false)
+                            put("displayName", "Mainnet")
+                        }
+                    }
+                    "GOERLI" -> {
+                        JSONObject().apply {
+                            put("type", "Sepolia")
+                            put("chainId", "11155111")
+                            put("usdcContractAddress", "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238")
+                            put("isTestnet", true)
+                            put("displayName", "Sepolia")
+                        }
+                    }
+                    else -> {
+                        JSONObject().apply {
+                            put("type", "Sepolia")
+                            put("chainId", "11155111")
+                            put("usdcContractAddress", "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238")
+                            put("isTestnet", true)
+                            put("displayName", "Sepolia")
+                        }
+                    }
+                }
             }
         }
     }

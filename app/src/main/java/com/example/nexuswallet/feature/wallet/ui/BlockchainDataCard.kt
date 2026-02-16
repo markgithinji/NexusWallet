@@ -24,11 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.nexuswallet.feature.coin.ethereum.GasPrice
-import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
-import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
-import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -36,7 +32,7 @@ import java.util.Locale
 
 @Composable
 fun BlockchainDataCard(
-    wallet: CryptoWallet,
+    wallet: Wallet,
     blockchainViewModel: BlockchainViewModel
 ) {
     val ethBalance by blockchainViewModel.ethBalance.collectAsState()
@@ -127,49 +123,49 @@ fun BlockchainDataCard(
                 Text("Live Balance:", fontWeight = FontWeight.Medium)
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = when {
-                            wallet is EthereumWallet && ethBalance != null ->
-                                "${ethBalance!!.toPlainString()} ETH"
-                            wallet is BitcoinWallet && btcBalance != null ->
-                                "${btcBalance!!.toPlainString()} BTC"
-                            wallet is MultiChainWallet -> {
-                                val ethText = ethBalance?.let { "${it.toPlainString()} ETH" } ?: ""
-                                val btcText = btcBalance?.let { "${it.toPlainString()} BTC" } ?: ""
-                                if (ethText.isNotEmpty() && btcText.isNotEmpty()) {
-                                    "$ethText • $btcText"
-                                } else if (ethText.isNotEmpty()) {
-                                    ethText
-                                } else if (btcText.isNotEmpty()) {
-                                    btcText
-                                } else {
-                                    "Fetching..."
-                                }
-                            }
-                            else -> "Fetching..."
-                        },
-                        fontWeight = FontWeight.Bold,
-                        color = when {
-                            (wallet is EthereumWallet && ethBalance != null) ||
-                                    (wallet is BitcoinWallet && btcBalance != null) ||
-                                    (wallet is MultiChainWallet && (ethBalance != null || btcBalance != null)) ->
-                                Color.Green
-                            else -> MaterialTheme.colorScheme.primary
-                        }
-                    )
+//                    Text(
+//                        text = when {
+//                            wallet is EthereumWallet && ethBalance != null ->
+//                                "${ethBalance!!.toPlainString()} ETH"
+//                            wallet is BitcoinWallet && btcBalance != null ->
+//                                "${btcBalance!!.toPlainString()} BTC"
+//                            wallet is MultiChainWallet -> {
+//                                val ethText = ethBalance?.let { "${it.toPlainString()} ETH" } ?: ""
+//                                val btcText = btcBalance?.let { "${it.toPlainString()} BTC" } ?: ""
+//                                if (ethText.isNotEmpty() && btcText.isNotEmpty()) {
+//                                    "$ethText • $btcText"
+//                                } else if (ethText.isNotEmpty()) {
+//                                    ethText
+//                                } else if (btcText.isNotEmpty()) {
+//                                    btcText
+//                                } else {
+//                                    "Fetching..."
+//                                }
+//                            }
+//                            else -> "Fetching..."
+//                        },
+//                        fontWeight = FontWeight.Bold,
+//                        color = when {
+//                            (wallet is EthereumWallet && ethBalance != null) ||
+//                                    (wallet is BitcoinWallet && btcBalance != null) ||
+//                                    (wallet is MultiChainWallet && (ethBalance != null || btcBalance != null)) ->
+//                                Color.Green
+//                            else -> MaterialTheme.colorScheme.primary
+//                        }
+//                    )
 
-                    // Verification badge
-                    if ((wallet is EthereumWallet && ethBalance != null) ||
-                        (wallet is BitcoinWallet && btcBalance != null) ||
-                        (wallet is MultiChainWallet && (ethBalance != null || btcBalance != null))) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Verified",
-                            modifier = Modifier.size(16.dp),
-                            tint = Color.Green
-                        )
-                    }
+//                    // Verification badge
+//                    if ((wallet is EthereumWallet && ethBalance != null) ||
+//                        (wallet is BitcoinWallet && btcBalance != null) ||
+//                        (wallet is MultiChainWallet && (ethBalance != null || btcBalance != null))) {
+//                        Spacer(modifier = Modifier.width(4.dp))
+//                        Icon(
+//                            imageVector = Icons.Default.CheckCircle,
+//                            contentDescription = "Verified",
+//                            modifier = Modifier.size(16.dp),
+//                            tint = Color.Green
+//                        )
+//                    }
                 }
             }
 
@@ -182,16 +178,16 @@ fun BlockchainDataCard(
             ) {
                 Text("Network:", fontWeight = FontWeight.Medium)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = when (wallet) {
-                            is EthereumWallet -> "Ethereum Mainnet"
-                            is BitcoinWallet -> "Bitcoin Mainnet"
-                            is MultiChainWallet -> "Multi-Chain"
-                            is SolanaWallet -> "Solana Mainnet"
-                            else -> "Crypto Network"
-                        },
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+//                    Text(
+//                        text = when (wallet) {
+//                            is EthereumWallet -> "Ethereum Mainnet"
+//                            is BitcoinWallet -> "Bitcoin Mainnet"
+//                            is MultiChainWallet -> "Multi-Chain"
+//                            is SolanaWallet -> "Solana Mainnet"
+//                            else -> "Crypto Network"
+//                        },
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
 
                     if (apiStatus == ApiStatus.CONNECTED) {
                         Spacer(modifier = Modifier.width(4.dp))
@@ -208,33 +204,33 @@ fun BlockchainDataCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Gas prices (Ethereum only)
-            if (wallet is EthereumWallet || wallet is MultiChainWallet) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Gas Price:", fontWeight = FontWeight.Medium)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = gasPrice?.propose?.let { "$it Gwei" } ?: "Loading...",
-                            color = when {
-                                gasPrice != null -> MaterialTheme.colorScheme.onSurfaceVariant
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            }
-                        )
-
-                        if (gasPrice != null) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Live Data",
-                                modifier = Modifier.size(14.dp),
-                                tint = Color.Green
-                            )
-                        }
-                    }
-                }
-            }
+//            if (wallet is EthereumWallet || wallet is MultiChainWallet) {
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.SpaceBetween
+//                ) {
+//                    Text("Gas Price:", fontWeight = FontWeight.Medium)
+//                    Row(verticalAlignment = Alignment.CenterVertically) {
+//                        Text(
+//                            text = gasPrice?.propose?.let { "$it Gwei" } ?: "Loading...",
+//                            color = when {
+//                                gasPrice != null -> MaterialTheme.colorScheme.onSurfaceVariant
+//                                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+//                            }
+//                        )
+//
+//                        if (gasPrice != null) {
+//                            Spacer(modifier = Modifier.width(4.dp))
+//                            Icon(
+//                                imageVector = Icons.Default.CheckCircle,
+//                                contentDescription = "Live Data",
+//                                modifier = Modifier.size(14.dp),
+//                                tint = Color.Green
+//                            )
+//                        }
+//                    }
+//                }
+//            }
 
             // Verification Logs Section
             if (showVerificationLogs) {
@@ -277,24 +273,24 @@ fun BlockchainDataCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    DataSourceChip(
-                        source = "Etherscan",
-                        isActive = (wallet is EthereumWallet || wallet is MultiChainWallet) && apiStatus == ApiStatus.CONNECTED
-                    )
-                    DataSourceChip(
-                        source = "Blockstream",
-                        isActive = (wallet is BitcoinWallet || wallet is MultiChainWallet) && apiStatus == ApiStatus.CONNECTED
-                    )
-                    DataSourceChip(
-                        source = "Covalent",
-                        isActive = (wallet is EthereumWallet || wallet is MultiChainWallet) && apiStatus == ApiStatus.CONNECTED
-                    )
-                }
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.SpaceEvenly,
+//                    verticalAlignment = Alignment.CenterVertically
+//                ) {
+//                    DataSourceChip(
+//                        source = "Etherscan",
+//                        isActive = (wallet is EthereumWallet || wallet is MultiChainWallet) && apiStatus == ApiStatus.CONNECTED
+//                    )
+//                    DataSourceChip(
+//                        source = "Blockstream",
+//                        isActive = (wallet is BitcoinWallet || wallet is MultiChainWallet) && apiStatus == ApiStatus.CONNECTED
+//                    )
+//                    DataSourceChip(
+//                        source = "Covalent",
+//                        isActive = (wallet is EthereumWallet || wallet is MultiChainWallet) && apiStatus == ApiStatus.CONNECTED
+//                    )
+//                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -507,7 +503,7 @@ data class VerificationLog(
 )
 
 fun verifyBlockchainData(
-    wallet: CryptoWallet,
+    wallet: Wallet,
     ethBalance: BigDecimal?,
     btcBalance: BigDecimal?,
     gasPrice: GasPrice?,
@@ -537,92 +533,92 @@ fun verifyBlockchainData(
     )
 
     // 2. Wallet-specific verification
-    when (wallet) {
-        is EthereumWallet -> {
-            if (ethBalance != null) {
-                logs.add(
-                    VerificationLog(
-                        title = "Ethereum Balance",
-                        details = "Live data from Etherscan: ${ethBalance.toPlainString()} ETH",
-                        status = VerificationStatus.VERIFIED,
-                        timestamp = now
-                    )
-                )
-            } else {
-                logs.add(
-                    VerificationLog(
-                        title = "Ethereum Balance",
-                        details = "Awaiting API response...",
-                        status = VerificationStatus.PENDING,
-                        timestamp = now
-                    )
-                )
-            }
-
-            if (gasPrice != null) {
-                logs.add(
-                    VerificationLog(
-                        title = "Gas Prices",
-                        details = "Live from Etherscan: ${gasPrice.propose} Gwei",
-                        status = VerificationStatus.VERIFIED,
-                        timestamp = now
-                    )
-                )
-            }
-        }
-
-        is BitcoinWallet -> {
-            if (btcBalance != null) {
-                logs.add(
-                    VerificationLog(
-                        title = "Bitcoin Balance",
-                        details = "Live data from Blockstream: ${btcBalance.toPlainString()} BTC",
-                        status = VerificationStatus.VERIFIED,
-                        timestamp = now
-                    )
-                )
-            } else {
-                logs.add(
-                    VerificationLog(
-                        title = "Bitcoin Balance",
-                        details = "Awaiting API response...",
-                        status = VerificationStatus.PENDING,
-                        timestamp = now
-                    )
-                )
-            }
-        }
-
-        is MultiChainWallet -> {
-            wallet.ethereumWallet?.let {
-                if (ethBalance != null) {
-                    logs.add(
-                        VerificationLog(
-                            title = "Ethereum Balance",
-                            details = "Live from Etherscan: ${ethBalance.toPlainString()} ETH",
-                            status = VerificationStatus.VERIFIED,
-                            timestamp = now
-                        )
-                    )
-                }
-            }
-
-            wallet.bitcoinWallet?.let {
-                if (btcBalance != null) {
-                    logs.add(
-                        VerificationLog(
-                            title = "Bitcoin Balance",
-                            details = "Live from Blockstream: ${btcBalance.toPlainString()} BTC",
-                            status = VerificationStatus.VERIFIED,
-                            timestamp = now
-                        )
-                    )
-                }
-            }
-        }
-
-        else -> {}
-    }
+//    when (wallet) {
+//        is EthereumWallet -> {
+//            if (ethBalance != null) {
+//                logs.add(
+//                    VerificationLog(
+//                        title = "Ethereum Balance",
+//                        details = "Live data from Etherscan: ${ethBalance.toPlainString()} ETH",
+//                        status = VerificationStatus.VERIFIED,
+//                        timestamp = now
+//                    )
+//                )
+//            } else {
+//                logs.add(
+//                    VerificationLog(
+//                        title = "Ethereum Balance",
+//                        details = "Awaiting API response...",
+//                        status = VerificationStatus.PENDING,
+//                        timestamp = now
+//                    )
+//                )
+//            }
+//
+//            if (gasPrice != null) {
+//                logs.add(
+//                    VerificationLog(
+//                        title = "Gas Prices",
+//                        details = "Live from Etherscan: ${gasPrice.propose} Gwei",
+//                        status = VerificationStatus.VERIFIED,
+//                        timestamp = now
+//                    )
+//                )
+//            }
+//        }
+//
+//        is BitcoinWallet -> {
+//            if (btcBalance != null) {
+//                logs.add(
+//                    VerificationLog(
+//                        title = "Bitcoin Balance",
+//                        details = "Live data from Blockstream: ${btcBalance.toPlainString()} BTC",
+//                        status = VerificationStatus.VERIFIED,
+//                        timestamp = now
+//                    )
+//                )
+//            } else {
+//                logs.add(
+//                    VerificationLog(
+//                        title = "Bitcoin Balance",
+//                        details = "Awaiting API response...",
+//                        status = VerificationStatus.PENDING,
+//                        timestamp = now
+//                    )
+//                )
+//            }
+//        }
+//
+//        is MultiChainWallet -> {
+//            wallet.ethereumWallet?.let {
+//                if (ethBalance != null) {
+//                    logs.add(
+//                        VerificationLog(
+//                            title = "Ethereum Balance",
+//                            details = "Live from Etherscan: ${ethBalance.toPlainString()} ETH",
+//                            status = VerificationStatus.VERIFIED,
+//                            timestamp = now
+//                        )
+//                    )
+//                }
+//            }
+//
+//            wallet.bitcoinWallet?.let {
+//                if (btcBalance != null) {
+//                    logs.add(
+//                        VerificationLog(
+//                            title = "Bitcoin Balance",
+//                            details = "Live from Blockstream: ${btcBalance.toPlainString()} BTC",
+//                            status = VerificationStatus.VERIFIED,
+//                            timestamp = now
+//                        )
+//                    )
+//                }
+//            }
+//        }
+//
+//        else -> {}
+//    }
 
     // 3. Data freshness
     logs.add(
@@ -635,20 +631,20 @@ fun verifyBlockchainData(
     )
 
     // 4. Network verification
-    logs.add(
-        VerificationLog(
-            title = "Network",
-            details = when (wallet) {
-                is EthereumWallet -> "Ethereum Mainnet"
-                is BitcoinWallet -> "Bitcoin Mainnet"
-                is MultiChainWallet -> "Multi-Chain Network"
-                is SolanaWallet -> "Solana Mainnet"
-                else -> "Crypto Network"
-            },
-            status = VerificationStatus.VERIFIED,
-            timestamp = now
-        )
-    )
+//    logs.add(
+//        VerificationLog(
+//            title = "Network",
+//            details = when (wallet) {
+//                is EthereumWallet -> "Ethereum Mainnet"
+//                is BitcoinWallet -> "Bitcoin Mainnet"
+//                is MultiChainWallet -> "Multi-Chain Network"
+//                is SolanaWallet -> "Solana Mainnet"
+//                else -> "Crypto Network"
+//            },
+//            status = VerificationStatus.VERIFIED,
+//            timestamp = now
+//        )
+//    )
 
     return logs
 }

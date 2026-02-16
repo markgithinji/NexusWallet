@@ -4,12 +4,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
+import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
-import com.example.nexuswallet.feature.wallet.domain.WalletType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,7 +36,7 @@ class WalletCreationViewModel @Inject constructor(
         var includeEthereum: Boolean = true,
         var includeSolana: Boolean = true,
         var includeUSDC: Boolean = false,
-        var ethereumNetwork: EthereumNetwork = EthereumNetwork.SEPOLIA,
+        var ethereumNetwork: EthereumNetwork = EthereumNetwork.Sepolia,
         var bitcoinNetwork: BitcoinNetwork = BitcoinNetwork.TESTNET
     )
 

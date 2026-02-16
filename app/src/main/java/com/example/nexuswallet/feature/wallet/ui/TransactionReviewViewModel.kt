@@ -16,8 +16,8 @@ import com.example.nexuswallet.feature.coin.ethereum.SendEthereumUseCase
 import com.example.nexuswallet.feature.coin.solana.SendSolanaResult
 import com.example.nexuswallet.feature.coin.solana.SendSolanaUseCase
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
+import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -241,7 +241,7 @@ class TransactionReviewViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(currentStep = TransactionStep.CHECKING_STATUS) }
 
-            val network = EthereumNetwork.SEPOLIA // Default to Sepolia for now
+            val network = EthereumNetwork.Sepolia // Default to Sepolia for now
 
             for (attempt in 1..5) {
                 delay(3000)

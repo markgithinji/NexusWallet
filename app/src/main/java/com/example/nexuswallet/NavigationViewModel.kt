@@ -6,7 +6,6 @@ import com.example.nexuswallet.feature.authentication.domain.AuthAction
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

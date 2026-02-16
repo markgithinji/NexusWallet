@@ -45,10 +45,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
+import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -489,17 +488,17 @@ fun CoinSelectionStep(
                     ) {
                         NetworkChip(
                             name = "Mainnet",
-                            isSelected = localSelection.ethereumNetwork == EthereumNetwork.MAINNET,
+                            isSelected = localSelection.ethereumNetwork == EthereumNetwork.Mainnet,
                             onClick = {
-                                localSelection = localSelection.copy(ethereumNetwork = EthereumNetwork.MAINNET)
+                                localSelection = localSelection.copy(ethereumNetwork = EthereumNetwork.Mainnet)
                                 onSelectionChange(localSelection)
                             }
                         )
                         NetworkChip(
                             name = "Sepolia",
-                            isSelected = localSelection.ethereumNetwork == EthereumNetwork.SEPOLIA,
+                            isSelected = localSelection.ethereumNetwork == EthereumNetwork.Sepolia,
                             onClick = {
-                                localSelection = localSelection.copy(ethereumNetwork = EthereumNetwork.SEPOLIA)
+                                localSelection = localSelection.copy(ethereumNetwork = EthereumNetwork.Sepolia)
                                 onSelectionChange(localSelection)
                             }
                         )

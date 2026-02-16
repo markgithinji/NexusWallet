@@ -5,11 +5,8 @@ import android.util.Log
 import com.example.nexuswallet.feature.authentication.domain.AuthAction
 import com.example.nexuswallet.feature.authentication.domain.EncryptionResult
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
-import com.example.nexuswallet.feature.wallet.data.model.EthereumTransactionParams
-import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
-import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.web3j.crypto.Credentials

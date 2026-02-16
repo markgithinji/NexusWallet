@@ -61,16 +61,10 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
-import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
-import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
-import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.USDCWallet
+
 import com.example.nexuswallet.formatDate
 import java.math.BigDecimal
 import java.math.RoundingMode

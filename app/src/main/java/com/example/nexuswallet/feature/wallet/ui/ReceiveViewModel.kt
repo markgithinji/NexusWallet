@@ -3,9 +3,6 @@ package com.example.nexuswallet.feature.wallet.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
-import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,16 +48,16 @@ class ReceiveViewModel @Inject constructor(
                     // Determine coin type and network
                     val (coinType, network) = when {
                         wallet.bitcoin != null -> {
-                            "BTC" to wallet.bitcoin.network.name
+                            "BTC" to wallet.bitcoin.network.displayName
                         }
                         wallet.ethereum != null -> {
-                            "ETH" to wallet.ethereum.network.name
+                            "ETH" to wallet.ethereum.network.displayName
                         }
                         wallet.solana != null -> {
-                            "SOL" to "Mainnet" // TODO: use network enum
+                            "SOL" to "Mainnet" // TODO: Add displayName to SolanaNetwork
                         }
                         wallet.usdc != null -> {
-                            "USDC" to wallet.usdc.network.name
+                            "USDC" to wallet.usdc.network.displayName
                         }
                         else -> "Unknown" to "Unknown"
                     }

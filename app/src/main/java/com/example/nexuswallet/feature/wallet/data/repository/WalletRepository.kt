@@ -7,18 +7,11 @@ import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
-import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
-import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
-import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
-import com.example.nexuswallet.feature.wallet.domain.Transaction
-import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
+import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumBalance
@@ -56,8 +49,8 @@ import java.security.SecureRandom
 import javax.inject.Inject
 import javax.inject.Singleton
 import org.bitcoinj.wallet.Wallet as BitcoinJWallet
-
 @Singleton
+
 class WalletRepository @Inject constructor(
     private val localDataSource: WalletLocalDataSource,
     private val securityManager: SecurityManager,
@@ -76,6 +69,11 @@ class WalletRepository @Inject constructor(
     init {
         scope.launch {
             localDataSource.loadAllWallets().collect { wallets ->
+                Log.d("WalletRepo", "Received ${wallets.size} wallets from data source")
+                wallets.forEach { wallet ->
+                    Log.d("WalletRepo", "  - Wallet: ${wallet.id} - ${wallet.name}")
+                    Log.d("WalletRepo", "    BTC: ${wallet.bitcoin != null}, ETH: ${wallet.ethereum != null}, SOL: ${wallet.solana != null}, USDC: ${wallet.usdc != null}")
+                }
                 _walletsFlow.value = wallets
                 wallets.forEach { wallet ->
                     syncWalletBalances(wallet)
@@ -245,7 +243,7 @@ class WalletRepository @Inject constructor(
         includeEthereum: Boolean = true,
         includeSolana: Boolean = true,
         includeUSDC: Boolean = false,
-        ethereumNetwork: EthereumNetwork = EthereumNetwork.SEPOLIA,
+        ethereumNetwork: EthereumNetwork = EthereumNetwork.Sepolia,
         bitcoinNetwork: BitcoinNetwork = BitcoinNetwork.TESTNET
     ): Result<Wallet> {
         return try {
@@ -318,10 +316,11 @@ class WalletRepository @Inject constructor(
     private fun createEthereumCoin(mnemonic: List<String>, network: EthereumNetwork): EthereumCoin {
         val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
 
+        // Determine derivation path based on network
         val derivationPath = when (network) {
-            EthereumNetwork.POLYGON -> "m/44'/966'/0'/0/0"
-            EthereumNetwork.BSC -> "m/44'/9006'/0'/0/0"
-            else -> "m/44'/60'/0'/0/0" // MAINNET, SEPOLIA
+            is EthereumNetwork.Mainnet -> "m/44'/60'/0'/0/0"
+            is EthereumNetwork.Sepolia -> "m/44'/60'/0'/0/0"
+            else -> "m/44'/60'/0'/0/0" // Default
         }
 
         val pathArray = derivationPath.split("/")
@@ -358,7 +357,6 @@ class WalletRepository @Inject constructor(
             val params = when (coin.network) {
                 BitcoinNetwork.MAINNET -> MainNetParams.get()
                 BitcoinNetwork.TESTNET -> TestNet3Params.get()
-                else -> MainNetParams.get() // Fallback to mainnet
             }
             val seed = DeterministicSeed(mnemonic, null, "", 0L)
             val btcWallet = BitcoinJWallet.fromSeed(params, seed)
@@ -493,15 +491,7 @@ class WalletRepository @Inject constructor(
     }
 
     private fun getUSDCContractAddress(network: EthereumNetwork): String {
-        return when (network) {
-            EthereumNetwork.MAINNET -> "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            EthereumNetwork.SEPOLIA -> "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
-            EthereumNetwork.POLYGON -> "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
-            EthereumNetwork.BSC -> "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
-            else -> {
-                throw IllegalArgumentException("Unsupported network: $network")
-            }
-        }
+        return network.usdcContractAddress
     }
 
     private fun updateWalletsFlow(wallet: Wallet) {

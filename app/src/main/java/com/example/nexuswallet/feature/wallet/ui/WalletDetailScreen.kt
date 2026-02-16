@@ -53,6 +53,7 @@ import com.example.nexuswallet.NavigationViewModel
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
+import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCSendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalance
@@ -61,16 +62,9 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
-import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
-import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
-import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.formatDate
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -804,135 +798,6 @@ data class TransactionData(
     val hash: String?
 )
 
-
-@Composable
-fun WalletIconDetailScreen(wallet: CryptoWallet) {
-    val iconSize = 48.dp
-    val (backgroundColor, icon) = when (wallet) {
-        is BitcoinWallet -> Pair(Color(0xFFF7931A), Icons.Default.CurrencyBitcoin)
-        is EthereumWallet -> Pair(Color(0xFF627EEA), Icons.Default.Diamond)
-        is SolanaWallet -> Pair(Color(0xFF00FFA3), Icons.Default.FlashOn)
-        is USDCWallet -> Pair(Color(0xFF2775CA), Icons.Default.AttachMoney)
-        else -> Pair(MaterialTheme.colorScheme.primary, Icons.Default.AccountBalanceWallet)
-    }
-
-    Box(
-        modifier = Modifier
-            .size(iconSize)
-            .clip(CircleShape)
-            .background(backgroundColor),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = "Wallet Type",
-            tint = Color.White,
-            modifier = Modifier.size(24.dp)
-        )
-    }
-}
-
-fun getWalletTypeDisplay(wallet: CryptoWallet): String {
-    return when (wallet) {
-        is BitcoinWallet -> "Bitcoin"
-        is EthereumWallet -> when (wallet.network) {
-            EthereumNetwork.SEPOLIA -> "Ethereum Sepolia"
-            else -> "Ethereum"
-        }
-        is SolanaWallet -> "Solana"
-        is USDCWallet -> "USDC ${getNetworkDisplay(wallet.network)}"
-        is MultiChainWallet -> "Multi-Chain"
-        else -> "Crypto Wallet"
-    }
-}
-
-fun getNativeSymbol(wallet: CryptoWallet): String {
-    return when (wallet) {
-        is BitcoinWallet -> "BTC"
-        is EthereumWallet -> when (wallet.network) {
-            EthereumNetwork.SEPOLIA -> "ETH (Sepolia)"
-            else -> "ETH"
-        }
-        is SolanaWallet -> "SOL"
-        is USDCWallet -> "USDC"
-        is MultiChainWallet -> "MULTI"
-        else -> "CRYPTO"
-    }
-}
-
-@Composable
-fun WalletActionsCard(
-    wallet: CryptoWallet,
-    onReceive: () -> Unit,
-    onSend: () -> Unit,
-    onBackup: () -> Unit,
-    onAddSampleTransaction: () -> Unit,
-    onViewPrivateKey: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // Main actions row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                ActionButton(
-                    icon = Icons.Default.ArrowDownward,
-                    label = "Receive",
-                    onClick = onReceive
-                )
-
-                ActionButton(
-                    icon = Icons.Default.ArrowUpward,
-                    label = "Send",
-                    onClick = onSend
-                )
-
-                ActionButton(
-                    icon = Icons.Default.Backup,
-                    label = "Backup",
-                    onClick = onBackup
-                )
-
-                ActionButton(
-                    icon = Icons.Default.Add,
-                    label = "Sample",
-                    onClick = onAddSampleTransaction
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Security actions row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                ActionButton(
-                    icon = Icons.Default.Key,
-                    label = "Private Key",
-                    onClick = onViewPrivateKey
-                )
-
-                ActionButton(
-                    icon = Icons.Default.Security,
-                    label = "Security",
-                    onClick = {
-                        // Navigate to security settings
-                    }
-                )
-            }
-        }
-    }
-}
-
 @Composable
 fun ActionButton(
     icon: ImageVector,
@@ -1310,24 +1175,6 @@ fun EmptyTransactionsView() {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-    }
-}
-
-private fun getNetworkDisplay(network: EthereumNetwork): String {
-    return when (network) {
-        EthereumNetwork.SEPOLIA -> "(Sepolia)"
-        EthereumNetwork.MAINNET -> ""
-        else -> "(${network.name})"
-    }
-}
-
-private fun getSymbolForWallet(wallet: CryptoWallet): String {
-    return when (wallet) {
-        is BitcoinWallet -> "BTC"
-        is EthereumWallet -> "ETH"
-        is SolanaWallet -> "SOL"
-        is USDCWallet -> "USDC"
-        else -> ""
     }
 }
 

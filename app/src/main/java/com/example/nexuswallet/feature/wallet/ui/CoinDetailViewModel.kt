@@ -83,7 +83,7 @@ class CoinDetailViewModel @Inject constructor(
                             balance = coinBalance?.eth ?: "0",
                             balanceFormatted = "${coinBalance?.eth ?: "0"} ETH",
                             usdValue = coinBalance?.usdValue ?: 0.0,
-                            network = coin.network.name
+                            network = coin.network.displayName
                         )
                     }
                     "SOL" -> {
@@ -114,7 +114,7 @@ class CoinDetailViewModel @Inject constructor(
                             balance = coinBalance?.amountDecimal ?: "0",
                             balanceFormatted = "${coinBalance?.amountDecimal ?: "0"} USDC",
                             usdValue = coinBalance?.usdValue ?: 0.0,
-                            network = coin.network.name,
+                            network = coin.network.displayName,
                             ethGasBalance = ethBalance
                         )
                     }

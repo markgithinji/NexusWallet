@@ -10,13 +10,6 @@ import com.example.nexuswallet.feature.wallet.data.model.SettingsEntity
 import com.example.nexuswallet.feature.wallet.data.model.TransactionEntity
 import com.example.nexuswallet.feature.wallet.data.model.WalletEntity
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
-import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
-import com.example.nexuswallet.feature.wallet.domain.CryptoWallet
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
-import com.example.nexuswallet.feature.wallet.domain.MultiChainWallet
-import com.example.nexuswallet.feature.wallet.domain.SolanaWallet
-import com.example.nexuswallet.feature.wallet.domain.Transaction
-import com.example.nexuswallet.feature.wallet.domain.USDCWallet
 import com.example.nexuswallet.feature.wallet.domain.WalletBackup
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
 import kotlinx.coroutines.flow.Flow
