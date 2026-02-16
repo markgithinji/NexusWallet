@@ -30,20 +30,30 @@ import kotlin.let
 import kotlin.text.take
 import kotlin.to
 import com.example.nexuswallet.feature.coin.Result
+import javax.inject.Named
 
 @Singleton
-class SolanaBlockchainRepository @Inject constructor() {
+class SolanaBlockchainRepository @Inject constructor(
+    @param:Named("solanaDevnet") private val devnetConnection: Connection,
+    @param:Named("solanaMainnet") private val mainnetConnection: Connection
+) {
 
     companion object {
         private const val LAMPORTS_PER_SOL = 1_000_000_000L
         private const val SOLANA_FIXED_FEE_LAMPORTS = 5000L
     }
 
-    private val connection = Connection("https://api.devnet.solana.com")
+    private fun getConnection(network: SolanaNetwork = SolanaNetwork.DEVNET): Connection {
+        return when (network) {
+            SolanaNetwork.MAINNET -> mainnetConnection
+            SolanaNetwork.DEVNET -> devnetConnection
+        }
+    }
 
-    suspend fun getRecentBlockhash(): Result<String> {
+    suspend fun getRecentBlockhash(network: SolanaNetwork = SolanaNetwork.DEVNET): Result<String> {
         return try {
             withContext(Dispatchers.IO) {
+                val connection = getConnection(network)
                 val blockhash = connection.getLatestBlockhash()
                 Log.d("SolanaRepo", "Got blockhash: ${blockhash.take(16)}...")
                 Result.Success(blockhash)
@@ -54,11 +64,15 @@ class SolanaBlockchainRepository @Inject constructor() {
         }
     }
 
-    suspend fun getBalance(address: String): Result<BigDecimal> {
+    suspend fun getBalance(
+        address: String,
+        network: SolanaNetwork = SolanaNetwork.DEVNET
+    ): Result<BigDecimal> {
         return try {
-            Log.d("SolanaRepo", "getBalance START for address: $address")
+            Log.d("SolanaRepo", "getBalance START for address: $address on $network")
 
             withContext(Dispatchers.IO) {
+                val connection = getConnection(network)
                 val publicKey = PublicKey(address)
                 val balance = connection.getBalance(publicKey)
 
@@ -77,7 +91,10 @@ class SolanaBlockchainRepository @Inject constructor() {
         }
     }
 
-    suspend fun getFeeEstimate(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<FeeEstimate> {
+    suspend fun getFeeEstimate(
+        feeLevel: FeeLevel = FeeLevel.NORMAL,
+        network: SolanaNetwork = SolanaNetwork.DEVNET
+    ): Result<FeeEstimate> {
         return try {
             val feeDecimal = BigDecimal(SOLANA_FIXED_FEE_LAMPORTS).divide(
                 BigDecimal(LAMPORTS_PER_SOL),
@@ -104,11 +121,13 @@ class SolanaBlockchainRepository @Inject constructor() {
     suspend fun createAndSignTransaction(
         fromKeypair: Keypair,
         toAddress: String,
-        lamports: Long
+        lamports: Long,
+        network: SolanaNetwork = SolanaNetwork.DEVNET
     ): Result<SolanaSignedTransaction> {
         return try {
             Log.d("SolanaRepo", "Creating transaction: $lamports lamports to $toAddress")
 
+            val connection = getConnection(network)
             val blockhash = connection.getLatestBlockhash()
             val receiver = PublicKey(toAddress)
             val instruction = TransferInstruction(fromKeypair.publicKey, receiver, lamports)
@@ -146,10 +165,14 @@ class SolanaBlockchainRepository @Inject constructor() {
         }
     }
 
-    suspend fun broadcastTransaction(signedTransaction: SolanaSignedTransaction): Result<BroadcastResult> {
+    suspend fun broadcastTransaction(
+        signedTransaction: SolanaSignedTransaction,
+        network: SolanaNetwork = SolanaNetwork.DEVNET
+    ): Result<BroadcastResult> {
         return try {
             Log.d("SolanaRepo", "Broadcasting transaction...")
 
+            val connection = getConnection(network)
             val serializedTx = signedTransaction.serialize()
             val signature = connection.sendTransaction(serializedTx)
 
@@ -173,9 +196,14 @@ class SolanaBlockchainRepository @Inject constructor() {
         }
     }
 
-    suspend fun requestAirdrop(address: String, amountSol: Double = 1.0): Result<String> {
+    suspend fun requestAirdrop(
+        address: String,
+        amountSol: Double = 1.0,
+        network: SolanaNetwork = SolanaNetwork.DEVNET
+    ): Result<String> {
         return try {
             withContext(Dispatchers.IO) {
+                val connection = getConnection(network)
                 val publicKey = PublicKey(address)
                 val lamports = (amountSol * LAMPORTS_PER_SOL).toLong()
                 val signature = connection.requestAirdrop(publicKey, lamports)
@@ -186,31 +214,6 @@ class SolanaBlockchainRepository @Inject constructor() {
             Result.Error("Airdrop failed: ${e.message}", e)
         }
     }
-
-//    suspend fun getTransactionHistory(address: String, limit: Int = 10): Result<List<SolanaTransaction>> {
-//        return try {
-//            withContext(Dispatchers.IO) {
-//                val publicKey = PublicKey(address)
-//                val signatures = connection.getSignaturesForAddress(publicKey, limit)
-//
-//                val transactions = signatures.map { signatureInfo ->
-//                    SolanaTransaction(
-//                        signature = signatureInfo.signature,
-//                        slot = signatureInfo.slot,
-//                        timestamp = signatureInfo.blockTime?.let { it * 1000L } ?: 0L,
-//                        status = if (!signatureInfo.isError) TransactionStatus.SUCCESS
-//                        else TransactionStatus.FAILED,
-//                        memo = null,
-//                        error = signatureInfo.error?.toString()
-//                    )
-//                }
-//                Result.Success(transactions)
-//            }
-//        } catch (e: Exception) {
-//            Log.e("SolanaRepo", "Error fetching history: ${e.message}")
-//            Result.Error("Failed to get transaction history: ${e.message}", e)
-//        }
-//    }
 
     fun validateAddress(address: String): Result<Boolean> {
         return try {

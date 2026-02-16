@@ -69,3 +69,7 @@ fun SolanaTransaction.toEntity(): SolanaTransactionEntity {
         network = network
     )
 }
+enum class SolanaNetwork {
+    MAINNET,
+    DEVNET
+}
