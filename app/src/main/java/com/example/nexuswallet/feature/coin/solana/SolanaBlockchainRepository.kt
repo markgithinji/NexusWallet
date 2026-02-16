@@ -40,7 +40,6 @@ class SolanaBlockchainRepository @Inject constructor() {
     }
 
     private val connection = Connection("https://api.devnet.solana.com")
-    private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun getRecentBlockhash(): Result<String> {
         return try {

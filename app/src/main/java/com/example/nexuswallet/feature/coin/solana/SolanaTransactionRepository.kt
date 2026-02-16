@@ -5,7 +5,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
-
 @Singleton
 class SolanaTransactionRepository @Inject constructor(
     private val solanaTransactionDao: SolanaTransactionDao
@@ -41,8 +40,8 @@ class SolanaTransactionRepository @Inject constructor(
 
     suspend fun updateSignedTransaction(
         transactionId: String,
-        signedData: ByteArray,
-        signature: ByteArray
+        signedData: String,
+        signature: String
     ) {
         val transaction = getTransaction(transactionId) ?: return
         val updated = transaction.copy(
@@ -56,7 +55,7 @@ class SolanaTransactionRepository @Inject constructor(
     suspend fun updateTransactionStatus(
         transactionId: String,
         success: Boolean,
-        signature: ByteArray? = null
+        signature: String? = null
     ) {
         val transaction = getTransaction(transactionId) ?: return
         val updated = transaction.copy(
