@@ -3,19 +3,18 @@ package com.example.nexuswallet.feature.coin.bitcoin
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
-import com.example.nexuswallet.feature.coin.Result
-import kotlinx.coroutines.flow.asStateFlow
 
 @HiltViewModel
 class BitcoinSendViewModel @Inject constructor(
@@ -24,7 +23,6 @@ class BitcoinSendViewModel @Inject constructor(
     private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase,
     private val validateBitcoinAddressUseCase: ValidateBitcoinAddressUseCase,
     private val walletRepository: WalletRepository,
-    private val bitcoinBlockchainRepository: BitcoinBlockchainRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BitcoinSendState())
@@ -98,6 +96,7 @@ class BitcoinSendViewModel @Inject constructor(
                 }
                 Log.d("BitcoinSendVM", "Balance loaded: $balance BTC")
             }
+
             is Result.Error -> {
                 Log.e("BitcoinSendVM", "Error loading balance: ${balanceResult.message}")
                 _state.update {
@@ -109,6 +108,7 @@ class BitcoinSendViewModel @Inject constructor(
                     )
                 }
             }
+
             Result.Loading -> {}
         }
     }
@@ -119,9 +119,11 @@ class BitcoinSendViewModel @Inject constructor(
             is Result.Success -> {
                 _state.update { it.copy(feeEstimate = feeResult.data) }
             }
+
             is Result.Error -> {
                 Log.e("BitcoinSendVM", "Error loading fee: ${feeResult.message}")
             }
+
             Result.Loading -> {}
         }
     }
@@ -134,15 +136,19 @@ class BitcoinSendViewModel @Inject constructor(
     private fun validateAddress(address: String) {
         if (address.isNotEmpty()) {
             val isValid = validateBitcoinAddressUseCase(address, _state.value.network)
-            _state.update { it.copy(
-                isAddressValid = isValid,
-                addressError = if (!isValid) "Invalid Bitcoin address for ${_state.value.network.name.lowercase()}" else null
-            )}
+            _state.update {
+                it.copy(
+                    isAddressValid = isValid,
+                    addressError = if (!isValid) "Invalid Bitcoin address for ${_state.value.network.name.lowercase()}" else null
+                )
+            }
         } else {
-            _state.update { it.copy(
-                isAddressValid = false,
-                addressError = null
-            )}
+            _state.update {
+                it.copy(
+                    isAddressValid = false,
+                    addressError = null
+                )
+            }
         }
     }
 
@@ -152,10 +158,12 @@ class BitcoinSendViewModel @Inject constructor(
         } catch (e: Exception) {
             BigDecimal.ZERO
         }
-        _state.update { it.copy(
-            amount = amount,
-            amountValue = amountValue
-        )}
+        _state.update {
+            it.copy(
+                amount = amount,
+                amountValue = amountValue
+            )
+        }
     }
 
     fun updateFeeLevel(feeLevel: FeeLevel) {
@@ -166,9 +174,11 @@ class BitcoinSendViewModel @Inject constructor(
     }
 
     fun getTestnetCoins() {
-        _state.update { it.copy(
-            info = "Get testnet BTC from: https://bitcoinfaucet.uo1.net"
-        )}
+        _state.update {
+            it.copy(
+                info = "Get testnet BTC from: https://bitcoinfaucet.uo1.net"
+            )
+        }
     }
 
     fun send(onSuccess: (String) -> Unit) {
@@ -204,18 +214,24 @@ class BitcoinSendViewModel @Inject constructor(
                         _state.update { it.copy(isLoading = false, step = "Sent!") }
                         onSuccess(sendResult.txHash)
                     } else {
-                        _state.update { it.copy(
-                            isLoading = false,
-                            error = sendResult.error ?: "Send failed"
-                        ) }
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
+                                error = sendResult.error ?: "Send failed"
+                            )
+                        }
                     }
                 }
+
                 is Result.Error -> {
-                    _state.update { it.copy(
-                        isLoading = false,
-                        error = result.message
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = result.message
+                        )
+                    }
                 }
+
                 Result.Loading -> {}
             }
         }
@@ -259,14 +275,6 @@ class BitcoinSendViewModel @Inject constructor(
         return true
     }
 
-    fun debug() {
-        viewModelScope.launch {
-//            bitcoinBlockchainRepository.debugCheckUTXOsDirect(
-//                address = "my5mRT8cb5q9ScTyJDz46LtG7RNTfi1xF5",
-//                network = BitcoinNetwork.TESTNET
-//            )
-        }
-    }
 
     fun clearError() {
         _state.update { it.copy(error = null) }
@@ -274,18 +282,5 @@ class BitcoinSendViewModel @Inject constructor(
 
     fun clearInfo() {
         _state.update { it.copy(info = null) }
-    }
-
-    fun resetState() {
-        _state.update {
-            BitcoinSendState(
-                walletId = _state.value.walletId,
-                walletName = _state.value.walletName,
-                walletAddress = _state.value.walletAddress,
-                network = _state.value.network,
-                balance = _state.value.balance,
-                balanceFormatted = _state.value.balanceFormatted
-            )
-        }
     }
 }

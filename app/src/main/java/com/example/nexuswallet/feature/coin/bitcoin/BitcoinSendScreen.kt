@@ -79,7 +79,10 @@ fun BitcoinSendScreen(
         ) {
 
             Button(
-                onClick = { viewModel.debug() },
+                onClick =
+                    {
+//                        viewModel.debug()
+                    },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Default.DeveloperBoard, "Faucet")
