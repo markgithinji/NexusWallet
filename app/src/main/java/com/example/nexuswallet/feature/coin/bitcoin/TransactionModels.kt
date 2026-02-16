@@ -17,6 +17,7 @@ enum class FeeLevel {
     SLOW, NORMAL, FAST
 }
 
-enum class BitcoinNetwork {
-    MAINNET, TESTNET
+enum class BitcoinNetwork(val displayName: String) {
+    MAINNET("Mainnet"),
+    TESTNET("Testnet")
 }

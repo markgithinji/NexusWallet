@@ -100,7 +100,7 @@ class EthereumSendViewModel @Inject constructor(
                     fromAddress = ethereumCoin.address,
                     balance = ethBalance,
                     feeEstimate = feeEstimate,
-                    network = ethereumCoin.network.name,
+                    network = ethereumCoin.network.displayName,
                     isLoading = false
                 )
             }

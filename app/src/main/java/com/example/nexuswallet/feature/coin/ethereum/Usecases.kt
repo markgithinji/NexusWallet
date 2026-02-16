@@ -10,10 +10,6 @@ import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.domain.BitcoinWallet
-import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.EthereumWallet
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +26,7 @@ import java.math.BigInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumCoin
 import com.example.nexuswallet.feature.wallet.ui.SendResult
 import kotlinx.coroutines.flow.map
@@ -163,14 +160,14 @@ class SendEthereumUseCase @Inject constructor(
                 feeWei = feeWei.toString(),
                 feeEth = feeEth.toPlainString(),
                 nonce = nonce,
-                chainId = if (ethereumCoin.network == EthereumNetwork.SEPOLIA) 11155111L else 1L,
+                chainId = if (ethereumCoin.network == EthereumNetwork.Sepolia) 11155111L else 1L,
                 signedHex = null,
                 txHash = null,
                 status = TransactionStatus.PENDING,
                 note = note,
                 timestamp = System.currentTimeMillis(),
                 feeLevel = feeLevel,
-                network = ethereumCoin.network.name,
+                network = ethereumCoin.network.displayName,
                 data = ""
             )
 
@@ -402,7 +399,7 @@ class GetFeeEstimateUseCase @Inject constructor(
     suspend operator fun invoke(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<FeeEstimate> {
         return try {
 
-            val gasPriceResult = ethereumBlockchainRepository.getEthereumGasPrice(EthereumNetwork.SEPOLIA)
+            val gasPriceResult = ethereumBlockchainRepository.getEthereumGasPrice(EthereumNetwork.Sepolia)
 
             when (gasPriceResult) {
                 is Result.Success -> {
