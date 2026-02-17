@@ -6,14 +6,10 @@ import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.local.BackupDao
 import com.example.nexuswallet.feature.wallet.data.local.BalanceDao
-import com.example.nexuswallet.feature.wallet.data.local.MnemonicDao
-import com.example.nexuswallet.feature.wallet.data.local.SettingsDao
 import com.example.nexuswallet.feature.wallet.data.local.TransactionDao
-import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.local.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
-import com.example.nexuswallet.feature.wallet.data.model.SendTransactionDao
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
@@ -58,26 +54,8 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideSettingsDao(database: WalletDatabase): SettingsDao {
-        return database.settingsDao()
-    }
-
-    @Provides
-    @Singleton
     fun provideBackupDao(database: WalletDatabase): BackupDao {
         return database.backupDao()
-    }
-
-    @Provides
-    @Singleton
-    fun provideMnemonicDao(database: WalletDatabase): MnemonicDao {
-        return database.mnemonicDao()
-    }
-
-    @Provides
-    @Singleton
-    fun provideSendTransactionDao(database: WalletDatabase): SendTransactionDao {
-        return database.sendTransactionDao()
     }
 
     @Provides
@@ -86,29 +64,13 @@ object DatabaseModule {
         walletDao: WalletDao,
         balanceDao: BalanceDao,
         transactionDao: TransactionDao,
-        settingsDao: SettingsDao,
         backupDao: BackupDao,
-        mnemonicDao: MnemonicDao,
     ): WalletLocalDataSource {
         return WalletLocalDataSource(
             walletDao = walletDao,
             balanceDao = balanceDao,
             transactionDao = transactionDao,
-            settingsDao = settingsDao,
             backupDao = backupDao,
-            mnemonicDao = mnemonicDao,
-        )
-    }
-
-    @Provides
-    @Singleton
-    fun provideTransactionLocalDataSource(
-        transactionDao: TransactionDao,
-        sendTransactionDao: SendTransactionDao
-    ): TransactionLocalDataSource {
-        return TransactionLocalDataSource(
-            transactionDao = transactionDao,
-            sendTransactionDao = sendTransactionDao
         )
     }
 

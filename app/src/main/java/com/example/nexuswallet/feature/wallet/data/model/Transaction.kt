@@ -5,33 +5,6 @@ import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.serialization.Serializable
-@Serializable
-data class SendTransaction(
-    val id: String,
-    val walletId: String,
-    val walletType: WalletType,
-    val fromAddress: String,
-    val toAddress: String,
-    val amount: String, // In smallest unit (wei, satoshis, lamports)
-    val amountDecimal: String, // Human readable (ETH, BTC, SOL)
-    val fee: String, // Fee in smallest unit
-    val feeDecimal: String, // Fee human readable
-    val total: String, // Total in smallest unit (amount + fee)
-    val totalDecimal: String, // Total human readable
-    val chain: ChainType,
-    val status: TransactionStatus = TransactionStatus.PENDING,
-    val gasPrice: String? = null, // For Ethereum (Gwei)
-    val gasLimit: String? = null, // For Ethereum
-    val computeUnits: String? = null, // For Solana
-    val signedHex: String? = null, // Signed transaction hex
-    val nonce: Int? = null, // For Ethereum, null for Bitcoin/Solana
-    val hash: String? = null, // Transaction hash
-    val note: String? = null, // User note
-    val timestamp: Long = System.currentTimeMillis(),
-    val feeLevel: FeeLevel? = FeeLevel.NORMAL,
-    val metadata: Map<String, String> = emptyMap() // Chain-specific metadata
-)
-
 
 @Serializable
 data class TransactionFee(

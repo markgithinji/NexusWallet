@@ -2,7 +2,6 @@ package com.example.nexuswallet.feature.wallet.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.coin.ethereum.GetTransactionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

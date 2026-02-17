@@ -36,17 +36,6 @@ data class TransactionEntity(
 )
 
 @Entity(
-    tableName = "settings",
-    indices = [Index(value = ["walletId"], unique = true)]
-)
-data class SettingsEntity(
-    @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val walletId: String,
-    val settingsJson: String,
-    val updatedAt: Long = System.currentTimeMillis()
-)
-
-@Entity(
     tableName = "backups",
     indices = [Index(value = ["walletId"], unique = true)]
 )
@@ -54,16 +43,5 @@ data class BackupEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val walletId: String,
     val backupJson: String,
-    val updatedAt: Long = System.currentTimeMillis()
-)
-
-@Entity(
-    tableName = "mnemonics",
-    indices = [Index(value = ["walletId"], unique = true)]
-)
-data class MnemonicEntity(
-    @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val walletId: String,
-    val encryptedData: String,
     val updatedAt: Long = System.currentTimeMillis()
 )

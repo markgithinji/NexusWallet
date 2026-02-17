@@ -40,8 +40,6 @@ import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
 import com.example.nexuswallet.feature.coin.solana.SolanaTransactionRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCSendTransaction
-import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
-import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import androidx.compose.runtime.collectAsState
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance

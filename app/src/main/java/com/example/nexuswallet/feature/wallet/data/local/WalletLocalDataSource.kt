@@ -4,10 +4,6 @@ import android.content.Context
 import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.model.BackupEntity
 import com.example.nexuswallet.feature.wallet.data.model.BalanceEntity
-import com.example.nexuswallet.feature.wallet.data.model.MnemonicEntity
-import com.example.nexuswallet.feature.wallet.data.model.SendTransactionDao
-import com.example.nexuswallet.feature.wallet.data.model.SettingsEntity
-import com.example.nexuswallet.feature.wallet.data.model.TransactionEntity
 import com.example.nexuswallet.feature.wallet.data.model.WalletEntity
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.domain.WalletBackup
@@ -23,9 +19,7 @@ class WalletLocalDataSource @Inject constructor(
     private val walletDao: WalletDao,
     private val balanceDao: BalanceDao,
     private val transactionDao: TransactionDao,
-    private val settingsDao: SettingsDao,
-    private val backupDao: BackupDao,
-    private val mnemonicDao: MnemonicDao,
+    private val backupDao: BackupDao
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -80,9 +74,6 @@ class WalletLocalDataSource @Inject constructor(
         walletDao.delete(walletId)
         balanceDao.delete(walletId)
         transactionDao.delete(walletId)
-        settingsDao.delete(walletId)
-        backupDao.delete(walletId)
-        mnemonicDao.delete(walletId)
     }
 
     // === Balance Operations ===

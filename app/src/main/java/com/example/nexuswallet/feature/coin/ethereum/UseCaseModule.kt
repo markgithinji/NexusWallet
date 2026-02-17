@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
-import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository

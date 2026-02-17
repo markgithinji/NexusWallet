@@ -16,7 +16,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 @Singleton
 class EthereumBlockchainRepository @Inject constructor(
     private val etherscanApi: EtherscanApiService

@@ -61,7 +61,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.nexuswallet.NavigationViewModel
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.wallet.data.model.SignedTransaction
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus

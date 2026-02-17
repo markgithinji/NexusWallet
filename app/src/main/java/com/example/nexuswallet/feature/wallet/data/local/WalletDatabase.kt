@@ -17,10 +17,6 @@ import com.example.nexuswallet.feature.coin.usdc.USDCTransactionDao
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionEntity
 import com.example.nexuswallet.feature.wallet.data.model.BackupEntity
 import com.example.nexuswallet.feature.wallet.data.model.BalanceEntity
-import com.example.nexuswallet.feature.wallet.data.model.MnemonicEntity
-import com.example.nexuswallet.feature.wallet.data.model.SendTransactionDao
-import com.example.nexuswallet.feature.wallet.data.model.SendTransactionEntity
-import com.example.nexuswallet.feature.wallet.data.model.SettingsEntity
 import com.example.nexuswallet.feature.wallet.data.model.TransactionEntity
 import com.example.nexuswallet.feature.wallet.data.model.WalletEntity
 import org.json.JSONObject
@@ -30,26 +26,20 @@ import org.json.JSONObject
         WalletEntity::class,
         BalanceEntity::class,
         TransactionEntity::class,
-        SettingsEntity::class,
         BackupEntity::class,
-        MnemonicEntity::class,
-        SendTransactionEntity::class,
         BitcoinTransactionEntity::class,
         EthereumTransactionEntity::class,
         SolanaTransactionEntity::class,
         USDCTransactionEntity::class
     ],
-    version = 8,  // Incremented from 7 to 8
+    version = 9,  // Incremented from 8 to 9
     exportSchema = false
 )
 abstract class WalletDatabase : RoomDatabase() {
     abstract fun walletDao(): WalletDao
     abstract fun balanceDao(): BalanceDao
     abstract fun transactionDao(): TransactionDao
-    abstract fun settingsDao(): SettingsDao
     abstract fun backupDao(): BackupDao
-    abstract fun mnemonicDao(): MnemonicDao
-    abstract fun sendTransactionDao(): SendTransactionDao
     abstract fun bitcoinTransactionDao(): BitcoinTransactionDao
     abstract fun ethereumTransactionDao(): EthereumTransactionDao
     abstract fun solanaTransactionDao(): SolanaTransactionDao
@@ -69,11 +59,24 @@ abstract class WalletDatabase : RoomDatabase() {
                     .addMigrations(
                         MIGRATION_5_6,
                         MIGRATION_6_7,
-                        MIGRATION_7_8
+                        MIGRATION_7_8,
+                        MIGRATION_8_9
                     )
                     .build()
                 INSTANCE = instance
                 instance
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Drop the tables that are no longer needed
+                database.execSQL("DROP TABLE IF EXISTS settings")
+                database.execSQL("DROP TABLE IF EXISTS mnemonics")
+                database.execSQL("DROP TABLE IF EXISTS SendTransactionEntity") // Check exact table name
+
+                // Note: The walletJson already contains all the data we need
+                // The removed tables contained redundant/legacy data
             }
         }
 

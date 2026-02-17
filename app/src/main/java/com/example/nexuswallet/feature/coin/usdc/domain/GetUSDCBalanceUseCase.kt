@@ -1,10 +1,8 @@
 package com.example.nexuswallet.feature.coin.usdc.domain
 
 import android.util.Log
-import com.example.nexuswallet.feature.wallet.data.local.TransactionLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.wallet.data.model.SendTransaction
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
 import com.example.nexuswallet.feature.coin.usdc.Web3jFactory

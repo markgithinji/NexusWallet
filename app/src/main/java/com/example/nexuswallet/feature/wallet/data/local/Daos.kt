@@ -7,8 +7,6 @@ import androidx.room.Query
 import androidx.room.Update
 import com.example.nexuswallet.feature.wallet.data.model.BackupEntity
 import com.example.nexuswallet.feature.wallet.data.model.BalanceEntity
-import com.example.nexuswallet.feature.wallet.data.model.MnemonicEntity
-import com.example.nexuswallet.feature.wallet.data.model.SettingsEntity
 import com.example.nexuswallet.feature.wallet.data.model.TransactionEntity
 import com.example.nexuswallet.feature.wallet.data.model.WalletEntity
 import kotlinx.coroutines.flow.Flow
@@ -62,21 +60,6 @@ interface TransactionDao {
 }
 
 @Dao
-interface SettingsDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(settings: SettingsEntity)
-
-    @Query("SELECT * FROM settings WHERE walletId = :walletId")
-    suspend fun get(walletId: String): SettingsEntity?
-
-    @Update
-    suspend fun update(settings: SettingsEntity)
-
-    @Query("DELETE FROM settings WHERE walletId = :walletId")
-    suspend fun delete(walletId: String)
-}
-
-@Dao
 interface BackupDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(backup: BackupEntity)
@@ -88,14 +71,3 @@ interface BackupDao {
     suspend fun delete(walletId: String)
 }
 
-@Dao
-interface MnemonicDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(mnemonic: MnemonicEntity)
-
-    @Query("SELECT * FROM mnemonics WHERE walletId = :walletId")
-    suspend fun get(walletId: String): MnemonicEntity?
-
-    @Query("DELETE FROM mnemonics WHERE walletId = :walletId")
-    suspend fun delete(walletId: String)
-}
