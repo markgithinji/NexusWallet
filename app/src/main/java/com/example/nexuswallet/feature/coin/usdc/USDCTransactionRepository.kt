@@ -42,28 +42,6 @@ class USDCTransactionRepository @Inject constructor(
         usdcTransactionDao.deleteById(id)
     }
 
-    suspend fun updateSignedTransaction(
-        transactionId: String,
-        signedHex: String,
-        txHash: String,
-        gasPriceWei: String,
-        gasPriceGwei: String,
-        feeWei: String,
-        feeEth: String
-    ) {
-        val transaction = getTransaction(transactionId) ?: return
-        val updated = transaction.copy(
-            signedHex = signedHex,
-            txHash = txHash,
-            gasPriceWei = gasPriceWei,
-            gasPriceGwei = gasPriceGwei,
-            feeWei = feeWei,
-            feeEth = feeEth,
-            status = TransactionStatus.PENDING
-        )
-        updateTransaction(updated)
-    }
-
     suspend fun updateTransactionStatus(
         transactionId: String,
         success: Boolean,

@@ -146,3 +146,18 @@ data class USDCFeeEstimate(
     val contractAddress: String,           // USDC contract address
     val tokenDecimals: Int = 6              // USDC always has 6 decimals
 )
+
+data class USDCWalletInfo(
+    val walletId: String,
+    val walletName: String,
+    val walletAddress: String,
+    val network: EthereumNetwork,
+    val contractAddress: String
+)
+
+data class SendUSDCResult(
+    val transactionId: String,
+    val txHash: String,
+    val success: Boolean,
+    val error: String? = null
+)
