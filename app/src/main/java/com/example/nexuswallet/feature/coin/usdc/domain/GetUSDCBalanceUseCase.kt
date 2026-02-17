@@ -28,6 +28,37 @@ import java.math.BigInteger
 import javax.inject.Singleton
 
 @Singleton
+class GetUSDCWalletUseCase @Inject constructor(
+    private val walletRepository: WalletRepository
+) {
+    suspend operator fun invoke(walletId: String): Result<USDCWalletInfo> {
+        val wallet = walletRepository.getWallet(walletId)
+        if (wallet == null) {
+            Log.e("GetUSDCWalletUC", "Wallet not found: $walletId")
+            return Result.Error("Wallet not found")
+        }
+
+        val usdcCoin = wallet.usdc
+        if (usdcCoin == null) {
+            Log.e("GetUSDCWalletUC", "USDC not enabled for wallet: ${wallet.name}")
+            return Result.Error("USDC not enabled for this wallet")
+        }
+
+        Log.d("GetUSDCWalletUC", "Loaded wallet: ${wallet.name}, address: ${usdcCoin.address.take(8)}...")
+
+        return Result.Success(
+            USDCWalletInfo(
+                walletId = wallet.id,
+                walletName = wallet.name,
+                walletAddress = usdcCoin.address,
+                network = usdcCoin.network,
+                contractAddress = usdcCoin.contractAddress
+            )
+        )
+    }
+}
+
+@Singleton
 class SendUSDCUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val usdcBlockchainRepository: USDCBlockchainRepository,
@@ -41,95 +72,56 @@ class SendUSDCUseCase @Inject constructor(
         feeLevel: FeeLevel = FeeLevel.NORMAL
     ): Result<SendUSDCResult> = withContext(Dispatchers.IO) {
         try {
-            Log.d("SendUSDCUC", "========== SEND USDC START ==========")
-            Log.d("SendUSDCUC", "WalletId: $walletId, To: $toAddress, Amount: $amount USDC")
+            Log.d("SendUSDCUC", "Sending $amount USDC to $toAddress")
 
-            // 1. Get wallet
             val wallet = walletRepository.getWallet(walletId)
-                ?: return@withContext Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
+                ?: return@withContext Result.Error("Wallet not found")
 
-            // 2. Get USDC coin info
             val usdcCoin = wallet.usdc
-                ?: return@withContext Result.Error(
-                    message = "USDC not enabled for this wallet",
-                    throwable = IllegalArgumentException("No USDC coin found")
-                )
+                ?: return@withContext Result.Error("USDC not enabled for this wallet")
 
-            val address = usdcCoin.address
-            val network = usdcCoin.network
-            val contractAddress = usdcCoin.contractAddress
-
-            Log.d("SendUSDCUC", "Address: $address, Network: ${network.displayName}")
-
-            // 3. Get fee estimate
-            Log.d("SendUSDCUC", "Getting fee estimate...")
-            val feeResult = usdcBlockchainRepository.getFeeEstimate(feeLevel, network)
+            val feeResult = usdcBlockchainRepository.getFeeEstimate(feeLevel, usdcCoin.network)
             val feeEstimate = when (feeResult) {
                 is Result.Success -> feeResult.data
-                is Result.Error -> return@withContext Result.Error(
-                    message = feeResult.message,
-                    throwable = feeResult.throwable
-                )
-                Result.Loading -> return@withContext Result.Error("Failed to get fee estimate: timeout", null)
+                is Result.Error -> return@withContext Result.Error(feeResult.message, feeResult.throwable)
+                Result.Loading -> return@withContext Result.Error("Failed to get fee estimate: timeout")
             }
-            Log.d("SendUSDCUC", "Fee estimate: ${feeEstimate.totalFeeEth} ETH")
 
-            // 4. Get private key
-            val privateKeyResult = keyManager.getPrivateKeyForSigning(walletId)
-            if (privateKeyResult.isFailure) {
-                return@withContext Result.Error(
-                    message = "Cannot access private key",
-                    throwable = privateKeyResult.exceptionOrNull()
-                )
-            }
-            val privateKey = privateKeyResult.getOrThrow()
-
-            // 5. Get nonce
-            Log.d("SendUSDCUC", "Getting nonce...")
-            val nonceResult = usdcBlockchainRepository.getNonce(address, network)
+            val nonceResult = usdcBlockchainRepository.getNonce(usdcCoin.address, usdcCoin.network)
             val nonce = when (nonceResult) {
                 is Result.Success -> nonceResult.data
-                is Result.Error -> return@withContext Result.Error(
-                    message = nonceResult.message,
-                    throwable = nonceResult.throwable
-                )
-                Result.Loading -> return@withContext Result.Error("Failed to get nonce: timeout", null)
+                is Result.Error -> return@withContext Result.Error(nonceResult.message, nonceResult.throwable)
+                Result.Loading -> return@withContext Result.Error("Failed to get nonce: timeout")
             }
-            Log.d("SendUSDCUC", "Nonce: $nonce")
 
-            // 6. Get chainId
-            val chainId = network.chainId.toLong()
+            val privateKeyResult = keyManager.getPrivateKeyForSigning(walletId)
+            if (privateKeyResult.isFailure) {
+                Log.e("SendUSDCUC", "Failed to access private key")
+                return@withContext Result.Error("Cannot access private key", privateKeyResult.exceptionOrNull())
+            }
 
-            // 7. Create and sign transaction
-            Log.d("SendUSDCUC", "Creating and signing USDC transfer...")
             val createResult = usdcBlockchainRepository.createAndSignUSDCTransfer(
-                fromAddress = address,
-                fromPrivateKey = privateKey,
+                fromAddress = usdcCoin.address,
+                fromPrivateKey = privateKeyResult.getOrThrow(),
                 toAddress = toAddress,
                 amount = amount,
                 gasPriceWei = BigInteger(feeEstimate.gasPriceWei),
                 nonce = nonce,
-                chainId = chainId,
-                network = network
+                chainId = usdcCoin.network.chainId.toLong(),
+                network = usdcCoin.network
             )
 
-            val (rawTransaction, signedHex, txHash) = when (createResult) {
+            val (_, signedHex, txHash) = when (createResult) {
                 is Result.Success -> createResult.data
-                is Result.Error -> return@withContext Result.Error(
-                    message = createResult.message,
-                    throwable = createResult.throwable
-                )
-                Result.Loading -> return@withContext Result.Error("Failed to create USDC transfer: timeout", null)
+                is Result.Error -> return@withContext Result.Error(createResult.message, createResult.throwable)
+                Result.Loading -> return@withContext Result.Error("Failed to create USDC transfer: timeout")
             }
 
-            Log.d("SendUSDCUC", "Transaction created and signed: $txHash")
-
-            // 8. Create USDC transaction (using fee estimate)
             val amountUnits = amount.multiply(BigDecimal("1000000")).toBigInteger()
             val transaction = USDCSendTransaction(
                 id = "usdc_tx_${System.currentTimeMillis()}",
                 walletId = walletId,
-                fromAddress = address,
+                fromAddress = usdcCoin.address,
                 toAddress = toAddress,
                 status = TransactionStatus.PENDING,
                 timestamp = System.currentTimeMillis(),
@@ -137,52 +129,32 @@ class SendUSDCUseCase @Inject constructor(
                 feeLevel = feeLevel,
                 amount = amountUnits.toString(),
                 amountDecimal = amount.toPlainString(),
-                contractAddress = contractAddress,
-                network = network,
+                contractAddress = usdcCoin.contractAddress,
+                network = usdcCoin.network,
                 gasPriceWei = feeEstimate.gasPriceWei,
                 gasPriceGwei = feeEstimate.gasPriceGwei,
                 gasLimit = feeEstimate.gasLimit,
                 feeWei = feeEstimate.totalFeeWei,
                 feeEth = feeEstimate.totalFeeEth,
                 nonce = nonce.toInt(),
-                chainId = chainId,
+                chainId = usdcCoin.network.chainId.toLong(),
                 signedHex = signedHex,
-                txHash = txHash,
-                ethereumTransactionId = null
+                txHash = txHash
             )
 
-            // 9. Save transaction
             usdcTransactionRepository.saveTransaction(transaction)
-            Log.d("SendUSDCUC", "Transaction saved to repository")
 
-            // 10. Broadcast
-            Log.d("SendUSDCUC", "Broadcasting transaction...")
-            val broadcastResult = usdcBlockchainRepository.broadcastUSDCTransaction(
-                signedHex = signedHex,
-                network = network
-            )
-
+            val broadcastResult = usdcBlockchainRepository.broadcastUSDCTransaction(signedHex, usdcCoin.network)
             val broadcastData = when (broadcastResult) {
                 is Result.Success -> broadcastResult.data
-                is Result.Error -> return@withContext Result.Error(
-                    message = broadcastResult.message,
-                    throwable = broadcastResult.throwable
-                )
-                Result.Loading -> return@withContext Result.Error("Broadcast timeout", null)
+                is Result.Error -> return@withContext Result.Error(broadcastResult.message, broadcastResult.throwable)
+                Result.Loading -> return@withContext Result.Error("Broadcast timeout")
             }
 
-            Log.d("SendUSDCUC", "Broadcast result: success=${broadcastData.success}, hash=${broadcastData.hash}")
-
-            // 11. Update transaction status
             val updatedTransaction = if (broadcastData.success) {
-                transaction.copy(
-                    status = TransactionStatus.SUCCESS,
-                    txHash = broadcastData.hash ?: txHash
-                )
+                transaction.copy(status = TransactionStatus.SUCCESS, txHash = broadcastData.hash ?: txHash)
             } else {
-                transaction.copy(
-                    status = TransactionStatus.FAILED
-                )
+                transaction.copy(status = TransactionStatus.FAILED)
             }
             usdcTransactionRepository.updateTransaction(updatedTransaction)
 
@@ -193,22 +165,20 @@ class SendUSDCUseCase @Inject constructor(
                 error = broadcastData.error
             )
 
-            Log.d("SendUSDCUC", "========== SEND USDC COMPLETE ==========")
+            if (result.success) {
+                Log.d("SendUSDCUC", "Send successful: tx ${result.txHash.take(8)}...")
+            } else {
+                Log.e("SendUSDCUC", "Send failed: ${result.error}")
+            }
+
             Result.Success(result)
 
         } catch (e: Exception) {
-            Log.e("SendUSDCUC", "Exception: ${e.message}", e)
+            Log.e("SendUSDCUC", "Send failed: ${e.message}")
             Result.Error("Send failed: ${e.message}", e)
         }
     }
 }
-
-data class SendUSDCResult(
-    val transactionId: String,
-    val txHash: String,
-    val success: Boolean,
-    val error: String? = null
-)
 
 @Singleton
 class GetUSDCBalanceUseCase @Inject constructor(
@@ -217,12 +187,20 @@ class GetUSDCBalanceUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(walletId: String): Result<USDCBalance> {
         val wallet = walletRepository.getWallet(walletId)
-            ?: return Result.Error("Wallet not found")
+            ?: return Result.Error("Wallet not found").also {
+                Log.e("GetUSDCBalanceUC", "Wallet not found: $walletId")
+            }
 
         val usdcCoin = wallet.usdc
-            ?: return Result.Error("USDC not enabled for this wallet")
+            ?: return Result.Error("USDC not enabled for this wallet").also {
+                Log.e("GetUSDCBalanceUC", "USDC not enabled for wallet: ${wallet.name}")
+            }
 
-        return usdcBlockchainRepository.getUSDCBalance(usdcCoin.address, usdcCoin.network)
+        val result = usdcBlockchainRepository.getUSDCBalance(usdcCoin.address, usdcCoin.network)
+        if (result is Result.Success) {
+            Log.d("GetUSDCBalanceUC", "Balance: ${result.data.amountDecimal} USDC")
+        }
+        return result
     }
 }
 
@@ -233,44 +211,37 @@ class GetETHBalanceForGasUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(walletId: String): Result<BigDecimal> {
         val wallet = walletRepository.getWallet(walletId)
-            ?: return Result.Error("Wallet not found", IllegalArgumentException("Wallet not found"))
+            ?: return Result.Error("Wallet not found").also {
+                Log.e("GetETHGasUC", "Wallet not found: $walletId")
+            }
 
         // Check for Ethereum coin first
         val ethereumCoin = wallet.ethereum
         if (ethereumCoin != null) {
-            val balanceResult = ethereumBlockchainRepository.getEthereumBalance(
+            val result = ethereumBlockchainRepository.getEthereumBalance(
                 address = ethereumCoin.address,
                 network = ethereumCoin.network
             )
-
-            return when (balanceResult) {
-                is Result.Success -> Result.Success(balanceResult.data)
-                is Result.Error -> Result.Error(
-                    message = "Failed to get ETH balance: ${balanceResult.message}",
-                    throwable = balanceResult.throwable
-                )
-                Result.Loading -> Result.Error("Failed to get ETH balance: timeout", null)
+            if (result is Result.Success) {
+                Log.d("GetETHGasUC", "ETH balance: ${result.data} ETH")
             }
+            return result
         }
 
-        // Fallback to USDC coin if it exists (same address as Ethereum)
+        // Fallback to USDC coin
         val usdcCoin = wallet.usdc
         if (usdcCoin != null) {
-            val balanceResult = ethereumBlockchainRepository.getEthereumBalance(
+            val result = ethereumBlockchainRepository.getEthereumBalance(
                 address = usdcCoin.address,
                 network = usdcCoin.network
             )
-
-            return when (balanceResult) {
-                is Result.Success -> Result.Success(balanceResult.data)
-                is Result.Error -> Result.Error(
-                    message = "Failed to get ETH balance: ${balanceResult.message}",
-                    throwable = balanceResult.throwable
-                )
-                Result.Loading -> Result.Error("Failed to get ETH balance: timeout", null)
+            if (result is Result.Success) {
+                Log.d("GetETHGasUC", "ETH balance (from USDC address): ${result.data} ETH")
             }
+            return result
         }
 
+        Log.d("GetETHGasUC", "No ETH or USDC coin found, returning 0")
         return Result.Success(BigDecimal.ZERO)
     }
 }
@@ -283,6 +254,10 @@ class GetUSDCFeeEstimateUseCase @Inject constructor(
         feeLevel: FeeLevel = FeeLevel.NORMAL,
         network: EthereumNetwork = EthereumNetwork.Sepolia
     ): Result<USDCFeeEstimate> {
-        return usdcBlockchainRepository.getFeeEstimate(feeLevel, network)
+        val result = usdcBlockchainRepository.getFeeEstimate(feeLevel, network)
+        if (result is Result.Error) {
+            Log.e("GetUSDCFeeUC", "Failed to get fee estimate: ${result.message}")
+        }
+        return result
     }
 }
