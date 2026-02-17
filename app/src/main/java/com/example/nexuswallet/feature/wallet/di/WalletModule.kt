@@ -15,6 +15,7 @@ import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
+import com.example.nexuswallet.feature.wallet.domain.SyncWalletBalancesUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -79,13 +80,9 @@ object DatabaseModule {
     fun provideWalletRepository(
         localDataSource: WalletLocalDataSource,
         securityManager: SecurityManager,
-        ethereumBlockchainRepository: EthereumBlockchainRepository,
-        solanaBlockchainRepository: SolanaBlockchainRepository,
-        bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-        usdcBlockchainRepository: USDCBlockchainRepository,
         keyManager: KeyManager
     ): WalletRepository {
-        return WalletRepository(localDataSource, securityManager, ethereumBlockchainRepository, solanaBlockchainRepository, bitcoinBlockchainRepository,usdcBlockchainRepository,keyManager)
+        return WalletRepository(localDataSource, securityManager, keyManager)
     }
 
     @Provides
@@ -118,4 +115,24 @@ object DatabaseModule {
             HttpService("https://mainnet.infura.io/v3/demo") // TODO: Use key
         )
     }
+
+    @Provides
+    @Singleton
+    fun provideSyncWalletBalancesUseCase(
+        localDataSource: WalletLocalDataSource,
+        bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+        ethereumBlockchainRepository: EthereumBlockchainRepository,
+        solanaBlockchainRepository: SolanaBlockchainRepository,
+        usdcBlockchainRepository: USDCBlockchainRepository
+    ): SyncWalletBalancesUseCase {
+        return SyncWalletBalancesUseCase(
+            localDataSource = localDataSource,
+            bitcoinBlockchainRepository = bitcoinBlockchainRepository,
+            ethereumBlockchainRepository = ethereumBlockchainRepository,
+            solanaBlockchainRepository = solanaBlockchainRepository,
+            usdcBlockchainRepository = usdcBlockchainRepository
+        )
+    }
+
+
 }
