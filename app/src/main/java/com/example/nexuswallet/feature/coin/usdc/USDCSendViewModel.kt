@@ -15,12 +15,17 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
+import com.example.nexuswallet.feature.coin.usdc.domain.GetUSDCFeeEstimateUseCase
+import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
 import kotlinx.coroutines.flow.asStateFlow
+
 @HiltViewModel
 class USDCSendViewModel @Inject constructor(
     private val sendUSDCUseCase: SendUSDCUseCase,
     private val getUSDCBalanceUseCase: GetUSDCBalanceUseCase,
+    private val getUSDCFeeEstimateUseCase: GetUSDCFeeEstimateUseCase,
     private val getETHBalanceForGasUseCase: GetETHBalanceForGasUseCase,
     private val walletRepository: WalletRepository
 ) : ViewModel() {
@@ -34,11 +39,12 @@ class USDCSendViewModel @Inject constructor(
         val toAddress: String = "",
         val amount: String = "",
         val amountValue: BigDecimal = BigDecimal.ZERO,
+        val feeLevel: FeeLevel = FeeLevel.NORMAL,
+        val feeEstimate: USDCFeeEstimate? = null,
         val usdcBalance: String = "0",
         val usdcBalanceDecimal: BigDecimal = BigDecimal.ZERO,
         val ethBalance: String = "0",
         val ethBalanceDecimal: BigDecimal = BigDecimal.ZERO,
-        val estimatedGas: String = "0.0005",
         val isValidAddress: Boolean = false,
         val hasSufficientBalance: Boolean = false,
         val hasSufficientGas: Boolean = false,
@@ -50,6 +56,15 @@ class USDCSendViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(USDCSendState())
     val state: StateFlow<USDCSendState> = _state.asStateFlow()
+
+    sealed class SendEvent {
+        data class ToAddressChanged(val address: String) : SendEvent()
+        data class AmountChanged(val amount: String) : SendEvent()
+        data class FeeLevelChanged(val feeLevel: FeeLevel) : SendEvent()
+        object Validate : SendEvent()
+        object ClearError : SendEvent()
+        object ClearInfo : SendEvent()
+    }
 
     fun init(walletId: String) {
         viewModelScope.launch {
@@ -89,6 +104,13 @@ class USDCSendViewModel @Inject constructor(
                 Result.Loading -> return@launch
             }
 
+            // Get initial fee estimate
+            val feeResult = getUSDCFeeEstimateUseCase(FeeLevel.NORMAL, usdcCoin.network)
+            val feeEstimate = when (feeResult) {
+                is Result.Success -> feeResult.data
+                else -> null
+            }
+
             _state.update {
                 it.copy(
                     walletId = wallet.id,
@@ -100,11 +122,38 @@ class USDCSendViewModel @Inject constructor(
                     usdcBalanceDecimal = usdcBalance.amountDecimal.toBigDecimalOrNull() ?: BigDecimal.ZERO,
                     ethBalance = ethBalance.toPlainString(),
                     ethBalanceDecimal = ethBalance,
+                    feeEstimate = feeEstimate,
                     isLoading = false
                 )
             }
 
             validateForm()
+        }
+    }
+
+    fun onEvent(event: SendEvent) {
+        when (event) {
+            is SendEvent.ToAddressChanged -> {
+                _state.update { it.copy(toAddress = event.address) }
+                validateForm()
+            }
+            is SendEvent.AmountChanged -> {
+                val amountValue = event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
+                _state.update {
+                    it.copy(
+                        amount = event.amount,
+                        amountValue = amountValue
+                    )
+                }
+                validateForm()
+            }
+            is SendEvent.FeeLevelChanged -> {
+                _state.update { it.copy(feeLevel = event.feeLevel) }
+                updateFeeEstimate()
+            }
+            SendEvent.Validate -> validateForm()
+            SendEvent.ClearError -> clearError()
+            SendEvent.ClearInfo -> clearInfo()
         }
     }
 
@@ -116,9 +165,6 @@ class USDCSendViewModel @Inject constructor(
                 return@launch
             }
 
-            val toAddress = state.toAddress
-            val amount = state.amountValue
-
             if (!validateForm()) {
                 return@launch
             }
@@ -127,8 +173,9 @@ class USDCSendViewModel @Inject constructor(
 
             val result = sendUSDCUseCase(
                 walletId = state.walletId,
-                toAddress = toAddress,
-                amount = amount
+                toAddress = state.toAddress,
+                amount = state.amountValue,
+                feeLevel = state.feeLevel
             )
 
             when (result) {
@@ -204,49 +251,43 @@ class USDCSendViewModel @Inject constructor(
         // Check amount > 0
         val isAmountValid = currentState.amountValue > BigDecimal.ZERO
 
-        // Check sufficient balance
+        // Check sufficient USDC balance
         val hasSufficientBalance = currentState.amountValue <= currentState.usdcBalanceDecimal &&
                 isAmountValid
 
-        // Check sufficient ETH for gas (assuming ~0.0005 ETH)
-        val estimatedGasEth = BigDecimal("0.0005")
-        val hasSufficientGas = currentState.ethBalanceDecimal >= estimatedGasEth
+        // Check sufficient ETH for gas (using fee estimate if available)
+        val requiredEth = if (currentState.feeEstimate != null) {
+            BigDecimal(currentState.feeEstimate.totalFeeEth)
+        } else {
+            BigDecimal("0.0005") // fallback
+        }
+        val hasSufficientGas = currentState.ethBalanceDecimal >= requiredEth
 
         _state.update {
             it.copy(
                 isValidAddress = isValidAddress,
                 hasSufficientBalance = hasSufficientBalance,
-                hasSufficientGas = hasSufficientGas,
-                estimatedGas = estimatedGasEth.toPlainString()
+                hasSufficientGas = hasSufficientGas
             )
         }
 
         return isValidAddress && hasSufficientBalance && hasSufficientGas
     }
 
-    fun updateAddress(address: String) {
-        _state.update { it.copy(toAddress = address) }
-        validateForm()
-    }
-
-    fun updateAmount(amount: String) {
-        val amountValue = try {
-            amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
-        } catch (e: Exception) {
-            BigDecimal.ZERO
+    private fun updateFeeEstimate() {
+        viewModelScope.launch {
+            val currentState = _state.value
+            val feeResult = getUSDCFeeEstimateUseCase(currentState.feeLevel, currentState.network)
+            if (feeResult is Result.Success) {
+                _state.update { it.copy(feeEstimate = feeResult.data) }
+                validateForm()
+            }
         }
-        _state.update {
-            it.copy(
-                amount = amount,
-                amountValue = amountValue
-            )
-        }
-        validateForm()
     }
 
     fun debug() {
         _state.update {
-            it.copy(info = "Debug: USDC at ${state.value.contractAddress} on ${state.value.network}")
+            it.copy(info = "Debug: USDC at ${state.value.contractAddress} on ${state.value.network.displayName}")
         }
     }
 

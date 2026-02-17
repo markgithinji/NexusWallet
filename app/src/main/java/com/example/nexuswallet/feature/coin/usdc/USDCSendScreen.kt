@@ -177,27 +177,27 @@ fun USDCSendScreen(
 //            }
 
             // To Address
-            OutlinedTextField(
-                value = state.toAddress,
-                onValueChange = viewModel::updateAddress,
-                label = { Text("To Address") },
-                placeholder = { Text("Enter Ethereum address (0x...)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                isError = state.toAddress.isNotBlank() && !state.isValidAddress
-            )
-
-            // Amount
-            OutlinedTextField(
-                value = state.amount,
-                onValueChange = viewModel::updateAmount,
-                label = { Text("Amount") },
-                placeholder = { Text("0.0") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                suffix = { Text("USDC") },
-                isError = state.amount.isNotBlank() && !state.hasSufficientBalance
-            )
+//            OutlinedTextField(
+//                value = state.toAddress,
+//                onValueChange = viewModel::updateAddress,
+//                label = { Text("To Address") },
+//                placeholder = { Text("Enter Ethereum address (0x...)") },
+//                modifier = Modifier.fillMaxWidth(),
+//                singleLine = true,
+//                isError = state.toAddress.isNotBlank() && !state.isValidAddress
+//            )
+//
+//            // Amount
+//            OutlinedTextField(
+//                value = state.amount,
+//                onValueChange = viewModel::updateAmount,
+//                label = { Text("Amount") },
+//                placeholder = { Text("0.0") },
+//                modifier = Modifier.fillMaxWidth(),
+//                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+//                suffix = { Text("USDC") },
+//                isError = state.amount.isNotBlank() && !state.hasSufficientBalance
+//            )
 
             // Balance and Gas Info
             Card {
@@ -236,17 +236,17 @@ fun USDCSendScreen(
                     }
 
                     // Estimated Gas
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Estimated Gas:", style = MaterialTheme.typography.labelMedium)
-                        Text(
-                            "${state.estimatedGas} ETH",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+//                    Row(
+//                        horizontalArrangement = Arrangement.SpaceBetween,
+//                        modifier = Modifier.fillMaxWidth()
+//                    ) {
+//                        Text("Estimated Gas:", style = MaterialTheme.typography.labelMedium)
+//                        Text(
+//                            "${state.estimatedGas} ETH",
+//                            style = MaterialTheme.typography.bodySmall,
+//                            color = MaterialTheme.colorScheme.onSurfaceVariant
+//                        )
+//                    }
 
                     // Error messages
                     if (!state.hasSufficientBalance) {
@@ -256,13 +256,13 @@ fun USDCSendScreen(
                             color = MaterialTheme.colorScheme.error
                         )
                     }
-                    if (!state.hasSufficientGas) {
-                        Text(
-                            "⚠️ Insufficient ETH for gas fees. You need ${state.estimatedGas} ETH but have ${state.ethBalance} ETH",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
+//                    if (!state.hasSufficientGas) {
+//                        Text(
+//                            "⚠️ Insufficient ETH for gas fees. You need ${state.estimatedGas} ETH but have ${state.ethBalance} ETH",
+//                            style = MaterialTheme.typography.labelSmall,
+//                            color = MaterialTheme.colorScheme.error
+//                        )
+//                    }
 
                     Text(
                         "Note: Gas fees are paid in ETH, not USDC",
