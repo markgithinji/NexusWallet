@@ -1,10 +1,8 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,69 +15,50 @@ import javax.inject.Inject
 
 @HiltViewModel
 class BitcoinSendViewModel @Inject constructor(
-    private val sendBitcoinUseCase: SendBitcoinUseCase,
+    private val getBitcoinWalletUseCase: GetBitcoinWalletUseCase,
     private val getBitcoinBalanceUseCase: GetBitcoinBalanceUseCase,
     private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase,
+    private val sendBitcoinUseCase: SendBitcoinUseCase,
     private val validateBitcoinAddressUseCase: ValidateBitcoinAddressUseCase,
-    private val walletRepository: WalletRepository,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(BitcoinSendState())
-    val state: StateFlow<BitcoinSendState> = _state.asStateFlow()
-
-    data class BitcoinSendState(
-        val walletId: String = "",
-        val walletName: String = "",
-        val walletAddress: String = "",
-        val balance: BigDecimal = BigDecimal.ZERO,
-        val balanceFormatted: String = "0 BTC",
-        val toAddress: String = "",
-        val isAddressValid: Boolean = false,
-        val addressError: String? = null,
-        val amount: String = "",
-        val amountValue: BigDecimal = BigDecimal.ZERO,
-        val network: BitcoinNetwork = BitcoinNetwork.TESTNET,
-        val feeLevel: FeeLevel = FeeLevel.NORMAL,
-        val feeEstimate: BitcoinFeeEstimate? = null,
-        val isLoading: Boolean = false,
-        val step: String = "",
-        val error: String? = null,
-        val info: String? = null
-    )
+    private val _state = MutableStateFlow(BtcSendUiState())
+    val state: StateFlow<BtcSendUiState> = _state.asStateFlow()
 
     fun init(walletId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
 
-            val wallet = walletRepository.getWallet(walletId)
-            val bitcoinCoin = wallet?.bitcoin
-            if (bitcoinCoin == null) {
-                _state.update {
-                    it.copy(
-                        error = "Bitcoin not enabled for this wallet",
-                        isLoading = false
-                    )
+            when (val result = getBitcoinWalletUseCase(walletId)) {
+                is Result.Success -> {
+                    val walletInfo = result.data
+                    _state.update {
+                        it.copy(
+                            walletId = walletInfo.walletId,
+                            walletName = walletInfo.walletName,
+                            walletAddress = walletInfo.walletAddress,
+                            network = walletInfo.network
+                        )
+                    }
+                    loadBalance(walletInfo.walletAddress, walletInfo.network)
                 }
-                return@launch
-            }
 
-            _state.update {
-                it.copy(
-                    walletId = wallet.id,
-                    walletName = wallet.name,
-                    walletAddress = bitcoinCoin.address,
-                    network = bitcoinCoin.network
-                )
-            }
+                is Result.Error -> {
+                    _state.update {
+                        it.copy(
+                            error = result.message,
+                            isLoading = false
+                        )
+                    }
+                }
 
-            loadBalance(bitcoinCoin.address, bitcoinCoin.network)
-            loadFeeEstimate()
+                Result.Loading -> {}
+            }
         }
     }
 
     private suspend fun loadBalance(address: String, network: BitcoinNetwork) {
-        val balanceResult = getBitcoinBalanceUseCase(address, network)
-        when (balanceResult) {
+        when (val balanceResult = getBitcoinBalanceUseCase(address, network)) {
             is Result.Success -> {
                 val balance = balanceResult.data
                 _state.update {
@@ -89,34 +68,35 @@ class BitcoinSendViewModel @Inject constructor(
                         isLoading = false
                     )
                 }
-                Log.d("BitcoinSendVM", "Balance loaded: $balance BTC")
             }
+
             is Result.Error -> {
-                Log.e("BitcoinSendVM", "Error loading balance: ${balanceResult.message}")
                 _state.update {
                     it.copy(
-                        balance = BigDecimal.ZERO,
-                        balanceFormatted = "0 BTC",
                         error = "Failed to load balance: ${balanceResult.message}",
                         isLoading = false
                     )
                 }
             }
+
             Result.Loading -> {}
         }
     }
 
-    private suspend fun loadFeeEstimate() {
-        val feeResult = getBitcoinFeeEstimateUseCase(_state.value.feeLevel)
-        when (feeResult) {
-            is Result.Success -> {
-                _state.update { it.copy(feeEstimate = feeResult.data) }
-                Log.d("BitcoinSendVM", "Fee estimate loaded: ${feeResult.data.feePerByte} sat/byte")
+    fun updateFeeLevel(feeLevel: FeeLevel) {
+        _state.update { it.copy(feeLevel = feeLevel) }
+        viewModelScope.launch {
+            when (val feeResult = getBitcoinFeeEstimateUseCase(feeLevel)) {
+                is Result.Success -> {
+                    _state.update { it.copy(feeEstimate = feeResult.data) }
+                }
+
+                is Result.Error -> {
+                    _state.update { it.copy(error = "Failed to load fee: ${feeResult.message}") }
+                }
+
+                Result.Loading -> {}
             }
-            is Result.Error -> {
-                Log.e("BitcoinSendVM", "Error loading fee: ${feeResult.message}")
-            }
-            Result.Loading -> {}
         }
     }
 
@@ -154,21 +134,6 @@ class BitcoinSendViewModel @Inject constructor(
             it.copy(
                 amount = amount,
                 amountValue = amountValue
-            )
-        }
-    }
-
-    fun updateFeeLevel(feeLevel: FeeLevel) {
-        _state.update { it.copy(feeLevel = feeLevel) }
-        viewModelScope.launch {
-            loadFeeEstimate()
-        }
-    }
-
-    fun getTestnetCoins() {
-        _state.update {
-            it.copy(
-                info = "Get testnet BTC from: https://bitcoinfaucet.uo1.net"
             )
         }
     }
@@ -214,6 +179,7 @@ class BitcoinSendViewModel @Inject constructor(
                         }
                     }
                 }
+
                 is Result.Error -> {
                     _state.update {
                         it.copy(
@@ -222,6 +188,7 @@ class BitcoinSendViewModel @Inject constructor(
                         )
                     }
                 }
+
                 Result.Loading -> {}
             }
         }

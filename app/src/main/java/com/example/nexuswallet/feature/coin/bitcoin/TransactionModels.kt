@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
+import com.example.nexuswallet.feature.wallet.ui.SendResult
 import kotlinx.serialization.Serializable
 import org.bitcoinj.core.Coin
 import org.bitcoinj.core.TransactionOutPoint
@@ -31,3 +32,17 @@ data class BitcoinFeeEstimate(
     val estimatedSize: Long,           // Estimated transaction size in bytes
     val blockTarget: Int               // Block target (2, 6, 144 blocks)
 )
+
+data class BitcoinWalletInfo(
+    val walletId: String,
+    val walletName: String,
+    val walletAddress: String,
+    val network: BitcoinNetwork
+)
+
+data class SendBitcoinResult(
+    override val transactionId: String,
+    override val txHash: String,
+    override val success: Boolean,
+    override val error: String? = null
+) : SendResult
