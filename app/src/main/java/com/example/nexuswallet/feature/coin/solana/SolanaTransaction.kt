@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.coin.solana
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.ui.SendResult
 import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 
@@ -81,4 +82,22 @@ data class SolanaFeeEstimate(
     val priority: FeeLevel,
     val computeUnits: Int,                 // Compute units for the transaction
     val blockhash: String? = null          // Recent blockhash (if available)
+)
+
+data class SolanaSignedTransaction(
+    val signature: String,
+    val serialize: () -> ByteArray
+)
+
+data class SendSolanaResult(
+    override val transactionId: String,
+    override val txHash: String,
+    override val success: Boolean,
+    override val error: String? = null
+) : SendResult
+
+data class SolanaWalletInfo(
+    val walletId: String,
+    val walletName: String,
+    val walletAddress: String
 )
