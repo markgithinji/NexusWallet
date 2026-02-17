@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
-
 class WalletLocalDataSource @Inject constructor(
     private val walletDao: WalletDao,
     private val balanceDao: BalanceDao,
@@ -35,25 +34,11 @@ class WalletLocalDataSource @Inject constructor(
     }
 
     suspend fun loadWallet(walletId: String): Wallet? {
-        Log.d("WalletDebug", "Loading wallet with ID: $walletId")
-        val entity = walletDao.get(walletId)
-
-        if (entity == null) {
-            Log.e("WalletDebug", "Wallet not found in database for ID: $walletId")
-
-            // List all available wallets
-            val allWallets = walletDao.getAll().firstOrNull()
-            Log.d("WalletDebug", "Available wallet IDs: ${allWallets?.map { it.id }}")
-
-            return null
-        }
+        val entity = walletDao.get(walletId) ?: return null
 
         return try {
-            val wallet = json.decodeFromString<Wallet>(entity.walletJson)
-            Log.d("WalletDebug", "Successfully loaded wallet: ${wallet.name}")
-            wallet
+            json.decodeFromString<Wallet>(entity.walletJson)
         } catch (e: Exception) {
-            Log.e("WalletDebug", "Error deserializing wallet: ${e.message}")
             null
         }
     }
