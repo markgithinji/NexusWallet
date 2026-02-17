@@ -1,28 +1,26 @@
 package com.example.nexuswallet.feature.coin.solana
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
-import javax.inject.Inject
-import com.example.nexuswallet.feature.coin.Result
-import kotlinx.coroutines.flow.asStateFlow
 import java.math.RoundingMode
+import javax.inject.Inject
+
 @HiltViewModel
 class SolanaSendViewModel @Inject constructor(
+    private val getSolanaWalletUseCase: GetSolanaWalletUseCase,
     private val sendSolanaUseCase: SendSolanaUseCase,
     private val getSolanaBalanceUseCase: GetSolanaBalanceUseCase,
     private val getSolanaFeeEstimateUseCase: GetSolanaFeeEstimateUseCase,
-    private val validateSolanaAddressUseCase: ValidateSolanaAddressUseCase,
-    private val requestSolanaAirdropUseCase: RequestSolanaAirdropUseCase,
-    private val walletRepository: WalletRepository
+    private val validateSolanaAddressUseCase: ValidateSolanaAddressUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SendState())
@@ -43,9 +41,7 @@ class SolanaSendViewModel @Inject constructor(
         val feeEstimate: SolanaFeeEstimate? = null,
         val isLoading: Boolean = false,
         val step: String = "",
-        val error: String? = null,
-        val airdropSuccess: Boolean = false,
-        val airdropMessage: String? = null
+        val error: String? = null
     )
 
     sealed class SendEvent {
@@ -54,42 +50,41 @@ class SolanaSendViewModel @Inject constructor(
         data class FeeLevelChanged(val feeLevel: FeeLevel) : SendEvent()
         object Validate : SendEvent()
         object ClearError : SendEvent()
-        object ClearAirdropMessage : SendEvent()
     }
 
     fun init(walletId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
 
-            val wallet = walletRepository.getWallet(walletId)
-            if (wallet == null) {
-                _state.update { it.copy(error = "Wallet not found", isLoading = false) }
-                return@launch
-            }
+            when (val result = getSolanaWalletUseCase(walletId)) {
+                is Result.Success -> {
+                    val walletInfo = result.data
+                    _state.update {
+                        it.copy(
+                            walletId = walletInfo.walletId,
+                            walletName = walletInfo.walletName,
+                            walletAddress = walletInfo.walletAddress
+                        )
+                    }
+                    loadBalance(walletInfo.walletAddress)
+                }
 
-            val solanaCoin = wallet.solana
-            if (solanaCoin == null) {
-                _state.update { it.copy(error = "Solana not enabled", isLoading = false) }
-                return@launch
-            }
+                is Result.Error -> {
+                    _state.update {
+                        it.copy(
+                            error = result.message,
+                            isLoading = false
+                        )
+                    }
+                }
 
-            _state.update {
-                it.copy(
-                    walletId = wallet.id,
-                    walletName = wallet.name,
-                    walletAddress = solanaCoin.address
-                )
+                Result.Loading -> {}
             }
-
-            // Load balance and fee estimate in parallel
-            loadBalance(solanaCoin.address)
-            loadFeeEstimate()
         }
     }
 
     private suspend fun loadBalance(address: String) {
-        val balanceResult = getSolanaBalanceUseCase(address)
-        when (balanceResult) {
+        when (val balanceResult = getSolanaBalanceUseCase(address)) {
             is Result.Success -> {
                 val balance = balanceResult.data
                 _state.update {
@@ -99,33 +94,31 @@ class SolanaSendViewModel @Inject constructor(
                         isLoading = false
                     )
                 }
-                Log.d("SolanaSendVM", "Balance loaded: $balance SOL")
             }
+
             is Result.Error -> {
-                Log.e("SolanaSendVM", "Error loading balance: ${balanceResult.message}")
                 _state.update {
                     it.copy(
-                        balance = BigDecimal.ZERO,
-                        balanceFormatted = "0 SOL",
                         error = "Failed to load balance: ${balanceResult.message}",
                         isLoading = false
                     )
                 }
             }
+
             Result.Loading -> {}
         }
     }
 
     private suspend fun loadFeeEstimate() {
-        val feeResult = getSolanaFeeEstimateUseCase(_state.value.feeLevel)
-        when (feeResult) {
+        when (val feeResult = getSolanaFeeEstimateUseCase(_state.value.feeLevel)) {
             is Result.Success -> {
                 _state.update { it.copy(feeEstimate = feeResult.data) }
-                Log.d("SolanaSendVM", "Fee estimate loaded: ${feeResult.data.feeSol} SOL")
             }
+
             is Result.Error -> {
-                Log.e("SolanaSendVM", "Error loading fee: ${feeResult.message}")
+                _state.update { it.copy(error = "Failed to load fee: ${feeResult.message}") }
             }
+
             Result.Loading -> {}
         }
     }
@@ -137,6 +130,7 @@ class SolanaSendViewModel @Inject constructor(
                 validateAddress(event.address)
                 validateInputs()
             }
+
             is SendEvent.AmountChanged -> {
                 val amountValue = event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
                 _state.update {
@@ -147,6 +141,7 @@ class SolanaSendViewModel @Inject constructor(
                 }
                 validateInputs()
             }
+
             is SendEvent.FeeLevelChanged -> {
                 _state.update { it.copy(feeLevel = event.feeLevel) }
                 viewModelScope.launch {
@@ -154,9 +149,9 @@ class SolanaSendViewModel @Inject constructor(
                     validateInputs()
                 }
             }
+
             SendEvent.Validate -> validateInputs()
             SendEvent.ClearError -> clearError()
-            SendEvent.ClearAirdropMessage -> clearAirdropMessage()
         }
     }
 
@@ -165,7 +160,6 @@ class SolanaSendViewModel @Inject constructor(
         val toAddress = currentState.toAddress
         val amount = currentState.amountValue
 
-        // Reset error state first
         var errorMessage: String? = null
         var isValid = true
 
@@ -181,12 +175,9 @@ class SolanaSendViewModel @Inject constructor(
         } else if (toAddress == currentState.walletAddress) {
             errorMessage = "Cannot send to yourself"
             isValid = false
-        } else if (amount > currentState.balance) {
-            errorMessage = "Insufficient balance"
-            isValid = false
         } else {
-            // Check balance including fees
-            val fee = currentState.feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal("0.000005")
+            val fee =
+                currentState.feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal("0.000005")
             val totalRequired = amount + fee
             if (totalRequired > currentState.balance) {
                 errorMessage = "Insufficient balance (including fees)"
@@ -200,27 +191,34 @@ class SolanaSendViewModel @Inject constructor(
 
     private fun validateAddress(address: String) {
         if (address.isNotEmpty()) {
-            val validationResult = validateSolanaAddressUseCase(address)
-            when (validationResult) {
+            when (val validationResult = validateSolanaAddressUseCase(address)) {
                 is Result.Success -> {
-                    _state.update { it.copy(
-                        isAddressValid = validationResult.data,
-                        addressError = if (!validationResult.data) "Invalid Solana address" else null
-                    )}
+                    _state.update {
+                        it.copy(
+                            isAddressValid = validationResult.data,
+                            addressError = if (!validationResult.data) "Invalid Solana address" else null
+                        )
+                    }
                 }
+
                 is Result.Error -> {
-                    _state.update { it.copy(
-                        isAddressValid = false,
-                        addressError = "Address validation failed"
-                    )}
+                    _state.update {
+                        it.copy(
+                            isAddressValid = false,
+                            addressError = "Address validation failed"
+                        )
+                    }
                 }
+
                 Result.Loading -> {}
             }
         } else {
-            _state.update { it.copy(
-                isAddressValid = false,
-                addressError = null
-            )}
+            _state.update {
+                it.copy(
+                    isAddressValid = false,
+                    addressError = null
+                )
+            }
         }
     }
 
@@ -230,43 +228,11 @@ class SolanaSendViewModel @Inject constructor(
         } catch (e: Exception) {
             BigDecimal.ZERO
         }
-        _state.update { it.copy(
-            amount = amount,
-            amountValue = amountValue
-        )}
-    }
-
-    fun requestAirdrop() {
-        viewModelScope.launch {
-            if (_state.value.walletAddress.isEmpty()) {
-                _state.update { it.copy(error = "Wallet not loaded") }
-                return@launch
-            }
-
-            _state.update { it.copy(isLoading = true, error = null, step = "Requesting airdrop...") }
-
-            val result = requestSolanaAirdropUseCase(_state.value.walletAddress)
-
-            when (result) {
-                is Result.Success -> {
-                    _state.update { it.copy(
-                        isLoading = false,
-                        airdropSuccess = true,
-                        airdropMessage = "1 SOL requested. It may take a moment.",
-                        step = ""
-                    )}
-                    // Reload balance after airdrop
-                    loadBalance(_state.value.walletAddress)
-                }
-                is Result.Error -> {
-                    _state.update { it.copy(
-                        isLoading = false,
-                        error = "Airdrop failed: ${result.message}",
-                        step = ""
-                    )}
-                }
-                Result.Loading -> {}
-            }
+        _state.update {
+            it.copy(
+                amount = amount,
+                amountValue = amountValue
+            )
         }
     }
 
@@ -281,7 +247,7 @@ class SolanaSendViewModel @Inject constructor(
             val toAddress = state.toAddress
             val amount = state.amountValue
 
-            if (!validateInputs(toAddress, amount)) {
+            if (!validateInputs()) {
                 return@launch
             }
 
@@ -291,7 +257,7 @@ class SolanaSendViewModel @Inject constructor(
                 walletId = state.walletId,
                 toAddress = toAddress,
                 amount = amount,
-                feeLevel = state.feeLevel, // Pass the selected fee level
+                feeLevel = state.feeLevel,
                 note = null
             )
 
@@ -302,69 +268,33 @@ class SolanaSendViewModel @Inject constructor(
                         _state.update { it.copy(isLoading = false, step = "Sent!") }
                         onSuccess(sendResult.txHash)
                     } else {
-                        _state.update { it.copy(
-                            isLoading = false,
-                            error = sendResult.error ?: "Send failed",
-                            step = ""
-                        ) }
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
+                                error = sendResult.error ?: "Send failed",
+                                step = ""
+                            )
+                        }
                     }
                 }
+
                 is Result.Error -> {
-                    _state.update { it.copy(
-                        isLoading = false,
-                        error = result.message,
-                        step = ""
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = result.message,
+                            step = ""
+                        )
+                    }
                 }
+
                 Result.Loading -> {}
             }
         }
     }
 
-    private fun validateInputs(toAddress: String, amount: BigDecimal): Boolean {
-        if (toAddress.isBlank()) {
-            _state.update { it.copy(error = "Please enter a recipient address") }
-            return false
-        }
-
-        if (!_state.value.isAddressValid) {
-            _state.update { it.copy(error = "Invalid Solana address format") }
-            return false
-        }
-
-        if (amount <= BigDecimal.ZERO) {
-            _state.update { it.copy(error = "Amount must be greater than 0") }
-            return false
-        }
-
-        if (toAddress == _state.value.walletAddress) {
-            _state.update { it.copy(error = "Cannot send to yourself") }
-            return false
-        }
-
-        // Check if amount exceeds balance
-        if (amount > _state.value.balance) {
-            _state.update { it.copy(error = "Insufficient balance") }
-            return false
-        }
-
-        // Optionally check if amount + fee exceeds balance
-        val fee = _state.value.feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal("0.000005")
-        val totalRequired = amount + fee
-        if (totalRequired > _state.value.balance) {
-            _state.update { it.copy(error = "Insufficient balance (including fees)") }
-            return false
-        }
-
-        return true
-    }
-
     fun clearError() {
         _state.update { it.copy(error = null) }
-    }
-
-    fun clearAirdropMessage() {
-        _state.update { it.copy(airdropSuccess = false, airdropMessage = null) }
     }
 
     fun resetState() {
