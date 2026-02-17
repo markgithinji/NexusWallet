@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
-import android.util.Log
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import kotlinx.coroutines.Dispatchers
@@ -32,10 +31,6 @@ class BitcoinBlockchainRepository @Inject constructor(
     @param:Named("bitcoinTestnet") private val testnetApi: BitcoinApi
 ) {
 
-    companion object {
-        private const val SATOSHIS_PER_BTC = 100_000_000L
-    }
-
     private fun getApiForNetwork(network: BitcoinNetwork): BitcoinApi {
         return when (network) {
             BitcoinNetwork.MAINNET -> mainnetApi
@@ -52,8 +47,6 @@ class BitcoinBlockchainRepository @Inject constructor(
     ): Result<BigDecimal> {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d("BitcoinRepo", "getBalance via API for: $address")
-
                 val api = getApiForNetwork(network)
                 val response = api.getAddressInfo(address)
 
@@ -71,7 +64,6 @@ class BitcoinBlockchainRepository @Inject constructor(
                 Result.Success(btcBalance)
 
             } catch (e: Exception) {
-                Log.e("BitcoinRepo", "Error getting balance: ${e.message}", e)
                 Result.Error("Failed to get balance: ${e.message}", e)
             }
         }
@@ -128,40 +120,9 @@ class BitcoinBlockchainRepository @Inject constructor(
                 )
 
             } catch (e: Exception) {
-                Log.e("BitcoinRepo", "Error getting fee estimate: ${e.message}")
-                Result.Success(getDefaultFeeEstimate(feeLevel))
+                Result.Error("Failed to get fee estimate: ${e.message}", e)
             }
         }
-    }
-
-    private fun getDefaultFeeEstimate(feeLevel: FeeLevel): BitcoinFeeEstimate {
-        val (feePerByte, blockTarget) = when (feeLevel) {
-            FeeLevel.SLOW -> 1.0 to 144
-            FeeLevel.NORMAL -> 10.0 to 6
-            FeeLevel.FAST -> 20.0 to 2
-        }
-        val estimatedSize = 250L
-        val totalFeeSatoshis = (estimatedSize * feePerByte).toLong()
-
-        val totalFeeBtc = BigDecimal(totalFeeSatoshis).divide(
-            BigDecimal(SATOSHIS_PER_BTC),
-            8,
-            RoundingMode.HALF_UP
-        ).toPlainString()
-
-        return BitcoinFeeEstimate(
-            feePerByte = feePerByte,
-            totalFeeSatoshis = totalFeeSatoshis,
-            totalFeeBtc = totalFeeBtc,
-            estimatedTime = when (feeLevel) {
-                FeeLevel.SLOW -> 144 * 10 * 60
-                FeeLevel.NORMAL -> 6 * 10 * 60
-                FeeLevel.FAST -> 2 * 10 * 60
-            },
-            priority = feeLevel,
-            estimatedSize = estimatedSize,
-            blockTarget = blockTarget
-        )
     }
 
     /**
@@ -173,14 +134,10 @@ class BitcoinBlockchainRepository @Inject constructor(
     ): Result<BroadcastResult> {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d("BitcoinRepo", "Broadcasting transaction via Retrofit API...")
-                Log.d("BitcoinRepo", "Network: $network")
-                Log.d("BitcoinRepo", "Transaction hex length: ${signedHex.length}")
-                Log.d("BitcoinRepo", "Hex preview: ${signedHex.take(100)}...")
+                val api = getApiForNetwork(network)
 
                 // Validate hex format
                 if (!signedHex.matches(Regex("^[0-9a-fA-F]+$"))) {
-                    Log.e("BitcoinRepo", "Invalid hex format - contains non-hex characters")
                     return@withContext Result.Success(
                         BroadcastResult(
                             success = false,
@@ -189,17 +146,12 @@ class BitcoinBlockchainRepository @Inject constructor(
                     )
                 }
 
-                val api = getApiForNetwork(network)
-
                 // Make the API call
                 val response = try {
                     api.broadcastTransaction(signedHex)
                 } catch (e: HttpException) {
                     // Handle HTTP errors
                     val errorBody = e.response()?.errorBody()?.string()
-                    Log.e("BitcoinRepo", "Broadcast HTTP error: ${e.code()}")
-                    Log.e("BitcoinRepo", "Error body: $errorBody")
-
                     return@withContext Result.Success(
                         BroadcastResult(
                             success = false,
@@ -208,7 +160,6 @@ class BitcoinBlockchainRepository @Inject constructor(
                     )
                 } catch (e: Exception) {
                     // Handle other errors
-                    Log.e("BitcoinRepo", "Broadcast error: ${e.message}", e)
                     return@withContext Result.Success(
                         BroadcastResult(
                             success = false,
@@ -221,7 +172,6 @@ class BitcoinBlockchainRepository @Inject constructor(
                 val txId = try {
                     response.string().trim()
                 } catch (e: Exception) {
-                    Log.e("BitcoinRepo", "Error reading response body: ${e.message}")
                     return@withContext Result.Success(
                         BroadcastResult(
                             success = false,
@@ -232,7 +182,6 @@ class BitcoinBlockchainRepository @Inject constructor(
 
                 // Blockstream returns the transaction ID as plain text on success
                 if (txId.matches(Regex("^[0-9a-fA-F]{64}$"))) {
-                    Log.d("BitcoinRepo", "Transaction broadcast successful: $txId")
                     Result.Success(
                         BroadcastResult(
                             success = true,
@@ -241,7 +190,6 @@ class BitcoinBlockchainRepository @Inject constructor(
                     )
                 } else {
                     // If response doesn't look like a txid, it's probably an error
-                    Log.e("BitcoinRepo", "Unexpected response: $txId")
                     Result.Success(
                         BroadcastResult(
                             success = false,
@@ -251,7 +199,6 @@ class BitcoinBlockchainRepository @Inject constructor(
                 }
 
             } catch (e: Exception) {
-                Log.e("BitcoinRepo", "Error broadcasting: ${e.message}", e)
                 Result.Success(
                     BroadcastResult(
                         success = false,
@@ -268,8 +215,6 @@ class BitcoinBlockchainRepository @Inject constructor(
     private suspend fun getUnspentOutputs(address: String, network: BitcoinNetwork): List<UTXO> {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d("BitcoinRepo", "Getting UTXOs via API for: $address")
-
                 val api = getApiForNetwork(network)
                 val utxos = api.getUtxos(address)
 
@@ -303,14 +248,13 @@ class BitcoinBlockchainRepository @Inject constructor(
                             result.add(bitcoinjUtxo)
                         }
                     } catch (e: Exception) {
-                        Log.e("BitcoinRepo", "Error processing UTXO: ${e.message}")
+                        // Skip problematic UTXO
                     }
                 }
 
                 return@withContext result
 
             } catch (e: Exception) {
-                Log.e("BitcoinRepo", "Error getting UTXOs: ${e.message}")
                 emptyList()
             }
         }
@@ -332,7 +276,6 @@ class BitcoinBlockchainRepository @Inject constructor(
                     null
                 }
             } catch (e: Exception) {
-                Log.e("BitcoinRepo", "Error fetching script from TX $txid: ${e.message}")
                 null
             }
         }
@@ -349,8 +292,6 @@ class BitcoinBlockchainRepository @Inject constructor(
     ): Result<Transaction> {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d("BitcoinRepo", "Creating transaction: $satoshis satoshis to $toAddress")
-
                 val networkParams = when (network) {
                     BitcoinNetwork.MAINNET -> MainNetParams.get()
                     BitcoinNetwork.TESTNET -> TestNet3Params.get()
@@ -371,7 +312,6 @@ class BitcoinBlockchainRepository @Inject constructor(
                     )
                 }
 
-                Log.d("BitcoinRepo", "Found ${utxos.size} UTXOs")
                 var totalInputValue = Coin.ZERO
                 for (utxo in utxos) {
                     val input = TransactionInput(
@@ -382,26 +322,18 @@ class BitcoinBlockchainRepository @Inject constructor(
                     )
                     tx.addInput(input)
                     totalInputValue = totalInputValue.add(utxo.value)
-                    Log.d(
-                        "BitcoinRepo",
-                        "Added input: ${utxo.value.value} satoshis, total: ${totalInputValue.value}"
-                    )
 
                     if (totalInputValue.isGreaterThan(Coin.valueOf(satoshis + 1000))) {
-                        Log.d("BitcoinRepo", "Collected enough inputs")
                         break
                     }
                 }
 
                 val fee = Coin.valueOf(1000) // TODO: Consider using a more dynamic fee
-                Log.d("BitcoinRepo", "Fee: ${fee.value} satoshis")
 
                 val changeValue = totalInputValue.subtract(Coin.valueOf(satoshis)).subtract(fee)
-                Log.d("BitcoinRepo", "Change: ${changeValue.value} satoshis")
 
                 if (changeValue.isPositive) {
                     tx.addOutput(changeValue, LegacyAddress.fromKey(networkParams, fromKey))
-                    Log.d("BitcoinRepo", "Added change output")
                 }
 
                 for (i in 0 until tx.inputs.size) {
@@ -419,7 +351,6 @@ class BitcoinBlockchainRepository @Inject constructor(
 
                     val script = ScriptBuilder.createInputScript(txSig, fromKey)
                     input.scriptSig = script
-                    Log.d("BitcoinRepo", "Signed input $i")
                 }
 
                 if (tx.inputs.isEmpty()) {
@@ -432,9 +363,7 @@ class BitcoinBlockchainRepository @Inject constructor(
                 // Verify the transaction
                 try {
                     tx.verify()
-                    Log.d("BitcoinRepo", "Transaction verification passed")
                 } catch (e: Exception) {
-                    Log.e("BitcoinRepo", "Transaction verification failed: ${e.message}")
                     return@withContext Result.Error(
                         "Transaction verification failed: ${e.message}",
                         e
@@ -444,9 +373,12 @@ class BitcoinBlockchainRepository @Inject constructor(
                 Result.Success(tx)
 
             } catch (e: Exception) {
-                Log.e("BitcoinRepo", "Error creating transaction: ${e.message}", e)
                 Result.Error("Failed to create transaction: ${e.message}", e)
             }
         }
+    }
+
+    companion object {
+        private const val SATOSHIS_PER_BTC = 100_000_000L
     }
 }
