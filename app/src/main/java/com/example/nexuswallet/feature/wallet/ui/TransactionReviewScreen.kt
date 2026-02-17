@@ -46,13 +46,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendViewModel
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.ethereum.EthereumFeeEstimate
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendViewModel
+import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
 import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
 import com.example.nexuswallet.feature.coin.usdc.USDCSendViewModel
+import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletType
@@ -61,7 +64,6 @@ import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionReviewScreen(
@@ -186,8 +188,6 @@ fun TransactionReviewScreen(
                                         feeLevel?.let {
                                             ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
                                         }
-
-                                        // Then call send
                                         ethereumViewModel.send { hash ->
                                             txHash = hash
                                             txStatus = "Transaction sent!"
@@ -195,8 +195,11 @@ fun TransactionReviewScreen(
                                         }
                                     }
                                     "USDC" -> {
-                                        usdcViewModel.updateAddress(toAddress)
-                                        usdcViewModel.updateAmount(amount)
+                                        usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ToAddressChanged(toAddress))
+                                        usdcViewModel.onEvent(USDCSendViewModel.SendEvent.AmountChanged(amount))
+                                        feeLevel?.let {
+                                            usdcViewModel.onEvent(USDCSendViewModel.SendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
+                                        }
                                         usdcViewModel.send { hash ->
                                             txHash = hash
                                             txStatus = "Transaction sent!"
@@ -204,8 +207,11 @@ fun TransactionReviewScreen(
                                         }
                                     }
                                     "SOL" -> {
-                                        solanaViewModel.updateAddress(toAddress)
-                                        solanaViewModel.updateAmount(amount)
+                                        solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ToAddressChanged(toAddress))
+                                        solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.AmountChanged(amount))
+                                        feeLevel?.let {
+                                            solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
+                                        }
                                         solanaViewModel.send { hash ->
                                             txHash = hash
                                             txStatus = "Transaction sent!"
@@ -337,46 +343,26 @@ fun TransactionReviewScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Fee Preview (if available)
+            // Fee Preview (now using coin-specific fee displays)
             when (coinType) {
                 "ETH" -> {
                     ethereumState.value.feeEstimate?.let { fee ->
-                        FeePreviewCard(
-                            fee = fee,
-                            coinType = coinType
-                        )
+                        EthereumFeePreviewCard(feeEstimate = fee)
                     }
                 }
                 "BTC" -> {
                     bitcoinState.value.feeEstimate?.let { fee ->
-                        FeePreviewCard(
-                            fee = fee,
-                            coinType = coinType
-                        )
+                        BitcoinFeePreviewCard(feeEstimate = fee)
                     }
                 }
-                else -> {
-                    // Show default fee for USDC and SOL
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Network Fee",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "≈ 0.0005 ${getTokenSymbol(coinType)}",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
+                "USDC" -> {
+                    usdcState.value.feeEstimate?.let { fee ->
+                        USDCFeePreviewCard(feeEstimate = fee)
+                    }
+                }
+                "SOL" -> {
+                    solanaState.value.feeEstimate?.let { fee ->
+                        SolanaFeePreviewCard(feeEstimate = fee)
                     }
                 }
             }
@@ -492,10 +478,7 @@ fun AddressCard(
 }
 
 @Composable
-fun FeePreviewCard(
-    fee: FeeEstimate,
-    coinType: String
-) {
+fun EthereumFeePreviewCard(feeEstimate: EthereumFeeEstimate) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -518,21 +501,281 @@ fun FeePreviewCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = fee.priority.name.lowercase().replaceFirstChar { it.uppercase() },
+                    text = feeEstimate.priority.name.lowercase().replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Text(
-                    text = "${fee.totalFeeDecimal} ${getTokenSymbol(coinType)}",
+                    text = "${feeEstimate.totalFeeEth} ETH",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
             }
 
-            if (fee.estimatedTime != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
-                    text = "≈ ${fee.estimatedTime} seconds",
+                    text = "Gas Price:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    text = "${feeEstimate.gasPriceGwei} Gwei",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Gas Limit:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    text = feeEstimate.gasLimit.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            if (feeEstimate.estimatedTime != null) {
+                Text(
+                    text = "≈ ${feeEstimate.estimatedTime} seconds",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun BitcoinFeePreviewCard(feeEstimate: BitcoinFeeEstimate) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Network Fee",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = feeEstimate.priority.name.lowercase().replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    text = "${feeEstimate.totalFeeBtc} BTC",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Fee Rate:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    text = "${feeEstimate.feePerByte} sat/byte",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Block Target:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    text = "${feeEstimate.blockTarget} blocks",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            if (feeEstimate.estimatedTime != null) {
+                Text(
+                    text = "≈ ${feeEstimate.estimatedTime} seconds",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun USDCFeePreviewCard(feeEstimate: USDCFeeEstimate) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Network Fee",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = feeEstimate.priority.name.lowercase().replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    text = "${feeEstimate.totalFeeEth} ETH",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Gas Price:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    text = "${feeEstimate.gasPriceGwei} Gwei",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Gas Limit:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    text = feeEstimate.gasLimit.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            if (feeEstimate.estimatedTime != null) {
+                Text(
+                    text = "≈ ${feeEstimate.estimatedTime} seconds",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SolanaFeePreviewCard(feeEstimate: SolanaFeeEstimate) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Network Fee",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = feeEstimate.priority.name.lowercase().replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    text = "${feeEstimate.feeSol} SOL",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Compute Units:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    text = feeEstimate.computeUnits.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            if (feeEstimate.estimatedTime != null) {
+                Text(
+                    text = "≈ ${feeEstimate.estimatedTime} second",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -568,39 +811,6 @@ private fun getExplorerUrl(coinType: String, txHash: String): String {
         "ETH" -> "https://etherscan.io/tx/$txHash"
         "SOL" -> "https://solscan.io/tx/$txHash"
         "USDC" -> "https://etherscan.io/tx/$txHash"
-        else -> "https://etherscan.io/tx/$txHash"
-    }
-}
-
-// Helper functions
-private fun getTokenSymbol(walletType: WalletType): String {
-    return when (walletType) {
-        WalletType.BITCOIN -> "BTC"
-        WalletType.SOLANA -> "SOL"
-        WalletType.USDC -> "USDC"
-        WalletType.ETHEREUM, WalletType.ETHEREUM_SEPOLIA -> "ETH"
-        else -> "TOKEN"
-    }
-}
-
-private fun getExplorerName(walletType: WalletType): String {
-    return when (walletType) {
-        WalletType.BITCOIN -> "Blockstream"
-        WalletType.ETHEREUM -> "Etherscan"
-        WalletType.ETHEREUM_SEPOLIA -> "Etherscan"
-        WalletType.SOLANA -> "Solscan"
-        WalletType.USDC -> "Etherscan"
-        else -> "Explorer"
-    }
-}
-
-private fun getExplorerUrl(walletType: WalletType, txHash: String): String {
-    return when (walletType) {
-        WalletType.BITCOIN -> "https://blockstream.info/tx/$txHash"
-        WalletType.ETHEREUM -> "https://etherscan.io/tx/$txHash"
-        WalletType.ETHEREUM_SEPOLIA -> "https://sepolia.etherscan.io/tx/$txHash"
-        WalletType.SOLANA -> "https://solscan.io/tx/$txHash"
-        WalletType.USDC -> "https://etherscan.io/tx/$txHash"
         else -> "https://etherscan.io/tx/$txHash"
     }
 }
