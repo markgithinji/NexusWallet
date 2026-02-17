@@ -19,15 +19,11 @@ import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendScreen
 import com.example.nexuswallet.feature.coin.solana.SolanaSendScreen
-import com.example.nexuswallet.feature.wallet.data.test.kettest.KeyStorageTestScreen
-import com.example.nexuswallet.feature.wallet.data.test.SepoliaTestScreen
-import com.example.nexuswallet.feature.wallet.ui.ApiDebugScreen
-import com.example.nexuswallet.feature.wallet.ui.BlockchainViewModel
 import com.example.nexuswallet.feature.wallet.ui.FullQrCodeScreen
 import com.example.nexuswallet.feature.wallet.ui.ReceiveScreen
 import com.example.nexuswallet.feature.wallet.ui.SendScreen
 import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
-import com.example.nexuswallet.feature.wallet.ui.TransactionStatusScreen
+
 //import com.example.nexuswallet.feature.wallet.domain.WalletDataManager
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
@@ -145,16 +141,6 @@ fun Navigation() {
             )
         }
 
-        composable(
-            route = "debug/{walletId}",
-            arguments = listOf(
-                navArgument("walletId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            ApiDebugScreen(navController, walletId)
-        }
-
         // Token Detail
         composable(
             route = "token/{tokenId}",
@@ -181,16 +167,6 @@ fun Navigation() {
             SettingsScreen(
                 navController = navController
             )
-        }
-
-        // Sepolia Test Screen
-        composable("sepoliaTest") {
-            SepoliaTestScreen(
-                navController = navController
-            )
-        }
-        composable("key_storage_test") {
-            KeyStorageTestScreen(navController)
         }
 
         composable("receive/{walletId}") { backStackEntry ->
@@ -323,33 +299,6 @@ fun Navigation() {
                 navController = navController,
                 walletId = walletId,
                 coinType = coinType
-            )
-        }
-        // Transaction Status Screen
-        composable(
-            route = "status/{transactionId}",
-            arguments = listOf(
-                navArgument("transactionId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
-            TransactionStatusScreen(
-                navController = navController,
-                transactionId = transactionId
-            )
-        }
-
-        // Transaction Status Screen
-        composable(
-            route = "transaction/{txHash}",
-            arguments = listOf(
-                navArgument("txHash") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val txHash = backStackEntry.arguments?.getString("txHash") ?: ""
-            TransactionStatusScreen(
-                navController = navController,
-                transactionId = txHash
             )
         }
 

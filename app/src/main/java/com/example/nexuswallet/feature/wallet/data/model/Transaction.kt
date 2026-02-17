@@ -27,32 +27,8 @@ data class FeeEstimate(
 )
 
 @Serializable
-data class SignedTransaction(
-    val rawHex: String,
-    val hash: String,
-    val chain: ChainType
-)
-
-@Serializable
 data class BroadcastResult(
     val success: Boolean,
     val hash: String? = null,
     val error: String? = null
-)
-
-@Serializable
-data class BitcoinOutput(
-    val address: String,
-    val amount: Long // satoshis
-)
-
-@Serializable
-data class EthereumTransactionData(
-    val nonce: String,
-    val gasPrice: String, // in wei
-    val gasLimit: String,
-    val to: String,
-    val value: String, // in wei
-    val data: String = "0x",
-    val chainId: Long
 )

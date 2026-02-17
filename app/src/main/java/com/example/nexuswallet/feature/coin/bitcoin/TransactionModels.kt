@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
-import com.example.nexuswallet.feature.wallet.data.model.BitcoinOutput
 import kotlinx.serialization.Serializable
 import org.bitcoinj.core.Coin
 import org.bitcoinj.core.TransactionOutPoint
