@@ -3,7 +3,6 @@ package com.example.nexuswallet.feature.coin.bitcoin
 import android.util.Log
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
@@ -107,24 +106,15 @@ class SendBitcoinUseCase @Inject constructor(
                     Log.e("SendBitcoinUC", "Failed to get fee estimate: ${feeResult.message}")
                     return null
                 }
-
                 Result.Loading -> {
                     Log.e("SendBitcoinUC", "Timeout getting fee estimate")
                     return null
                 }
             }
 
-            val feePerByteString = feeEstimate.feePerByte ?: "1.0"
-            val feePerByte = feePerByteString.toDoubleOrNull() ?: 1.0
-
             val satoshis = amount.multiply(BigDecimal("100000000")).toLong()
-            val estimatedSize = 250L
-            val fee = (estimatedSize * feePerByte).toLong()
 
-            val totalFeeDecimal = feeEstimate.totalFeeDecimal.ifBlank {
-                BigDecimal(fee).divide(BigDecimal("100000000"), 8, RoundingMode.HALF_UP)
-                    .toPlainString()
-            }
+            val fee = feeEstimate.totalFeeSatoshis
 
             val transaction = BitcoinTransaction(
                 id = "btc_tx_${System.currentTimeMillis()}",
@@ -134,9 +124,9 @@ class SendBitcoinUseCase @Inject constructor(
                 amountSatoshis = satoshis,
                 amountBtc = amount.toPlainString(),
                 feeSatoshis = fee,
-                feeBtc = BigDecimal(totalFeeDecimal).toPlainString(),
-                feePerByte = feePerByte,
-                estimatedSize = estimatedSize,
+                feeBtc = feeEstimate.totalFeeBtc,
+                feePerByte = feeEstimate.feePerByte,
+                estimatedSize = feeEstimate.estimatedSize,
                 signedHex = null,
                 txHash = null,
                 status = TransactionStatus.PENDING,
@@ -310,7 +300,7 @@ data class SendBitcoinResult(
 class GetBitcoinFeeEstimateUseCase @Inject constructor(
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository
 ) {
-    suspend operator fun invoke(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<FeeEstimate> {
+    suspend operator fun invoke(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<BitcoinFeeEstimate> {
         return bitcoinBlockchainRepository.getFeeEstimate(feeLevel)
     }
 }

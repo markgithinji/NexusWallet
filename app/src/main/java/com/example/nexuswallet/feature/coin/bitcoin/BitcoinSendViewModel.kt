@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +40,7 @@ class BitcoinSendViewModel @Inject constructor(
         val amountValue: BigDecimal = BigDecimal.ZERO,
         val network: BitcoinNetwork = BitcoinNetwork.TESTNET,
         val feeLevel: FeeLevel = FeeLevel.NORMAL,
-        val feeEstimate: FeeEstimate? = null,
+        val feeEstimate: BitcoinFeeEstimate? = null,
         val isLoading: Boolean = false,
         val step: String = "",
         val error: String? = null,
@@ -52,10 +51,7 @@ class BitcoinSendViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
 
-            // Get wallet from repository
             val wallet = walletRepository.getWallet(walletId)
-
-            // Check if Bitcoin is enabled for this wallet
             val bitcoinCoin = wallet?.bitcoin
             if (bitcoinCoin == null) {
                 _state.update {
@@ -76,7 +72,6 @@ class BitcoinSendViewModel @Inject constructor(
                 )
             }
 
-            // Load balance and fee estimate
             loadBalance(bitcoinCoin.address, bitcoinCoin.network)
             loadFeeEstimate()
         }
@@ -96,7 +91,6 @@ class BitcoinSendViewModel @Inject constructor(
                 }
                 Log.d("BitcoinSendVM", "Balance loaded: $balance BTC")
             }
-
             is Result.Error -> {
                 Log.e("BitcoinSendVM", "Error loading balance: ${balanceResult.message}")
                 _state.update {
@@ -108,7 +102,6 @@ class BitcoinSendViewModel @Inject constructor(
                     )
                 }
             }
-
             Result.Loading -> {}
         }
     }
@@ -118,12 +111,11 @@ class BitcoinSendViewModel @Inject constructor(
         when (feeResult) {
             is Result.Success -> {
                 _state.update { it.copy(feeEstimate = feeResult.data) }
+                Log.d("BitcoinSendVM", "Fee estimate loaded: ${feeResult.data.feePerByte} sat/byte")
             }
-
             is Result.Error -> {
                 Log.e("BitcoinSendVM", "Error loading fee: ${feeResult.message}")
             }
-
             Result.Loading -> {}
         }
     }
@@ -222,7 +214,6 @@ class BitcoinSendViewModel @Inject constructor(
                         }
                     }
                 }
-
                 is Result.Error -> {
                     _state.update {
                         it.copy(
@@ -231,7 +222,6 @@ class BitcoinSendViewModel @Inject constructor(
                         )
                     }
                 }
-
                 Result.Loading -> {}
             }
         }
@@ -261,7 +251,7 @@ class BitcoinSendViewModel @Inject constructor(
 
         val feeEstimate = _state.value.feeEstimate
         val feeBtc = if (feeEstimate != null) {
-            BigDecimal(feeEstimate.totalFeeDecimal)
+            BigDecimal(feeEstimate.totalFeeBtc)
         } else {
             BigDecimal("0.00001")
         }
@@ -274,7 +264,6 @@ class BitcoinSendViewModel @Inject constructor(
 
         return true
     }
-
 
     fun clearError() {
         _state.update { it.copy(error = null) }

@@ -3,7 +3,6 @@ package com.example.nexuswallet.feature.coin.bitcoin
 import android.util.Log
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bitcoinj.core.Address
@@ -79,43 +78,52 @@ class BitcoinBlockchainRepository @Inject constructor(
     }
 
     /**
-     * Get fee estimate based on priority
+     * Get Bitcoin fee estimate based on priority
      */
-    suspend fun getFeeEstimate(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<FeeEstimate> {
+    suspend fun getFeeEstimate(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<BitcoinFeeEstimate> {
         return withContext(Dispatchers.IO) {
             try {
-                val api =
-                    getApiForNetwork(BitcoinNetwork.MAINNET) // Fee estimates are same for all networks
+                val api = getApiForNetwork(BitcoinNetwork.MAINNET)
                 val estimates = api.getFeeEstimates()
 
+                // Block targets from Blockstream API:
+                // "2" -> next block (fast)
+                // "6" -> within 6 blocks (normal)
+                // "144" -> within 144 blocks (slow)
                 val feePerByte = when (feeLevel) {
                     FeeLevel.SLOW -> estimates["144"] ?: 1.0
                     FeeLevel.NORMAL -> estimates["6"] ?: 10.0
                     FeeLevel.FAST -> estimates["2"] ?: 20.0
                 }
 
-                val estimatedSize = 250L
+                val blockTarget = when (feeLevel) {
+                    FeeLevel.SLOW -> 144
+                    FeeLevel.NORMAL -> 6
+                    FeeLevel.FAST -> 2
+                }
+
+                val estimatedSize = 250L // Average transaction size
                 val totalFeeSatoshis = (estimatedSize * feePerByte).toLong()
 
-                val totalFeeDecimal = BigDecimal(totalFeeSatoshis).divide(
+                val totalFeeBtc = BigDecimal(totalFeeSatoshis).divide(
                     BigDecimal(SATOSHIS_PER_BTC),
                     8,
                     RoundingMode.HALF_UP
                 ).toPlainString()
 
                 Result.Success(
-                    FeeEstimate(
-                        feePerByte = feePerByte.toString(),
-                        gasPrice = null,
-                        totalFee = totalFeeSatoshis.toString(),
-                        totalFeeDecimal = totalFeeDecimal,
+                    BitcoinFeeEstimate(
+                        feePerByte = feePerByte,
+                        totalFeeSatoshis = totalFeeSatoshis,
+                        totalFeeBtc = totalFeeBtc,
                         estimatedTime = when (feeLevel) {
-                            FeeLevel.SLOW -> 144
-                            FeeLevel.NORMAL -> 6
-                            FeeLevel.FAST -> 2
+                            FeeLevel.SLOW -> 144 * 10 * 60 // 144 blocks * ~10 minutes
+                            FeeLevel.NORMAL -> 6 * 10 * 60 // 6 blocks * ~10 minutes
+                            FeeLevel.FAST -> 2 * 10 * 60 // 2 blocks * ~10 minutes
                         },
                         priority = feeLevel,
-                        metadata = mapOf("estimatedSize" to estimatedSize.toString())
+                        estimatedSize = estimatedSize,
+                        blockTarget = blockTarget
                     )
                 )
 
@@ -126,31 +134,33 @@ class BitcoinBlockchainRepository @Inject constructor(
         }
     }
 
-    private fun getDefaultFeeEstimate(feeLevel: FeeLevel): FeeEstimate {
-        val feePerByte = when (feeLevel) {
-            FeeLevel.SLOW -> 1.0
-            FeeLevel.NORMAL -> 10.0
-            FeeLevel.FAST -> 20.0
+    private fun getDefaultFeeEstimate(feeLevel: FeeLevel): BitcoinFeeEstimate {
+        val (feePerByte, blockTarget) = when (feeLevel) {
+            FeeLevel.SLOW -> 1.0 to 144
+            FeeLevel.NORMAL -> 10.0 to 6
+            FeeLevel.FAST -> 20.0 to 2
         }
         val estimatedSize = 250L
         val totalFeeSatoshis = (estimatedSize * feePerByte).toLong()
 
-        return FeeEstimate(
-            feePerByte = feePerByte.toString(),
-            gasPrice = null,
-            totalFee = totalFeeSatoshis.toString(),
-            totalFeeDecimal = BigDecimal(totalFeeSatoshis).divide(
-                BigDecimal(SATOSHIS_PER_BTC),
-                8,
-                RoundingMode.HALF_UP
-            ).toPlainString(),
+        val totalFeeBtc = BigDecimal(totalFeeSatoshis).divide(
+            BigDecimal(SATOSHIS_PER_BTC),
+            8,
+            RoundingMode.HALF_UP
+        ).toPlainString()
+
+        return BitcoinFeeEstimate(
+            feePerByte = feePerByte,
+            totalFeeSatoshis = totalFeeSatoshis,
+            totalFeeBtc = totalFeeBtc,
             estimatedTime = when (feeLevel) {
-                FeeLevel.SLOW -> 144
-                FeeLevel.NORMAL -> 6
-                FeeLevel.FAST -> 2
+                FeeLevel.SLOW -> 144 * 10 * 60
+                FeeLevel.NORMAL -> 6 * 10 * 60
+                FeeLevel.FAST -> 2 * 10 * 60
             },
             priority = feeLevel,
-            metadata = mapOf("estimatedSize" to estimatedSize.toString())
+            estimatedSize = estimatedSize,
+            blockTarget = blockTarget
         )
     }
 
