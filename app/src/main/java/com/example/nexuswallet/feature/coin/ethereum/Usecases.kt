@@ -3,7 +3,6 @@ package com.example.nexuswallet.feature.coin.ethereum
 
 import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
@@ -29,7 +28,6 @@ import com.example.nexuswallet.feature.wallet.ui.SendResult
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.math.RoundingMode
-
 @Singleton
 class SendEthereumUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
@@ -109,40 +107,22 @@ class SendEthereumUseCase @Inject constructor(
             val nonceResult = ethereumBlockchainRepository.getEthereumNonce(ethereumCoin.address, ethereumCoin.network)
             val nonce = when (nonceResult) {
                 is Result.Success -> nonceResult.data
-                is Result.Error -> {
-                    Log.e("SendEthereumUC", "Failed to get nonce: ${nonceResult.message}")
-                    return null
-                }
-                Result.Loading -> {
-                    Log.e("SendEthereumUC", "Timeout getting nonce")
+                else -> {
+                    Log.e("SendEthereumUC", "Failed to get nonce")
                     return null
                 }
             }
 
-            val gasPriceResult = ethereumBlockchainRepository.getEthereumGasPrice(ethereumCoin.network)
-            val gasPrice = when (gasPriceResult) {
-                is Result.Success -> gasPriceResult.data
-                is Result.Error -> {
-                    Log.e("SendEthereumUC", "Failed to get gas price: ${gasPriceResult.message}")
+            val feeResult = ethereumBlockchainRepository.getFeeEstimate(feeLevel)
+            val feeEstimate = when (feeResult) {
+                is Result.Success -> feeResult.data
+                else -> {
+                    Log.e("SendEthereumUC", "Failed to get fee estimate")
                     return null
                 }
-                Result.Loading -> {
-                    Log.e("SendEthereumUC", "Timeout getting gas price")
-                    return null
-                }
-            }
-
-            val selectedFee = when (feeLevel) {
-                FeeLevel.SLOW -> gasPrice.slow
-                FeeLevel.FAST -> gasPrice.fast
-                else -> gasPrice.normal
             }
 
             val amountWei = amount.multiply(BigDecimal("1000000000000000000")).toBigInteger()
-            val gasPriceWei = (BigDecimal(selectedFee.gasPrice) * BigDecimal("1000000000")).toBigInteger()
-            val gasLimit = 21000L
-            val feeWei = gasPriceWei.multiply(BigInteger.valueOf(gasLimit))
-            val feeEth = BigDecimal(feeWei).divide(BigDecimal("1000000000000000000"), 18, RoundingMode.HALF_UP)
 
             val transaction = EthereumTransaction(
                 id = "tx_${System.currentTimeMillis()}",
@@ -151,13 +131,13 @@ class SendEthereumUseCase @Inject constructor(
                 toAddress = toAddress,
                 amountWei = amountWei.toString(),
                 amountEth = amount.toPlainString(),
-                gasPriceWei = gasPriceWei.toString(),
-                gasPriceGwei = BigDecimal(selectedFee.gasPrice).toPlainString(),
-                gasLimit = gasLimit,
-                feeWei = feeWei.toString(),
-                feeEth = feeEth.toPlainString(),
+                gasPriceWei = feeEstimate.gasPriceWei,
+                gasPriceGwei = feeEstimate.gasPriceGwei,
+                gasLimit = feeEstimate.gasLimit,
+                feeWei = feeEstimate.totalFeeWei,
+                feeEth = feeEstimate.totalFeeEth,
                 nonce = nonce,
-                chainId = if (ethereumCoin.network == EthereumNetwork.Sepolia) 11155111L else 1L,
+                chainId = ethereumCoin.network.chainId.toLong(),
                 signedHex = null,
                 txHash = null,
                 status = TransactionStatus.PENDING,
@@ -178,6 +158,7 @@ class SendEthereumUseCase @Inject constructor(
         }
     }
 
+    // Keep signTransaction and broadcastTransaction as they were
     private suspend fun signTransaction(transaction: EthereumTransaction): EthereumTransaction? {
         try {
             Log.d("SendEthereumUC", "Signing transaction: ${transaction.id}")
@@ -197,36 +178,14 @@ class SendEthereumUseCase @Inject constructor(
             val nonceResult = ethereumBlockchainRepository.getEthereumNonce(ethereumCoin.address, ethereumCoin.network)
             val currentNonce = when (nonceResult) {
                 is Result.Success -> nonceResult.data
-                is Result.Error -> {
-                    Log.e("SendEthereumUC", "Failed to get nonce: ${nonceResult.message}")
-                    return null
-                }
-                Result.Loading -> {
+                else -> {
                     Log.e("SendEthereumUC", "Failed to get nonce")
                     return null
                 }
             }
 
-            val gasPriceResult = ethereumBlockchainRepository.getCurrentGasPrice(ethereumCoin.network)
-            val gasPrice = when (gasPriceResult) {
-                is Result.Success -> gasPriceResult.data
-                is Result.Error -> {
-                    Log.e("SendEthereumUC", "Failed to get gas price: ${gasPriceResult.message}")
-                    return null
-                }
-                Result.Loading -> {
-                    Log.e("SendEthereumUC", "Failed to get gas price")
-                    return null
-                }
-            }
-
-            val selectedGasPrice = when (transaction.feeLevel) {
-                FeeLevel.SLOW -> gasPrice.safe
-                FeeLevel.FAST -> gasPrice.fast
-                else -> gasPrice.propose
-            }
-
-            val gasPriceWei = (BigDecimal(selectedGasPrice) * BigDecimal("1000000000")).toBigInteger()
+            // Use the fee from the transaction
+            val gasPriceWei = BigInteger(transaction.gasPriceWei)
 
             val privateKeyResult = keyManager.getPrivateKeyForSigning(transaction.walletId)
             if (privateKeyResult.isFailure) {
@@ -261,9 +220,7 @@ class SendEthereumUseCase @Inject constructor(
                 status = TransactionStatus.PENDING,
                 txHash = calculatedHash,
                 signedHex = signedHex,
-                nonce = currentNonce,
-                gasPriceGwei = BigDecimal(selectedGasPrice).toPlainString(),
-                gasPriceWei = gasPriceWei.toString()
+                nonce = currentNonce
             )
 
             ethereumTransactionRepository.updateTransaction(updatedTransaction)
@@ -393,43 +350,7 @@ class ValidateAddressUseCase @Inject constructor() {
 class GetFeeEstimateUseCase @Inject constructor(
     private val ethereumBlockchainRepository: EthereumBlockchainRepository
 ) {
-    suspend operator fun invoke(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<FeeEstimate> {
-        return try {
-
-            val gasPriceResult = ethereumBlockchainRepository.getEthereumGasPrice(EthereumNetwork.Sepolia)
-
-            when (gasPriceResult) {
-                is Result.Success -> {
-                    val gasPrice = gasPriceResult.data
-
-                    // Get the appropriate fee based on level
-                    val selectedFee = when (feeLevel) {
-                        FeeLevel.SLOW -> gasPrice.slow
-                        FeeLevel.FAST -> gasPrice.fast
-                        else -> gasPrice.normal
-                    }
-
-                    // Convert to FeeEstimate format
-                    val estimate = FeeEstimate(
-                        feePerByte = null,
-                        gasPrice = selectedFee.gasPrice,
-                        totalFee = selectedFee.totalFee,
-                        totalFeeDecimal = selectedFee.totalFeeDecimal,
-                        estimatedTime = when (feeLevel) {
-                            FeeLevel.SLOW -> 900
-                            FeeLevel.FAST -> 60
-                            else -> 300
-                        },
-                        priority = feeLevel
-                    )
-
-                    Result.Success(estimate)
-                }
-                is Result.Error -> Result.Error(gasPriceResult.message, gasPriceResult.throwable)
-                Result.Loading -> Result.Error("Timeout getting gas price", null)
-            }
-        } catch (e: Exception) {
-            Result.Error("Failed to get fee estimate: ${e.message}", e)
-        }
+    suspend operator fun invoke(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<EthereumFeeEstimate> {
+        return ethereumBlockchainRepository.getFeeEstimate(feeLevel)
     }
 }

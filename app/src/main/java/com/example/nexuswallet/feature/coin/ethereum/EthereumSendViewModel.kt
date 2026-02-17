@@ -1,11 +1,9 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,10 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
-import java.math.RoundingMode
 import javax.inject.Inject
 import kotlin.plus
-
 @HiltViewModel
 class EthereumSendViewModel @Inject constructor(
     private val sendEthereumUseCase: SendEthereumUseCase,
@@ -37,7 +33,7 @@ class EthereumSendViewModel @Inject constructor(
         val feeLevel: FeeLevel = FeeLevel.NORMAL,
         val isLoading: Boolean = false,
         val error: String? = null,
-        val feeEstimate: FeeEstimate? = null,
+        val feeEstimate: EthereumFeeEstimate? = null,
         val balance: BigDecimal = BigDecimal.ZERO,
         val isValid: Boolean = false,
         val validationError: String? = null,
@@ -204,7 +200,7 @@ class EthereumSendViewModel @Inject constructor(
         val feeEstimateResult = getFeeEstimateUseCase(state.feeLevel)
         if (feeEstimateResult is Result.Success) {
             val feeEstimate = feeEstimateResult.data
-            val totalRequired = amount + BigDecimal(feeEstimate.totalFeeDecimal)
+            val totalRequired = amount + BigDecimal(feeEstimate.totalFeeEth)
 
             if (totalRequired > state.balance) {
                 _uiState.update {

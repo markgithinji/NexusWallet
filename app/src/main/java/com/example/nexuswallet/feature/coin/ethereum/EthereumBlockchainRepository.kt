@@ -3,9 +3,7 @@ package com.example.nexuswallet.feature.coin.ethereum
 import android.util.Log
 import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.wallet.data.model.TransactionFee
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
@@ -16,13 +14,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
+import java.math.BigInteger
+
 @Singleton
 class EthereumBlockchainRepository @Inject constructor(
     private val etherscanApi: EtherscanApiService
 ) {
 
     companion object {
-        private const val GAS_LIMIT_STANDARD = 21000
+        private const val GAS_LIMIT_STANDARD = 21000L
+        private const val WEI_PER_GWEI = 1_000_000_000L
     }
 
     suspend fun getEthereumBalance(
@@ -36,7 +37,6 @@ class EthereumBlockchainRepository @Inject constructor(
 
         return try {
             val chainId = network.chainId
-
             val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
             val response = etherscanApi.getEthereumBalance(
@@ -139,7 +139,6 @@ class EthereumBlockchainRepository @Inject constructor(
             }
 
             val chainId = network.chainId
-
             val apiKey = BuildConfig.ETHERSCAN_API_KEY
             Log.d("GasPrice", "Fetching gas price for chainId: $chainId")
 
@@ -176,6 +175,87 @@ class EthereumBlockchainRepository @Inject constructor(
             }
             Result.Success(fallback)
         }
+    }
+
+    /**
+     * Get Ethereum fee estimate based on priority
+     */
+    suspend fun getFeeEstimate(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<EthereumFeeEstimate> {
+        return try {
+            val gasPriceResult = getCurrentGasPrice(EthereumNetwork.Mainnet)
+
+            when (gasPriceResult) {
+                is Result.Success -> {
+                    val gasPrice = gasPriceResult.data
+
+                    val (gasPriceGwei, estimatedTime) = when (feeLevel) {
+                        FeeLevel.SLOW -> gasPrice.safe to 900
+                        FeeLevel.NORMAL -> gasPrice.propose to 300
+                        FeeLevel.FAST -> gasPrice.fast to 60
+                    }
+
+                    val gasPriceWei = (BigDecimal(gasPriceGwei) * BigDecimal(WEI_PER_GWEI)).toBigInteger()
+                    val totalFeeWei = gasPriceWei.multiply(BigInteger.valueOf(GAS_LIMIT_STANDARD))
+
+                    val totalFeeEth = BigDecimal(totalFeeWei).divide(
+                        BigDecimal("1000000000000000000"),
+                        8,
+                        RoundingMode.HALF_UP
+                    ).toPlainString()
+
+                    Result.Success(
+                        EthereumFeeEstimate(
+                            gasPriceGwei = gasPriceGwei,
+                            gasPriceWei = gasPriceWei.toString(),
+                            gasLimit = GAS_LIMIT_STANDARD,
+                            totalFeeWei = totalFeeWei.toString(),
+                            totalFeeEth = totalFeeEth,
+                            estimatedTime = estimatedTime,
+                            priority = feeLevel,
+                            baseFee = gasPrice.baseFee,
+                            isEIP1559 = gasPrice.baseFee != null
+                        )
+                    )
+                }
+                is Result.Error -> {
+                    Log.e("EthereumRepo", "Error getting gas price: ${gasPriceResult.message}")
+                    Result.Success(getDefaultFeeEstimate(feeLevel))
+                }
+                Result.Loading -> Result.Success(getDefaultFeeEstimate(feeLevel))
+            }
+        } catch (e: Exception) {
+            Log.e("EthereumRepo", "Error getting fee estimate: ${e.message}", e)
+            Result.Success(getDefaultFeeEstimate(feeLevel))
+        }
+    }
+
+    private fun getDefaultFeeEstimate(feeLevel: FeeLevel): EthereumFeeEstimate {
+        val (gasPriceGwei, estimatedTime) = when (feeLevel) {
+            FeeLevel.SLOW -> "20" to 900
+            FeeLevel.NORMAL -> "30" to 300
+            FeeLevel.FAST -> "50" to 60
+        }
+
+        val gasPriceWei = (BigDecimal(gasPriceGwei) * BigDecimal(WEI_PER_GWEI)).toBigInteger()
+        val totalFeeWei = gasPriceWei.multiply(BigInteger.valueOf(GAS_LIMIT_STANDARD))
+
+        val totalFeeEth = BigDecimal(totalFeeWei).divide(
+            BigDecimal("1000000000000000000"),
+            8,
+            RoundingMode.HALF_UP
+        ).toPlainString()
+
+        return EthereumFeeEstimate(
+            gasPriceGwei = gasPriceGwei,
+            gasPriceWei = gasPriceWei.toString(),
+            gasLimit = GAS_LIMIT_STANDARD,
+            totalFeeWei = totalFeeWei.toString(),
+            totalFeeEth = totalFeeEth,
+            estimatedTime = estimatedTime,
+            priority = feeLevel,
+            baseFee = null,
+            isEIP1559 = false
+        )
     }
 
     suspend fun getEthereumNonce(
@@ -361,97 +441,5 @@ class EthereumBlockchainRepository @Inject constructor(
         val hash = address.hashCode().toLong() and 0xFFFFFFFFL
         val simulatedBalance = (hash % 1000L + 500L).toDouble() / 100.0
         return BigDecimal.valueOf(simulatedBalance)
-    }
-
-    private fun calculateEthFee(gasPrice: String, gasLimit: Int = GAS_LIMIT_STANDARD): String {
-        val gasPriceWei = BigDecimal(gasPrice).multiply(BigDecimal("1000000000"))
-        return gasPriceWei.multiply(BigDecimal(gasLimit)).toPlainString()
-    }
-
-    private fun calculateEthFeeDecimal(gasPrice: String, gasLimit: Int = GAS_LIMIT_STANDARD): String {
-        val feeWei = calculateEthFee(gasPrice, gasLimit).toBigDecimal()
-        return feeWei.divide(BigDecimal("1000000000000000000"), 8, RoundingMode.HALF_UP)
-            .toPlainString()
-    }
-
-    suspend fun getEthereumGasPrice(network: EthereumNetwork = EthereumNetwork.Mainnet): Result<TransactionFee> {
-        return try {
-            val gasPriceResult = getCurrentGasPrice(network)
-            when (gasPriceResult) {
-                is Result.Success -> {
-                    val gasPrice = gasPriceResult.data
-                    Result.Success(
-                        TransactionFee(
-                            chain = when (network) {
-                                is EthereumNetwork.Sepolia -> ChainType.ETHEREUM_SEPOLIA
-                                else -> ChainType.ETHEREUM
-                            },
-                            slow = FeeEstimate(
-                                feePerByte = null,
-                                gasPrice = gasPrice.safe,
-                                totalFee = calculateEthFee(gasPrice.safe),
-                                totalFeeDecimal = calculateEthFeeDecimal(gasPrice.safe),
-                                estimatedTime = 900,
-                                priority = FeeLevel.SLOW
-                            ),
-                            normal = FeeEstimate(
-                                feePerByte = null,
-                                gasPrice = gasPrice.propose,
-                                totalFee = calculateEthFee(gasPrice.propose),
-                                totalFeeDecimal = calculateEthFeeDecimal(gasPrice.propose),
-                                estimatedTime = 300,
-                                priority = FeeLevel.NORMAL
-                            ),
-                            fast = FeeEstimate(
-                                feePerByte = null,
-                                gasPrice = gasPrice.fast,
-                                totalFee = calculateEthFee(gasPrice.fast),
-                                totalFeeDecimal = calculateEthFeeDecimal(gasPrice.fast),
-                                estimatedTime = 60,
-                                priority = FeeLevel.FAST
-                            )
-                        )
-                    )
-                }
-                is Result.Error -> {
-                    Log.e("BlockchainRepo", "Error getting ETH gas price for ${network.displayName}: ${gasPriceResult.message}")
-                    Result.Success(getDemoEthereumFees())
-                }
-                Result.Loading -> Result.Success(getDemoEthereumFees())
-            }
-        } catch (e: Exception) {
-            Log.e("BlockchainRepo", "Error getting ETH gas price for ${network.displayName}: ${e.message}", e)
-            Result.Success(getDemoEthereumFees())
-        }
-    }
-
-    fun getDemoEthereumFees(): TransactionFee {
-        return TransactionFee(
-            chain = ChainType.ETHEREUM,
-            slow = FeeEstimate(
-                feePerByte = null,
-                gasPrice = "20",
-                totalFee = calculateEthFee("20"),
-                totalFeeDecimal = calculateEthFeeDecimal("20"),
-                estimatedTime = 900,
-                priority = FeeLevel.SLOW
-            ),
-            normal = FeeEstimate(
-                feePerByte = null,
-                gasPrice = "30",
-                totalFee = calculateEthFee("30"),
-                totalFeeDecimal = calculateEthFeeDecimal("30"),
-                estimatedTime = 300,
-                priority = FeeLevel.NORMAL
-            ),
-            fast = FeeEstimate(
-                feePerByte = null,
-                gasPrice = "50",
-                totalFee = calculateEthFee("50"),
-                totalFeeDecimal = calculateEthFeeDecimal("50"),
-                estimatedTime = 60,
-                priority = FeeLevel.FAST
-            )
-        )
     }
 }
