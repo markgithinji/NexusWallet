@@ -30,14 +30,12 @@ object UseCaseModule {
     fun provideSendUSDCUseCase(
         walletRepository: WalletRepository,
         usdcBlockchainRepository: USDCBlockchainRepository,
-        ethereumBlockchainRepository: EthereumBlockchainRepository,
         keyManager: KeyManager,
         usdcTransactionRepository: USDCTransactionRepository
     ): SendUSDCUseCase {
         return SendUSDCUseCase(
             walletRepository,
             usdcBlockchainRepository,
-            ethereumBlockchainRepository,
             keyManager,
             usdcTransactionRepository
         )
@@ -50,5 +48,13 @@ object UseCaseModule {
         ethereumBlockchainRepository: EthereumBlockchainRepository
     ): GetETHBalanceForGasUseCase {
         return GetETHBalanceForGasUseCase(walletRepository, ethereumBlockchainRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetUSDCFeeEstimateUseCase(
+        blockchainRepository: USDCBlockchainRepository
+    ): GetUSDCFeeEstimateUseCase {
+        return GetUSDCFeeEstimateUseCase(blockchainRepository )
     }
 }
