@@ -3,9 +3,7 @@ package com.example.nexuswallet.feature.coin.solana
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.ui.SendResult
 import kotlinx.serialization.Serializable
-import java.math.BigDecimal
 
 
 @Serializable
@@ -70,6 +68,7 @@ fun SolanaTransaction.toEntity(): SolanaTransactionEntity {
         network = network
     )
 }
+
 enum class SolanaNetwork {
     MAINNET,
     DEVNET
@@ -90,11 +89,11 @@ data class SolanaSignedTransaction(
 )
 
 data class SendSolanaResult(
-    override val transactionId: String,
-    override val txHash: String,
-    override val success: Boolean,
-    override val error: String? = null
-) : SendResult
+    val transactionId: String,
+    val txHash: String,
+    val success: Boolean,
+    val error: String? = null
+)
 
 data class SolanaWalletInfo(
     val walletId: String,

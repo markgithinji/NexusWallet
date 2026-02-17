@@ -1,11 +1,8 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
-import com.example.nexuswallet.feature.wallet.ui.SendResult
-import kotlinx.serialization.Serializable
 import org.bitcoinj.core.Coin
 import org.bitcoinj.core.TransactionOutPoint
 import org.bitcoinj.script.Script
-import java.math.BigDecimal
 
 data class UTXO(
     val outPoint: TransactionOutPoint,
@@ -41,8 +38,8 @@ data class BitcoinWalletInfo(
 )
 
 data class SendBitcoinResult(
-    override val transactionId: String,
-    override val txHash: String,
-    override val success: Boolean,
-    override val error: String? = null
-) : SendResult
+    val transactionId: String,
+    val txHash: String,
+    val success: Boolean,
+    val error: String? = null
+)

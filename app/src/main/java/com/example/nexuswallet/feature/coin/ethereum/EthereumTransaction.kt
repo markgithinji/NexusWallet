@@ -4,10 +4,7 @@ import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.ui.SendResult
 import kotlinx.serialization.Serializable
-import java.math.BigDecimal
-import java.math.BigInteger
 
 @Serializable
 data class EthereumTransaction(
@@ -56,8 +53,8 @@ data class EthereumWalletInfo(
 )
 
 data class SendEthereumResult(
-    override val transactionId: String,
-    override val txHash: String,
-    override val success: Boolean,
-    override val error: String? = null
-) : SendResult
+    val transactionId: String,
+    val txHash: String,
+    val success: Boolean,
+    val error: String? = null
+)
