@@ -17,8 +17,6 @@ import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendScreen
-import com.example.nexuswallet.feature.coin.solana.SolanaSendScreen
 import com.example.nexuswallet.feature.wallet.ui.FullQrCodeScreen
 import com.example.nexuswallet.feature.wallet.ui.ReceiveScreen
 import com.example.nexuswallet.feature.wallet.ui.SendScreen
