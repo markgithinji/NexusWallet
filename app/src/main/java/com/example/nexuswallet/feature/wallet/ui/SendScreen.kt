@@ -50,13 +50,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendViewModel
-import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.ethereum.EthereumFeeEstimate
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendViewModel
+import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
 import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
 import com.example.nexuswallet.feature.coin.usdc.USDCSendViewModel
+import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -142,6 +145,9 @@ fun SendScreen(
                 isLoading = isLoading,
                 validationError = when (coinType) {
                     "ETH" -> ethereumUiState.value.validationError
+                    "USDC" -> null
+                    "SOL" -> null
+                    "BTC" -> null
                     else -> null
                 },
                 error = when (coinType) {
@@ -158,10 +164,10 @@ fun SendScreen(
                             navController.navigate("review/$walletId/ETH?toAddress=${ethereumUiState.value.toAddress}&amount=${ethereumUiState.value.amount}&feeLevel=${ethereumUiState.value.feeLevel.name}")
                         }
                         "USDC" -> {
-                            navController.navigate("review/$walletId/USDC?toAddress=${usdcState.value.toAddress}&amount=${usdcState.value.amount}")
+                            navController.navigate("review/$walletId/USDC?toAddress=${usdcState.value.toAddress}&amount=${usdcState.value.amount}&feeLevel=${usdcState.value.feeLevel.name}")
                         }
                         "SOL" -> {
-                            navController.navigate("review/$walletId/SOL?toAddress=${solanaState.value.toAddress}&amount=${solanaState.value.amount}")
+                            navController.navigate("review/$walletId/SOL?toAddress=${solanaState.value.toAddress}&amount=${solanaState.value.amount}&feeLevel=${solanaState.value.feeLevel.name}")
                         }
                         "BTC" -> {
                             navController.navigate("review/$walletId/BTC?toAddress=${bitcoinState.value.toAddress}&amount=${bitcoinState.value.amount}&feeLevel=${bitcoinState.value.feeLevel.name}")
@@ -232,24 +238,24 @@ fun SendScreen(
                 "USDC" -> {
                     usdcState.value.error?.let { error ->
                         ErrorMessage(error = error) {
-                            usdcViewModel.clearError()
+                            usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ClearError)
                         }
                     }
                     usdcState.value.info?.let { info ->
                         InfoMessage(info = info) {
-                            usdcViewModel.clearInfo()
+                            usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ClearInfo)
                         }
                     }
                 }
                 "SOL" -> {
                     solanaState.value.error?.let { error ->
                         ErrorMessage(error = error) {
-                            solanaViewModel.clearError()
+                            solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ClearError)
                         }
                     }
                     solanaState.value.airdropMessage?.let { message ->
                         InfoMessage(info = message) {
-                            solanaViewModel.clearAirdropMessage()
+                            solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ClearAirdropMessage)
                         }
                     }
                 }
@@ -282,7 +288,7 @@ fun SendScreen(
                 "USDC" -> {
                     AddressInputSection(
                         toAddress = usdcState.value.toAddress,
-                        onAddressChange = { usdcViewModel.updateAddress(it) },
+                        onAddressChange = { usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ToAddressChanged(it)) },
                         coinType = coinType,
                         isValid = usdcState.value.isValidAddress,
                         errorMessage = if (!usdcState.value.isValidAddress && usdcState.value.toAddress.isNotEmpty())
@@ -292,7 +298,7 @@ fun SendScreen(
                 "SOL" -> {
                     AddressInputSection(
                         toAddress = solanaState.value.toAddress,
-                        onAddressChange = { solanaViewModel.updateAddress(it) },
+                        onAddressChange = { solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ToAddressChanged(it)) },
                         coinType = coinType,
                         isValid = solanaState.value.isAddressValid,
                         errorMessage = solanaState.value.addressError
@@ -328,17 +334,17 @@ fun SendScreen(
                 "USDC" -> {
                     AmountInputSection(
                         amount = usdcState.value.amount,
-                        onAmountChange = { usdcViewModel.updateAmount(it) },
+                        onAmountChange = { usdcViewModel.onEvent(USDCSendViewModel.SendEvent.AmountChanged(it)) },
                         balance = usdcState.value.usdcBalanceDecimal,
                         coinType = coinType,
                         tokenSymbol = "USDC",
-                        onMaxClick = { usdcViewModel.updateAmount(usdcState.value.usdcBalanceDecimal.toPlainString()) }
+                        onMaxClick = { showMaxDialog = true }
                     )
                 }
                 "SOL" -> {
                     AmountInputSection(
                         amount = solanaState.value.amount,
-                        onAmountChange = { solanaViewModel.updateAmount(it) },
+                        onAmountChange = { solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.AmountChanged(it)) },
                         balance = solanaState.value.balance,
                         coinType = coinType,
                         onMaxClick = { showMaxDialog = true }
@@ -357,28 +363,42 @@ fun SendScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Fee Selection (for ETH and BTC)
-            if (coinType == "ETH" || coinType == "BTC") {
-                when (coinType) {
-                    "ETH" -> {
-                        FeeSelectionSection(
-                            feeLevel = ethereumUiState.value.feeLevel,
-                            onFeeLevelChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.FeeLevelChanged(it)) },
-                            feeEstimate = ethereumUiState.value.feeEstimate,
-                            coinType = coinType
-                        )
-                    }
-                    "BTC" -> {
-                        FeeSelectionSection(
-                            feeLevel = bitcoinState.value.feeLevel,
-                            onFeeLevelChange = { bitcoinViewModel.updateFeeLevel(it) },
-                            feeEstimate = bitcoinState.value.feeEstimate,
-                            coinType = coinType
-                        )
-                    }
+            // Fee Selection (for all coin types now)
+            when (coinType) {
+                "ETH" -> {
+                    FeeSelectionSection(
+                        feeLevel = ethereumUiState.value.feeLevel,
+                        onFeeLevelChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.FeeLevelChanged(it)) },
+                        feeEstimate = ethereumUiState.value.feeEstimate,
+                        coinType = coinType
+                    )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                "USDC" -> {
+                    FeeSelectionSection(
+                        feeLevel = usdcState.value.feeLevel,
+                        onFeeLevelChange = { usdcViewModel.onEvent(USDCSendViewModel.SendEvent.FeeLevelChanged(it)) },
+                        feeEstimate = usdcState.value.feeEstimate,
+                        coinType = coinType
+                    )
+                }
+                "SOL" -> {
+                    FeeSelectionSection(
+                        feeLevel = solanaState.value.feeLevel,
+                        onFeeLevelChange = { solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.FeeLevelChanged(it)) },
+                        feeEstimate = solanaState.value.feeEstimate,
+                        coinType = coinType
+                    )
+                }
+                "BTC" -> {
+                    FeeSelectionSection(
+                        feeLevel = bitcoinState.value.feeLevel,
+                        onFeeLevelChange = { bitcoinViewModel.updateFeeLevel(it) },
+                        feeEstimate = bitcoinState.value.feeEstimate,
+                        coinType = coinType
+                    )
+                }
             }
+            Spacer(modifier = Modifier.height(16.dp))
 
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -390,6 +410,7 @@ fun SendScreen(
                         balance = ethereumUiState.value.balance,
                         feeEstimate = ethereumUiState.value.feeEstimate,
                         tokenSymbol = "ETH",
+                        coinType = "ETH",
                         onDismiss = { showMaxDialog = false },
                         onConfirm = { maxAmount ->
                             ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.AmountChanged(maxAmount))
@@ -397,21 +418,28 @@ fun SendScreen(
                         }
                     )
                 }
+                "USDC" -> {
+                    MaxAmountDialog(
+                        balance = usdcState.value.usdcBalanceDecimal,
+                        feeEstimate = usdcState.value.feeEstimate,
+                        tokenSymbol = "USDC",
+                        coinType = "USDC",
+                        onDismiss = { showMaxDialog = false },
+                        onConfirm = { maxAmount ->
+                            usdcViewModel.onEvent(USDCSendViewModel.SendEvent.AmountChanged(maxAmount))
+                            showMaxDialog = false
+                        }
+                    )
+                }
                 "SOL" -> {
                     MaxAmountDialog(
                         balance = solanaState.value.balance,
-                        feeEstimate = FeeEstimate(
-                            totalFee = "5000",
-                            totalFeeDecimal = "0.000005",
-                            priority = FeeLevel.NORMAL,
-                            estimatedTime = 1,
-                            feePerByte = null,
-                            gasPrice = null
-                        ),
+                        feeEstimate = solanaState.value.feeEstimate,
                         tokenSymbol = "SOL",
+                        coinType = "SOL",
                         onDismiss = { showMaxDialog = false },
                         onConfirm = { maxAmount ->
-                            solanaViewModel.updateAmount(maxAmount)
+                            solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.AmountChanged(maxAmount))
                             showMaxDialog = false
                         }
                     )
@@ -421,6 +449,7 @@ fun SendScreen(
                         balance = bitcoinState.value.balance,
                         feeEstimate = bitcoinState.value.feeEstimate,
                         tokenSymbol = "BTC",
+                        coinType = "BTC",
                         onDismiss = { showMaxDialog = false },
                         onConfirm = { maxAmount ->
                             bitcoinViewModel.updateAmount(maxAmount)
@@ -430,6 +459,227 @@ fun SendScreen(
                 }
                 else -> showMaxDialog = false
             }
+        }
+    }
+}
+
+// Update FeeSelectionSection to handle different fee estimate types
+@Composable
+fun FeeSelectionSection(
+    feeLevel: FeeLevel,
+    onFeeLevelChange: (FeeLevel) -> Unit,
+    feeEstimate: Any?, // Can be EthereumFeeEstimate, BitcoinFeeEstimate, etc.
+    coinType: String
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Speed,
+                    contentDescription = "Fee",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Text(
+                    text = "Transaction Fee",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            FeeLevelSelection(
+                selectedLevel = feeLevel,
+                onLevelSelected = onFeeLevelChange
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Show different fee details based on coin type
+            when (coinType) {
+                "ETH" -> {
+                    (feeEstimate as? EthereumFeeEstimate)?.let { fee ->
+                        EthereumFeeDetails(feeEstimate = fee)
+                    }
+                }
+                "BTC" -> {
+                    (feeEstimate as? BitcoinFeeEstimate)?.let { fee ->
+                        BitcoinFeeDetails(feeEstimate = fee)
+                    }
+                }
+                "USDC" -> {
+                    (feeEstimate as? USDCFeeEstimate)?.let { fee ->
+                        USDCFeeDetails(feeEstimate = fee)
+                    }
+                }
+                "SOL" -> {
+                    (feeEstimate as? SolanaFeeEstimate)?.let { fee ->
+                        SolanaFeeDetails(feeEstimate = fee)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EthereumFeeDetails(feeEstimate: EthereumFeeEstimate) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Gas Price:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${feeEstimate.gasPriceGwei} Gwei",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Total Fee:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${feeEstimate.totalFeeEth} ETH",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+fun BitcoinFeeDetails(feeEstimate: BitcoinFeeEstimate) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Fee Rate:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${feeEstimate.feePerByte} sat/byte",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Total Fee:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${feeEstimate.totalFeeBtc} BTC",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+fun USDCFeeDetails(feeEstimate: USDCFeeEstimate) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Gas Price:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${feeEstimate.gasPriceGwei} Gwei",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Total Fee:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${feeEstimate.totalFeeEth} ETH",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+fun SolanaFeeDetails(feeEstimate: SolanaFeeEstimate) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Fee:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${feeEstimate.feeSol} SOL",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Compute Units:",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = feeEstimate.computeUnits.toString(),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
@@ -789,61 +1039,6 @@ fun AmountInputSection(
 }
 
 @Composable
-fun FeeSelectionSection(
-    feeLevel: FeeLevel,
-    onFeeLevelChange: (FeeLevel) -> Unit,
-    feeEstimate: FeeEstimate?,
-    coinType: String
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Speed,
-                    contentDescription = "Fee",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "Transaction Fee",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            FeeLevelSelection(
-                selectedLevel = feeLevel,
-                onLevelSelected = onFeeLevelChange
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            feeEstimate?.let { fee ->
-                FeeDetailsCard(
-                    feeEstimate = fee,
-                    coinType = coinType
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun FeeLevelSelection(
     selectedLevel: FeeLevel,
     onLevelSelected: (FeeLevel) -> Unit
@@ -916,122 +1111,6 @@ fun FeeLevelButton(
             style = MaterialTheme.typography.labelMedium,
             color = if (selected) color else MaterialTheme.colorScheme.onSurface
         )
-    }
-}
-
-@Composable
-fun FeeDetailsCard(
-    feeEstimate: FeeEstimate,
-    coinType: String
-) {
-    val symbol = coinType
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Fee Amount:",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Text(
-                    text = "${feeEstimate.totalFeeDecimal} $symbol",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "≈ USD:",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                val feeUsd = feeEstimate.totalFeeDecimal.toDoubleOrNull() ?: 0.0
-                val usdValue = feeUsd * getUsdRate(coinType, symbol)
-
-                Text(
-                    text = "$${String.format("%.2f", usdValue)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Estimated Time:",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Text(
-                    text = formatTime(feeEstimate.estimatedTime),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            if (feeEstimate.gasPrice != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Gas Price:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "${feeEstimate.gasPrice} Gwei",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            if (feeEstimate.feePerByte != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Fee Rate:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "${feeEstimate.feePerByte} sat/byte",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -1115,12 +1194,12 @@ fun SendBottomBar(
         }
     }
 }
-
 @Composable
 fun MaxAmountDialog(
     balance: BigDecimal,
-    feeEstimate: FeeEstimate?,
+    feeEstimate: Any?, // Can be different fee estimate types
     tokenSymbol: String,
+    coinType: String, // Add coinType to determine how to extract fee
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
@@ -1135,7 +1214,15 @@ fun MaxAmountDialog(
         },
         text = {
             Column {
-                val fee = feeEstimate?.totalFeeDecimal?.toBigDecimalOrNull() ?: BigDecimal("0.001")
+                // Extract fee based on coin type
+                val fee = when (feeEstimate) {
+                    is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull() ?: BigDecimal("0.00001")
+                    is EthereumFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
+                    is USDCFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
+                    is SolanaFeeEstimate -> feeEstimate.feeSol.toBigDecimalOrNull() ?: BigDecimal("0.000005")
+                    else -> BigDecimal("0.001") // Default fallback
+                }
+
                 val maxAmount = balance - fee
 
                 if (maxAmount > BigDecimal.ZERO) {
@@ -1177,7 +1264,13 @@ fun MaxAmountDialog(
             }
         },
         confirmButton = {
-            val fee = feeEstimate?.totalFeeDecimal?.toBigDecimalOrNull() ?: BigDecimal("0.001")
+            val fee = when (feeEstimate) {
+                is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull() ?: BigDecimal("0.00001")
+                is EthereumFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
+                is USDCFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
+                is SolanaFeeEstimate -> feeEstimate.feeSol.toBigDecimalOrNull() ?: BigDecimal("0.000005")
+                else -> BigDecimal("0.001")
+            }
             val maxAmount = balance - fee
 
             if (maxAmount > BigDecimal.ZERO) {
@@ -1245,25 +1338,6 @@ fun InfoMessage(
                 )
             }
         }
-    }
-}
-
-// Helper functions
-private fun formatTime(seconds: Int): String {
-    return when {
-        seconds < 60 -> "$seconds sec"
-        seconds < 3600 -> "${seconds / 60} min"
-        else -> "${seconds / 3600} hr"
-    }
-}
-
-private fun getUsdRate(walletType: WalletType, tokenSymbol: String? = null): Double {
-    return when {
-        walletType == WalletType.BITCOIN || tokenSymbol == "BTC" -> 45000.0
-        walletType == WalletType.ETHEREUM || walletType == WalletType.ETHEREUM_SEPOLIA || tokenSymbol == "ETH" -> 3000.0
-        walletType == WalletType.SOLANA || tokenSymbol == "SOL" -> 30.0
-        walletType == WalletType.USDC || tokenSymbol == "USDC" -> 1.0
-        else -> 1.0
     }
 }
 
