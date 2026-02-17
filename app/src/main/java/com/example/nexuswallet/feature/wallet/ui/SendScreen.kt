@@ -253,11 +253,6 @@ fun SendScreen(
                             solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ClearError)
                         }
                     }
-                    solanaState.value.airdropMessage?.let { message ->
-                        InfoMessage(info = message) {
-                            solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ClearAirdropMessage)
-                        }
-                    }
                 }
                 "BTC" -> {
                     bitcoinState.value.error?.let { error ->

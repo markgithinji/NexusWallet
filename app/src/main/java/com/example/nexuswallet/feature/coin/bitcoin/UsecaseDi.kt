@@ -52,7 +52,7 @@ object BitcoinUseCaseModule {
 
     @Provides
     @Singleton
-    fun provideSendBitcoinUseCase(
+    fun provideGetBitcoinWalletUseCase(
         walletRepository: WalletRepository,
     ): GetBitcoinWalletUseCase {
         return GetBitcoinWalletUseCase(

@@ -81,7 +81,7 @@ fun SolanaSendScreen(
 
             Button(
                 onClick = {
-                    viewModel.requestAirdrop()
+//                    viewModel.requestAirdrop()
                 }
             ) {
                 Text("Get Test SOL")
