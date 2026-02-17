@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,15 +17,16 @@ import javax.inject.Inject
 import kotlin.plus
 @HiltViewModel
 class EthereumSendViewModel @Inject constructor(
+    private val getEthereumWalletUseCase: GetEthereumWalletUseCase,
     private val sendEthereumUseCase: SendEthereumUseCase,
     private val validateAddressUseCase: ValidateAddressUseCase,
     private val getFeeEstimateUseCase: GetFeeEstimateUseCase,
-    private val walletRepository: WalletRepository,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository
 ) : ViewModel() {
 
     data class SendUiState(
         val walletId: String = "",
+        val walletName: String = "",
         val fromAddress: String = "",
         val toAddress: String = "",
         val amount: String = "",
@@ -57,51 +59,69 @@ class EthereumSendViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            val wallet = walletRepository.getWallet(walletId)
-            if (wallet == null) {
-                _uiState.update { it.copy(error = "Wallet not found", isLoading = false) }
-                return@launch
+            when (val walletResult = getEthereumWalletUseCase(walletId)) {
+                is Result.Success -> {
+                    val walletInfo = walletResult.data
+                    _uiState.update {
+                        it.copy(
+                            walletId = walletInfo.walletId,
+                            walletName = walletInfo.walletName,
+                            fromAddress = walletInfo.walletAddress,
+                            network = walletInfo.network.displayName
+                        )
+                    }
+                    loadBalance(walletInfo.walletAddress, walletInfo.network)
+                    loadFeeEstimate()
+                }
+
+                is Result.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            error = walletResult.message,
+                            isLoading = false
+                        )
+                    }
+                }
+
+                Result.Loading -> {}
             }
+        }
+    }
 
-            val ethereumCoin = wallet.ethereum
-            if (ethereumCoin == null) {
-                _uiState.update { it.copy(error = "Ethereum not enabled", isLoading = false) }
-                return@launch
-            }
-
-            val walletBalance = walletRepository.getWalletBalance(walletId)
-
-            val ethBalance = if (walletBalance?.ethereum != null) {
-                walletBalance.ethereum.eth.toBigDecimalOrNull() ?: BigDecimal.ZERO
-            } else {
-                val balanceResult = ethereumBlockchainRepository.getEthereumBalance(
-                    ethereumCoin.address,
-                    ethereumCoin.network
-                )
-                when (balanceResult) {
-                    is Result.Success -> balanceResult.data
-                    else -> BigDecimal.ZERO
+    private suspend fun loadBalance(address: String, network: EthereumNetwork) {
+        val balanceResult = ethereumBlockchainRepository.getEthereumBalance(address, network)
+        when (balanceResult) {
+            is Result.Success -> {
+                val balance = balanceResult.data
+                _uiState.update {
+                    it.copy(
+                        balance = balance,
+                        isLoading = false
+                    )
                 }
             }
-
-            val feeEstimateResult = getFeeEstimateUseCase(FeeLevel.NORMAL)
-            val feeEstimate = when (feeEstimateResult) {
-                is Result.Success -> feeEstimateResult.data
-                else -> null
+            is Result.Error -> {
+                _uiState.update {
+                    it.copy(
+                        error = "Failed to load balance: ${balanceResult.message}",
+                        isLoading = false
+                    )
+                }
             }
+            Result.Loading -> {}
+        }
+    }
 
-            _uiState.update {
-                it.copy(
-                    walletId = walletId,
-                    fromAddress = ethereumCoin.address,
-                    balance = ethBalance,
-                    feeEstimate = feeEstimate,
-                    network = ethereumCoin.network.displayName,
-                    isLoading = false
-                )
+    private suspend fun loadFeeEstimate() {
+        val feeEstimateResult = getFeeEstimateUseCase(FeeLevel.NORMAL)
+        when (feeEstimateResult) {
+            is Result.Success -> {
+                _uiState.update { it.copy(feeEstimate = feeEstimateResult.data) }
             }
-
-            validateInputs()
+            is Result.Error -> {
+                _uiState.update { it.copy(error = "Failed to load fee: ${feeEstimateResult.message}") }
+            }
+            Result.Loading -> {}
         }
     }
 

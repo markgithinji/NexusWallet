@@ -2,16 +2,16 @@ package com.example.nexuswallet.feature.coin.ethereum
 
 
 import android.util.Log
-import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.WalletType
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.serialization.json.Json
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.Hash
 import org.web3j.crypto.RawTransaction
@@ -21,13 +21,40 @@ import java.math.BigDecimal
 import java.math.BigInteger
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumCoin
-import com.example.nexuswallet.feature.wallet.ui.SendResult
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
-import java.math.RoundingMode
+
+@Singleton
+class GetEthereumWalletUseCase @Inject constructor(
+    private val walletRepository: WalletRepository
+) {
+    suspend operator fun invoke(walletId: String): Result<EthereumWalletInfo> {
+        val wallet = walletRepository.getWallet(walletId)
+        if (wallet == null) {
+            Log.e("GetEthereumWalletUC", "Wallet not found: $walletId")
+            return Result.Error("Wallet not found")
+        }
+
+        val ethereumCoin = wallet.ethereum
+        if (ethereumCoin == null) {
+            Log.e("GetEthereumWalletUC", "Ethereum not enabled for wallet: ${wallet.name}")
+            return Result.Error("Ethereum not enabled for this wallet")
+        }
+
+        Log.d(
+            "GetEthereumWalletUC",
+            "Loaded wallet: ${wallet.name}, address: ${ethereumCoin.address.take(8)}..."
+        )
+
+        return Result.Success(
+            EthereumWalletInfo(
+                walletId = wallet.id,
+                walletName = wallet.name,
+                walletAddress = ethereumCoin.address,
+                network = ethereumCoin.network
+            )
+        )
+    }
+}
+
 @Singleton
 class SendEthereumUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
@@ -43,7 +70,6 @@ class SendEthereumUseCase @Inject constructor(
         note: String? = null
     ): Result<SendEthereumResult> = withContext(Dispatchers.IO) {
         try {
-            Log.d("SendEthereumUC", "========== SEND ETHEREUM START ==========")
             Log.d("SendEthereumUC", "WalletId: $walletId, To: $toAddress, Amount: $amount ETH")
 
             // 1. Create transaction
@@ -64,7 +90,10 @@ class SendEthereumUseCase @Inject constructor(
             Log.d("SendEthereumUC", "Step 3: Broadcasting transaction...")
             val broadcastResult = broadcastTransaction(signedTransaction)
 
-            Log.d("SendEthereumUC", "Broadcast result: success=${broadcastResult.success}, hash=${broadcastResult.hash}")
+            Log.d(
+                "SendEthereumUC",
+                "Broadcast result: success=${broadcastResult.success}, hash=${broadcastResult.hash}"
+            )
 
             val sendResult = SendEthereumResult(
                 transactionId = transaction.id,
@@ -104,7 +133,10 @@ class SendEthereumUseCase @Inject constructor(
 
             Log.d("SendEthereumUC", "Creating transaction for address: ${ethereumCoin.address}")
 
-            val nonceResult = ethereumBlockchainRepository.getEthereumNonce(ethereumCoin.address, ethereumCoin.network)
+            val nonceResult = ethereumBlockchainRepository.getEthereumNonce(
+                ethereumCoin.address,
+                ethereumCoin.network
+            )
             val nonce = when (nonceResult) {
                 is Result.Success -> nonceResult.data
                 else -> {
@@ -158,7 +190,6 @@ class SendEthereumUseCase @Inject constructor(
         }
     }
 
-    // Keep signTransaction and broadcastTransaction as they were
     private suspend fun signTransaction(transaction: EthereumTransaction): EthereumTransaction? {
         try {
             Log.d("SendEthereumUC", "Signing transaction: ${transaction.id}")
@@ -171,11 +202,17 @@ class SendEthereumUseCase @Inject constructor(
 
             val ethereumCoin = wallet.ethereum
                 ?: run {
-                    Log.e("SendEthereumUC", "Ethereum not enabled for wallet: ${transaction.walletId}")
+                    Log.e(
+                        "SendEthereumUC",
+                        "Ethereum not enabled for wallet: ${transaction.walletId}"
+                    )
                     return null
                 }
 
-            val nonceResult = ethereumBlockchainRepository.getEthereumNonce(ethereumCoin.address, ethereumCoin.network)
+            val nonceResult = ethereumBlockchainRepository.getEthereumNonce(
+                ethereumCoin.address,
+                ethereumCoin.network
+            )
             val currentNonce = when (nonceResult) {
                 is Result.Success -> nonceResult.data
                 else -> {
@@ -269,10 +306,12 @@ class SendEthereumUseCase @Inject constructor(
                     Log.d("SendEthereumUC", "Broadcast result: ${result.success}")
                     result
                 }
+
                 is Result.Error -> {
                     Log.e("SendEthereumUC", "Broadcast failed: ${broadcastResult.message}")
                     BroadcastResult(success = false, error = broadcastResult.message)
                 }
+
                 Result.Loading -> {
                     Log.e("SendEthereumUC", "Broadcast timeout")
                     BroadcastResult(success = false, error = "Broadcast timeout")
@@ -286,13 +325,6 @@ class SendEthereumUseCase @Inject constructor(
     }
 }
 
-data class SendEthereumResult(
-    override val transactionId: String,
-    override val txHash: String,
-    override val success: Boolean,
-    override val error: String? = null
-) : SendResult
-
 @Singleton
 class GetTransactionUseCase @Inject constructor(
     private val ethereumTransactionRepository: EthereumTransactionRepository
@@ -303,13 +335,17 @@ class GetTransactionUseCase @Inject constructor(
             if (transaction != null) {
                 Result.Success(transaction)
             } else {
-                Result.Error("Transaction not found", IllegalArgumentException("Transaction not found"))
+                Result.Error(
+                    "Transaction not found",
+                    IllegalArgumentException("Transaction not found")
+                )
             }
         } catch (e: Exception) {
             Result.Error("Failed to get transaction: ${e.message}", e)
         }
     }
 }
+
 @Singleton
 class GetWalletTransactionsUseCase @Inject constructor(
     private val ethereumTransactionRepository: EthereumTransactionRepository
@@ -325,6 +361,7 @@ class GetWalletTransactionsUseCase @Inject constructor(
             }
     }
 }
+
 @Singleton
 class GetPendingTransactionsUseCase @Inject constructor(
     private val ethereumTransactionRepository: EthereumTransactionRepository

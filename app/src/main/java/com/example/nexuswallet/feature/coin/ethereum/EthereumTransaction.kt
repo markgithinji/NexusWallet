@@ -2,7 +2,9 @@ package com.example.nexuswallet.feature.coin.ethereum
 
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.ui.SendResult
 import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -45,3 +47,17 @@ data class EthereumFeeEstimate(
     val maxPriorityFee: String? = null,    // Max priority fee for EIP-1559 (optional)
     val isEIP1559: Boolean = false         // Whether this is an EIP-1559 fee estimate
 )
+
+data class EthereumWalletInfo(
+    val walletId: String,
+    val walletName: String,
+    val walletAddress: String,
+    val network: EthereumNetwork
+)
+
+data class SendEthereumResult(
+    override val transactionId: String,
+    override val txHash: String,
+    override val success: Boolean,
+    override val error: String? = null
+) : SendResult
