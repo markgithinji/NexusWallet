@@ -73,3 +73,12 @@ enum class SolanaNetwork {
     MAINNET,
     DEVNET
 }
+
+data class SolanaFeeEstimate(
+    val feeLamports: Long,              // Fee in lamports
+    val feeSol: String,                  // Fee in SOL (human readable)
+    val estimatedTime: Int,               // Estimated time in seconds (usually instant for Solana)
+    val priority: FeeLevel,
+    val computeUnits: Int,                 // Compute units for the transaction
+    val blockhash: String? = null          // Recent blockhash (if available)
+)

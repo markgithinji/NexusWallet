@@ -87,15 +87,15 @@ fun SolanaSendScreen(
                 Text("Get Test SOL")
             }
             // To Address
-            OutlinedTextField(
-                value = state.toAddress,
-                onValueChange = viewModel::updateAddress,
-                label = { Text("To Address") },
-                placeholder = { Text("Enter Solana address") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                isError = state.toAddress.isNotBlank() && state.error?.contains("address") == true
-            )
+//            OutlinedTextField(
+//                value = state.toAddress,
+//                onValueChange = viewModel::updateAddress,
+//                label = { Text("To Address") },
+//                placeholder = { Text("Enter Solana address") },
+//                modifier = Modifier.fillMaxWidth(),
+//                singleLine = true,
+//                isError = state.toAddress.isNotBlank() && state.error?.contains("address") == true
+//            )
 
             // Amount
             OutlinedTextField(

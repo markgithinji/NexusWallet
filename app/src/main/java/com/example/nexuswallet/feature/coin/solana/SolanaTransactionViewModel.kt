@@ -19,6 +19,7 @@ import java.math.RoundingMode
 class SolanaSendViewModel @Inject constructor(
     private val sendSolanaUseCase: SendSolanaUseCase,
     private val getSolanaBalanceUseCase: GetSolanaBalanceUseCase,
+    private val getSolanaFeeEstimateUseCase: GetSolanaFeeEstimateUseCase,
     private val validateSolanaAddressUseCase: ValidateSolanaAddressUseCase,
     private val requestSolanaAirdropUseCase: RequestSolanaAirdropUseCase,
     private val walletRepository: WalletRepository
@@ -38,12 +39,23 @@ class SolanaSendViewModel @Inject constructor(
         val addressError: String? = null,
         val amount: String = "",
         val amountValue: BigDecimal = BigDecimal.ZERO,
+        val feeLevel: FeeLevel = FeeLevel.NORMAL,
+        val feeEstimate: SolanaFeeEstimate? = null,
         val isLoading: Boolean = false,
         val step: String = "",
         val error: String? = null,
         val airdropSuccess: Boolean = false,
         val airdropMessage: String? = null
     )
+
+    sealed class SendEvent {
+        data class ToAddressChanged(val address: String) : SendEvent()
+        data class AmountChanged(val amount: String) : SendEvent()
+        data class FeeLevelChanged(val feeLevel: FeeLevel) : SendEvent()
+        object Validate : SendEvent()
+        object ClearError : SendEvent()
+        object ClearAirdropMessage : SendEvent()
+    }
 
     fun init(walletId: String) {
         viewModelScope.launch {
@@ -68,7 +80,10 @@ class SolanaSendViewModel @Inject constructor(
                     walletAddress = solanaCoin.address
                 )
             }
+
+            // Load balance and fee estimate in parallel
             loadBalance(solanaCoin.address)
+            loadFeeEstimate()
         }
     }
 
@@ -101,9 +116,86 @@ class SolanaSendViewModel @Inject constructor(
         }
     }
 
-    fun updateAddress(address: String) {
-        _state.update { it.copy(toAddress = address) }
-        validateAddress(address)
+    private suspend fun loadFeeEstimate() {
+        val feeResult = getSolanaFeeEstimateUseCase(_state.value.feeLevel)
+        when (feeResult) {
+            is Result.Success -> {
+                _state.update { it.copy(feeEstimate = feeResult.data) }
+                Log.d("SolanaSendVM", "Fee estimate loaded: ${feeResult.data.feeSol} SOL")
+            }
+            is Result.Error -> {
+                Log.e("SolanaSendVM", "Error loading fee: ${feeResult.message}")
+            }
+            Result.Loading -> {}
+        }
+    }
+
+    fun onEvent(event: SendEvent) {
+        when (event) {
+            is SendEvent.ToAddressChanged -> {
+                _state.update { it.copy(toAddress = event.address) }
+                validateAddress(event.address)
+                validateInputs()
+            }
+            is SendEvent.AmountChanged -> {
+                val amountValue = event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
+                _state.update {
+                    it.copy(
+                        amount = event.amount,
+                        amountValue = amountValue
+                    )
+                }
+                validateInputs()
+            }
+            is SendEvent.FeeLevelChanged -> {
+                _state.update { it.copy(feeLevel = event.feeLevel) }
+                viewModelScope.launch {
+                    loadFeeEstimate()
+                    validateInputs()
+                }
+            }
+            SendEvent.Validate -> validateInputs()
+            SendEvent.ClearError -> clearError()
+            SendEvent.ClearAirdropMessage -> clearAirdropMessage()
+        }
+    }
+
+    private fun validateInputs(): Boolean {
+        val currentState = _state.value
+        val toAddress = currentState.toAddress
+        val amount = currentState.amountValue
+
+        // Reset error state first
+        var errorMessage: String? = null
+        var isValid = true
+
+        if (toAddress.isBlank()) {
+            errorMessage = "Please enter a recipient address"
+            isValid = false
+        } else if (!currentState.isAddressValid) {
+            errorMessage = "Invalid Solana address format"
+            isValid = false
+        } else if (amount <= BigDecimal.ZERO) {
+            errorMessage = "Amount must be greater than 0"
+            isValid = false
+        } else if (toAddress == currentState.walletAddress) {
+            errorMessage = "Cannot send to yourself"
+            isValid = false
+        } else if (amount > currentState.balance) {
+            errorMessage = "Insufficient balance"
+            isValid = false
+        } else {
+            // Check balance including fees
+            val fee = currentState.feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal("0.000005")
+            val totalRequired = amount + fee
+            if (totalRequired > currentState.balance) {
+                errorMessage = "Insufficient balance (including fees)"
+                isValid = false
+            }
+        }
+
+        _state.update { it.copy(error = errorMessage) }
+        return isValid
     }
 
     private fun validateAddress(address: String) {
@@ -199,7 +291,7 @@ class SolanaSendViewModel @Inject constructor(
                 walletId = state.walletId,
                 toAddress = toAddress,
                 amount = amount,
-                feeLevel = FeeLevel.NORMAL,
+                feeLevel = state.feeLevel, // Pass the selected fee level
                 note = null
             )
 
@@ -250,8 +342,17 @@ class SolanaSendViewModel @Inject constructor(
             return false
         }
 
+        // Check if amount exceeds balance
         if (amount > _state.value.balance) {
             _state.update { it.copy(error = "Insufficient balance") }
+            return false
+        }
+
+        // Optionally check if amount + fee exceeds balance
+        val fee = _state.value.feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal("0.000005")
+        val totalRequired = amount + fee
+        if (totalRequired > _state.value.balance) {
+            _state.update { it.copy(error = "Insufficient balance (including fees)") }
             return false
         }
 

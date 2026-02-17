@@ -3,7 +3,6 @@ package com.example.nexuswallet.feature.coin.solana
 import android.util.Log
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.wallet.data.model.FeeEstimate
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.ChainType
@@ -50,7 +49,7 @@ class SendSolanaUseCase @Inject constructor(
             val signedTransaction = signTransaction(transaction)
                 ?: return@withContext Result.Error("Failed to sign transaction", null)
 
-            Log.d("SendSolanaUC", "Transaction signed: ${signedTransaction.signature}")
+            Log.d("SendSolanaUC", "Transaction signed: ${signedTransaction.signature?.take(16)}...")
 
             // 3. Broadcast transaction
             Log.d("SendSolanaUC", "Step 3: Broadcasting transaction...")
@@ -99,17 +98,22 @@ class SendSolanaUseCase @Inject constructor(
             val blockhashResult = solanaBlockchainRepository.getRecentBlockhash()
             val blockhash = when (blockhashResult) {
                 is Result.Success -> blockhashResult.data
-                else -> return null
+                else -> {
+                    Log.e("SendSolanaUC", "Failed to get blockhash")
+                    return null
+                }
             }
 
             val feeResult = solanaBlockchainRepository.getFeeEstimate(feeLevel)
             val feeEstimate = when (feeResult) {
                 is Result.Success -> feeResult.data
-                else -> return null
+                else -> {
+                    Log.e("SendSolanaUC", "Failed to get fee estimate")
+                    return null
+                }
             }
 
             val lamports = amount.multiply(BigDecimal("1000000000")).toLong()
-            val feeLamports = feeEstimate.totalFee.toLong()
 
             val transaction = SolanaTransaction(
                 id = "sol_tx_${System.currentTimeMillis()}",
@@ -118,8 +122,8 @@ class SendSolanaUseCase @Inject constructor(
                 toAddress = toAddress,
                 amountLamports = lamports,
                 amountSol = amount.toPlainString(),
-                feeLamports = feeLamports,
-                feeSol = BigDecimal(feeEstimate.totalFeeDecimal).toPlainString(),
+                feeLamports = feeEstimate.feeLamports,
+                feeSol = feeEstimate.feeSol,
                 blockhash = blockhash,
                 signedData = null,
                 signature = null,
@@ -127,10 +131,11 @@ class SendSolanaUseCase @Inject constructor(
                 note = note,
                 timestamp = System.currentTimeMillis(),
                 feeLevel = feeLevel,
-                network = "mainnet"
+                network = "mainnet" // TDDO: add network to SolanaCoin
             )
 
             solanaTransactionRepository.saveTransaction(transaction)
+            Log.d("SendSolanaUC", "Transaction saved locally: ${transaction.id}")
             return transaction
 
         } catch (e: Exception) {
@@ -141,16 +146,27 @@ class SendSolanaUseCase @Inject constructor(
 
     private suspend fun signTransaction(transaction: SolanaTransaction): SolanaTransaction? {
         try {
+            Log.d("SendSolanaUC", "Signing transaction: ${transaction.id}")
+
             val wallet = walletRepository.getWallet(transaction.walletId)
-                ?: return null
+                ?: run {
+                    Log.e("SendSolanaUC", "Wallet not found: ${transaction.walletId}")
+                    return null
+                }
 
             val solanaCoin = wallet.solana
-                ?: return null
+                ?: run {
+                    Log.e("SendSolanaUC", "Solana not enabled for wallet: ${transaction.walletId}")
+                    return null
+                }
 
             val blockhashResult = solanaBlockchainRepository.getRecentBlockhash()
             val currentBlockhash = when (blockhashResult) {
                 is Result.Success -> blockhashResult.data
-                else -> return null
+                else -> {
+                    Log.e("SendSolanaUC", "Failed to get blockhash for signing")
+                    return null
+                }
             }
 
             val privateKeyResult = keyManager.getPrivateKeyForSigning(
@@ -159,6 +175,7 @@ class SendSolanaUseCase @Inject constructor(
             )
 
             if (privateKeyResult.isFailure) {
+                Log.e("SendSolanaUC", "Failed to get private key")
                 return null
             }
 
@@ -167,18 +184,23 @@ class SendSolanaUseCase @Inject constructor(
 
             val derivedAddress = keypair.publicKey.toString()
             if (derivedAddress != solanaCoin.address) {
+                Log.e("SendSolanaUC", "Private key doesn't match wallet")
                 return null
             }
 
             val signedTxResult = solanaBlockchainRepository.createAndSignTransaction(
                 fromKeypair = keypair,
                 toAddress = transaction.toAddress,
-                lamports = transaction.amountLamports
+                lamports = transaction.amountLamports,
+                feeLevel = transaction.feeLevel
             )
 
             val signedTx = when (signedTxResult) {
                 is Result.Success -> signedTxResult.data
-                else -> return null
+                else -> {
+                    Log.e("SendSolanaUC", "Failed to sign transaction")
+                    return null
+                }
             }
 
             val signatureHex = signedTx.signature.toHexString()
@@ -192,6 +214,7 @@ class SendSolanaUseCase @Inject constructor(
             )
 
             solanaTransactionRepository.updateTransaction(updatedTransaction)
+            Log.d("SendSolanaUC", "Transaction signed: ${signatureHex.take(16)}...")
             return updatedTransaction
 
         } catch (e: Exception) {
@@ -226,8 +249,14 @@ class SendSolanaUseCase @Inject constructor(
                     solanaTransactionRepository.updateTransaction(updatedTransaction)
                     result
                 }
-                is Result.Error -> BroadcastResult(success = false, error = broadcastResult.message)
-                Result.Loading -> BroadcastResult(success = false, error = "Timeout")
+                is Result.Error -> {
+                    Log.e("SendSolanaUC", "Broadcast failed: ${broadcastResult.message}")
+                    BroadcastResult(success = false, error = broadcastResult.message)
+                }
+                Result.Loading -> {
+                    Log.e("SendSolanaUC", "Broadcast timeout")
+                    BroadcastResult(success = false, error = "Broadcast timeout")
+                }
             }
 
         } catch (e: Exception) {
@@ -249,6 +278,7 @@ class SendSolanaUseCase @Inject constructor(
             else -> null
         }
     } catch (e: Exception) {
+        Log.e("SendSolanaUC", "Error creating keypair: ${e.message}", e)
         null
     }
 
@@ -281,7 +311,7 @@ class GetSolanaBalanceUseCase @Inject constructor(
 class GetSolanaFeeEstimateUseCase @Inject constructor(
     private val solanaBlockchainRepository: SolanaBlockchainRepository
 ) {
-    suspend operator fun invoke(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<FeeEstimate> {
+    suspend operator fun invoke(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<SolanaFeeEstimate> {
         return solanaBlockchainRepository.getFeeEstimate(feeLevel)
     }
 }
