@@ -4,17 +4,22 @@ import android.content.Context
 import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.wallet.data.local.BackupDao
-import com.example.nexuswallet.feature.wallet.data.local.BalanceDao
-import com.example.nexuswallet.feature.wallet.data.local.TransactionDao
+import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.local.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
-import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
-import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalanceDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoinDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumBalanceDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumCoinDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalanceDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoinDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalanceDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCCoinDao
 import com.example.nexuswallet.feature.wallet.domain.SyncWalletBalancesUseCase
 import dagger.Module
 import dagger.Provides
@@ -35,6 +40,7 @@ object DatabaseModule {
         return WalletDatabase.getDatabase(context)
     }
 
+    // === Wallet DAOs ===
     @Provides
     @Singleton
     fun provideWalletDao(database: WalletDatabase): WalletDao {
@@ -43,35 +49,77 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideBalanceDao(database: WalletDatabase): BalanceDao {
-        return database.balanceDao()
+    fun provideBitcoinCoinDao(database: WalletDatabase): BitcoinCoinDao {
+        return database.bitcoinCoinDao()
     }
 
     @Provides
     @Singleton
-    fun provideTransactionDao(database: WalletDatabase): TransactionDao {
-        return database.transactionDao()
+    fun provideEthereumCoinDao(database: WalletDatabase): EthereumCoinDao {
+        return database.ethereumCoinDao()
     }
 
     @Provides
     @Singleton
-    fun provideBackupDao(database: WalletDatabase): BackupDao {
-        return database.backupDao()
+    fun provideSolanaCoinDao(database: WalletDatabase): SolanaCoinDao {
+        return database.solanaCoinDao()
     }
 
+    @Provides
+    @Singleton
+    fun provideUSDCCoinDao(database: WalletDatabase): USDCCoinDao {
+        return database.usdcCoinDao()
+    }
+
+    // === Balance DAOs ===
+    @Provides
+    @Singleton
+    fun provideBitcoinBalanceDao(database: WalletDatabase): BitcoinBalanceDao {
+        return database.bitcoinBalanceDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideEthereumBalanceDao(database: WalletDatabase): EthereumBalanceDao {
+        return database.ethereumBalanceDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSolanaBalanceDao(database: WalletDatabase): SolanaBalanceDao {
+        return database.solanaBalanceDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideUSDCBalanceDao(database: WalletDatabase): USDCBalanceDao {
+        return database.usdcBalanceDao()
+    }
+
+    // === Data Sources ===
     @Provides
     @Singleton
     fun provideWalletLocalDataSource(
         walletDao: WalletDao,
-        balanceDao: BalanceDao,
-        transactionDao: TransactionDao,
-        backupDao: BackupDao,
+        bitcoinCoinDao: BitcoinCoinDao,
+        ethereumCoinDao: EthereumCoinDao,
+        solanaCoinDao: SolanaCoinDao,
+        usdcCoinDao: USDCCoinDao,
+        bitcoinBalanceDao: BitcoinBalanceDao,
+        ethereumBalanceDao: EthereumBalanceDao,
+        solanaBalanceDao: SolanaBalanceDao,
+        usdcBalanceDao: USDCBalanceDao,
     ): WalletLocalDataSource {
         return WalletLocalDataSource(
             walletDao = walletDao,
-            balanceDao = balanceDao,
-            transactionDao = transactionDao,
-            backupDao = backupDao,
+            bitcoinCoinDao = bitcoinCoinDao,
+            ethereumCoinDao = ethereumCoinDao,
+            solanaCoinDao = solanaCoinDao,
+            usdcCoinDao = usdcCoinDao,
+            bitcoinBalanceDao = bitcoinBalanceDao,
+            ethereumBalanceDao = ethereumBalanceDao,
+            solanaBalanceDao = solanaBalanceDao,
+            usdcBalanceDao = usdcBalanceDao
         )
     }
 
@@ -82,9 +130,14 @@ object DatabaseModule {
         securityManager: SecurityManager,
         keyManager: KeyManager
     ): WalletRepository {
-        return WalletRepository(localDataSource, securityManager, keyManager)
+        return WalletRepository(
+            localDataSource = localDataSource,
+            securityManager = securityManager,
+            keyManager = keyManager
+        )
     }
 
+    // === Security ===
     @Provides
     @Singleton
     fun provideSecureStorage(
@@ -96,7 +149,10 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideSecurityManager(@ApplicationContext context: Context, securityPreferencesRepository: SecurityPreferencesRepository): SecurityManager {
+    fun provideSecurityManager(
+        @ApplicationContext context: Context,
+        securityPreferencesRepository: SecurityPreferencesRepository
+    ): SecurityManager {
         return SecurityManager(context, securityPreferencesRepository)
     }
 
@@ -108,6 +164,7 @@ object DatabaseModule {
         return KeyManager(securityManager)
     }
 
+    // === Blockchain ===
     @Provides
     @Singleton
     fun provideWeb3j(): Web3j {
@@ -116,6 +173,7 @@ object DatabaseModule {
         )
     }
 
+    // === Use Cases ===
     @Provides
     @Singleton
     fun provideSyncWalletBalancesUseCase(
@@ -133,6 +191,4 @@ object DatabaseModule {
             usdcBlockchainRepository = usdcBlockchainRepository
         )
     }
-
-
 }
