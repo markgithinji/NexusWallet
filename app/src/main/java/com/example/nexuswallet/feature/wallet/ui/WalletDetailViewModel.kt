@@ -2,16 +2,6 @@ package com.example.nexuswallet.feature.wallet.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
-import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionRepository
-import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
-import com.example.nexuswallet.feature.coin.solana.SolanaTransactionRepository
-import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
-import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
-import com.example.nexuswallet.feature.coin.usdc.domain.USDCSendTransaction
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
@@ -20,17 +10,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
 class WalletDetailViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
-    private val bitcoinTransactionRepository: BitcoinTransactionRepository,
-    private val ethereumTransactionRepository: EthereumTransactionRepository,
-    private val solanaTransactionRepository: SolanaTransactionRepository,
-    private val usdcTransactionRepository: USDCTransactionRepository,
-    private val getETHBalanceForGasUseCase: GetETHBalanceForGasUseCase,
     private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase
 ) : ViewModel() {
 
@@ -41,20 +25,6 @@ class WalletDetailViewModel @Inject constructor(
     // Wallet balance
     private val _balance = MutableStateFlow<WalletBalance?>(null)
     val balance: StateFlow<WalletBalance?> = _balance
-
-    // ETH balance for USDC wallet (for gas)
-    private val _ethBalanceForGas = MutableStateFlow<BigDecimal?>(null)
-    val ethBalanceForGas: StateFlow<BigDecimal?> = _ethBalanceForGas
-
-    // Transactions by type
-    private val _bitcoinTransactions = MutableStateFlow<List<BitcoinTransaction>>(emptyList())
-    private val _ethereumTransactions = MutableStateFlow<List<EthereumTransaction>>(emptyList())
-    private val _solanaTransactions = MutableStateFlow<List<SolanaTransaction>>(emptyList())
-    private val _usdcTransactions = MutableStateFlow<List<USDCSendTransaction>>(emptyList())
-
-    // Combined transactions for UI
-    private val _transactions = MutableStateFlow<List<Any>>(emptyList())
-    val transactions: StateFlow<List<Any>> = _transactions
 
     // Loading states
     private val _isLoading = MutableStateFlow(false)
@@ -86,15 +56,7 @@ class WalletDetailViewModel @Inject constructor(
                 val loadedBalance = walletRepository.getWalletBalance(walletId)
                 _balance.value = loadedBalance
 
-                // 3. Load transactions for each coin type
-                loadAllTransactions(walletId)
-
-                // 4. Load ETH balance for gas if USDC is enabled
-                if (loadedWallet.usdc != null) {
-                    loadETHGasBalance(walletId)
-                }
-
-                // 5. Sync balances in background using use case
+                // 3. Sync balances in background using use case
                 viewModelScope.launch {
                     syncWalletBalancesUseCase(loadedWallet)
                     // Refresh balance after sync
@@ -106,62 +68,6 @@ class WalletDetailViewModel @Inject constructor(
             } finally {
                 _isLoading.value = false
             }
-        }
-    }
-
-    private fun loadAllTransactions(walletId: String) {
-        viewModelScope.launch {
-            // Load Bitcoin transactions
-            bitcoinTransactionRepository.getTransactions(walletId).collect { txs ->
-                _bitcoinTransactions.value = txs
-                combineTransactions()
-            }
-
-            // Load Ethereum transactions
-            ethereumTransactionRepository.getTransactions(walletId).collect { txs ->
-                _ethereumTransactions.value = txs
-                combineTransactions()
-            }
-
-            // Load Solana transactions
-            solanaTransactionRepository.getTransactions(walletId).collect { txs ->
-                _solanaTransactions.value = txs
-                combineTransactions()
-            }
-
-            // Load USDC transactions
-            usdcTransactionRepository.getTransactions(walletId).collect { txs ->
-                _usdcTransactions.value = txs
-                combineTransactions()
-            }
-        }
-    }
-
-    private fun combineTransactions() {
-        val all = mutableListOf<Any>()
-        all.addAll(_bitcoinTransactions.value)
-        all.addAll(_ethereumTransactions.value)
-        all.addAll(_solanaTransactions.value)
-        all.addAll(_usdcTransactions.value)
-
-        // Sort by timestamp descending (newest first)
-        _transactions.value = all.sortedByDescending {
-            when(it) {
-                is BitcoinTransaction -> it.timestamp
-                is EthereumTransaction -> it.timestamp
-                is SolanaTransaction -> it.timestamp
-                is USDCSendTransaction -> it.timestamp
-                else -> 0L
-            }
-        }
-    }
-
-    private suspend fun loadETHGasBalance(walletId: String) {
-        val result = getETHBalanceForGasUseCase(walletId)
-        when (result) {
-            is Result.Success -> _ethBalanceForGas.value = result.data
-            is Result.Error -> {}
-            Result.Loading -> {}
         }
     }
 
@@ -195,8 +101,6 @@ class WalletDetailViewModel @Inject constructor(
             viewModelScope.launch {
                 _isLoading.value = true
                 try {
-                    // Use the use case to sync balances
-                    syncWalletBalancesUseCase(wallet)
                     loadWallet(wallet.id)
                 } catch (e: Exception) {
                     _error.value = "Refresh failed: ${e.message}"
