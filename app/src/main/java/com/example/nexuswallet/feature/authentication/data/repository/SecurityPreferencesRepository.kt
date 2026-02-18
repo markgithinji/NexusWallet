@@ -260,7 +260,7 @@ class SecurityPreferencesRepository @Inject constructor(
 
 
     private suspend fun storeBackupMetadata(walletId: String, backupData: WalletBackup) {
-        walletLocalDataSource.saveBackupMetadata(backupData)
+//        walletLocalDataSource.saveBackupMetadata(backupData)
     }
 
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }

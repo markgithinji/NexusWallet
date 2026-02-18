@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.wallet.domain
 
-
+import android.util.Log
+import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
@@ -29,6 +30,7 @@ class SyncWalletBalancesUseCase @Inject constructor(
 ) {
 
     suspend operator fun invoke(wallet: Wallet) {
+        Log.d("SyncBalancesUC", "Syncing balances for wallet: ${wallet.name}")
         syncWalletBalances(wallet)
     }
 
@@ -50,7 +52,7 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 val btcBalance = balanceResult.data
                 val satoshiBalance =
                     (btcBalance * BigDecimal("100000000")).toBigInteger().toString()
-                val usdValue = calculateUsdValue(btcBalance, "BTC")
+                val usdValue = calculateUsdValue(btcBalance, CoinType.BITCOIN.name)
 
                 val currentBalance = localDataSource.loadWalletBalance(walletId) ?: WalletBalance(
                     walletId,
@@ -68,8 +70,12 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 )
 
                 localDataSource.saveWalletBalance(updatedBalance)
+                Log.d("SyncBalancesUC", "Bitcoin balance updated: ${btcBalance} BTC")
             }
 
+            is Result.Error -> {
+                Log.e("SyncBalancesUC", "Failed to sync Bitcoin: ${balanceResult.message}")
+            }
             else -> {}
         }
     }
@@ -85,7 +91,7 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 val ethBalance = balanceResult.data
                 val weiBalance =
                     (ethBalance * BigDecimal("1000000000000000000")).toBigInteger().toString()
-                val usdValue = calculateUsdValue(ethBalance, "ETH")
+                val usdValue = calculateUsdValue(ethBalance, CoinType.ETHEREUM.name)
 
                 val currentBalance = localDataSource.loadWalletBalance(walletId) ?: WalletBalance(
                     walletId,
@@ -103,8 +109,12 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 )
 
                 localDataSource.saveWalletBalance(updatedBalance)
+                Log.d("SyncBalancesUC", "Ethereum balance updated: ${ethBalance} ETH")
             }
 
+            is Result.Error -> {
+                Log.e("SyncBalancesUC", "Failed to sync Ethereum: ${balanceResult.message}")
+            }
             else -> {}
         }
     }
@@ -117,7 +127,7 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 val solBalance = balanceResult.data
                 val lamportsBalance =
                     (solBalance * BigDecimal("1000000000")).toBigInteger().toString()
-                val usdValue = calculateUsdValue(solBalance, "SOL")
+                val usdValue = calculateUsdValue(solBalance, CoinType.SOLANA.name)
 
                 val currentBalance = localDataSource.loadWalletBalance(walletId) ?: WalletBalance(
                     walletId,
@@ -135,8 +145,12 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 )
 
                 localDataSource.saveWalletBalance(updatedBalance)
+                Log.d("SyncBalancesUC", "Solana balance updated: ${solBalance} SOL")
             }
 
+            is Result.Error -> {
+                Log.e("SyncBalancesUC", "Failed to sync Solana: ${balanceResult.message}")
+            }
             else -> {}
         }
     }
@@ -160,17 +174,21 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 )
 
                 localDataSource.saveWalletBalance(updatedBalance)
+                Log.d("SyncBalancesUC", "USDC balance updated: ${usdcBalance.amountDecimal} USDC")
             }
 
+            is Result.Error -> {
+                Log.e("SyncBalancesUC", "Failed to sync USDC: ${result.message}")
+            }
             else -> {}
         }
     }
 
     private fun calculateUsdValue(amount: BigDecimal, symbol: String): Double {
         val price = when (symbol) {
-            "BTC" -> 45000.0
-            "ETH" -> 3000.0
-            "SOL" -> 30.0
+            CoinType.BITCOIN.name -> 45000.0
+            CoinType.ETHEREUM.name -> 3000.0
+            CoinType.SOLANA.name-> 30.0
             else -> 1.0
         }
         return amount.toDouble() * price
