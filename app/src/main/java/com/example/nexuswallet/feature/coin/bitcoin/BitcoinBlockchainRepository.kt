@@ -1,7 +1,9 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
+import android.util.Log
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
+import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bitcoinj.core.Address
@@ -378,7 +380,107 @@ class BitcoinBlockchainRepository @Inject constructor(
         }
     }
 
+    /**
+     * Get all transactions for an address (both sent and received)
+     */
+    suspend fun getAddressTransactions(
+        address: String,
+        network: BitcoinNetwork = BitcoinNetwork.MAINNET
+    ): Result<List<BitcoinTransactionResponse>> = withContext(Dispatchers.IO) {
+        try {
+            val api = getApiForNetwork(network)
+            val transactions = api.getAddressTransactions(address)
+
+            val mappedTransactions = transactions.map { tx ->
+                // Determine if this transaction involves our address
+                val hasOutputToUs = tx.vout.any { it.scriptpubkey_address == address }
+                val hasInputFromUs = tx.vin.any { vin ->
+                    vin.prevout?.scriptpubkey_address == address
+                }
+
+                val (fromAddress, toAddress, amount, isIncoming) = when {
+                    // Incoming transaction
+                    hasOutputToUs && !hasInputFromUs -> {
+                        val ourOutput = tx.vout.first { it.scriptpubkey_address == address }
+                        val sender = tx.vin.firstOrNull()?.prevout?.scriptpubkey_address ?: "unknown"
+                        TransactionDetails(
+                            fromAddress = sender,
+                            toAddress = address,
+                            amount = ourOutput.value,
+                            isIncoming = true
+                        )
+                    }
+
+                    // Outgoing transaction
+                    hasInputFromUs -> {
+                        val recipientOutput = tx.vout.firstOrNull {
+                            it.scriptpubkey_address != null && it.scriptpubkey_address != address
+                        }
+                        val recipient = recipientOutput?.scriptpubkey_address ?: "unknown"
+                        val amount = recipientOutput?.value ?: 0
+                        TransactionDetails(
+                            fromAddress = address,
+                            toAddress = recipient,
+                            amount = amount,
+                            isIncoming = false
+                        )
+                    }
+
+                    else -> {
+                        TransactionDetails(
+                            fromAddress = "",
+                            toAddress = "",
+                            amount = 0L,
+                            isIncoming = false
+                        )
+                    }
+                }
+
+                BitcoinTransactionResponse(
+                    txid = tx.txid,
+                    fromAddress = fromAddress,
+                    toAddress = toAddress,
+                    amount = amount,
+                    fee = tx.fee,
+                    status = if (tx.status.confirmed) TransactionStatus.SUCCESS else TransactionStatus.PENDING,
+                    timestamp = tx.status.block_time ?: (System.currentTimeMillis() / 1000),
+                    confirmations = if (tx.status.confirmed) 1 else 0,
+                    blockHash = tx.status.block_hash,
+                    blockHeight = tx.status.block_height,
+                    isIncoming = isIncoming
+                )
+            }.filter { it.amount > 0 } // Remove zero-amount transactions
+
+            Result.Success(mappedTransactions)
+
+        } catch (e: Exception) {
+            Log.e("BitcoinAPI", "Failed to get transactions: ${e.message}", e)
+            Result.Error("Failed to get transactions: ${e.message}", e)
+        }
+    }
+
+    data class TransactionDetails(
+        val fromAddress: String,
+        val toAddress: String,
+        val amount: Long,
+        val isIncoming: Boolean
+    )
+
     companion object {
         private const val SATOSHIS_PER_BTC = 100_000_000L
     }
 }
+
+data class BitcoinTransactionResponse(
+    val txid: String,
+    val fromAddress: String,
+    val toAddress: String,
+    val amount: Long,
+    val fee: Long,
+    val status: TransactionStatus,
+    val timestamp: Long,
+    val confirmations: Int,
+    val blockHash: String?,
+    val blockHeight: Int?,
+    val isIncoming: Boolean
+)
