@@ -1,10 +1,12 @@
 package com.example.nexuswallet.feature.coin.usdc
 
+import android.util.Log
 import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EtherscanApiService
 import com.example.nexuswallet.feature.coin.ethereum.GasPrice
+import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
@@ -535,6 +537,48 @@ class USDCBlockchainRepository @Inject constructor(
                 .toPlainString()
         } catch (e: Exception) {
             "0"
+        }
+    }
+
+    suspend fun getUSDCTransactionHistory(
+        address: String,
+        network: EthereumNetwork = EthereumNetwork.Sepolia
+    ): Result<List<TokenTransaction>> = withContext(Dispatchers.IO) {
+        try {
+            val chainId = network.chainId
+            val usdcAddress = network.usdcContractAddress
+            val apiKey = BuildConfig.ETHERSCAN_API_KEY
+
+            Log.d("USDCAPI", "=== Fetching USDC transactions for $address on ${network.displayName} ===")
+
+            val response = etherscanApi.getTokenTransfers(
+                chainId = chainId,
+                address = address,
+                contractAddress = usdcAddress,
+                apiKey = apiKey
+            )
+
+            if (response.status == "1") {
+                val transactions = response.result
+                Log.d("USDCAPI", "Found ${transactions.size} USDC transactions")
+
+                transactions.take(3).forEachIndexed { i, tx ->
+                    Log.d("USDCAPI", "Tx $i: ${tx.hash.take(8)}...")
+                    Log.d("USDCAPI", "  from: ${tx.from.take(8)}...")
+                    Log.d("USDCAPI", "  to: ${tx.to.take(8)}...")
+                    Log.d("USDCAPI", "  value: ${tx.value}")
+                    Log.d("USDCAPI", "  timestamp: ${tx.timeStamp}")
+                }
+
+                Result.Success(transactions)
+            } else {
+                Log.e("USDCAPI", "API error: ${response.message}")
+                Result.Error(response.message ?: "Failed to get USDC transactions")
+            }
+
+        } catch (e: Exception) {
+            Log.e("USDCAPI", "Failed to get USDC transactions: ${e.message}", e)
+            Result.Error("Failed to get USDC transactions: ${e.message}", e)
         }
     }
 
