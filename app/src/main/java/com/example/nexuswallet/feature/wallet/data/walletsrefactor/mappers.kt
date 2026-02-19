@@ -79,7 +79,7 @@ fun EthereumCoin.toEntity(walletId: String): EthereumCoinEntity = EthereumCoinEn
 fun SolanaCoinEntity.toDomain(): SolanaCoin = SolanaCoin(
     address = address,
     publicKey = publicKey,
-    derivationPath = derivationPath
+    derivationPath = derivationPath,
 )
 
 fun SolanaCoin.toEntity(walletId: String): SolanaCoinEntity = SolanaCoinEntity(

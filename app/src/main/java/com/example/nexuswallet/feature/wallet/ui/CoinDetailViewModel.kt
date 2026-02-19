@@ -13,6 +13,7 @@ import com.example.nexuswallet.feature.coin.bitcoin.SyncBitcoinTransactionsUseCa
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.SyncEthereumTransactionsUseCase
 import com.example.nexuswallet.feature.coin.solana.SolanaTransactionRepository
+import com.example.nexuswallet.feature.coin.solana.SyncSolanaTransactionsUseCase
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
 import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
@@ -33,7 +34,8 @@ class CoinDetailViewModel @Inject constructor(
     private val usdcTransactionRepository: USDCTransactionRepository,
     private val getETHBalanceForGasUseCase: GetETHBalanceForGasUseCase,
     private val syncBitcoinTransactionsUseCase: SyncBitcoinTransactionsUseCase,
-    private val syncEthereumTransactionsUseCase: SyncEthereumTransactionsUseCase
+    private val syncEthereumTransactionsUseCase: SyncEthereumTransactionsUseCase,
+    private val syncSolanaTransactionsUseCase: SyncSolanaTransactionsUseCase
 ) : ViewModel() {
 
     data class CoinDetailState(
@@ -75,6 +77,10 @@ class CoinDetailViewModel @Inject constructor(
                     "ETH" -> {
                         Log.d("CoinDetailVM", "Syncing Ethereum transactions...")
                         syncEthereumTransactionsUseCase(walletId)
+                    }
+                    "SOL" -> {
+                        Log.d("CoinDetailVM", "Syncing Solana transactions...")
+                        syncSolanaTransactionsUseCase(walletId)
                     }
                     // TODO: Add other coins as they get implemented
                 }
@@ -200,6 +206,9 @@ class CoinDetailViewModel @Inject constructor(
                 "SOL" -> {
                     solanaTransactionRepository.getTransactions(walletId).collect { txs ->
                         Log.d("CoinDetailVM", "SOL Transactions loaded: ${txs.size}")
+                        txs.take(3).forEachIndexed { i, tx ->
+                            Log.d("CoinDetailVM", "  SOL Tx $i: amount=${tx.amountSol}, incoming=${tx.isIncoming}")
+                        }
                         _transactions.value = txs
                     }
                 }

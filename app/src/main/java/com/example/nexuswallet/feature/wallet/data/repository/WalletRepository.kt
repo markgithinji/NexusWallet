@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.wallet.data.repository
 
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
+import com.example.nexuswallet.feature.coin.solana.SolanaNetwork
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
@@ -59,7 +60,8 @@ class WalletRepository @Inject constructor(
         includeSolana: Boolean = true,
         includeUSDC: Boolean = false,
         ethereumNetwork: EthereumNetwork = EthereumNetwork.Sepolia,
-        bitcoinNetwork: BitcoinNetwork = BitcoinNetwork.TESTNET
+        bitcoinNetwork: BitcoinNetwork = BitcoinNetwork.TESTNET,
+        solanaNetwork: SolanaNetwork = SolanaNetwork.DEVNET
     ): Result<Wallet> {
         return try {
             val walletId = "wallet_${System.currentTimeMillis()}"
@@ -68,7 +70,7 @@ class WalletRepository @Inject constructor(
                 if (includeBitcoin) createBitcoinCoin(mnemonic, bitcoinNetwork) else null
             val ethereumCoin =
                 if (includeEthereum) createEthereumCoin(mnemonic, ethereumNetwork) else null
-            val solanaCoin = if (includeSolana) createSolanaCoin() else null
+            val solanaCoin = if (includeSolana) createSolanaCoin(solanaNetwork) else null
 
             val usdcCoin = if (includeUSDC && ethereumCoin != null) {
                 USDCCoin(
@@ -213,11 +215,12 @@ class WalletRepository @Inject constructor(
         )
     }
 
-    private fun createSolanaCoin(): SolanaCoin {
+    private fun createSolanaCoin(solanaNetwork: SolanaNetwork): SolanaCoin {
         val keypair = Keypair.generate()
         return SolanaCoin(
             address = keypair.publicKey.toString(),
-            publicKey = keypair.publicKey.toString()
+            publicKey = keypair.publicKey.toString(),
+            network = solanaNetwork
         )
     }
 

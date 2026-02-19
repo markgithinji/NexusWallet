@@ -472,7 +472,7 @@ fun CoinTransactionItem(
         }
         is SolanaTransaction -> {
             TransactionInfo(
-                isIncoming = true,
+                isIncoming = transaction.isIncoming,
                 amount = transaction.amountSol,
                 status = transaction.status,
                 timestamp = transaction.timestamp,

@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.data.walletsrefactor
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
+import com.example.nexuswallet.feature.coin.solana.SolanaNetwork
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.serialization.Serializable
@@ -38,7 +39,8 @@ data class EthereumCoin(
 data class SolanaCoin(
     val address: String,
     val publicKey: String,
-    val derivationPath: String = "m/44'/501'/0'/0'"
+    val derivationPath: String = "m/44'/501'/0'/0'",
+    val network: SolanaNetwork = SolanaNetwork.DEVNET
 )
 
 @Serializable
