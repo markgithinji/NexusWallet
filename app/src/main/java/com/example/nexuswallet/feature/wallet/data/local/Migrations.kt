@@ -10,6 +10,16 @@ import org.json.JSONObject
 import java.util.UUID
 
 
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // Add isIncoming column to EthereumTransaction table
+        database.execSQL("""
+            ALTER TABLE EthereumTransaction 
+            ADD COLUMN isIncoming INTEGER NOT NULL DEFAULT 0
+        """)
+    }
+}
+
 val MIGRATION_10_11 = object : Migration(10, 11) {
     override fun migrate(database: SupportSQLiteDatabase) {
         // Add isIncoming column to BitcoinTransaction table
