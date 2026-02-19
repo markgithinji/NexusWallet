@@ -1,6 +1,5 @@
-package com.example.nexuswallet.feature.wallet.di
+package com.example.nexuswallet.feature.coin.ethereum
 
-import com.example.nexuswallet.feature.coin.ethereum.EtherscanApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,11 +21,14 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideDefaultEtherscanApi(client: OkHttpClient): EtherscanApiService {
+    fun provideDefaultEtherscanApi(
+        client: OkHttpClient,
+        json: Json
+    ): EtherscanApiService {
         return Retrofit.Builder()
             .baseUrl(ETHERSCAN_V2_URL)
             .client(client)
-            .addConverterFactory(Json.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(EtherscanApiService::class.java)
     }
