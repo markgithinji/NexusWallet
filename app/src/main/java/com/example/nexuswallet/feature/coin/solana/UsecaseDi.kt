@@ -29,14 +29,6 @@ object SolanaUseCaseModule {
         return GetSolanaFeeEstimateUseCase(solanaBlockchainRepository)
     }
 
-//    @Provides
-//    @Singleton
-//    fun provideGetSolanaTransactionHistoryUseCase(
-//        solanaBlockchainRepository: SolanaBlockchainRepository
-//    ): GetSolanaTransactionHistoryUseCase {
-//        return GetSolanaTransactionHistoryUseCase(solanaBlockchainRepository)
-//    }
-
     @Provides
     @Singleton
     fun provideValidateSolanaAddressUseCase(
@@ -81,5 +73,19 @@ object SolanaUseCaseModule {
         walletRepository: WalletRepository
     ): GetSolanaWalletUseCase {
         return GetSolanaWalletUseCase(walletRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSyncSolanaTransactionsUseCase(
+        solanaBlockchainRepository: SolanaBlockchainRepository,
+        solanaTransactionRepository: SolanaTransactionRepository,
+        walletRepository: WalletRepository
+    ): SyncSolanaTransactionsUseCase {
+        return SyncSolanaTransactionsUseCase(
+            solanaBlockchainRepository,
+            solanaTransactionRepository,
+            walletRepository
+        )
     }
 }

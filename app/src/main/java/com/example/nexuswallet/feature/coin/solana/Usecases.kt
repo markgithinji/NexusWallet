@@ -10,9 +10,156 @@ import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.sol4k.Keypair
+import org.sol4k.PublicKey
 import java.math.BigDecimal
+import java.math.RoundingMode
+import java.sql.DriverManager.getConnection
 import javax.inject.Inject
 import javax.inject.Singleton
+
+@Singleton
+class SyncSolanaTransactionsUseCase @Inject constructor(
+    private val solanaBlockchainRepository: SolanaBlockchainRepository,
+    private val solanaTransactionRepository: SolanaTransactionRepository,
+    private val walletRepository: WalletRepository
+) {
+    suspend operator fun invoke(walletId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Log.d("SyncSolanaUC", "=== Syncing Solana transactions for wallet: $walletId ===")
+
+            val wallet = walletRepository.getWallet(walletId)
+            if (wallet == null) {
+                Log.e("SyncSolanaUC", "Wallet not found: $walletId")
+                return@withContext Result.Error("Wallet not found")
+            }
+
+            val solanaCoin = wallet.solana
+            if (solanaCoin == null) {
+                Log.e("SyncSolanaUC", "Solana not enabled for wallet: ${wallet.name}")
+                return@withContext Result.Error("Solana not enabled")
+            }
+
+            Log.d("SyncSolanaUC", "Wallet: ${wallet.name}, Address: ${solanaCoin.address}")
+
+            // Fetch full transaction history with details
+            val historyResult = solanaBlockchainRepository.getFullTransactionHistory(
+                address = solanaCoin.address,
+                network = SolanaNetwork.DEVNET,
+                limit = 50
+            )
+
+            when (historyResult) {
+                is Result.Success -> {
+                    val transactions = historyResult.data
+                    Log.d("SyncSolanaUC", "Received ${transactions.size} transactions with details")
+
+                    if (transactions.isEmpty()) {
+                        Log.d("SyncSolanaUC", "No transactions found")
+                        return@withContext Result.Success(Unit)
+                    }
+
+                    // Delete existing transactions for this wallet
+                    solanaTransactionRepository.deleteAllForWallet(walletId)
+                    Log.d("SyncSolanaUC", "Deleted existing transactions")
+
+                    // Save new transactions with full details
+                    var savedCount = 0
+                    transactions.forEachIndexed { index, (sigInfo, details) ->
+                        // Parse transfer info if we have details
+                        val transfer = details?.let {
+                            solanaBlockchainRepository.parseTransferFromDetails(it, solanaCoin.address)
+                        }
+
+                        // Determine status
+                        val status = if (details?.meta?.err == null) {
+                            when (sigInfo.confirmationStatus) {
+                                "finalized" -> TransactionStatus.SUCCESS
+                                "confirmed" -> TransactionStatus.SUCCESS
+                                "processed" -> TransactionStatus.PENDING
+                                else -> TransactionStatus.PENDING
+                            }
+                        } else {
+                            TransactionStatus.FAILED
+                        }
+
+                        // Get amount from transfer or default to 0
+                        val amountLamports = transfer?.amount ?: 0
+                        val amountSol = BigDecimal(amountLamports).divide(
+                            BigDecimal(1_000_000_000),
+                            9,
+                            RoundingMode.HALF_UP
+                        ).toPlainString()
+
+                        // Get fee from details or use default
+                        val feeLamports = details?.meta?.fee ?: 5000
+                        val feeSol = BigDecimal(feeLamports).divide(
+                            BigDecimal(1_000_000_000),
+                            9,
+                            RoundingMode.HALF_UP
+                        ).toPlainString()
+
+                        // Get blockhash if available
+                        val blockhash = details?.transaction?.message?.recentBlockhash ?: ""
+
+                        // Create timestamp
+                        val timestamp = (sigInfo.blockTime ?: (System.currentTimeMillis() / 1000)) * 1000
+
+                        // Create transaction
+                        val transaction = SolanaTransaction(
+                            id = "sol_${sigInfo.signature}_${System.currentTimeMillis()}",
+                            walletId = walletId,
+                            fromAddress = transfer?.from ?: solanaCoin.address,
+                            toAddress = transfer?.to ?: "",
+                            status = status,
+                            timestamp = timestamp,
+                            note = null,
+                            feeLevel = FeeLevel.NORMAL,
+                            amountLamports = amountLamports,
+                            amountSol = amountSol,
+                            feeLamports = feeLamports,
+                            feeSol = feeSol,
+                            blockhash = blockhash,
+                            signedData = null,
+                            signature = sigInfo.signature,
+                            network = when (solanaCoin.network) {
+                                SolanaNetwork.MAINNET -> "mainnet"
+                                SolanaNetwork.DEVNET -> "devnet"
+                            },
+                            isIncoming = transfer?.isIncoming ?: false,
+                            slot = sigInfo.slot,
+                            blockTime = sigInfo.blockTime
+                        )
+
+                        Log.d("SyncSolanaUC", "Transaction #$index: ${sigInfo.signature.take(8)}...")
+                        Log.d("SyncSolanaUC", "  isIncoming: ${transaction.isIncoming}")
+                        Log.d("SyncSolanaUC", "  amount: $amountLamports lamports ($amountSol SOL)")
+                        Log.d("SyncSolanaUC", "  from: ${transaction.fromAddress.take(8)}...")
+                        Log.d("SyncSolanaUC", "  to: ${transaction.toAddress.take(8)}...")
+                        Log.d("SyncSolanaUC", "  status: $status")
+                        Log.d("SyncSolanaUC", "  slot: ${transaction.slot}")
+
+                        solanaTransactionRepository.saveTransaction(transaction)
+                        savedCount++
+                    }
+
+                    Log.d("SyncSolanaUC", "Successfully saved $savedCount detailed transactions")
+                    Log.d("SyncSolanaUC", "=== Sync completed successfully for wallet $walletId ===")
+                    Result.Success(Unit)
+                }
+
+                is Result.Error -> {
+                    Log.e("SyncSolanaUC", "Failed to fetch transactions: ${historyResult.message}")
+                    Result.Error(historyResult.message)
+                }
+
+                else -> Result.Error("Unknown error")
+            }
+        } catch (e: Exception) {
+            Log.e("SyncSolanaUC", "Error syncing: ${e.message}", e)
+            Result.Error(e.message ?: "Sync failed")
+        }
+    }
+}
 
 @Singleton
 class GetSolanaWalletUseCase @Inject constructor(
