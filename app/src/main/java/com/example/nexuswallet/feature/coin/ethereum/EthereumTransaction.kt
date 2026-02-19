@@ -29,7 +29,8 @@ data class EthereumTransaction(
     val signedHex: String?,
     val txHash: String?,
     val network: String,
-    val data: String
+    val data: String,
+    val isIncoming: Boolean = false  // ADD THIS
 )
 
 data class EthereumFeeEstimate(

@@ -6,12 +6,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
-
 @Singleton
 class EthereumTransactionRepository @Inject constructor(
     private val ethereumTransactionDao: EthereumTransactionDao
 ) {
-
     suspend fun saveTransaction(transaction: EthereumTransaction) {
         val entity = transaction.toEntity()
         ethereumTransactionDao.insert(entity)
@@ -38,5 +36,9 @@ class EthereumTransactionRepository @Inject constructor(
 
     suspend fun deleteTransaction(id: String) {
         ethereumTransactionDao.deleteById(id)
+    }
+
+    suspend fun deleteAllForWallet(walletId: String) {
+        ethereumTransactionDao.deleteByWalletId(walletId)
     }
 }

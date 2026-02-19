@@ -20,6 +20,10 @@ interface EtherscanApiService {
         @Query("module") module: String = "account",
         @Query("action") action: String = "txlist",
         @Query("address") address: String,
+        @Query("startblock") startblock: Int = 0,
+        @Query("endblock") endblock: Int = 999999999,
+        @Query("page") page: Int = 1,
+        @Query("offset") offset: Int = 100,  // Get up to 100 transactions
         @Query("sort") sort: String = "desc",
         @Query("apikey") apiKey: String
     ): EtherscanTransactionsResponse

@@ -31,7 +31,8 @@ data class EthereumTransactionEntity(
     val signedHex: String?,
     val txHash: String?,
     val network: String,
-    val data: String
+    val data: String,
+    val isIncoming: Boolean = false
 )
 
 fun EthereumTransactionEntity.toDomain(): EthereumTransaction {
@@ -56,7 +57,8 @@ fun EthereumTransactionEntity.toDomain(): EthereumTransaction {
         signedHex = signedHex,
         txHash = txHash,
         network = network,
-        data = data
+        data = data,
+        isIncoming = isIncoming
     )
 }
 
@@ -82,6 +84,7 @@ fun EthereumTransaction.toEntity(): EthereumTransactionEntity {
         signedHex = signedHex,
         txHash = txHash,
         network = network,
-        data = data
+        data = data,
+        isIncoming = isIncoming
     )
 }
