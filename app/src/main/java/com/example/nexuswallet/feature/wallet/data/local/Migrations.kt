@@ -9,6 +9,25 @@ import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import java.util.UUID
 
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // Add new columns to SolanaTransaction table
+        database.execSQL("""
+                    ALTER TABLE SolanaTransaction 
+                    ADD COLUMN isIncoming INTEGER NOT NULL DEFAULT 0
+                """)
+
+        database.execSQL("""
+                    ALTER TABLE SolanaTransaction 
+                    ADD COLUMN slot INTEGER
+                """)
+
+        database.execSQL("""
+                    ALTER TABLE SolanaTransaction 
+                    ADD COLUMN blockTime INTEGER
+                """)
+    }
+}
 
 val MIGRATION_11_12 = object : Migration(11, 12) {
     override fun migrate(database: SupportSQLiteDatabase) {
