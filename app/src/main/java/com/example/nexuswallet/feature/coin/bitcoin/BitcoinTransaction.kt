@@ -4,7 +4,6 @@ import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.serialization.Serializable
 import java.math.BigDecimal
-
 @Serializable
 data class BitcoinTransaction(
     val id: String,
@@ -24,5 +23,6 @@ data class BitcoinTransaction(
     val estimatedSize: Long,
     val signedHex: String?,
     val txHash: String?,
-    val network: String
+    val network: String,
+    val isIncoming: Boolean = false
 )
