@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.coin.usdc
 
 import com.example.nexuswallet.feature.coin.ethereum.EtherscanApiService
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.coin.usdc.domain.SyncUSDTransactionsUseCase
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
@@ -40,5 +41,19 @@ class USDCModule {
         usdcTransactionDao: USDCTransactionDao
     ): USDCTransactionRepository {
         return USDCTransactionRepository(usdcTransactionDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSyncUSDTransactionsUseCase(
+        usdcBlockchainRepository: USDCBlockchainRepository,
+        usdcTransactionRepository: USDCTransactionRepository,
+        walletRepository: WalletRepository
+    ): SyncUSDTransactionsUseCase {
+        return SyncUSDTransactionsUseCase(
+            usdcBlockchainRepository,
+            usdcTransactionRepository,
+            walletRepository
+        )
     }
 }

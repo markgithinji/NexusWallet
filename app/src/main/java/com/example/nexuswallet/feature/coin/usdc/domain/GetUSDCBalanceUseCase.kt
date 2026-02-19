@@ -22,10 +22,158 @@ import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalance
 import java.math.BigInteger
 import javax.inject.Singleton
+
+@Singleton
+class SyncUSDTransactionsUseCase @Inject constructor(
+    private val usdcBlockchainRepository: USDCBlockchainRepository,
+    private val usdcTransactionRepository: USDCTransactionRepository,
+    private val walletRepository: WalletRepository
+) {
+    suspend operator fun invoke(walletId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Log.d("SyncUSDCUC", "=== Syncing USDC transactions for wallet: $walletId ===")
+
+            val wallet = walletRepository.getWallet(walletId)
+            if (wallet == null) {
+                Log.e("SyncUSDCUC", "Wallet not found: $walletId")
+                return@withContext Result.Error("Wallet not found")
+            }
+
+            val usdcCoin = wallet.usdc
+            if (usdcCoin == null) {
+                Log.e("SyncUSDCUC", "USDC not enabled for wallet: ${wallet.name}")
+                return@withContext Result.Error("USDC not enabled")
+            }
+
+            Log.d("SyncUSDCUC", "Wallet: ${wallet.name}, Address: ${usdcCoin.address}")
+
+            // Fetch USDC transactions from Etherscan
+            val transactionsResult = usdcBlockchainRepository.getUSDCTransactionHistory(
+                address = usdcCoin.address,
+                network = usdcCoin.network
+            )
+
+            when (transactionsResult) {
+                is Result.Success -> {
+                    val transactions = transactionsResult.data
+                    Log.d("SyncUSDCUC", "Received ${transactions.size} USDC transactions from Etherscan")
+
+                    if (transactions.isEmpty()) {
+                        Log.d("SyncUSDCUC", "No transactions found")
+                        return@withContext Result.Success(Unit)
+                    }
+
+                    // Delete existing transactions for this wallet
+                    usdcTransactionRepository.deleteAllForWallet(walletId)
+                    Log.d("SyncUSDCUC", "Deleted existing transactions")
+
+                    // Save new transactions
+                    var savedCount = 0
+                    transactions.forEachIndexed { index, tx ->
+                        // Determine if this is incoming (to address matches our wallet)
+                        val isIncoming = tx.to.equals(usdcCoin.address, ignoreCase = true)
+
+                        // USDC transfers are always successful if they appear in the list
+                        val status = TransactionStatus.SUCCESS
+
+                        // Parse the value
+                        val decimals = tx.tokenDecimal.toIntOrNull() ?: 6
+                        val amountDecimal = convertTokenValue(tx.value, decimals)
+
+                        Log.d("SyncUSDCUC", "Transaction #$index: ${tx.hash.take(8)}...")
+                        Log.d("SyncUSDCUC", "  isIncoming: $isIncoming")
+                        Log.d("SyncUSDCUC", "  amount: ${tx.value} (raw)")
+                        Log.d("SyncUSDCUC", "  amountDecimal: $amountDecimal USDC")
+                        Log.d("SyncUSDCUC", "  from: ${tx.from.take(8)}...")
+                        Log.d("SyncUSDCUC", "  to: ${tx.to.take(8)}...")
+
+                        // Create domain transaction
+                        val domainTx = createDomainTransaction(
+                            tokenTx = tx,
+                            walletId = walletId,
+                            isIncoming = isIncoming,
+                            amountDecimal = amountDecimal,
+                            network = usdcCoin.network,
+                            contractAddress = usdcCoin.contractAddress
+                        )
+
+                        usdcTransactionRepository.saveTransaction(domainTx)
+                        savedCount++
+                    }
+
+                    Log.d("SyncUSDCUC", "Successfully saved $savedCount USDC transactions")
+                    Log.d("SyncUSDCUC", "=== Sync completed successfully for wallet $walletId ===")
+                    Result.Success(Unit)
+                }
+
+                is Result.Error -> {
+                    Log.e("SyncUSDCUC", "Failed to fetch transactions: ${transactionsResult.message}")
+                    Result.Error(transactionsResult.message)
+                }
+
+                else -> Result.Error("Unknown error")
+            }
+        } catch (e: Exception) {
+            Log.e("SyncUSDCUC", "Error syncing: ${e.message}", e)
+            Result.Error(e.message ?: "Sync failed")
+        }
+    }
+
+    private fun convertTokenValue(value: String, decimals: Int): String {
+        return try {
+            val valueBigInt = BigInteger(value)
+            BigDecimal(valueBigInt).divide(
+                BigDecimal.TEN.pow(decimals),
+                decimals,
+                RoundingMode.HALF_UP
+            ).toPlainString()
+        } catch (e: Exception) {
+            "0"
+        }
+    }
+
+    private fun createDomainTransaction(
+        tokenTx: TokenTransaction,
+        walletId: String,
+        isIncoming: Boolean,
+        amountDecimal: String,
+        network: EthereumNetwork,
+        contractAddress: String
+    ): USDCSendTransaction {
+        val timestamp = tokenTx.timeStamp.toLongOrNull()?.times(1000) ?: System.currentTimeMillis()
+
+        return USDCSendTransaction(
+            id = "usdc_${tokenTx.hash}_${System.currentTimeMillis()}",
+            walletId = walletId,
+            fromAddress = tokenTx.from,
+            toAddress = tokenTx.to,
+            status = TransactionStatus.SUCCESS,
+            timestamp = timestamp,
+            note = null,
+            feeLevel = FeeLevel.NORMAL,
+            amount = tokenTx.value,
+            amountDecimal = amountDecimal,
+            contractAddress = contractAddress,
+            network = network,
+            gasPriceWei = tokenTx.gasPrice,
+            gasPriceGwei = "0", // Will be parsed from gasPrice if needed
+            gasLimit = tokenTx.gas.toLongOrNull() ?: 65000L,
+            feeWei = "0", // Can calculate if needed
+            feeEth = "0",
+            nonce = tokenTx.nonce.toIntOrNull() ?: 0,
+            chainId = network.chainId.toLongOrNull() ?: 1L,
+            signedHex = null,
+            txHash = tokenTx.hash,
+            ethereumTransactionId = tokenTx.hash,
+            isIncoming = isIncoming
+        )
+    }
+}
 
 @Singleton
 class GetUSDCWalletUseCase @Inject constructor(
