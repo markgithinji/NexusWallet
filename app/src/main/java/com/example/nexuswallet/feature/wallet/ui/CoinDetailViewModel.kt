@@ -16,6 +16,7 @@ import com.example.nexuswallet.feature.coin.solana.SolanaTransactionRepository
 import com.example.nexuswallet.feature.coin.solana.SyncSolanaTransactionsUseCase
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
 import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
+import com.example.nexuswallet.feature.coin.usdc.domain.SyncUSDTransactionsUseCase
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
@@ -35,7 +36,9 @@ class CoinDetailViewModel @Inject constructor(
     private val getETHBalanceForGasUseCase: GetETHBalanceForGasUseCase,
     private val syncBitcoinTransactionsUseCase: SyncBitcoinTransactionsUseCase,
     private val syncEthereumTransactionsUseCase: SyncEthereumTransactionsUseCase,
-    private val syncSolanaTransactionsUseCase: SyncSolanaTransactionsUseCase
+    private val syncSolanaTransactionsUseCase: SyncSolanaTransactionsUseCase,
+    private val syncUSDTransactionsUseCase: SyncUSDTransactionsUseCase
+
 ) : ViewModel() {
 
     data class CoinDetailState(
@@ -82,7 +85,10 @@ class CoinDetailViewModel @Inject constructor(
                         Log.d("CoinDetailVM", "Syncing Solana transactions...")
                         syncSolanaTransactionsUseCase(walletId)
                     }
-                    // TODO: Add other coins as they get implemented
+                    "USDC" -> {
+                        Log.d("CoinDetailVM", "Syncing USDC transactions...")
+                        syncUSDTransactionsUseCase(walletId)
+                    }
                 }
 
                 val wallet = walletRepository.getWallet(walletId) ?: throw Exception("Wallet not found")
