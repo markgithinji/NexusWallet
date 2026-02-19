@@ -44,7 +44,7 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCCoinDao
         SolanaTransactionEntity::class,
         USDCTransactionEntity::class
     ],
-    version = 10,  // From 9 to 10
+    version = 11,  // From 10 to 11
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -84,7 +84,8 @@ abstract class WalletDatabase : RoomDatabase() {
                         MIGRATION_6_7,
                         MIGRATION_7_8,
                         MIGRATION_8_9,
-                        MIGRATION_9_10
+                        MIGRATION_9_10,
+                        MIGRATION_10_11
                     )
                     .build()
                 INSTANCE = instance

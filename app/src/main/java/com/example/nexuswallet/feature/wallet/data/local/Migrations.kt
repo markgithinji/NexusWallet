@@ -10,6 +10,16 @@ import org.json.JSONObject
 import java.util.UUID
 
 
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // Add isIncoming column to BitcoinTransaction table
+        database.execSQL("""
+            ALTER TABLE BitcoinTransaction 
+            ADD COLUMN isIncoming INTEGER NOT NULL DEFAULT 0
+        """)
+    }
+}
+
 // Migration from 9 to 10 - Normalize wallets and balances
 val MIGRATION_9_10 = object : Migration(9, 10) {
     override fun migrate(database: SupportSQLiteDatabase) {
