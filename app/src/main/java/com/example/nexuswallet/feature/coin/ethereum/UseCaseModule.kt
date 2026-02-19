@@ -43,7 +43,6 @@ object UseCaseModule {
         )
     }
 
-    // Validation & Fee Estimation
     @Provides
     @Singleton
     fun provideValidateAddressUseCase(): ValidateAddressUseCase {
@@ -87,6 +86,20 @@ object UseCaseModule {
             ethereumBlockchainRepository,
             ethereumTransactionRepository,
             keyManager
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideSyncEthereumTransactionsUseCase(
+        ethereumBlockchainRepository: EthereumBlockchainRepository,
+        ethereumTransactionRepository: EthereumTransactionRepository,
+        walletRepository: WalletRepository
+    ): SyncEthereumTransactionsUseCase {
+        return SyncEthereumTransactionsUseCase(
+            ethereumBlockchainRepository,
+            ethereumTransactionRepository,
+            walletRepository
         )
     }
 }

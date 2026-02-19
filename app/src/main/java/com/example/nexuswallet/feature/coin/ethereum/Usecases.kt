@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -19,8 +20,189 @@ import org.web3j.crypto.TransactionEncoder
 import org.web3j.utils.Numeric
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Singleton
+@Singleton
+class SyncEthereumTransactionsUseCase @Inject constructor(
+    private val ethereumBlockchainRepository: EthereumBlockchainRepository,
+    private val ethereumTransactionRepository: EthereumTransactionRepository,
+    private val walletRepository: WalletRepository
+) {
+    suspend operator fun invoke(walletId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Log.d("SyncEthUC", "=== Syncing Ethereum transactions for wallet: $walletId ===")
+
+            // Get wallet
+            val wallet = walletRepository.getWallet(walletId)
+            if (wallet == null) {
+                Log.e("SyncEthUC", "Wallet not found: $walletId")
+                return@withContext Result.Error("Wallet not found")
+            }
+
+            // Get Ethereum coin
+            val ethereumCoin = wallet.ethereum
+            if (ethereumCoin == null) {
+                Log.e("SyncEthUC", "Ethereum not enabled for wallet: ${wallet.name}")
+                return@withContext Result.Error("Ethereum not enabled")
+            }
+
+            Log.d("SyncEthUC", "Wallet: ${wallet.name}, Address: ${ethereumCoin.address}, Network: ${ethereumCoin.network.displayName}")
+
+            // Fetch transactions directly from Etherscan
+            val transactionsResult = ethereumBlockchainRepository.getEthereumTransactions(
+                address = ethereumCoin.address,
+                network = ethereumCoin.network
+            )
+
+            when (transactionsResult) {
+                is Result.Success -> {
+                    val transactions = transactionsResult.data
+                    Log.d("SyncEthUC", "Received ${transactions.size} transactions from Etherscan")
+
+                    if (transactions.isEmpty()) {
+                        Log.d("SyncEthUC", "No transactions found")
+                        return@withContext Result.Success(Unit)
+                    }
+
+                    // Delete existing transactions for this wallet
+                    ethereumTransactionRepository.deleteAllForWallet(walletId)
+                    Log.d("SyncEthUC", "Deleted existing transactions")
+
+                    // Save new transactions
+                    var savedCount = 0
+                    transactions.forEachIndexed { index, tx ->
+                        // Determine if this is incoming (to address matches our wallet)
+                        val isIncoming = tx.to.equals(ethereumCoin.address, ignoreCase = true)
+
+                        // Determine status from Etherscan fields
+                        val status = when {
+                            tx.isError == "1" -> TransactionStatus.FAILED
+                            tx.receiptStatus == "1" -> TransactionStatus.SUCCESS
+                            else -> TransactionStatus.PENDING
+                        }
+
+                        // Convert block number and timestamp
+                        val blockNumber = tx.blockNumber.toLongOrNull() ?: 0
+                        val timestamp = tx.timestamp.toLongOrNull() ?: 0
+
+                        Log.d("SyncEthUC", "Transaction #$index: ${tx.hash}")
+                        Log.d("SyncEthUC", "  isIncoming: $isIncoming")
+                        Log.d("SyncEthUC", "  amount: ${tx.value} wei")
+                        Log.d("SyncEthUC", "  from: ${tx.from}")
+                        Log.d("SyncEthUC", "  to: ${tx.to}")
+                        Log.d("SyncEthUC", "  block: $blockNumber")
+                        Log.d("SyncEthUC", "  isError: ${tx.isError}")
+                        Log.d("SyncEthUC", "  receiptStatus: ${tx.receiptStatus}")
+                        Log.d("SyncEthUC", "  status: $status")
+
+                        // Convert to domain model and save
+                        val domainTx = tx.toDomain(
+                            walletId = walletId,
+                            isIncoming = isIncoming,
+                            status = status,
+                            network = ethereumCoin.network.displayName
+                        )
+                        ethereumTransactionRepository.saveTransaction(domainTx)
+                        savedCount++
+                    }
+
+                    Log.d("SyncEthUC", "Successfully saved $savedCount transactions")
+                    Log.d("SyncEthUC", "=== Sync completed successfully for wallet $walletId ===")
+                    Result.Success(Unit)
+                }
+
+                is Result.Error -> {
+                    Log.e("SyncEthUC", "Failed to fetch transactions: ${transactionsResult.message}")
+                    Result.Error(transactionsResult.message)
+                }
+
+                else -> {
+                    Log.e("SyncEthUC", "Unknown error fetching transactions")
+                    Result.Error("Unknown error")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SyncEthUC", "Error syncing Ethereum transactions: ${e.message}", e)
+            Result.Error(e.message ?: "Sync failed")
+        }
+    }
+}
+
+/**
+ * Extension function to convert EtherscanTransaction to domain EthereumTransaction
+ */
+fun EtherscanTransaction.toDomain(
+    walletId: String,
+    isIncoming: Boolean,
+    status: TransactionStatus,
+    network: String
+): EthereumTransaction {
+    // Convert wei to ETH (1 ETH = 10^18 wei)
+    val valueEth = try {
+        BigDecimal(value).divide(
+            BigDecimal("1000000000000000000"),
+            18,
+            RoundingMode.HALF_UP
+        ).toPlainString()
+    } catch (e: Exception) {
+        "0"
+    }
+
+    // Convert gas price to Gwei (1 Gwei = 10^9 wei)
+    val gasPriceGwei = try {
+        BigDecimal(gasPrice).divide(
+            BigDecimal(1_000_000_000),
+            2,
+            RoundingMode.HALF_UP
+        ).toPlainString()
+    } catch (e: Exception) {
+        "0"
+    }
+
+    // Calculate fee = gas * gasPrice
+    val feeWei = try {
+        BigInteger(gas).multiply(BigInteger(gasPrice))
+    } catch (e: Exception) {
+        BigInteger.ZERO
+    }
+
+    val feeEth = try {
+        BigDecimal(feeWei).divide(
+            BigDecimal("1000000000000000000"),
+            18,
+            RoundingMode.HALF_UP
+        ).toPlainString()
+    } catch (e: Exception) {
+        "0"
+    }
+
+    return EthereumTransaction(
+        id = "eth_${hash}_${System.currentTimeMillis()}",
+        walletId = walletId,
+        fromAddress = from,
+        toAddress = to,
+        status = status,
+        timestamp = timestamp.toLongOrNull()?.times(1000) ?: System.currentTimeMillis(),
+        note = null,
+        feeLevel = FeeLevel.NORMAL,
+        amountWei = value,
+        amountEth = valueEth,
+        gasPriceWei = gasPrice,
+        gasPriceGwei = gasPriceGwei,
+        gasLimit = gas.toLongOrNull() ?: 21000L,
+        feeWei = feeWei.toString(),
+        feeEth = feeEth,
+        nonce = 0,
+        chainId = 1,
+        signedHex = null,
+        txHash = hash,
+        network = network,
+        data = "",
+        isIncoming = isIncoming
+    )
+}
+
 
 @Singleton
 class GetEthereumWalletUseCase @Inject constructor(

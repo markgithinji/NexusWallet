@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
+import android.util.Log
 import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
@@ -54,7 +55,7 @@ class EthereumBlockchainRepository @Inject constructor(
     suspend fun getEthereumTransactions(
         address: String,
         network: EthereumNetwork = EthereumNetwork.Mainnet
-    ): Result<List<Transaction>> {
+    ): Result<List<EtherscanTransaction>> {
         return try {
             val chainId = network.chainId
             val apiKey = BuildConfig.ETHERSCAN_API_KEY
@@ -66,39 +67,14 @@ class EthereumBlockchainRepository @Inject constructor(
             )
 
             if (response.status == "1") {
-                val transactions = response.result.map { tx ->
-                    val valueWei = BigDecimal(tx.value)
-                    val valueEth = valueWei.divide(
-                        BigDecimal("1000000000000000000"),
-                        18,
-                        RoundingMode.HALF_UP
-                    )
-
-                    Transaction(
-                        hash = tx.hash,
-                        from = tx.from,
-                        to = tx.to,
-                        value = tx.value,
-                        valueDecimal = valueEth.toPlainString(),
-                        gasPrice = tx.gasPrice,
-                        gasUsed = tx.gas,
-                        timestamp = tx.timestamp.toLong() * 1000,
-                        status = when {
-                            tx.isError == "1" -> TransactionStatus.FAILED
-                            tx.receiptStatus == "1" -> TransactionStatus.SUCCESS
-                            else -> TransactionStatus.PENDING
-                        },
-                        chain = when (network) {
-                            is EthereumNetwork.Sepolia -> ChainType.ETHEREUM_SEPOLIA
-                            else -> ChainType.ETHEREUM
-                        }
-                    )
-                }
-                Result.Success(transactions)
+                Log.d("EtherscanAPI", "Fetched ${response.result.size} transactions for $address")
+                Result.Success(response.result)
             } else {
+                Log.e("EtherscanAPI", "API error: ${response.message}")
                 Result.Error("API error: ${response.message}")
             }
         } catch (e: Exception) {
+            Log.e("EtherscanAPI", "Failed to get transactions: ${e.message}", e)
             Result.Error("Failed to get transactions: ${e.message}", e)
         }
     }
