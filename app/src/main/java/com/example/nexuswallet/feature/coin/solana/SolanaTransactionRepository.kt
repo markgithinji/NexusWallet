@@ -38,6 +38,10 @@ class SolanaTransactionRepository @Inject constructor(
         solanaTransactionDao.deleteById(id)
     }
 
+    suspend fun deleteAllForWallet(walletId: String) {
+        solanaTransactionDao.deleteByWalletId(walletId)
+    }
+
     suspend fun updateSignedTransaction(
         transactionId: String,
         signedData: String,

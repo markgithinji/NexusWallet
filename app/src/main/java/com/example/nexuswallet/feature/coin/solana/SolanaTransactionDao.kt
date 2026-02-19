@@ -5,10 +5,8 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
-
 @Dao
 interface SolanaTransactionDao {
-
     @Insert
     suspend fun insert(transaction: SolanaTransactionEntity)
 
@@ -26,4 +24,7 @@ interface SolanaTransactionDao {
 
     @Query("DELETE FROM SolanaTransaction WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM SolanaTransaction WHERE walletId = :walletId")
+    suspend fun deleteByWalletId(walletId: String)
 }
