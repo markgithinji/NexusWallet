@@ -19,6 +19,78 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+class SyncBitcoinTransactionsUseCase @Inject constructor(
+    private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+    private val bitcoinTransactionRepository: BitcoinTransactionRepository,
+    private val walletRepository: WalletRepository
+) {
+
+    suspend operator fun invoke(walletId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Log.d("SyncBitcoinUC", "=== Syncing Bitcoin transactions for wallet: $walletId ===")
+
+            val wallet = walletRepository.getWallet(walletId)
+            if (wallet == null) {
+                Log.e("SyncBitcoinUC", "Wallet not found: $walletId")
+                return@withContext Result.Error("Wallet not found")
+            }
+
+            val bitcoinCoin = wallet.bitcoin
+            if (bitcoinCoin == null) {
+                Log.e("SyncBitcoinUC", "Bitcoin not enabled for wallet: ${wallet.name}")
+                return@withContext Result.Error("Bitcoin not enabled")
+            }
+
+            Log.d("SyncBitcoinUC", "Wallet: ${wallet.name}, Address: ${bitcoinCoin.address}")
+
+            // Fetch all transactions for this address
+            val transactionsResult = bitcoinBlockchainRepository.getAddressTransactions(
+                address = bitcoinCoin.address,
+                network = bitcoinCoin.network
+            )
+
+            when (transactionsResult) {
+                is Result.Success -> {
+                    val transactions = transactionsResult.data
+                    Log.d("SyncBitcoinUC", "Received ${transactions.size} transactions from API")
+
+                    // FIRST: Delete all existing transactions for this wallet
+                    bitcoinTransactionRepository.deleteAllForWallet(walletId)
+
+                    Log.d("SyncBitcoinUC", "Deleted existing transactions")
+
+                    // THEN: Save new transactions
+                    transactions.forEachIndexed { index, tx ->
+                        Log.d("SyncBitcoinUC", "Transaction #$index: ${tx.txid}")
+                        Log.d("SyncBitcoinUC", "  isIncoming: ${tx.isIncoming}")
+                        Log.d("SyncBitcoinUC", "  amount: ${tx.amount} satoshis")
+                        Log.d("SyncBitcoinUC", "  from: ${tx.fromAddress}")
+                        Log.d("SyncBitcoinUC", "  to: ${tx.toAddress}")
+
+                        val domainTx = tx.toDomain(walletId, tx.isIncoming)
+                        bitcoinTransactionRepository.saveTransaction(domainTx)
+                    }
+
+                    Log.d("SyncBitcoinUC", "=== Sync completed successfully for wallet $walletId ===")
+                    Result.Success(Unit)
+                }
+                is Result.Error -> {
+                    Log.e("SyncBitcoinUC", "Failed to sync: ${transactionsResult.message}")
+                    Result.Error(transactionsResult.message)
+                }
+                else -> {
+                    Log.e("SyncBitcoinUC", "Unknown error during sync")
+                    Result.Error("Unknown error")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SyncBitcoinUC", "Error syncing: ${e.message}", e)
+            Result.Error(e.message ?: "Sync failed")
+        }
+    }
+}
+
+@Singleton
 class GetBitcoinWalletUseCase @Inject constructor(
     private val walletRepository: WalletRepository
 ) {

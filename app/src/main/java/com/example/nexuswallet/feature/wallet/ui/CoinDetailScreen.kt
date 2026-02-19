@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.wallet.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -70,7 +71,6 @@ import java.math.RoundingMode
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoinDetailScreen(
@@ -224,6 +224,7 @@ fun CoinDetailContent(
         CoinTransactionsSection(
             transactions = transactions,
             coinType = coinType,
+            walletAddress = state.address,
             onViewAll = {
                 navController.navigate("transactions/${state.walletId}?coinType=$coinType")
             }
@@ -365,8 +366,24 @@ fun CoinActionsCard(
 fun CoinTransactionsSection(
     transactions: List<Any>,
     coinType: String,
+    walletAddress: String,
     onViewAll: () -> Unit
 ) {
+    // Debug - log what we're receiving
+    LaunchedEffect(transactions) {
+        Log.d("CoinDetailUI", "Transactions section received ${transactions.size} transactions")
+        if (transactions.isNotEmpty()) {
+            val firstTx = transactions.first()
+            Log.d("CoinDetailUI", "First transaction type: ${firstTx::class.simpleName}")
+            when (firstTx) {
+                is BitcoinTransaction -> {
+                    Log.d("CoinDetailUI", "  BTC amount: ${firstTx.amountBtc}")
+                    Log.d("CoinDetailUI", "  BTC isIncoming: ${firstTx.isIncoming}")
+                }
+            }
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -402,7 +419,8 @@ fun CoinTransactionsSection(
                 transactions.take(3).forEachIndexed { index, transaction ->
                     CoinTransactionItem(
                         transaction = transaction,
-                        coinType = coinType
+                        coinType = coinType,
+                        walletAddress = walletAddress
                     )
                     if (index < 2) {
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
@@ -412,15 +430,31 @@ fun CoinTransactionsSection(
         }
     }
 }
+
 @Composable
 fun CoinTransactionItem(
     transaction: Any,
-    coinType: String
+    coinType: String,
+    walletAddress: String
 ) {
+    // Debug - log what this item is displaying
+    LaunchedEffect(transaction) {
+        when (transaction) {
+            is BitcoinTransaction -> {
+                Log.d("CoinDetailUI", "Rendering BTC transaction:")
+                Log.d("CoinDetailUI", "  amount: ${transaction.amountBtc}")
+                Log.d("CoinDetailUI", "  isIncoming: ${transaction.isIncoming}")
+                Log.d("CoinDetailUI", "  from: ${transaction.fromAddress}")
+                Log.d("CoinDetailUI", "  to: ${transaction.toAddress}")
+                Log.d("CoinDetailUI", "  walletAddress: $walletAddress")
+            }
+        }
+    }
+
     val transactionInfo = when (transaction) {
         is BitcoinTransaction -> {
             TransactionInfo(
-                isIncoming = transaction.toAddress == transaction.fromAddress,
+                isIncoming = transaction.isIncoming,
                 amount = transaction.amountBtc,
                 status = transaction.status,
                 timestamp = transaction.timestamp,
@@ -429,7 +463,7 @@ fun CoinTransactionItem(
         }
         is EthereumTransaction -> {
             TransactionInfo(
-                isIncoming = transaction.toAddress == transaction.fromAddress,
+                isIncoming = true,
                 amount = transaction.amountEth,
                 status = transaction.status,
                 timestamp = transaction.timestamp,
@@ -438,7 +472,7 @@ fun CoinTransactionItem(
         }
         is SolanaTransaction -> {
             TransactionInfo(
-                isIncoming = transaction.toAddress == transaction.fromAddress,
+                isIncoming = true,
                 amount = transaction.amountSol,
                 status = transaction.status,
                 timestamp = transaction.timestamp,
@@ -447,7 +481,7 @@ fun CoinTransactionItem(
         }
         is USDCSendTransaction -> {
             TransactionInfo(
-                isIncoming = transaction.toAddress == transaction.fromAddress,
+                isIncoming = true,
                 amount = transaction.amountDecimal,
                 status = transaction.status,
                 timestamp = transaction.timestamp,
