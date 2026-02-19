@@ -463,7 +463,7 @@ fun CoinTransactionItem(
         }
         is EthereumTransaction -> {
             TransactionInfo(
-                isIncoming = true,
+                isIncoming = transaction.isIncoming,
                 amount = transaction.amountEth,
                 status = transaction.status,
                 timestamp = transaction.timestamp,

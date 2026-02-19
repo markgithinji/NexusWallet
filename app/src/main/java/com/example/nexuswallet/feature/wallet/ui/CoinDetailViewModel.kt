@@ -11,6 +11,7 @@ import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.coin.bitcoin.SyncBitcoinTransactionsUseCase
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.SyncEthereumTransactionsUseCase
 import com.example.nexuswallet.feature.coin.solana.SolanaTransactionRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
 import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
@@ -21,7 +22,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
-import kotlin.collections.emptyList@HiltViewModel
+import kotlin.collections.emptyList
+
+@HiltViewModel
 class CoinDetailViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
@@ -29,7 +32,8 @@ class CoinDetailViewModel @Inject constructor(
     private val solanaTransactionRepository: SolanaTransactionRepository,
     private val usdcTransactionRepository: USDCTransactionRepository,
     private val getETHBalanceForGasUseCase: GetETHBalanceForGasUseCase,
-    private val syncBitcoinTransactionsUseCase: SyncBitcoinTransactionsUseCase
+    private val syncBitcoinTransactionsUseCase: SyncBitcoinTransactionsUseCase,
+    private val syncEthereumTransactionsUseCase: SyncEthereumTransactionsUseCase
 ) : ViewModel() {
 
     data class CoinDetailState(
@@ -62,10 +66,17 @@ class CoinDetailViewModel @Inject constructor(
             try {
                 Log.d("CoinDetailVM", "=== Loading $coinType details for wallet: $walletId ===")
 
-                // Sync transactions before loading
-                if (coinType == "BTC") {
-                    Log.d("CoinDetailVM", "Syncing Bitcoin transactions...")
-                    syncBitcoinTransactionsUseCase(walletId)
+                // Sync transactions before loading based on coin type
+                when (coinType) {
+                    "BTC" -> {
+                        Log.d("CoinDetailVM", "Syncing Bitcoin transactions...")
+                        syncBitcoinTransactionsUseCase(walletId)
+                    }
+                    "ETH" -> {
+                        Log.d("CoinDetailVM", "Syncing Ethereum transactions...")
+                        syncEthereumTransactionsUseCase(walletId)
+                    }
+                    // TODO: Add other coins as they get implemented
                 }
 
                 val wallet = walletRepository.getWallet(walletId) ?: throw Exception("Wallet not found")
@@ -180,6 +191,9 @@ class CoinDetailViewModel @Inject constructor(
                 "ETH" -> {
                     ethereumTransactionRepository.getTransactions(walletId).collect { txs ->
                         Log.d("CoinDetailVM", "ETH Transactions loaded: ${txs.size}")
+                        txs.take(3).forEachIndexed { i, tx ->
+                            Log.d("CoinDetailVM", "  ETH Tx $i: amount=${tx.amountEth}, incoming=${tx.isIncoming}")
+                        }
                         _transactions.value = txs
                     }
                 }
