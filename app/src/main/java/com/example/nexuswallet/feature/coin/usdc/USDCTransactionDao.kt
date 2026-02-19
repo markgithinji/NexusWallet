@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface USDCTransactionDao {
-
     @Insert
     suspend fun insert(transaction: USDCTransactionEntity)
 
@@ -26,4 +25,7 @@ interface USDCTransactionDao {
 
     @Query("DELETE FROM USDCSendTransaction WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM USDCSendTransaction WHERE walletId = :walletId")
+    suspend fun deleteByWalletId(walletId: String)
 }

@@ -1,8 +1,6 @@
 package com.example.nexuswallet.feature.coin.usdc
 
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCSendTransaction
-import com.example.nexuswallet.feature.coin.usdc.domain.toDomain
-import com.example.nexuswallet.feature.coin.usdc.domain.toEntity
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
@@ -42,16 +40,7 @@ class USDCTransactionRepository @Inject constructor(
         usdcTransactionDao.deleteById(id)
     }
 
-    suspend fun updateTransactionStatus(
-        transactionId: String,
-        success: Boolean,
-        txHash: String? = null
-    ) {
-        val transaction = getTransaction(transactionId) ?: return
-        val updated = transaction.copy(
-            status = if (success) TransactionStatus.SUCCESS else TransactionStatus.FAILED,
-            txHash = txHash ?: transaction.txHash
-        )
-        updateTransaction(updated)
+    suspend fun deleteAllForWallet(walletId: String) {
+        usdcTransactionDao.deleteByWalletId(walletId)
     }
 }

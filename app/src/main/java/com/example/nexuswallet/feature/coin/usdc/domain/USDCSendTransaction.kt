@@ -7,7 +7,6 @@ import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-
 @Serializable
 data class USDCSendTransaction(
     val id: String,
@@ -35,78 +34,9 @@ data class USDCSendTransaction(
     val signedHex: String?,
     val txHash: String?,
     // Optional reference to ETH transaction
-    val ethereumTransactionId: String? = null
+    val ethereumTransactionId: String? = null,
+    val isIncoming: Boolean = false
 )
-
-fun USDCTransactionEntity.toDomain(): USDCSendTransaction {
-    return USDCSendTransaction(
-        id = id,
-        walletId = walletId,
-        fromAddress = fromAddress,
-        toAddress = toAddress,
-        status = TransactionStatus.valueOf(status),
-        timestamp = timestamp,
-        note = note,
-        feeLevel = FeeLevel.valueOf(feeLevel),
-        amount = amount,
-        amountDecimal = amountDecimal,
-        contractAddress = contractAddress,
-        network = network.toEthereumNetwork(),
-        gasPriceWei = gasPriceWei,
-        gasPriceGwei = gasPriceGwei,
-        gasLimit = gasLimit,
-        feeWei = feeWei,
-        feeEth = feeEth,
-        nonce = nonce,
-        chainId = chainId,
-        signedHex = signedHex,
-        txHash = txHash,
-        ethereumTransactionId = ethereumTransactionId
-    )
-}
-
-fun USDCSendTransaction.toEntity(): USDCTransactionEntity {
-    return USDCTransactionEntity(
-        id = id,
-        walletId = walletId,
-        fromAddress = fromAddress,
-        toAddress = toAddress,
-        status = status.name,
-        timestamp = timestamp,
-        note = note,
-        feeLevel = feeLevel.name,
-        amount = amount,
-        amountDecimal = amountDecimal,
-        contractAddress = contractAddress,
-        network = network.toNetworkString(),
-        gasPriceWei = gasPriceWei,
-        gasPriceGwei = gasPriceGwei,
-        gasLimit = gasLimit,
-        feeWei = feeWei,
-        feeEth = feeEth,
-        nonce = nonce,
-        chainId = chainId,
-        signedHex = signedHex,
-        txHash = txHash,
-        ethereumTransactionId = ethereumTransactionId
-    )
-}
-
-// Extension functions for conversion
-fun String.toEthereumNetwork(): EthereumNetwork {
-    return when (this.lowercase()) {
-        "mainnet" -> EthereumNetwork.Mainnet
-        "sepolia" -> EthereumNetwork.Sepolia
-        else -> throw IllegalArgumentException("Unknown Ethereum network: $this")
-    }
-}
-
-fun EthereumNetwork.toNetworkString(): String {
-    return when (this) {
-        is EthereumNetwork.Mainnet -> "mainnet"
-        is EthereumNetwork.Sepolia -> "sepolia"
-    }
-}
 
 @Serializable
 sealed class EthereumNetwork {
