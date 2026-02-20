@@ -6,7 +6,6 @@ import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.POST
 import retrofit2.http.Path
-import retrofit2.http.Query
 
 interface BitcoinApi {
     @GET("address/{address}")
@@ -16,7 +15,7 @@ interface BitcoinApi {
     suspend fun getUtxos(@Path("address") address: String): List<UtxoResponse>
 
     @GET("tx/{txid}")
-    suspend fun getTransaction(@Path("txid") txid: String): TransactionResponse
+    suspend fun getTransaction(@Path("txid") txid: String): EsploraTransaction
 
     @GET("fee-estimates")
     suspend fun getFeeEstimates(): Map<String, Double>

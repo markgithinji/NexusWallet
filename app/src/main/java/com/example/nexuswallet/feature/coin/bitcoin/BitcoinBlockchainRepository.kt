@@ -273,7 +273,7 @@ class BitcoinBlockchainRepository @Inject constructor(
                 val tx = api.getTransaction(txid)
 
                 return@withContext if (vout < tx.vout.size) {
-                    tx.vout[vout].scriptPubKey
+                    tx.vout[vout].scriptpubkey
                 } else {
                     null
                 }

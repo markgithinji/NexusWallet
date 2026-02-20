@@ -23,6 +23,6 @@ data class BitcoinTransaction(
     val estimatedSize: Long,
     val signedHex: String?,
     val txHash: String?,
-    val network: String,
+    val network: BitcoinNetwork,
     val isIncoming: Boolean = false
 )

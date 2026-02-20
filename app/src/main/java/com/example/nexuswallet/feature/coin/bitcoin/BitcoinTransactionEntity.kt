@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.coin.bitcoin
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import java.math.BigDecimal
+
 @Entity(tableName = "BitcoinTransaction")
 data class BitcoinTransactionEntity(
     @PrimaryKey
@@ -45,7 +45,7 @@ fun BitcoinTransactionEntity.toDomain(): BitcoinTransaction {
         estimatedSize = estimatedSize,
         signedHex = signedHex,
         txHash = txHash,
-        network = network,
+        network = BitcoinNetwork.valueOf(network),
         isIncoming = isIncoming
     )
 }
@@ -68,7 +68,7 @@ fun BitcoinTransaction.toEntity(): BitcoinTransactionEntity {
         estimatedSize = estimatedSize,
         signedHex = signedHex,
         txHash = txHash,
-        network = network,
+        network = network.name,
         isIncoming = isIncoming
     )
 }

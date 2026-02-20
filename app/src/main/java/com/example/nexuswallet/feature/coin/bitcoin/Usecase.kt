@@ -17,7 +17,6 @@ import org.bitcoinj.params.TestNet3Params
 import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
-
 @Singleton
 class SyncBitcoinTransactionsUseCase @Inject constructor(
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
@@ -41,7 +40,7 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
                 return@withContext Result.Error("Bitcoin not enabled")
             }
 
-            Log.d("SyncBitcoinUC", "Wallet: ${wallet.name}, Address: ${bitcoinCoin.address}")
+            Log.d("SyncBitcoinUC", "Wallet: ${wallet.name}, Address: ${bitcoinCoin.address}, Network: ${bitcoinCoin.network}")
 
             // Fetch all transactions for this address
             val transactionsResult = bitcoinBlockchainRepository.getAddressTransactions(
@@ -54,12 +53,11 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
                     val transactions = transactionsResult.data
                     Log.d("SyncBitcoinUC", "Received ${transactions.size} transactions from API")
 
-                    // FIRST: Delete all existing transactions for this wallet
+                    // Delete existing transactions
                     bitcoinTransactionRepository.deleteAllForWallet(walletId)
-
                     Log.d("SyncBitcoinUC", "Deleted existing transactions")
 
-                    // THEN: Save new transactions
+                    // Save new transactions with network info
                     transactions.forEachIndexed { index, tx ->
                         Log.d("SyncBitcoinUC", "Transaction #$index: ${tx.txid}")
                         Log.d("SyncBitcoinUC", "  isIncoming: ${tx.isIncoming}")
@@ -67,7 +65,12 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
                         Log.d("SyncBitcoinUC", "  from: ${tx.fromAddress}")
                         Log.d("SyncBitcoinUC", "  to: ${tx.toAddress}")
 
-                        val domainTx = tx.toDomain(walletId, tx.isIncoming)
+                        // Pass the network enum to toDomain
+                        val domainTx = tx.toDomain(
+                            walletId = walletId,
+                            isIncoming = tx.isIncoming,
+                            network = bitcoinCoin.network
+                        )
                         bitcoinTransactionRepository.saveTransaction(domainTx)
                     }
 
@@ -212,7 +215,7 @@ class SendBitcoinUseCase @Inject constructor(
                 note = note,
                 timestamp = System.currentTimeMillis(),
                 feeLevel = feeLevel,
-                network = bitcoinCoin.network.name
+                network = bitcoinCoin.network
             )
 
             bitcoinTransactionRepository.saveTransaction(transaction)
