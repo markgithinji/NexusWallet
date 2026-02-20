@@ -17,6 +17,7 @@ import org.bitcoinj.params.TestNet3Params
 import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
+
 @Singleton
 class SyncBitcoinTransactionsUseCase @Inject constructor(
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
@@ -26,7 +27,7 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
 
     suspend operator fun invoke(walletId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            Log.d("SyncBitcoinUC", "=== Syncing Bitcoin transactions for wallet: $walletId ===")
+            Log.d("SyncBitcoinUC", "Syncing Bitcoin transactions for wallet: $walletId")
 
             val wallet = walletRepository.getWallet(walletId)
             if (wallet == null) {
@@ -40,9 +41,9 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
                 return@withContext Result.Error("Bitcoin not enabled")
             }
 
-            Log.d("SyncBitcoinUC", "Wallet: ${wallet.name}, Address: ${bitcoinCoin.address}, Network: ${bitcoinCoin.network}")
+            Log.d("SyncBitcoinUC", "Wallet: ${wallet.name}, Address: ${bitcoinCoin.address.take(8)}..., Network: ${bitcoinCoin.network}")
 
-            // Fetch all transactions for this address
+            // Fetch transaction history from blockchain API
             val transactionsResult = bitcoinBlockchainRepository.getAddressTransactions(
                 address = bitcoinCoin.address,
                 network = bitcoinCoin.network
@@ -53,19 +54,18 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
                     val transactions = transactionsResult.data
                     Log.d("SyncBitcoinUC", "Received ${transactions.size} transactions from API")
 
-                    // Delete existing transactions
+                    // Clear existing local data before syncing fresh
                     bitcoinTransactionRepository.deleteAllForWallet(walletId)
                     Log.d("SyncBitcoinUC", "Deleted existing transactions")
 
-                    // Save new transactions with network info
+                    var incoming = 0
+                    var outgoing = 0
                     transactions.forEachIndexed { index, tx ->
-                        Log.d("SyncBitcoinUC", "Transaction #$index: ${tx.txid}")
-                        Log.d("SyncBitcoinUC", "  isIncoming: ${tx.isIncoming}")
-                        Log.d("SyncBitcoinUC", "  amount: ${tx.amount} satoshis")
-                        Log.d("SyncBitcoinUC", "  from: ${tx.fromAddress}")
-                        Log.d("SyncBitcoinUC", "  to: ${tx.toAddress}")
+                        if (tx.isIncoming) incoming++ else outgoing++
 
-                        // Pass the network enum to toDomain
+                        Log.d("SyncBitcoinUC", "  Transaction #$index: ${tx.txid.take(8)}... | ${if (tx.isIncoming) "IN" else "OUT"} | ${tx.amount} sats")
+
+                        // Convert API response to domain model and save
                         val domainTx = tx.toDomain(
                             walletId = walletId,
                             isIncoming = tx.isIncoming,
@@ -74,7 +74,8 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
                         bitcoinTransactionRepository.saveTransaction(domainTx)
                     }
 
-                    Log.d("SyncBitcoinUC", "=== Sync completed successfully for wallet $walletId ===")
+                    Log.d("SyncBitcoinUC", "Synced $incoming incoming, $outgoing outgoing transactions")
+                    Log.d("SyncBitcoinUC", "Sync completed for wallet $walletId")
                     Result.Success(Unit)
                 }
                 is Result.Error -> {
@@ -87,7 +88,7 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Log.e("SyncBitcoinUC", "Error syncing: ${e.message}", e)
+            Log.e("SyncBitcoinUC", "Error syncing: ${e.message}")
             Result.Error(e.message ?: "Sync failed")
         }
     }
@@ -98,6 +99,8 @@ class GetBitcoinWalletUseCase @Inject constructor(
     private val walletRepository: WalletRepository
 ) {
     suspend operator fun invoke(walletId: String): Result<BitcoinWalletInfo> {
+        Log.d("GetBitcoinWalletUC", "Looking up Bitcoin wallet: $walletId")
+
         val wallet = walletRepository.getWallet(walletId)
         if (wallet == null) {
             Log.e("GetBitcoinWalletUC", "Wallet not found: $walletId")
@@ -110,7 +113,7 @@ class GetBitcoinWalletUseCase @Inject constructor(
             return Result.Error("Bitcoin not enabled for this wallet")
         }
 
-        Log.d("GetBitcoinWalletUC", "Loaded wallet: ${wallet.name}, address: ${bitcoinCoin.address.take(8)}...")
+        Log.d("GetBitcoinWalletUC", "Found wallet: ${wallet.name} | Address: ${bitcoinCoin.address.take(8)}... | Network: ${bitcoinCoin.network}")
 
         return Result.Success(
             BitcoinWalletInfo(
@@ -138,21 +141,28 @@ class SendBitcoinUseCase @Inject constructor(
         note: String? = null
     ): Result<SendBitcoinResult> = withContext(Dispatchers.IO) {
         try {
-            Log.d("SendBitcoinUC", "Sending $amount BTC to $toAddress")
+            Log.d("SendBitcoinUC", "Sending ${amount.toPlainString()} BTC to ${toAddress.take(8)}...")
 
+            // Step 1: Create and store pending transaction
             val transaction = createTransaction(walletId, toAddress, amount, feeLevel, note)
-                ?: return@withContext Result.Error("Failed to create transaction", null)
+                ?: return@withContext Result.Error("Failed to create transaction")
 
+            Log.d("SendBitcoinUC", "Transaction created: ${transaction.id}")
+
+            // Step 2: Sign with private key
             val signedTransaction = signTransaction(transaction)
-                ?: return@withContext Result.Error("Failed to sign transaction", null)
+                ?: return@withContext Result.Error("Failed to sign transaction")
 
-            val broadcastResult = broadcastTransaction(signedTransaction)
+            Log.d("SendBitcoinUC", "Transaction signed")
+
+            // Step 3: Broadcast to network
+            val txHash = broadcastTransaction(signedTransaction)
 
             val sendResult = SendBitcoinResult(
                 transactionId = transaction.id,
-                txHash = broadcastResult.hash ?: signedTransaction.txHash ?: "",
-                success = broadcastResult.success,
-                error = broadcastResult.error
+                txHash = txHash ?: "",
+                success = txHash != null,
+                error = if (txHash == null) "Broadcast failed" else null
             )
 
             if (sendResult.success) {
@@ -165,7 +175,7 @@ class SendBitcoinUseCase @Inject constructor(
 
         } catch (e: Exception) {
             Log.e("SendBitcoinUC", "Send failed: ${e.message}")
-            Result.Error("Send failed: ${e.message}", e)
+            Result.Error("Send failed: ${e.message}")
         }
     }
 
@@ -187,15 +197,32 @@ class SendBitcoinUseCase @Inject constructor(
                 return null
             }
 
-            val feeResult = bitcoinBlockchainRepository.getFeeEstimate(feeLevel)
+            // Validate address matches network type (mainnet vs testnet)
+            if (!validateAddress(toAddress, bitcoinCoin.network)) {
+                Log.e("SendBitcoinUC", "Invalid address for ${bitcoinCoin.network}")
+                return null
+            }
+
+            // Estimate fee based on transaction complexity
+            val feeResult = bitcoinBlockchainRepository.getFeeEstimate(
+                feeLevel = feeLevel,
+                inputCount = 1,
+                outputCount = 2 // recipient + change
+            )
+
             val feeEstimate = when (feeResult) {
                 is Result.Success -> feeResult.data
-                else -> {
-                    Log.e("SendBitcoinUC", "Failed to get fee estimate")
+                is Result.Error -> {
+                    Log.e("SendBitcoinUC", "Failed to get fee estimate: ${feeResult.message}")
+                    return null
+                }
+                Result.Loading -> {
+                    Log.e("SendBitcoinUC", "Fee estimate loading - unexpected")
                     return null
                 }
             }
 
+            // Convert BTC amount to satoshis for blockchain operations
             val satoshis = amount.multiply(BigDecimal("100000000")).toLong()
 
             val transaction = BitcoinTransaction(
@@ -215,7 +242,8 @@ class SendBitcoinUseCase @Inject constructor(
                 note = note,
                 timestamp = System.currentTimeMillis(),
                 feeLevel = feeLevel,
-                network = bitcoinCoin.network
+                network = bitcoinCoin.network,
+                isIncoming = false
             )
 
             bitcoinTransactionRepository.saveTransaction(transaction)
@@ -240,6 +268,7 @@ class SendBitcoinUseCase @Inject constructor(
                 return null
             }
 
+            // Retrieve private key from secure storage
             val privateKeyResult = keyManager.getPrivateKeyForSigning(
                 transaction.walletId,
                 keyType = "BTC_PRIVATE_KEY"
@@ -257,25 +286,33 @@ class SendBitcoinUseCase @Inject constructor(
                 BitcoinNetwork.TESTNET -> TestNet3Params.get()
             }
 
+            // Convert WIF format to ECKey for signing
             val ecKey = DumpedPrivateKey.fromBase58(networkParams, privateKeyWIF).key
             val derivedAddress = LegacyAddress.fromKey(networkParams, ecKey).toString()
 
+            // Security check: ensure private key matches wallet address
             if (derivedAddress != bitcoinCoin.address) {
                 Log.e("SendBitcoinUC", "Private key doesn't match wallet address")
                 return null
             }
 
+            // Create and sign the raw transaction
             val signResult = bitcoinBlockchainRepository.createAndSignTransaction(
                 fromKey = ecKey,
                 toAddress = transaction.toAddress,
                 satoshis = transaction.amountSatoshis,
+                feeLevel = transaction.feeLevel,
                 network = bitcoinCoin.network
             )
 
             val signedTx = when (signResult) {
                 is Result.Success -> signResult.data
-                else -> {
-                    Log.e("SendBitcoinUC", "Signing failed")
+                is Result.Error -> {
+                    Log.e("SendBitcoinUC", "Signing failed: ${signResult.message}")
+                    return null
+                }
+                Result.Loading -> {
+                    Log.e("SendBitcoinUC", "Signing loading - unexpected")
                     return null
                 }
             }
@@ -296,19 +333,20 @@ class SendBitcoinUseCase @Inject constructor(
         }
     }
 
-    private suspend fun broadcastTransaction(transaction: BitcoinTransaction): BroadcastResult {
+    private suspend fun broadcastTransaction(transaction: BitcoinTransaction): String? {
         try {
             if (transaction.signedHex == null) {
                 Log.e("SendBitcoinUC", "Transaction not signed")
-                return BroadcastResult(success = false, error = "Transaction not signed")
+                return null
             }
 
             val wallet = walletRepository.getWallet(transaction.walletId)
-                ?: return BroadcastResult(success = false, error = "Wallet not found")
+                ?: return null
 
             val bitcoinCoin = wallet.bitcoin
-                ?: return BroadcastResult(success = false, error = "Bitcoin not enabled")
+                ?: return null
 
+            // Submit signed transaction to the network
             val broadcastResult = bitcoinBlockchainRepository.broadcastTransaction(
                 signedHex = transaction.signedHex,
                 network = bitcoinCoin.network
@@ -316,36 +354,47 @@ class SendBitcoinUseCase @Inject constructor(
 
             return when (broadcastResult) {
                 is Result.Success -> {
-                    val result = broadcastResult.data
-                    val updatedTransaction = if (result.success) {
-                        transaction.copy(status = TransactionStatus.SUCCESS, txHash = result.hash)
-                    } else {
-                        transaction.copy(status = TransactionStatus.FAILED)
-                    }
+                    val txHash = broadcastResult.data
+                    val updatedTransaction = transaction.copy(
+                        status = TransactionStatus.SUCCESS,
+                        txHash = txHash
+                    )
                     bitcoinTransactionRepository.updateTransaction(updatedTransaction)
-
-                    if (result.success) {
-                        Log.d("SendBitcoinUC", "Broadcast successful: ${result.hash?.take(8)}...")
-                    } else {
-                        Log.e("SendBitcoinUC", "Broadcast failed: ${result.error}")
-                    }
-                    result
+                    Log.d("SendBitcoinUC", "Broadcast successful: ${txHash.take(8)}...")
+                    txHash
                 }
 
                 is Result.Error -> {
+                    val updatedTransaction = transaction.copy(
+                        status = TransactionStatus.FAILED
+                    )
+                    bitcoinTransactionRepository.updateTransaction(updatedTransaction)
                     Log.e("SendBitcoinUC", "Broadcast failed: ${broadcastResult.message}")
-                    BroadcastResult(success = false, error = broadcastResult.message)
+                    null
                 }
 
                 Result.Loading -> {
-                    Log.e("SendBitcoinUC", "Broadcast timeout")
-                    BroadcastResult(success = false, error = "Broadcast timeout")
+                    Log.e("SendBitcoinUC", "Broadcast loading - unexpected")
+                    null
                 }
             }
 
         } catch (e: Exception) {
             Log.e("SendBitcoinUC", "Error broadcasting: ${e.message}")
-            return BroadcastResult(success = false, error = e.message ?: "Broadcast failed")
+            return null
+        }
+    }
+
+    private fun validateAddress(address: String, network: BitcoinNetwork): Boolean {
+        return try {
+            val params = when (network) {
+                BitcoinNetwork.MAINNET -> MainNetParams.get()
+                BitcoinNetwork.TESTNET -> TestNet3Params.get()
+            }
+            Address.fromString(params, address)
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 }
@@ -354,11 +403,27 @@ class SendBitcoinUseCase @Inject constructor(
 class GetBitcoinFeeEstimateUseCase @Inject constructor(
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository
 ) {
-    suspend operator fun invoke(feeLevel: FeeLevel = FeeLevel.NORMAL): Result<BitcoinFeeEstimate> {
-        val result = bitcoinBlockchainRepository.getFeeEstimate(feeLevel)
-        if (result is Result.Error) {
-            Log.e("GetBitcoinFeeUC", "Failed to get fee estimate: ${result.message}")
+    suspend operator fun invoke(
+        feeLevel: FeeLevel = FeeLevel.NORMAL,
+        inputCount: Int = 1,
+        outputCount: Int = 2
+    ): Result<BitcoinFeeEstimate> {
+        Log.d("GetBitcoinFeeUC", "Requesting fee estimate: $feeLevel, inputs=$inputCount, outputs=$outputCount")
+
+        val result = bitcoinBlockchainRepository.getFeeEstimate(feeLevel, inputCount, outputCount)
+
+        when (result) {
+            is Result.Success -> {
+                val fee = result.data
+                Log.d("GetBitcoinFeeUC", "Fee estimate: ${fee.feePerByte} sat/byte | Total: ${fee.totalFeeSatoshis} sats (${fee.totalFeeBtc} BTC)")
+            }
+            is Result.Error -> {
+                Log.e("GetBitcoinFeeUC", "Failed to get fee estimate: ${result.message}")
+            }
+
+            else -> {}
         }
+
         return result
     }
 }
@@ -368,12 +433,21 @@ class GetBitcoinBalanceUseCase @Inject constructor(
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository
 ) {
     suspend operator fun invoke(address: String, network: BitcoinNetwork): Result<BigDecimal> {
+        Log.d("GetBitcoinBalanceUC", "Fetching balance for ${address.take(8)}... on ${network}")
+
         val result = bitcoinBlockchainRepository.getBalance(address, network)
-        if (result is Result.Success) {
-            Log.d("GetBitcoinBalanceUC", "Balance: ${result.data} BTC")
-        } else if (result is Result.Error) {
-            Log.e("GetBitcoinBalanceUC", "Failed to get balance: ${result.message}")
+
+        when (result) {
+            is Result.Success -> {
+                Log.d("GetBitcoinBalanceUC", "Balance: ${result.data} BTC")
+            }
+            is Result.Error -> {
+                Log.e("GetBitcoinBalanceUC", "Failed to get balance: ${result.message}")
+            }
+
+            else -> {}
         }
+
         return result
     }
 }
@@ -382,14 +456,16 @@ class GetBitcoinBalanceUseCase @Inject constructor(
 class ValidateBitcoinAddressUseCase @Inject constructor() {
     operator fun invoke(address: String, network: BitcoinNetwork): Boolean {
         return try {
+            // Attempt to parse address using bitcoinj library
             val params = when (network) {
                 BitcoinNetwork.MAINNET -> MainNetParams.get()
                 BitcoinNetwork.TESTNET -> TestNet3Params.get()
             }
             Address.fromString(params, address)
+            Log.d("ValidateBitcoinUC", "Valid ${network} address: ${address.take(8)}...")
             true
         } catch (e: Exception) {
-            Log.d("ValidateBitcoinUC", "Invalid address: $address for ${network.name}")
+            Log.e("ValidateBitcoinUC", "Invalid ${network} address: ${address.take(8)}...")
             false
         }
     }
