@@ -43,9 +43,9 @@ data class EtherscanTransactionsResponse(
 
 @Serializable
 data class EtherscanTransactionCountResponse(
-    @SerialName("jsonrpc") val jsonrpc: String,
+    @SerialName("jsonrpc") val jsonrpc: String? = null,  // Make nullable for Sepolia
     @SerialName("result") val result: String,
-    @SerialName("id") val id: Int
+    @SerialName("id") val id: Int? = null  // Make nullable for Sepolia
 )
 
 @Serializable
@@ -70,6 +70,25 @@ data class GasPriceResult(
     @SerialName("FastGasPrice") val FastGasPrice: String,
     @SerialName("suggestBaseFee") val suggestBaseFee: String? = null,
     @SerialName("gasUsedRatio") val gasUsedRatio: String? = null
+)
+
+@Serializable
+data class EtherscanGasEstimateResponse(
+    @SerialName("status") val status: String,
+    @SerialName("message") val message: String,
+    @SerialName("result") val result: String // Estimated time in seconds
+)
+
+@Serializable
+data class PendingTxResponse(
+    @SerialName("status") val status: String,
+    @SerialName("message") val message: String,
+    @SerialName("result") val result: List<PendingTx>? = null
+)
+
+@Serializable
+data class PendingTx(
+    @SerialName("pending_tx_count") val pendingTxCount: String? = null,
 )
 
 @Serializable

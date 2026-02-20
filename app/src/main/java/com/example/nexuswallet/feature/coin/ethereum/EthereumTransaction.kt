@@ -30,7 +30,7 @@ data class EthereumTransaction(
     val txHash: String?,
     val network: String,
     val data: String,
-    val isIncoming: Boolean = false  // ADD THIS
+    val isIncoming: Boolean = false
 )
 
 data class EthereumFeeEstimate(
@@ -42,7 +42,6 @@ data class EthereumFeeEstimate(
     val estimatedTime: Int,                // Estimated time in seconds
     val priority: FeeLevel,
     val baseFee: String? = null,           // Base fee for EIP-1559 (optional)
-    val maxPriorityFee: String? = null,    // Max priority fee for EIP-1559 (optional)
     val isEIP1559: Boolean = false         // Whether this is an EIP-1559 fee estimate
 )
 

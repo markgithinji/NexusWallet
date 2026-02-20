@@ -1,5 +1,7 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import retrofit2.http.GET
 import retrofit2.http.Query
 
@@ -74,4 +76,22 @@ interface EtherscanApiService {
         @Query("sort") sort: String = "desc",
         @Query("apikey") apiKey: String
     ): EtherscanTokenTransfersResponse
+
+    @GET("v2/api")
+    suspend fun getPendingTxCount(
+        @Query("chainid") chainId: String,
+        @Query("module") module: String = "account",  // Change to "account"
+        @Query("action") action: String = "pendingtxlist",  // This might be correct, check Etherscan docs
+        @Query("address") address: String = "0x0000000000000000000000000000000000000000", // Need an address
+        @Query("apikey") apiKey: String
+    ): PendingTxResponse
+
+    @GET("v2/api")
+    suspend fun getConfirmationTimeEstimate(
+        @Query("chainid") chainId: String,
+        @Query("module") module: String = "gastracker",
+        @Query("action") action: String = "gasestimate",
+        @Query("gasprice") gasPriceWei: String, // Gas price in wei
+        @Query("apikey") apiKey: String
+    ): EtherscanGasEstimateResponse
 }
