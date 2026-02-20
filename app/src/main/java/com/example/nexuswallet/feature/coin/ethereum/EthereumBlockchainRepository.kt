@@ -6,15 +6,7 @@ import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.Transaction
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.RoundingMode
@@ -47,14 +39,24 @@ class EthereumBlockchainRepository @Inject constructor(
             if (response.status == "1") {
                 val wei = BigDecimal(response.result)
                 val eth = wei.divide(BigDecimal(WEI_PER_ETH), ETH_DECIMALS, RoundingMode.HALF_UP)
-                Log.d("EthereumRepo", "Balance fetched for $address on ${network.displayName}: $eth ETH")
+                Log.d(
+                    "EthereumRepo",
+                    "Balance fetched for $address on ${network.displayName}: $eth ETH"
+                )
                 Result.Success(eth)
             } else {
-                Log.e("EthereumRepo", "Balance API error for ${network.displayName}: ${response.message}")
+                Log.e(
+                    "EthereumRepo",
+                    "Balance API error for ${network.displayName}: ${response.message}"
+                )
                 Result.Error("API error: ${response.message}")
             }
         } catch (e: Exception) {
-            Log.e("EthereumRepo", "Failed to get balance on ${network.displayName}: ${e.message}", e)
+            Log.e(
+                "EthereumRepo",
+                "Failed to get balance on ${network.displayName}: ${e.message}",
+                e
+            )
             Result.Error("Failed to get balance: ${e.message}", e)
         }
     }
@@ -74,14 +76,24 @@ class EthereumBlockchainRepository @Inject constructor(
             )
 
             if (response.status == "1") {
-                Log.d("EthereumRepo", "Fetched ${response.result.size} transactions for $address on ${network.displayName}")
+                Log.d(
+                    "EthereumRepo",
+                    "Fetched ${response.result.size} transactions for $address on ${network.displayName}"
+                )
                 Result.Success(response.result)
             } else {
-                Log.e("EthereumRepo", "Transactions API error for ${network.displayName}: ${response.message}")
+                Log.e(
+                    "EthereumRepo",
+                    "Transactions API error for ${network.displayName}: ${response.message}"
+                )
                 Result.Error("API error: ${response.message}")
             }
         } catch (e: Exception) {
-            Log.e("EthereumRepo", "Failed to get transactions on ${network.displayName}: ${e.message}", e)
+            Log.e(
+                "EthereumRepo",
+                "Failed to get transactions on ${network.displayName}: ${e.message}",
+                e
+            )
             Result.Error("Failed to get transactions: ${e.message}", e)
         }
     }
@@ -132,10 +144,16 @@ class EthereumBlockchainRepository @Inject constructor(
                 // Update cache for this network
                 cache.update(gasPrice)
 
-                Log.d("EthereumRepo", "Gas price response for ${network.displayName} - Safe: ${gasPrice.safe}, Propose: ${gasPrice.propose}, Fast: ${gasPrice.fast}")
+                Log.d(
+                    "EthereumRepo",
+                    "Gas price response for ${network.displayName} - Safe: ${gasPrice.safe}, Propose: ${gasPrice.propose}, Fast: ${gasPrice.fast}"
+                )
                 Result.Success(gasPrice)
             } else {
-                Log.e("EthereumRepo", "Gas price API error for ${network.displayName}: ${response.message}")
+                Log.e(
+                    "EthereumRepo",
+                    "Gas price API error for ${network.displayName}: ${response.message}"
+                )
                 Result.Error("Gas price API error: ${response.message}")
             }
         } catch (e: Exception) {
@@ -151,7 +169,10 @@ class EthereumBlockchainRepository @Inject constructor(
         feeLevel: FeeLevel = FeeLevel.NORMAL,
         network: EthereumNetwork = EthereumNetwork.Mainnet
     ): Result<EthereumFeeEstimate> {
-        Log.d("EthereumRepo", "=== getDynamicFeeEstimate called with feeLevel: $feeLevel on ${network.displayName} ===")
+        Log.d(
+            "EthereumRepo",
+            "=== getDynamicFeeEstimate called with feeLevel: $feeLevel on ${network.displayName} ==="
+        )
 
         // For Sepolia, return a fixed low fee estimate
         if (network is EthereumNetwork.Sepolia) {
@@ -186,14 +207,20 @@ class EthereumBlockchainRepository @Inject constructor(
             is Result.Success -> {
                 val gasPrice = gasPriceResult.data
 
-                Log.d("EthereumRepo", "Raw gas prices for ${network.displayName} - Safe: ${gasPrice.safe}, Propose: ${gasPrice.propose}, Fast: ${gasPrice.fast}")
+                Log.d(
+                    "EthereumRepo",
+                    "Raw gas prices for ${network.displayName} - Safe: ${gasPrice.safe}, Propose: ${gasPrice.propose}, Fast: ${gasPrice.fast}"
+                )
 
                 // Parse gas prices as BigDecimals - will throw if parsing fails
                 val safeGwei = gasPrice.safe.toBigDecimal()
                 val proposeGwei = gasPrice.propose.toBigDecimal()
                 val fastGwei = gasPrice.fast.toBigDecimal()
 
-                Log.d("EthereumRepo", "Parsed gas prices - Safe: $safeGwei, Propose: $proposeGwei, Fast: $fastGwei")
+                Log.d(
+                    "EthereumRepo",
+                    "Parsed gas prices - Safe: $safeGwei, Propose: $proposeGwei, Fast: $fastGwei"
+                )
 
                 // Get final gas price based on fee level
                 val (selectedGwei, priceLabel) = when (feeLevel) {
@@ -203,10 +230,14 @@ class EthereumBlockchainRepository @Inject constructor(
                 }
 
                 val gasPriceGwei = formatGasPrice(selectedGwei)
-                Log.d("EthereumRepo", "Selected $priceLabel price for $feeLevel on ${network.displayName}: $gasPriceGwei Gwei")
+                Log.d(
+                    "EthereumRepo",
+                    "Selected $priceLabel price for $feeLevel on ${network.displayName}: $gasPriceGwei Gwei"
+                )
 
                 // Calculate wei values
-                val gasPriceWei = (BigDecimal(gasPriceGwei) * BigDecimal(WEI_PER_GWEI)).toBigInteger()
+                val gasPriceWei =
+                    (BigDecimal(gasPriceGwei) * BigDecimal(WEI_PER_GWEI)).toBigInteger()
                 val totalFeeWei = gasPriceWei.multiply(BigInteger.valueOf(GAS_LIMIT_STANDARD))
                 val totalFeeEth = BigDecimal(totalFeeWei).divide(
                     BigDecimal(WEI_PER_ETH),
@@ -221,7 +252,10 @@ class EthereumBlockchainRepository @Inject constructor(
                     DEFAULT_ESTIMATED_TIME
                 }
 
-                Log.d("EthereumRepo", "Fee in ETH: $totalFeeEth ETH, Estimated time: ${estimatedTime}s")
+                Log.d(
+                    "EthereumRepo",
+                    "Fee in ETH: $totalFeeEth ETH, Estimated time: ${estimatedTime}s"
+                )
 
                 return Result.Success(
                     EthereumFeeEstimate(
@@ -239,7 +273,10 @@ class EthereumBlockchainRepository @Inject constructor(
             }
 
             is Result.Error -> {
-                Log.e("EthereumRepo", "Failed to get gas price for ${network.displayName}: ${gasPriceResult.message}")
+                Log.e(
+                    "EthereumRepo",
+                    "Failed to get gas price for ${network.displayName}: ${gasPriceResult.message}"
+                )
                 return Result.Error("Failed to get gas price: ${gasPriceResult.message}")
             }
 
@@ -280,11 +317,15 @@ class EthereumBlockchainRepository @Inject constructor(
                 Log.d("EthereumRepo", "Confirmation time estimate: $seconds seconds")
 
                 // Cache the result
-                confirmationTimeCache[cacheKey] = ConfirmationTimeCache(seconds, System.currentTimeMillis())
+                confirmationTimeCache[cacheKey] =
+                    ConfirmationTimeCache(seconds, System.currentTimeMillis())
 
                 seconds
             } else {
-                Log.w("EthereumRepo", "Failed to get confirmation time: ${response.message}, using estimate")
+                Log.w(
+                    "EthereumRepo",
+                    "Failed to get confirmation time: ${response.message}, using estimate"
+                )
                 // Return a reasonable estimate based on gas price
                 val gasPrice = BigDecimal(gasPriceWei).divide(BigDecimal(WEI_PER_GWEI))
                 estimateConfirmationTimeFromGasPrice(gasPrice)
@@ -339,36 +380,50 @@ class EthereumBlockchainRepository @Inject constructor(
             val chainId = network.chainId
             val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
-            Log.d("EthereumRepo", "Fetching nonce for $address on ${network.displayName}")
+            Log.d(
+                "EthereumRepo",
+                "Fetching nonce for $address on ${network.displayName} with tag=pending"
+            )
 
             val response = etherscanApi.getTransactionCount(
                 chainId = chainId,
                 address = address,
+                tag = "pending",
                 apiKey = apiKey
             )
+
+            Log.d("EthereumRepo", "Raw nonce response: $response")
 
             // Handle the response based on network
             val nonce = when (network) {
                 is EthereumNetwork.Mainnet -> {
                     // Mainnet returns JSON-RPC format with hex result
                     if (response.result.isNotEmpty() && response.result != "0x") {
-                        val hexResult = if (response.result.startsWith("0x")) {
-                            response.result.substring(2)
-                        } else {
+                        val cleanHex = if (response.result.startsWith("0x")) {
                             response.result
+                        } else {
+                            "0x${response.result}"
                         }
-                        if (hexResult.isNotEmpty()) {
-                            hexResult.toInt(16)
-                        } else 0
-                    } else 0
+                        val nonceValue = org.web3j.utils.Numeric.toBigInt(cleanHex).toInt()
+                        Log.d(
+                            "EthereumRepo",
+                            "Parsed Mainnet nonce: $nonceValue from hex: $cleanHex"
+                        )
+                        nonceValue
+                    } else {
+                        0
+                    }
                 }
+
                 is EthereumNetwork.Sepolia -> {
-                    // Sepolia returns simple format with decimal result
-                    response.result.toIntOrNull() ?: 0
+                    // It's hex - convert it
+                    val nonceValue = org.web3j.utils.Numeric.toBigInt(response.result).toInt()
+                    Log.d("EthereumRepo", "Parsed Sepolia hex nonce: $nonceValue")
+                    nonceValue
                 }
             }
 
-            Log.d("EthereumRepo", "Nonce for $address on ${network.displayName}: $nonce")
+            Log.d("EthereumRepo", "Final nonce for $address on ${network.displayName}: $nonce")
             Result.Success(nonce)
 
         } catch (e: Exception) {
@@ -395,63 +450,13 @@ class EthereumBlockchainRepository @Inject constructor(
                 apiKey = apiKey
             )
 
-            val result = response.result
-            Log.d("EthereumRepo", "Broadcast response on ${network.displayName}: $result")
+            Log.d("EthereumRepo", "Broadcast raw response on ${network.displayName}: $response")
 
-            when {
-                result.startsWith("0x") && result.length == TX_HASH_LENGTH -> {
-                    Log.d("EthereumRepo", "Broadcast successful on ${network.displayName}: $result")
-                    Result.Success(
-                        BroadcastResult(
-                            success = true,
-                            hash = result
-                        )
-                    )
-                }
-
-                result.contains("nonce") -> {
-                    Log.e("EthereumRepo", "Nonce error on ${network.displayName}: $result")
-                    Result.Success(
-                        BroadcastResult(
-                            success = false,
-                            error = "Nonce error: $result"
-                        )
-                    )
-                }
-
-                result.contains("insufficient funds") || result.contains("balance") -> {
-                    Log.e("EthereumRepo", "Insufficient funds on ${network.displayName}: $result")
-                    Result.Success(
-                        BroadcastResult(
-                            success = false,
-                            error = "Insufficient balance: $result"
-                        )
-                    )
-                }
-
-                result.contains("already known") -> {
-                    Log.w("EthereumRepo", "Transaction already known on ${network.displayName}")
-                    val hashPattern = TX_HASH_REGEX
-                    val hash = hashPattern.find(result)?.value
-                    Result.Success(
-                        BroadcastResult(
-                            success = hash != null,
-                            hash = hash,
-                            error = if (hash == null) result else null
-                        )
-                    )
-                }
-
-                else -> {
-                    Log.e("EthereumRepo", "Broadcast failed on ${network.displayName}: $result")
-                    Result.Success(
-                        BroadcastResult(
-                            success = false,
-                            error = "Broadcast failed: $result"
-                        )
-                    )
-                }
+            return when (network) {
+                is EthereumNetwork.Mainnet -> handleMainnetBroadcast(response)
+                is EthereumNetwork.Sepolia -> handleSepoliaBroadcast(response)
             }
+
         } catch (e: Exception) {
             Log.e("EthereumRepo", "Network error broadcasting on ${network.displayName}", e)
             Result.Success(
@@ -461,6 +466,121 @@ class EthereumBlockchainRepository @Inject constructor(
                 )
             )
         }
+    }
+
+    private fun handleMainnetBroadcast(response: EtherscanBroadcastResponse): Result<BroadcastResult> {
+        // First check if there's an error object
+        response.error?.let { error ->
+            Log.e("EthereumRepo", "Broadcast error on Mainnet: ${error.message}")
+            return Result.Success(
+                BroadcastResult(
+                    success = false,
+                    error = error.message
+                )
+            )
+        }
+
+        // Check if result is present and looks like a transaction hash
+        response.result?.let { result ->
+            when {
+                result.startsWith("0x") && result.length == TX_HASH_LENGTH -> {
+                    Log.d("EthereumRepo", "Broadcast successful on Mainnet: $result")
+                    return Result.Success(
+                        BroadcastResult(
+                            success = true,
+                            hash = result
+                        )
+                    )
+                }
+
+                result.contains("nonce") -> {
+                    Log.e("EthereumRepo", "Nonce error: $result")
+                    return Result.Success(
+                        BroadcastResult(
+                            success = false,
+                            error = "Nonce error: $result"
+                        )
+                    )
+                }
+
+                result.contains("insufficient funds") || result.contains("balance") -> {
+                    Log.e("EthereumRepo", "Insufficient funds: $result")
+                    return Result.Success(
+                        BroadcastResult(
+                            success = false,
+                            error = "Insufficient balance: $result"
+                        )
+                    )
+                }
+
+                result.contains("already known") -> {
+                    Log.w("EthereumRepo", "Transaction already known")
+                    val hashPattern = TX_HASH_REGEX
+                    val hash = hashPattern.find(result)?.value
+                    return Result.Success(
+                        BroadcastResult(
+                            success = hash != null,
+                            hash = hash,
+                            error = if (hash == null) result else null
+                        )
+                    )
+                }
+            }
+        }
+
+        // If we get here, something unexpected happened
+        Log.e("EthereumRepo", "Broadcast failed with unexpected response")
+        return Result.Success(
+            BroadcastResult(
+                success = false,
+                error = response.message ?: "Unknown error"
+            )
+        )
+    }
+
+    private fun handleSepoliaBroadcast(response: EtherscanBroadcastResponse): Result<BroadcastResult> {
+        Log.d("EthereumRepo", "Handling Sepolia broadcast response: $response")
+
+        // First check if there's an error object (this is the actual error case)
+        response.error?.let { error ->
+            Log.e("EthereumRepo", "Broadcast error on Sepolia: ${error.message}")
+            return Result.Success(
+                BroadcastResult(
+                    success = false,
+                    error = error.message
+                )
+            )
+        }
+
+        // Check if result is present and looks like a transaction hash (success case)
+        response.result?.let { result ->
+            if (result.startsWith("0x") && result.length == TX_HASH_LENGTH) {
+                Log.d("EthereumRepo", "Broadcast successful on Sepolia: $result")
+                return Result.Success(
+                    BroadcastResult(
+                        success = true,
+                        hash = result
+                    )
+                )
+            } else {
+                Log.e("EthereumRepo", "Invalid transaction hash format on Sepolia: $result")
+                return Result.Success(
+                    BroadcastResult(
+                        success = false,
+                        error = "Invalid response format"
+                    )
+                )
+            }
+        }
+
+        // If we get here, something unexpected happened
+        Log.e("EthereumRepo", "Unexpected broadcast response on Sepolia: $response")
+        return Result.Success(
+            BroadcastResult(
+                success = false,
+                error = response.message ?: "Unknown error"
+            )
+        )
     }
 
     /**

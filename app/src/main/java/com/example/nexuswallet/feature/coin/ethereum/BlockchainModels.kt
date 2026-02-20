@@ -43,16 +43,25 @@ data class EtherscanTransactionsResponse(
 
 @Serializable
 data class EtherscanTransactionCountResponse(
-    @SerialName("jsonrpc") val jsonrpc: String? = null,  // Make nullable for Sepolia
+    @SerialName("jsonrpc") val jsonrpc: String? = null,
     @SerialName("result") val result: String,
-    @SerialName("id") val id: Int? = null  // Make nullable for Sepolia
+    @SerialName("id") val id: Int? = null
 )
 
 @Serializable
 data class EtherscanBroadcastResponse(
-    @SerialName("jsonrpc") val jsonrpc: String,
-    @SerialName("result") val result: String,
-    @SerialName("id") val id: Int
+    @SerialName("jsonrpc") val jsonrpc: String? = null,
+    @SerialName("result") val result: String? = null,
+    @SerialName("id") val id: Int? = null,
+    @SerialName("status") val status: String? = null,
+    @SerialName("message") val message: String? = null,
+    @SerialName("error") val error: BroadcastError? = null
+)
+
+@Serializable
+data class BroadcastError(
+    @SerialName("code") val code: Int,
+    @SerialName("message") val message: String
 )
 
 @Serializable
@@ -78,19 +87,6 @@ data class EtherscanGasEstimateResponse(
     @SerialName("message") val message: String,
     @SerialName("result") val result: String // Estimated time in seconds
 )
-
-@Serializable
-data class PendingTxResponse(
-    @SerialName("status") val status: String,
-    @SerialName("message") val message: String,
-    @SerialName("result") val result: List<PendingTx>? = null
-)
-
-@Serializable
-data class PendingTx(
-    @SerialName("pending_tx_count") val pendingTxCount: String? = null,
-)
-
 @Serializable
 data class GasPrice(
     val safe: String,
@@ -98,18 +94,6 @@ data class GasPrice(
     val fast: String,
     val lastBlock: String? = null,
     val baseFee: String? = null
-)
-
-@Serializable
-data class TransactionReceiptStatusResponse(
-    @SerialName("status") val status: String,
-    @SerialName("message") val message: String,
-    @SerialName("result") val result: TransactionReceiptStatusResult
-)
-
-@Serializable
-data class TransactionReceiptStatusResult(
-    @SerialName("status") val status: String  // "1" = success, "0" = failed
 )
 
 @Serializable

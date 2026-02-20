@@ -1,7 +1,5 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import retrofit2.http.GET
 import retrofit2.http.Query
 
@@ -44,7 +42,7 @@ interface EtherscanApiService {
         @Query("module") module: String = "proxy",
         @Query("action") action: String = "eth_getTransactionCount",
         @Query("address") address: String,
-        @Query("tag") tag: String = "latest",
+        @Query("tag") tag: String = "pending",
         @Query("apikey") apiKey: String
     ): EtherscanTransactionCountResponse
 
@@ -58,15 +56,6 @@ interface EtherscanApiService {
     ): EtherscanBroadcastResponse
 
     @GET("v2/api")
-    suspend fun getTransactionReceiptStatus(
-        @Query("chainid") chainId: String,
-        @Query("module") module: String = "transaction",
-        @Query("action") action: String = "gettxreceiptstatus",
-        @Query("txhash") txhash: String,
-        @Query("apikey") apiKey: String
-    ): TransactionReceiptStatusResponse
-
-    @GET("v2/api")
     suspend fun getTokenTransfers(
         @Query("chainid") chainId: String,
         @Query("module") module: String = "account",
@@ -76,15 +65,6 @@ interface EtherscanApiService {
         @Query("sort") sort: String = "desc",
         @Query("apikey") apiKey: String
     ): EtherscanTokenTransfersResponse
-
-    @GET("v2/api")
-    suspend fun getPendingTxCount(
-        @Query("chainid") chainId: String,
-        @Query("module") module: String = "account",  // Change to "account"
-        @Query("action") action: String = "pendingtxlist",  // This might be correct, check Etherscan docs
-        @Query("address") address: String = "0x0000000000000000000000000000000000000000", // Need an address
-        @Query("apikey") apiKey: String
-    ): PendingTxResponse
 
     @GET("v2/api")
     suspend fun getConfirmationTimeEstimate(

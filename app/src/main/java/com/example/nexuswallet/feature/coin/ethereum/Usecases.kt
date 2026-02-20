@@ -325,18 +325,6 @@ class SendEthereumUseCase @Inject constructor(
 
             Log.d("SendEthereumUC", "Creating transaction for address: ${ethereumCoin.address} on ${network.displayName}")
 
-            val nonceResult = ethereumBlockchainRepository.getEthereumNonce(
-                ethereumCoin.address,
-                network
-            )
-            val nonce = when (nonceResult) {
-                is Result.Success -> nonceResult.data
-                else -> {
-                    Log.e("SendEthereumUC", "Failed to get nonce")
-                    return null
-                }
-            }
-
             val feeResult = ethereumBlockchainRepository.getFeeEstimate(feeLevel, network)
             val feeEstimate = when (feeResult) {
                 is Result.Success -> feeResult.data
@@ -360,7 +348,7 @@ class SendEthereumUseCase @Inject constructor(
                 gasLimit = feeEstimate.gasLimit,
                 feeWei = feeEstimate.totalFeeWei,
                 feeEth = feeEstimate.totalFeeEth,
-                nonce = nonce,
+                nonce = 0, // Temporary value, will be updated at signing
                 chainId = network.chainId.toLong(),
                 signedHex = null,
                 txHash = null,
@@ -397,23 +385,25 @@ class SendEthereumUseCase @Inject constructor(
                     return null
                 }
 
-            // Verify network matches
-            if (ethereumCoin.network.chainId != network.chainId) {
-                Log.e("SendEthereumUC", "Network mismatch: wallet=${ethereumCoin.network.displayName}, transaction=$network")
-                return null
-            }
-
+            // Get the nonce
             val nonceResult = ethereumBlockchainRepository.getEthereumNonce(
                 ethereumCoin.address,
                 network
             )
+
             val currentNonce = when (nonceResult) {
-                is Result.Success -> nonceResult.data
+                is Result.Success -> {
+                    Log.d("SendEthereumUC", "Current network nonce for ${ethereumCoin.address}: ${nonceResult.data}")
+                    nonceResult.data
+                }
                 else -> {
                     Log.e("SendEthereumUC", "Failed to get nonce")
                     return null
                 }
             }
+
+            // Log the transaction's stored nonce for debugging
+            Log.d("SendEthereumUC", "Transaction stored nonce: ${transaction.nonce}")
 
             val gasPriceWei = BigInteger(transaction.gasPriceWei)
 
@@ -430,6 +420,7 @@ class SendEthereumUseCase @Inject constructor(
                 return null
             }
 
+            // Use currentNonce
             val rawTransaction = RawTransaction.createTransaction(
                 BigInteger.valueOf(currentNonce.toLong()),
                 gasPriceWei,
@@ -446,12 +437,20 @@ class SendEthereumUseCase @Inject constructor(
             val txHashBytes = Hash.sha3(Numeric.hexStringToByteArray(signedHex))
             val calculatedHash = Numeric.toHexString(txHashBytes)
 
-            return transaction.copy(
+            // Update the transaction with the correct nonce and save
+            val updatedTransaction = transaction.copy(
                 status = TransactionStatus.PENDING,
                 txHash = calculatedHash,
                 signedHex = signedHex,
                 nonce = currentNonce
             )
+
+            // Save the updated transaction
+            ethereumTransactionRepository.updateTransaction(updatedTransaction)
+
+            Log.d("SendEthereumUC", "Transaction signed successfully with nonce: $currentNonce")
+            return updatedTransaction
+
         } catch (e: Exception) {
             Log.e("SendEthereumUC", "Error signing transaction: ${e.message}", e)
             return null
