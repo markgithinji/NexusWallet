@@ -507,16 +507,6 @@ class BitcoinBlockchainRepository @Inject constructor(
         }
     }
 
-    /**
-     * Internal data class for parsed transaction details
-     */
-    private data class ParsedTransaction(
-        val fromAddress: String,
-        val toAddress: String,
-        val amount: Long,
-        val isIncoming: Boolean
-    )
-
     companion object {
         // Bitcoin constants
         private const val SATOSHIS_PER_BTC = 100_000_000L
@@ -549,17 +539,3 @@ class BitcoinBlockchainRepository @Inject constructor(
         private val TXID_REGEX = Regex("^[0-9a-fA-F]{64}$")
     }
 }
-
-data class BitcoinTransactionResponse(
-    val txid: String,
-    val fromAddress: String,
-    val toAddress: String,
-    val amount: Long,
-    val fee: Long,
-    val status: TransactionStatus,
-    val timestamp: Long,
-    val confirmations: Int,
-    val blockHash: String?,
-    val blockHeight: Int?,
-    val isIncoming: Boolean
-)

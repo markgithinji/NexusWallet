@@ -1,10 +1,9 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
+import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import org.bitcoinj.core.Coin
 import org.bitcoinj.core.TransactionOutPoint
 import org.bitcoinj.script.Script
-import java.math.BigDecimal
-import java.math.RoundingMode
 
 data class UTXO(
     val outPoint: TransactionOutPoint,
@@ -45,43 +44,24 @@ data class SendBitcoinResult(
     val success: Boolean,
     val error: String? = null
 )
-fun BitcoinTransactionResponse.toDomain(
-    walletId: String,
-    isIncoming: Boolean,
-    network: BitcoinNetwork
-): BitcoinTransaction {
-    val btcAmount = BigDecimal(amount).divide(
-        BigDecimal(100_000_000),
-        8,
-        RoundingMode.HALF_UP
-    )
 
-    val feeBtc = if (fee > 0) {
-        BigDecimal(fee).divide(
-            BigDecimal(100_000_000),
-            8,
-            RoundingMode.HALF_UP
-        ).toPlainString()
-    } else "0"
+data class ParsedTransaction(
+    val fromAddress: String,
+    val toAddress: String,
+    val amount: Long,
+    val isIncoming: Boolean
+)
 
-    return BitcoinTransaction(
-        id = "btc_tx_${System.currentTimeMillis()}_${txid.take(8)}",
-        walletId = walletId,
-        fromAddress = fromAddress,
-        toAddress = toAddress,
-        status = status,
-        timestamp = timestamp * 1000, // Convert to milliseconds
-        note = null,
-        feeLevel = FeeLevel.NORMAL,
-        amountSatoshis = amount,
-        amountBtc = btcAmount.toPlainString(),
-        feeSatoshis = fee,
-        feeBtc = feeBtc,
-        feePerByte = 0.0,
-        estimatedSize = 0,
-        signedHex = null,
-        txHash = txid,
-        network = network,
-        isIncoming = isIncoming
-    )
-}
+data class BitcoinTransactionResponse(
+    val txid: String,
+    val fromAddress: String,
+    val toAddress: String,
+    val amount: Long,
+    val fee: Long,
+    val status: TransactionStatus,
+    val timestamp: Long,
+    val confirmations: Int,
+    val blockHash: String?,
+    val blockHeight: Int?,
+    val isIncoming: Boolean
+)
