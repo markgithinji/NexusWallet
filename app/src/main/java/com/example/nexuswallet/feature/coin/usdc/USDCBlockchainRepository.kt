@@ -13,8 +13,6 @@ import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalance
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
-import com.example.nexuswallet.feature.wallet.domain.Transaction
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.web3j.abi.FunctionEncoder
@@ -47,6 +45,8 @@ class USDCBlockchainRepository @Inject constructor(
     ): Result<USDCBalance> {
         return withContext(Dispatchers.IO) {
             try {
+                Log.d("USDCRepo", "Fetching USDC balance for $address on ${network.displayName}")
+
                 val usdcBalance = getUSDCBalanceViaWeb3j(address, network)
 
                 val result = USDCBalance(
@@ -56,9 +56,11 @@ class USDCBlockchainRepository @Inject constructor(
                     usdValue = usdcBalance.usdValue
                 )
 
+                Log.d("USDCRepo", "USDC balance for $address: ${result.amountDecimal} USDC")
                 Result.Success(result)
 
             } catch (e: Exception) {
+                Log.e("USDCRepo", "Failed to get USDC balance: ${e.message}", e)
                 Result.Error("Failed to get USDC balance: ${e.message}", e)
             }
         }
@@ -130,6 +132,7 @@ class USDCBlockchainRepository @Inject constructor(
                 )
 
             } catch (e: Exception) {
+                Log.e("USDCRepo", "Web3j balance fetch failed: ${e.message}", e)
                 throw e
             }
         }
@@ -144,29 +147,38 @@ class USDCBlockchainRepository @Inject constructor(
     ): Result<USDCFeeEstimate> {
         return withContext(Dispatchers.IO) {
             try {
-                // First get Ethereum gas price
-                val gasPriceResult = getEthereumGasPrice(network, feeLevel)
+                Log.d(
+                    "USDCRepo",
+                    "=== getFeeEstimate called with feeLevel: $feeLevel on ${network.displayName} ==="
+                )
+
+                val gasPriceResult = getEthereumGasPrice(network)
 
                 when (gasPriceResult) {
                     is Result.Success -> {
                         val ethGasPrice = gasPriceResult.data
 
                         val (gasPriceGwei, estimatedTime) = when (feeLevel) {
-                            FeeLevel.SLOW -> ethGasPrice.safe to 900
-                            FeeLevel.NORMAL -> ethGasPrice.propose to 300
-                            FeeLevel.FAST -> ethGasPrice.fast to 60
+                            FeeLevel.SLOW -> ethGasPrice.safe to SLOW_ESTIMATE_TIME
+                            FeeLevel.NORMAL -> ethGasPrice.propose to NORMAL_ESTIMATE_TIME
+                            FeeLevel.FAST -> ethGasPrice.fast to FAST_ESTIMATE_TIME
                         }
 
                         val gasPriceWei =
-                            (BigDecimal(gasPriceGwei) * BigDecimal("1000000000")).toBigInteger()
+                            (BigDecimal(gasPriceGwei) * BigDecimal(GWEI_TO_WEI)).toBigInteger()
                         val gasLimit = BigInteger.valueOf(DEFAULT_GAS_LIMIT)
                         val totalFeeWei = gasPriceWei.multiply(gasLimit)
 
                         val totalFeeEth = BigDecimal(totalFeeWei).divide(
-                            BigDecimal("1000000000000000000"),
-                            8,
+                            BigDecimal(WEI_TO_ETH),
+                            ETH_DECIMALS,
                             RoundingMode.HALF_UP
                         ).toPlainString()
+
+                        Log.d(
+                            "USDCRepo",
+                            "Fee in ETH: $totalFeeEth ETH, Estimated time: ${estimatedTime}s"
+                        )
 
                         Result.Success(
                             USDCFeeEstimate(
@@ -184,45 +196,74 @@ class USDCBlockchainRepository @Inject constructor(
                     }
 
                     is Result.Error -> {
+                        Log.e("USDCRepo", "Failed to get gas price: ${gasPriceResult.message}")
                         Result.Error(gasPriceResult.message, gasPriceResult.throwable)
                     }
 
                     Result.Loading -> Result.Error("Gas price request timed out")
                 }
             } catch (e: Exception) {
+                Log.e("USDCRepo", "Failed to get fee estimate: ${e.message}", e)
                 Result.Error("Failed to get fee estimate: ${e.message}", e)
             }
         }
     }
 
+    /**
+     * Get Ethereum gas price using web3j
+     */
     private suspend fun getEthereumGasPrice(
-        network: EthereumNetwork,
-        feeLevel: FeeLevel
+        network: EthereumNetwork
+    ): Result<GasPrice> {
+        return getGasPriceViaWeb3j(network)
+    }
+
+    /**
+     * Get gas price using web3j
+     */
+    private suspend fun getGasPriceViaWeb3j(
+        network: EthereumNetwork
     ): Result<GasPrice> {
         return withContext(Dispatchers.IO) {
             try {
-                val chainId = network.chainId
-                val apiKey = BuildConfig.ETHERSCAN_API_KEY
+                val web3j = web3jFactory.create(network)
+                val gasPrice = web3j.ethGasPrice().send()
 
-                val response = etherscanApi.getGasPrice(
-                    chainId = chainId,
-                    apiKey = apiKey
+                if (gasPrice.hasError()) {
+                    return@withContext Result.Error("Gas price error: ${gasPrice.error?.message}")
+                }
+
+                val gasPriceWei = gasPrice.gasPrice
+                Log.d("USDCRepo", "Raw gas price wei: $gasPriceWei")
+
+                // Convert wei to Gwei with 6 decimal precision
+                val gasPriceGwei = gasPriceWei.toBigDecimal().divide(
+                    BigDecimal(GWEI_TO_WEI),
+                    6,
+                    RoundingMode.HALF_UP
                 )
 
-                if (response.status == "1") {
-                    Result.Success(
-                        GasPrice(
-                            safe = response.result.SafeGasPrice,
-                            propose = response.result.ProposeGasPrice,
-                            fast = response.result.FastGasPrice,
-                            lastBlock = response.result.lastBlock,
-                            baseFee = response.result.suggestBaseFee
-                        )
+                val priceStr = gasPriceGwei.toString()
+
+                // Apply multipliers with same precision
+                val slowPrice = (gasPriceGwei * SLOW_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString()
+                val fastPrice = (gasPriceGwei * FAST_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString()
+
+                Log.d("USDCRepo", "Web3j gas price on ${network.displayName}: $priceStr Gwei")
+                Log.d("USDCRepo", "Using gas prices - Safe: $slowPrice, Propose: $priceStr, Fast: $fastPrice")
+
+                Result.Success(
+                    GasPrice(
+                        safe = slowPrice,
+                        propose = priceStr,
+                        fast = fastPrice,
+                        lastBlock = null,
+                        baseFee = null
                     )
-                } else {
-                    Result.Error("Gas price API error: ${response.message}")
-                }
+                )
+
             } catch (e: Exception) {
+                Log.e("USDCRepo", "Failed to get gas price via web3j: ${e.message}", e)
                 Result.Error("Failed to get gas price: ${e.message}", e)
             }
         }
@@ -240,11 +281,22 @@ class USDCBlockchainRepository @Inject constructor(
     ): Result<Triple<RawTransaction, String, String>> {
         return withContext(Dispatchers.IO) {
             try {
+                Log.d("USDCRepo", "Creating USDC transfer on ${network.displayName}")
+                Log.d("USDCRepo", "From: $fromAddress, To: $toAddress, Amount: $amount USDC")
+
+                // Input validation
+                if (!validateAddress(fromAddress) || !validateAddress(toAddress)) {
+                    return@withContext Result.Error("Invalid address format")
+                }
+                if (!validateAmount(amount)) {
+                    return@withContext Result.Error("Invalid amount")
+                }
+
                 val usdcAddress = network.usdcContractAddress
                 val amountInUnits =
                     amount.multiply(BigDecimal(USDC_DECIMALS_DIVISOR)).toBigInteger()
 
-                val estimatedGas = estimateGasForTokenTransfer(
+                val estimatedGas = getDynamicGasLimit(
                     fromAddress = fromAddress,
                     toAddress = toAddress,
                     amount = amountInUnits,
@@ -273,6 +325,7 @@ class USDCBlockchainRepository @Inject constructor(
                 val credentials = try {
                     Credentials.create(fromPrivateKey)
                 } catch (e: Exception) {
+                    Log.e("USDCRepo", "Invalid private key format", e)
                     return@withContext Result.Error(
                         message = "Invalid private key format",
                         throwable = e
@@ -284,14 +337,34 @@ class USDCBlockchainRepository @Inject constructor(
                 val signedHex = Numeric.toHexString(signedMessage)
                 val txHash = Numeric.toHexString(Hash.sha3(Numeric.hexStringToByteArray(signedHex)))
 
+                Log.d("USDCRepo", "USDC transfer created, txHash: $txHash")
                 Result.Success(Triple(rawTransaction, signedHex, txHash))
 
             } catch (e: Exception) {
+                Log.e("USDCRepo", "Failed to create USDC transfer: ${e.message}", e)
                 Result.Error(
                     message = "Failed to create USDC transfer: ${e.message}",
                     throwable = e
                 )
             }
+        }
+    }
+
+    private suspend fun getDynamicGasLimit(
+        fromAddress: String,
+        toAddress: String,
+        amount: BigInteger,
+        network: EthereumNetwork
+    ): BigInteger {
+        return try {
+            val estimated = estimateGasForTokenTransfer(fromAddress, toAddress, amount, network)
+            // Add buffer for safety
+            estimated + (estimated * BigInteger.valueOf(GAS_LIMIT_BUFFER_PERCENT) / BigInteger.valueOf(
+                100
+            ))
+        } catch (e: Exception) {
+            Log.w("USDCRepo", "Gas estimation failed, using default: ${e.message}")
+            BigInteger.valueOf(DEFAULT_GAS_LIMIT)
         }
     }
 
@@ -325,78 +398,89 @@ class USDCBlockchainRepository @Inject constructor(
                 val response = web3j.ethEstimateGas(transaction).send()
 
                 if (response.hasError()) {
+                    Log.w(
+                        "USDCRepo",
+                        "Gas estimation failed, using default: ${response.error?.message}"
+                    )
                     return@withContext BigInteger.valueOf(DEFAULT_GAS_LIMIT)
                 }
 
                 val estimatedGas = response.amountUsed
-
-                // Add 20% buffer for safety
-                val buffer =
-                    estimatedGas.multiply(BigInteger.valueOf(20)).divide(BigInteger.valueOf(100))
-                estimatedGas.add(buffer)
+                Log.d("USDCRepo", "Estimated gas: $estimatedGas")
+                estimatedGas
 
             } catch (e: Exception) {
+                Log.w("USDCRepo", "Gas estimation error, using default: ${e.message}")
                 BigInteger.valueOf(DEFAULT_GAS_LIMIT)
             }
         }
     }
 
+    /**
+     * Broadcast USDC transaction using web3j directly
+     */
     suspend fun broadcastUSDCTransaction(
         signedHex: String,
         network: EthereumNetwork = EthereumNetwork.Sepolia
     ): Result<BroadcastResult> {
         return withContext(Dispatchers.IO) {
             try {
-                val chainId = network.chainId
-                val apiKey = BuildConfig.ETHERSCAN_API_KEY
+                Log.d("USDCRepo", "Broadcasting USDC transaction on ${network.displayName} via web3j")
 
-                val response = etherscanApi.broadcastTransaction(
-                    chainId = chainId,
-                    hex = signedHex,
-                    apiKey = apiKey
-                )
+                val web3j = web3jFactory.create(network)
+                val response = web3j.ethSendRawTransaction(signedHex).send()
 
-                val result = response.result
+                if (response.hasError()) {
+                    val error = response.error.message
+                    Log.e("USDCRepo", "Web3j broadcast error: $error")
 
-                return@withContext when {
-                    result.startsWith("0x") && result.length == 66 -> {
-                        Result.Success(
-                            BroadcastResult(
-                                success = true,
-                                hash = result
+                    // Parse common error messages
+                    return@withContext when {
+                        error.contains("insufficient funds") ->
+                            Result.Error("Insufficient ETH for gas fees", RuntimeException(error))
+                        error.contains("nonce") ->
+                            Result.Error("Nonce error: $error", RuntimeException(error))
+                        error.contains("already known") ->
+                            // Transaction already in mempool - this is actually a success
+                            Result.Success(
+                                BroadcastResult(
+                                    success = true,
+                                    hash = extractHashFromError(error) ?: "unknown",
+                                    error = null
+                                )
                             )
-                        )
-                    }
-
-                    result.contains("insufficient funds") -> {
-                        Result.Error(
-                            message = "Insufficient ETH for gas fees",
-                            throwable = RuntimeException(result)
-                        )
-                    }
-
-                    result.contains("nonce") -> {
-                        Result.Error(
-                            message = "Nonce error: $result",
-                            throwable = RuntimeException(result)
-                        )
-                    }
-
-                    else -> {
-                        Result.Error(
-                            message = result,
-                            throwable = RuntimeException(result)
-                        )
+                        else ->
+                            Result.Error("Broadcast failed: $error", RuntimeException(error))
                     }
                 }
 
+                val txHash = response.transactionHash
+                Log.d("USDCRepo", "Web3j broadcast successful: $txHash")
+
+                Result.Success(
+                    BroadcastResult(
+                        success = true,
+                        hash = txHash
+                    )
+                )
+
             } catch (e: Exception) {
+                Log.e("USDCRepo", "Web3j broadcast error: ${e.message}", e)
                 Result.Error(
                     message = e.message ?: "Broadcast failed",
                     throwable = e
                 )
             }
         }
+    }
+
+    /**
+     * Helper to extract transaction hash from error message
+     * Sometimes "already known" errors contain the hash
+     */
+    private fun extractHashFromError(error: String): String? {
+        val hashPattern = Regex("0x[a-fA-F0-9]{64}")
+        return hashPattern.find(error)?.value
     }
 
     private suspend fun broadcastViaWeb3j(
@@ -405,17 +489,21 @@ class USDCBlockchainRepository @Inject constructor(
     ): Result<BroadcastResult> {
         return withContext(Dispatchers.IO) {
             try {
+                Log.d("USDCRepo", "Broadcasting via Web3j on ${network.displayName}")
+
                 val web3j = web3jFactory.create(network)
                 val response = web3j.ethSendRawTransaction(signedHex).send()
 
                 if (response.hasError()) {
                     val error = response.error.message
+                    Log.e("USDCRepo", "Web3j broadcast error: $error")
                     Result.Error(
                         message = error,
                         throwable = RuntimeException(error)
                     )
                 } else {
                     val txHash = response.transactionHash
+                    Log.d("USDCRepo", "Web3j broadcast successful: $txHash")
                     Result.Success(
                         BroadcastResult(
                             success = true,
@@ -424,57 +512,9 @@ class USDCBlockchainRepository @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
+                Log.e("USDCRepo", "Web3j broadcast error: ${e.message}", e)
                 Result.Error(
                     message = e.message ?: "Broadcast failed",
-                    throwable = e
-                )
-            }
-        }
-    }
-
-    suspend fun getUSDCTransactions(
-        address: String,
-        network: EthereumNetwork = EthereumNetwork.Sepolia
-    ): Result<List<Transaction>> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val chainId = network.chainId
-                val usdcAddress = network.usdcContractAddress
-                val apiKey = BuildConfig.ETHERSCAN_API_KEY
-
-                val response = etherscanApi.getTokenTransfers(
-                    chainId = chainId,
-                    address = address,
-                    contractAddress = usdcAddress,
-                    apiKey = apiKey
-                )
-
-                if (response.status == "1") {
-                    val transactions = response.result.map { tx ->
-                        Transaction(
-                            hash = tx.hash,
-                            from = tx.from,
-                            to = tx.to,
-                            value = tx.value,
-                            valueDecimal = convertTokenValue(tx.value, tx.tokenDecimal),
-                            gasPrice = tx.gasPrice,
-                            gasUsed = tx.gasUsed,
-                            timestamp = tx.timeStamp.toLong() * 1000,
-                            status = TransactionStatus.SUCCESS,
-                            chain = if (network.isTestnet) ChainType.ETHEREUM_SEPOLIA else ChainType.ETHEREUM
-                        )
-                    }
-                    Result.Success(transactions)
-                } else {
-                    Result.Error(
-                        message = response.message ?: "Failed to get transactions",
-                        throwable = RuntimeException(response.message)
-                    )
-                }
-
-            } catch (e: Exception) {
-                Result.Error(
-                    message = "Failed to get USDC transactions: ${e.message}",
                     throwable = e
                 )
             }
@@ -487,6 +527,8 @@ class USDCBlockchainRepository @Inject constructor(
     ): Result<BigInteger> {
         return withContext(Dispatchers.IO) {
             try {
+                Log.d("USDCRepo", "Fetching nonce for $address on ${network.displayName}")
+
                 val web3j = web3jFactory.create(network)
                 val response = web3j.ethGetTransactionCount(
                     address,
@@ -494,14 +536,18 @@ class USDCBlockchainRepository @Inject constructor(
                 ).send()
 
                 if (response.hasError()) {
+                    Log.e("USDCRepo", "Failed to get nonce: ${response.error?.message}")
                     Result.Error(
                         message = "Failed to get nonce: ${response.error?.message}",
                         throwable = RuntimeException(response.error?.message)
                     )
                 } else {
-                    Result.Success(response.transactionCount)
+                    val nonce = response.transactionCount
+                    Log.d("USDCRepo", "Nonce for $address: $nonce")
+                    Result.Success(nonce)
                 }
             } catch (e: Exception) {
+                Log.e("USDCRepo", "Network error getting nonce: ${e.message}", e)
                 Result.Error(
                     message = "Network error getting nonce: ${e.message}",
                     throwable = e
@@ -529,17 +575,6 @@ class USDCBlockchainRepository @Inject constructor(
         )
     }
 
-    private fun convertTokenValue(value: String, decimalsStr: String): String {
-        return try {
-            val decimals = decimalsStr.toIntOrNull() ?: USDC_DECIMALS
-            val valueWei = BigDecimal(value)
-            valueWei.divide(BigDecimal.TEN.pow(decimals), decimals, RoundingMode.HALF_UP)
-                .toPlainString()
-        } catch (e: Exception) {
-            "0"
-        }
-    }
-
     suspend fun getUSDCTransactionHistory(
         address: String,
         network: EthereumNetwork = EthereumNetwork.Sepolia
@@ -549,7 +584,10 @@ class USDCBlockchainRepository @Inject constructor(
             val usdcAddress = network.usdcContractAddress
             val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
-            Log.d("USDCAPI", "=== Fetching USDC transactions for $address on ${network.displayName} ===")
+            Log.d(
+                "USDCRepo",
+                "=== Fetching USDC transaction history for $address on ${network.displayName} ==="
+            )
 
             val response = etherscanApi.getTokenTransfers(
                 chainId = chainId,
@@ -560,31 +598,55 @@ class USDCBlockchainRepository @Inject constructor(
 
             if (response.status == "1") {
                 val transactions = response.result
-                Log.d("USDCAPI", "Found ${transactions.size} USDC transactions")
+                Log.d("USDCRepo", "Found ${transactions.size} USDC transactions")
 
                 transactions.take(3).forEachIndexed { i, tx ->
-                    Log.d("USDCAPI", "Tx $i: ${tx.hash.take(8)}...")
-                    Log.d("USDCAPI", "  from: ${tx.from.take(8)}...")
-                    Log.d("USDCAPI", "  to: ${tx.to.take(8)}...")
-                    Log.d("USDCAPI", "  value: ${tx.value}")
-                    Log.d("USDCAPI", "  timestamp: ${tx.timeStamp}")
+                    Log.d("USDCRepo", "Tx $i: ${tx.hash.take(8)}...")
+                    Log.d("USDCRepo", "  from: ${tx.from.take(8)}...")
+                    Log.d("USDCRepo", "  to: ${tx.to.take(8)}...")
+                    Log.d("USDCRepo", "  value: ${tx.value}")
+                    Log.d("USDCRepo", "  timestamp: ${tx.timeStamp}")
                 }
 
                 Result.Success(transactions)
             } else {
-                Log.e("USDCAPI", "API error: ${response.message}")
+                Log.e("USDCRepo", "API error: ${response.message}")
                 Result.Error(response.message ?: "Failed to get USDC transactions")
             }
 
         } catch (e: Exception) {
-            Log.e("USDCAPI", "Failed to get USDC transactions: ${e.message}", e)
+            Log.e("USDCRepo", "Failed to get USDC transactions: ${e.message}", e)
             Result.Error("Failed to get USDC transactions: ${e.message}", e)
         }
     }
 
+    private fun validateAddress(address: String): Boolean {
+        return address.startsWith("0x") && address.length == 42
+    }
+
+    private fun validateAmount(amount: BigDecimal): Boolean {
+        return amount > BigDecimal.ZERO
+    }
+
     companion object {
+        // USDC constants
         private const val USDC_DECIMALS = 6
         private const val USDC_DECIMALS_DIVISOR = "1000000"
         private const val DEFAULT_GAS_LIMIT = 65_000L
+
+        // Fee estimate times (seconds)
+        private const val SLOW_ESTIMATE_TIME = 900
+        private const val NORMAL_ESTIMATE_TIME = 300
+        private const val FAST_ESTIMATE_TIME = 60
+
+        // Gas price constants
+        private const val GWEI_TO_WEI = 1_000_000_000L
+        private const val WEI_TO_ETH = "1000000000000000000"
+        private const val ETH_DECIMALS = 18
+        private const val GAS_LIMIT_BUFFER_PERCENT = 20L
+
+        // Price multipliers for web3j gas prices
+        private val SLOW_PRICE_MULTIPLIER = BigDecimal("0.9")
+        private val FAST_PRICE_MULTIPLIER = BigDecimal("1.2")
     }
 }
