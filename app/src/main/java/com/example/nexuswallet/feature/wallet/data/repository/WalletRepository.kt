@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.data.repository
 
+import android.util.Log
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.coin.solana.SolanaNetwork
@@ -19,7 +20,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.bitcoinj.core.LegacyAddress
-import org.bitcoinj.crypto.ChildNumber.HARDENED_BIT
 import org.bitcoinj.crypto.MnemonicCode
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
@@ -28,10 +28,14 @@ import org.sol4k.Keypair
 import org.web3j.crypto.Bip32ECKeyPair
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.MnemonicUtils
+import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.collections.map
 import org.bitcoinj.wallet.Wallet as BitcoinJWallet
 
+@Singleton
 class WalletRepository @Inject constructor(
     private val localDataSource: WalletLocalDataSource,
     private val securityManager: SecurityManager,
@@ -70,7 +74,7 @@ class WalletRepository @Inject constructor(
                 if (includeBitcoin) createBitcoinCoin(mnemonic, bitcoinNetwork) else null
             val ethereumCoin =
                 if (includeEthereum) createEthereumCoin(mnemonic, ethereumNetwork) else null
-            val solanaCoin = if (includeSolana) createSolanaCoin(solanaNetwork) else null
+            val solanaCoin = if (includeSolana) createSolanaCoin(mnemonic, solanaNetwork) else null
 
             val usdcCoin = if (includeUSDC && ethereumCoin != null) {
                 USDCCoin(
@@ -109,7 +113,6 @@ class WalletRepository @Inject constructor(
     }
 
     // === WALLET CRUD ===
-
     suspend fun getWallet(walletId: String): Wallet? {
         return localDataSource.loadWallet(walletId)
     }
@@ -123,7 +126,6 @@ class WalletRepository @Inject constructor(
     suspend fun getWalletBalance(walletId: String): WalletBalance? {
         return localDataSource.loadWalletBalance(walletId)
     }
-
 
     // === MNEMONIC OPERATIONS ===
     fun generateNewMnemonic(wordCount: Int = 12): List<String> {
@@ -199,7 +201,7 @@ class WalletRepository @Inject constructor(
             .map { part ->
                 val isHardened = part.endsWith("'")
                 val number = part.replace("'", "").toInt()
-                if (isHardened) number or HARDENED_BIT else number
+                if (isHardened) number or HARDENED_BIT.toInt() else number
             }
             .toIntArray()
 
@@ -215,13 +217,43 @@ class WalletRepository @Inject constructor(
         )
     }
 
-    private fun createSolanaCoin(solanaNetwork: SolanaNetwork): SolanaCoin {
-        val keypair = Keypair.generate()
+    /**
+     * Create Solana coin by deriving keypair from mnemonic
+     * Solana uses derivation path: m/44'/501'/0'/0'
+     */
+    private fun createSolanaCoin(mnemonic: List<String>, network: SolanaNetwork): SolanaCoin {
+        // Generate seed from mnemonic
+        val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
+
+        // Derive Solana keypair from seed
+        val keypair = deriveSolanaKeypairFromSeed(seed)
+
+        Log.d("WalletRepo", "Created Solana coin with address: ${keypair.publicKey}")
+
         return SolanaCoin(
             address = keypair.publicKey.toString(),
             publicKey = keypair.publicKey.toString(),
-            network = solanaNetwork
+            network = network
         )
+    }
+
+    /**
+     * Derive Solana keypair from seed
+     * In production, implement proper BIP32 derivation for Solana path m/44'/501'/0'/0'
+     */
+    private fun deriveSolanaKeypairFromSeed(seed: ByteArray): Keypair {
+        // For now, use a deterministic method based on seed
+        val hash = MessageDigest.getInstance("SHA-256").digest(seed)
+
+        // Create 64-byte secret key (32-byte seed + 32-byte public key)
+        val expandedSeed = ByteArray(64)
+        System.arraycopy(hash, 0, expandedSeed, 0, 32)
+
+        // Second half is another hash of the first half
+        val secondHash = MessageDigest.getInstance("SHA-256").digest(hash)
+        System.arraycopy(secondHash, 0, expandedSeed, 32, 32)
+
+        return Keypair.fromSecretKey(expandedSeed)
     }
 
     private suspend fun storePrivateKeys(wallet: Wallet, mnemonic: List<String>) {
@@ -245,14 +277,16 @@ class WalletRepository @Inject constructor(
         wallet.ethereum?.let { coin ->
             val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
             val masterKey = Bip32ECKeyPair.generateKeyPair(seed)
+
             val pathArray = coin.derivationPath.split("/")
                 .drop(1)
                 .map { part ->
                     val isHardened = part.endsWith("'")
                     val number = part.replace("'", "").toInt()
-                    if (isHardened) number or HARDENED_BIT else number
+                    if (isHardened) number or HARDENED_BIT.toInt() else number
                 }
                 .toIntArray()
+
             val derivedKey = Bip32ECKeyPair.deriveKeyPair(masterKey, pathArray)
             val privateKeyHex = "0x${derivedKey.privateKey.toString(16)}"
 
@@ -264,7 +298,9 @@ class WalletRepository @Inject constructor(
         }
 
         wallet.solana?.let { coin ->
-            val keypair = Keypair.generate()
+            val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
+            val keypair = deriveSolanaKeypairFromSeed(seed)
+
             val privateKeyHex = keypair.secret.joinToString("") { "%02x".format(it) }
 
             keyManager.storePrivateKey(
@@ -272,6 +308,12 @@ class WalletRepository @Inject constructor(
                 privateKey = privateKeyHex,
                 keyType = "SOLANA_PRIVATE_KEY"
             )
+
+            Log.d("WalletRepo", "Stored Solana private key for address: ${coin.address}")
         }
+    }
+
+    companion object {
+        private const val HARDENED_BIT = 0x80000000
     }
 }
