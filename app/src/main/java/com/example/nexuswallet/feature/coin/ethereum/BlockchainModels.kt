@@ -87,6 +87,14 @@ data class EtherscanGasEstimateResponse(
     @SerialName("message") val message: String,
     @SerialName("result") val result: String // Estimated time in seconds
 )
+
+@Serializable
+data class GasPriceProxyResponse(
+    @SerialName("jsonrpc") val jsonrpc: String,
+    @SerialName("id") val id: Int,
+    @SerialName("result") val result: String
+)
+
 @Serializable
 data class GasPrice(
     val safe: String,

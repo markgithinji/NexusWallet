@@ -58,3 +58,8 @@ data class SendEthereumResult(
     val success: Boolean,
     val error: String? = null
 )
+
+data class CachedConfirmationTime(
+    val seconds: Int,
+    val timestamp: Long
+)

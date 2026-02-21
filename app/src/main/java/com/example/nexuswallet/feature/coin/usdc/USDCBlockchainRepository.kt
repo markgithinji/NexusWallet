@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.coin.usdc
 
 import android.util.Log
 import com.example.nexuswallet.BuildConfig
+import com.example.nexuswallet.feature.coin.CachedGasPrice
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EtherscanApiService
@@ -224,7 +225,7 @@ class USDCBlockchainRepository @Inject constructor(
         gasPriceCache[cacheKey]?.let { cached ->
             if (System.currentTimeMillis() - cached.timestamp < GAS_PRICE_CACHE_TTL_MS) {
                 Log.d("USDCRepo", "Using cached gas price for ${network.displayName}")
-                return Result.Success(cached.gasPrice)
+                return Result.Success(cached.price)
             } else {
                 Log.d("USDCRepo", "Cached gas price expired for ${network.displayName}")
                 gasPriceCache.remove(cacheKey)
@@ -235,7 +236,7 @@ class USDCBlockchainRepository @Inject constructor(
         return getGasPriceViaWeb3j(network).also { result ->
             if (result is Result.Success) {
                 gasPriceCache[cacheKey] = CachedGasPrice(
-                    gasPrice = result.data,
+                    price = result.data,
                     timestamp = System.currentTimeMillis()
                 )
                 Log.d("USDCRepo", "Cached fresh gas price for ${network.displayName}")
@@ -614,12 +615,6 @@ class USDCBlockchainRepository @Inject constructor(
     private fun validateAmount(amount: BigDecimal): Boolean {
         return amount > BigDecimal.ZERO
     }
-
-    // Inner data class for cached values
-    private data class CachedGasPrice(
-        val gasPrice: GasPrice,
-        val timestamp: Long
-    )
 
     companion object {
         // USDC constants

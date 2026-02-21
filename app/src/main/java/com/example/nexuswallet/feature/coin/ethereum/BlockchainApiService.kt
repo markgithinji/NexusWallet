@@ -74,4 +74,12 @@ interface EtherscanApiService {
         @Query("gasprice") gasPriceWei: String, // Gas price in wei
         @Query("apikey") apiKey: String
     ): EtherscanGasEstimateResponse
+
+    @GET("v2/api")
+    suspend fun getGasPriceProxy(
+        @Query("chainid") chainId: String,
+        @Query("module") module: String = "proxy",
+        @Query("action") action: String = "eth_gasPrice",
+        @Query("apikey") apiKey: String
+    ): GasPriceProxyResponse
 }
