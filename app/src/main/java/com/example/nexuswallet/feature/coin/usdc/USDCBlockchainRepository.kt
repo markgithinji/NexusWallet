@@ -39,6 +39,9 @@ class USDCBlockchainRepository @Inject constructor(
     private val etherscanApi: EtherscanApiService,
     private val web3jFactory: Web3jFactory
 ) {
+    // Gas price cache - stores gas price per network with timestamp
+    private val gasPriceCache = mutableMapOf<String, CachedGasPrice>()
+
     suspend fun getUSDCBalance(
         address: String,
         network: EthereumNetwork = EthereumNetwork.Sepolia
@@ -210,12 +213,34 @@ class USDCBlockchainRepository @Inject constructor(
     }
 
     /**
-     * Get Ethereum gas price using web3j
+     * Get Ethereum gas price using web3j with caching
      */
     private suspend fun getEthereumGasPrice(
         network: EthereumNetwork
     ): Result<GasPrice> {
-        return getGasPriceViaWeb3j(network)
+        val cacheKey = network.chainId
+
+        // Check cache first
+        gasPriceCache[cacheKey]?.let { cached ->
+            if (System.currentTimeMillis() - cached.timestamp < GAS_PRICE_CACHE_TTL_MS) {
+                Log.d("USDCRepo", "Using cached gas price for ${network.displayName}")
+                return Result.Success(cached.gasPrice)
+            } else {
+                Log.d("USDCRepo", "Cached gas price expired for ${network.displayName}")
+                gasPriceCache.remove(cacheKey)
+            }
+        }
+
+        // Fetch fresh gas price
+        return getGasPriceViaWeb3j(network).also { result ->
+            if (result is Result.Success) {
+                gasPriceCache[cacheKey] = CachedGasPrice(
+                    gasPrice = result.data,
+                    timestamp = System.currentTimeMillis()
+                )
+                Log.d("USDCRepo", "Cached fresh gas price for ${network.displayName}")
+            }
+        }
     }
 
     /**
@@ -417,7 +442,7 @@ class USDCBlockchainRepository @Inject constructor(
     }
 
     /**
-     * Broadcast USDC transaction using web3j directly
+     * Broadcast USDC transaction using web3j
      */
     suspend fun broadcastUSDCTransaction(
         signedHex: String,
@@ -481,44 +506,6 @@ class USDCBlockchainRepository @Inject constructor(
     private fun extractHashFromError(error: String): String? {
         val hashPattern = Regex("0x[a-fA-F0-9]{64}")
         return hashPattern.find(error)?.value
-    }
-
-    private suspend fun broadcastViaWeb3j(
-        signedHex: String,
-        network: EthereumNetwork
-    ): Result<BroadcastResult> {
-        return withContext(Dispatchers.IO) {
-            try {
-                Log.d("USDCRepo", "Broadcasting via Web3j on ${network.displayName}")
-
-                val web3j = web3jFactory.create(network)
-                val response = web3j.ethSendRawTransaction(signedHex).send()
-
-                if (response.hasError()) {
-                    val error = response.error.message
-                    Log.e("USDCRepo", "Web3j broadcast error: $error")
-                    Result.Error(
-                        message = error,
-                        throwable = RuntimeException(error)
-                    )
-                } else {
-                    val txHash = response.transactionHash
-                    Log.d("USDCRepo", "Web3j broadcast successful: $txHash")
-                    Result.Success(
-                        BroadcastResult(
-                            success = true,
-                            hash = txHash
-                        )
-                    )
-                }
-            } catch (e: Exception) {
-                Log.e("USDCRepo", "Web3j broadcast error: ${e.message}", e)
-                Result.Error(
-                    message = e.message ?: "Broadcast failed",
-                    throwable = e
-                )
-            }
-        }
     }
 
     suspend fun getNonce(
@@ -628,6 +615,12 @@ class USDCBlockchainRepository @Inject constructor(
         return amount > BigDecimal.ZERO
     }
 
+    // Inner data class for cached values
+    private data class CachedGasPrice(
+        val gasPrice: GasPrice,
+        val timestamp: Long
+    )
+
     companion object {
         // USDC constants
         private const val USDC_DECIMALS = 6
@@ -648,5 +641,8 @@ class USDCBlockchainRepository @Inject constructor(
         // Price multipliers for web3j gas prices
         private val SLOW_PRICE_MULTIPLIER = BigDecimal("0.9")
         private val FAST_PRICE_MULTIPLIER = BigDecimal("1.2")
+
+        // Cache TTL (30 seconds)
+        private const val GAS_PRICE_CACHE_TTL_MS = 30000L
     }
 }
