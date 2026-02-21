@@ -348,7 +348,7 @@ class SendSolanaUseCase @Inject constructor(
                 fromKeypair = keypair,
                 toAddress = transaction.toAddress,
                 lamports = transaction.amountLamports,
-                feeLevel = transaction.feeLevel,
+//                feeLevel = transaction.feeLevel,
                 network = network
             )
 
@@ -467,7 +467,7 @@ class GetSolanaBalanceUseCase @Inject constructor(
 class GetSolanaFeeEstimateUseCase @Inject constructor(
     private val solanaBlockchainRepository: SolanaBlockchainRepository
 ) {
-    operator fun invoke(
+    suspend operator fun invoke(
         feeLevel: FeeLevel = FeeLevel.NORMAL,
         network: SolanaNetwork
     ): Result<SolanaFeeEstimate> {

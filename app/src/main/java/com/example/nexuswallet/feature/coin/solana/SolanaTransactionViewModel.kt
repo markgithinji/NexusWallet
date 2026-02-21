@@ -30,6 +30,7 @@ class SolanaSendViewModel @Inject constructor(
         val walletId: String = "",
         val walletName: String = "",
         val walletAddress: String = "",
+        val network: SolanaNetwork = SolanaNetwork.DEVNET,
         val balance: BigDecimal = BigDecimal.ZERO,
         val balanceFormatted: String = "0 SOL",
         val toAddress: String = "",
@@ -59,14 +60,18 @@ class SolanaSendViewModel @Inject constructor(
             when (val result = getSolanaWalletUseCase(walletId)) {
                 is Result.Success -> {
                     val walletInfo = result.data
+                    val network = SolanaNetwork.DEVNET
+
                     _state.update {
                         it.copy(
                             walletId = walletInfo.walletId,
                             walletName = walletInfo.walletName,
-                            walletAddress = walletInfo.walletAddress
+                            walletAddress = walletInfo.walletAddress,
+                            network = network
                         )
                     }
-                    loadBalance(walletInfo.walletAddress)
+                    loadBalance(walletInfo.walletAddress, network)
+                    loadFeeEstimate(network)
                 }
 
                 is Result.Error -> {
@@ -83,8 +88,8 @@ class SolanaSendViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadBalance(address: String) {
-        when (val balanceResult = getSolanaBalanceUseCase(address)) {
+    private suspend fun loadBalance(address: String, network: SolanaNetwork) {
+        when (val balanceResult = getSolanaBalanceUseCase(address, network)) {
             is Result.Success -> {
                 val balance = balanceResult.data
                 _state.update {
@@ -109,17 +114,23 @@ class SolanaSendViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadFeeEstimate() {
-        when (val feeResult = getSolanaFeeEstimateUseCase(_state.value.feeLevel)) {
-            is Result.Success -> {
-                _state.update { it.copy(feeEstimate = feeResult.data) }
-            }
+    private suspend fun loadFeeEstimate(network: SolanaNetwork) {
+        val currentState = _state.value
+        if (currentState.walletId.isNotEmpty()) {
+            when (val feeResult = getSolanaFeeEstimateUseCase(
+                feeLevel = currentState.feeLevel,
+                network = network
+            )) {
+                is Result.Success -> {
+                    _state.update { it.copy(feeEstimate = feeResult.data) }
+                }
 
-            is Result.Error -> {
-                _state.update { it.copy(error = "Failed to load fee: ${feeResult.message}") }
-            }
+                is Result.Error -> {
+                    _state.update { it.copy(error = "Failed to load fee: ${feeResult.message}") }
+                }
 
-            Result.Loading -> {}
+                Result.Loading -> {}
+            }
         }
     }
 
@@ -145,7 +156,7 @@ class SolanaSendViewModel @Inject constructor(
             is SendEvent.FeeLevelChanged -> {
                 _state.update { it.copy(feeLevel = event.feeLevel) }
                 viewModelScope.launch {
-                    loadFeeEstimate()
+                    loadFeeEstimate(_state.value.network)
                     validateInputs()
                 }
             }
@@ -176,8 +187,7 @@ class SolanaSendViewModel @Inject constructor(
             errorMessage = "Cannot send to yourself"
             isValid = false
         } else {
-            val fee =
-                currentState.feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal("0.000005")
+            val fee = currentState.feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal("0.000005")
             val totalRequired = amount + fee
             if (totalRequired > currentState.balance) {
                 errorMessage = "Insufficient balance (including fees)"
@@ -185,7 +195,9 @@ class SolanaSendViewModel @Inject constructor(
             }
         }
 
-        _state.update { it.copy(error = errorMessage) }
+        if (errorMessage != null) {
+            _state.update { it.copy(error = errorMessage) }
+        }
         return isValid
     }
 
@@ -303,6 +315,7 @@ class SolanaSendViewModel @Inject constructor(
                 walletId = _state.value.walletId,
                 walletName = _state.value.walletName,
                 walletAddress = _state.value.walletAddress,
+                network = _state.value.network,
                 balance = _state.value.balance,
                 balanceFormatted = _state.value.balanceFormatted
             )
