@@ -72,29 +72,54 @@ class SolanaBlockchainRepository @Inject constructor(
     }
 
     /**
-     * Get Solana fee estimate. Solana uses a fixed base fee (5,000 lamports) - priority fees are optional and not yet implemented.
+     * Get Solana fee estimate with dynamic priority fees based on network conditions.
+     * Base fee is fixed at 5,000 lamports. Priority fees are calculated from recent network activity.
      */
-    fun getFeeEstimate(
+    suspend fun getFeeEstimate(
         feeLevel: FeeLevel = FeeLevel.NORMAL,
         network: SolanaNetwork = SolanaNetwork.DEVNET
     ): Result<SolanaFeeEstimate> {
         return try {
-            val feeLamports = SOLANA_FIXED_FEE_LAMPORTS
+            val baseFeeLamports = SOLANA_FIXED_FEE_LAMPORTS
 
-            val feeSol = BigDecimal(feeLamports).divide(
+            val percentile = when (feeLevel) {
+                FeeLevel.SLOW -> 0
+                FeeLevel.NORMAL -> 50
+                FeeLevel.FAST -> 95
+            }
+
+            val priorityFeeRate = if (percentile > 0) {
+                val result = getRecommendedPriorityFee(percentile, emptyList(), network)
+                if (result is Result.Success) result.data else 0
+            } else 0
+
+            // Match compute units with transaction
+            val computeUnits = when (feeLevel) {
+                FeeLevel.SLOW -> 200_000
+                FeeLevel.NORMAL -> 400_000
+                FeeLevel.FAST -> 800_000
+            }
+
+            val priorityFeeLamports = (priorityFeeRate.toLong() * computeUnits) / 1_000_000
+            val totalFeeLamports = baseFeeLamports + priorityFeeLamports
+
+            val totalFeeSol = BigDecimal(totalFeeLamports).divide(
                 BigDecimal(LAMPORTS_PER_SOL),
                 SOL_DECIMALS,
                 RoundingMode.HALF_UP
             ).toPlainString()
 
-            val computeUnits = DEFAULT_COMPUTE_UNITS
+            val estimatedTime = when (feeLevel) {
+                FeeLevel.SLOW -> 2
+                FeeLevel.NORMAL -> 1
+                FeeLevel.FAST -> 1
+            }
 
-            Log.d("SolanaRepo", "Fee estimate on ${network.name}: $feeSol SOL")
             Result.Success(
                 SolanaFeeEstimate(
-                    feeLamports = feeLamports,
-                    feeSol = feeSol,
-                    estimatedTime = ESTIMATED_TIME_SECONDS,
+                    feeLamports = totalFeeLamports,
+                    feeSol = totalFeeSol,
+                    estimatedTime = estimatedTime,
                     priority = feeLevel,
                     computeUnits = computeUnits
                 )
@@ -104,11 +129,52 @@ class SolanaBlockchainRepository @Inject constructor(
         }
     }
 
+
+    /**
+     * Get recommended priority fee
+     */
+    private suspend fun getRecommendedPriorityFee(
+        percentile: Int,
+        accounts: List<PublicKey> = emptyList(),
+        network: SolanaNetwork = SolanaNetwork.DEVNET
+    ): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            val connection = getConnection(network)
+
+            // Fetch recent priority fees
+            val recentFees = if (accounts.isNotEmpty()) {
+                connection.getRecentPrioritizationFees(accounts)
+            } else {
+                connection.getRecentPrioritizationFees(emptyList())
+            }
+
+            if (recentFees.isEmpty()) {
+                return@withContext Result.Success(0)
+            }
+
+            // Extract fee values and sort
+            val feeValues = recentFees.map { it.prioritizationFee }.sorted()
+
+            // Calculate percentile
+            val index = (feeValues.size * percentile / 100).coerceIn(0, feeValues.size - 1)
+            val recommendedFee = feeValues[index]
+
+            Log.d(
+                "SolanaRepo",
+                "Recommended priority fee ($percentile percentile): $recommendedFee microLamports"
+            )
+            Result.Success(recommendedFee.toInt())
+
+        } catch (e: Exception) {
+            Log.e("SolanaRepo", "Failed to get priority fee: ${e.message}")
+            Result.Error("Failed to get priority fee: ${e.message}", e)
+        }
+    }
+
     fun createAndSignTransaction(
         fromKeypair: Keypair,
         toAddress: String,
         lamports: Long,
-        feeLevel: FeeLevel = FeeLevel.NORMAL,
         network: SolanaNetwork = SolanaNetwork.DEVNET
     ): Result<SolanaSignedTransaction> {
         return try {
@@ -116,40 +182,36 @@ class SolanaBlockchainRepository @Inject constructor(
             val blockhash = connection.getLatestBlockhash()
             val receiver = PublicKey(toAddress)
 
-            val instruction = TransferInstruction(fromKeypair.publicKey, receiver, lamports)
+            val instructions = listOf(
+                TransferInstruction(fromKeypair.publicKey, receiver, lamports)
+            )
+
             val message = TransactionMessage.newMessage(
                 feePayer = fromKeypair.publicKey,
                 recentBlockhash = blockhash,
-                instructions = listOf(instruction)
+                instructions = instructions
             )
 
             val transaction = VersionedTransaction(message)
             transaction.sign(fromKeypair)
 
             val serializedTx = transaction.serialize()
-
-            val signature = if (serializedTx.size >= SIGNATURE_LENGTH) {
-                serializedTx.copyOfRange(0, SIGNATURE_LENGTH).toHexString()
+            val signature = if (serializedTx.size >= 64) {
+                serializedTx.copyOfRange(0, 64).toHexString()
             } else {
                 val hash = MessageDigest.getInstance("SHA-256").digest(serializedTx)
-                hash.copyOf(SIGNATURE_LENGTH).toHexString()
+                hash.copyOf(64).toHexString()
             }
 
-            Log.d("SolanaRepo", "Transaction created on ${network.name} with $feeLevel priority, signature: ${signature.take(8)}...")
             Result.Success(
                 SolanaSignedTransaction(
                     signature = signature,
                     serialize = { serializedTx }
                 )
             )
-
         } catch (e: Exception) {
-            Result.Error("Failed to create and sign transaction on ${network.name}: ${e.message}", e)
+            Result.Error("Failed to create transaction: ${e.message}", e)
         }
-    }
-
-    private fun ByteArray.toHexString(): String {
-        return joinToString("") { "%02x".format(it) }
     }
 
     fun broadcastTransaction(
@@ -203,7 +265,10 @@ class SolanaBlockchainRepository @Inject constructor(
                 )
             }
 
-            Log.d("SolanaRepo", "Found ${responses.size} signatures for $address on ${network.name}")
+            Log.d(
+                "SolanaRepo",
+                "Found ${responses.size} signatures for $address on ${network.name}"
+            )
             Result.Success(responses)
 
         } catch (e: Exception) {
@@ -231,14 +296,20 @@ class SolanaBlockchainRepository @Inject constructor(
             val response = solanaRpcService.getTransaction(request)
 
             if (response.error != null) {
-                Result.Error("RPC error on ${network.name}: ${response.error.message}")
+                Log.e("SolanaRepo", "RPC error for tx $signature: ${response.error.message}")
+                Result.Error("RPC error: ${response.error.message}")
             } else if (response.result != null) {
-                Log.d("SolanaRepo", "Got transaction details for ${signature.take(8)}... on ${network.name}")
+                Log.d(
+                    "SolanaRepo",
+                    "Got transaction details for ${signature.take(8)}... on ${network.name}"
+                )
                 Result.Success(response.result)
             } else {
+                Log.w("SolanaRepo", "Transaction $signature not found")
                 Result.Error("Transaction not found on ${network.name}")
             }
         } catch (e: Exception) {
+            Log.e("SolanaRepo", "Failed to get transaction details: ${e.message}", e)
             Result.Error("Failed to get transaction details on ${network.name}: ${e.message}", e)
         }
     }
@@ -247,39 +318,49 @@ class SolanaBlockchainRepository @Inject constructor(
         address: String,
         network: SolanaNetwork = SolanaNetwork.DEVNET,
         limit: Int = DEFAULT_HISTORY_LIMIT
-    ): Result<List<Pair<SolanaTransactionResponse, SolanaTransactionDetailsResponse?>>> = withContext(Dispatchers.IO) {
-        try {
-            Log.d("SolanaRepo", "Fetching full transaction history for $address on ${network.name}")
+    ): Result<List<Pair<SolanaTransactionResponse, SolanaTransactionDetailsResponse?>>> =
+        withContext(Dispatchers.IO) {
+            try {
+                Log.d(
+                    "SolanaRepo",
+                    "Fetching full transaction history for $address on ${network.name}"
+                )
 
-            val signaturesResult = getTransactionSignatures(address, network, limit)
+                val signaturesResult = getTransactionSignatures(address, network, limit)
 
-            when (signaturesResult) {
-                is Result.Success -> {
-                    val signatures = signaturesResult.data
-                    val results = mutableListOf<Pair<SolanaTransactionResponse, SolanaTransactionDetailsResponse?>>()
+                when (signaturesResult) {
+                    is Result.Success -> {
+                        val signatures = signaturesResult.data
+                        val results =
+                            mutableListOf<Pair<SolanaTransactionResponse, SolanaTransactionDetailsResponse?>>()
 
-                    signatures.forEach { sigInfo ->
-                        val details = try {
-                            val detailsResult = getTransactionDetails(sigInfo.signature, network)
-                            if (detailsResult is Result.Success) {
-                                detailsResult.data
-                            } else null
-                        } catch (e: Exception) {
-                            null
+                        signatures.forEach { sigInfo ->
+                            val details = try {
+                                val detailsResult =
+                                    getTransactionDetails(sigInfo.signature, network)
+                                if (detailsResult is Result.Success) {
+                                    detailsResult.data
+                                } else null
+                            } catch (e: Exception) {
+                                null
+                            }
+                            results.add(Pair(sigInfo, details))
+                            delay(RATE_LIMIT_DELAY_MS)
                         }
-                        results.add(Pair(sigInfo, details))
-                        delay(RATE_LIMIT_DELAY_MS)
+
+                        Result.Success(results)
                     }
 
-                    Result.Success(results)
+                    is Result.Error -> signaturesResult
+                    else -> Result.Error("Unknown error on ${network.name}")
                 }
-                is Result.Error -> signaturesResult
-                else -> Result.Error("Unknown error on ${network.name}")
+            } catch (e: Exception) {
+                Result.Error(
+                    "Failed to get full transaction history on ${network.name}: ${e.message}",
+                    e
+                )
             }
-        } catch (e: Exception) {
-            Result.Error("Failed to get full transaction history on ${network.name}: ${e.message}", e)
         }
-    }
 
     fun parseTransferFromDetails(
         details: SolanaTransactionDetailsResponse,
@@ -311,7 +392,8 @@ class SolanaBlockchainRepository @Inject constructor(
                     val otherChange = otherPost - otherPre
 
                     if (otherChange == -balanceChange ||
-                        (otherChange < 0 && otherChange > -balanceChange - DUST_THRESHOLD)) {
+                        (otherChange < 0 && otherChange > -balanceChange - DUST_THRESHOLD)
+                    ) {
                         counterparty = key
                     }
                 }
@@ -345,13 +427,9 @@ class SolanaBlockchainRepository @Inject constructor(
         private const val SOLANA_FIXED_FEE_LAMPORTS = 5000L
         private const val DEFAULT_COMPUTE_UNITS = 1_400_000
         private const val SOL_DECIMALS = 9
-        private const val ESTIMATED_TIME_SECONDS = 1
 
         // Rate limiting
         private const val RATE_LIMIT_DELAY_MS = 50L
-
-        // Signature validation
-        private const val SIGNATURE_LENGTH = 64
 
         // Dust threshold for counterparty detection (10,000 lamports = 0.00001 SOL)
         private const val DUST_THRESHOLD = 10_000L
