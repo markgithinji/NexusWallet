@@ -4,6 +4,8 @@ import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRe
 import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.authentication.domain.AuthAction
 import com.example.nexuswallet.feature.coin.Result
+import java.security.MessageDigest
+import java.security.SecureRandom
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -181,39 +183,73 @@ class IsBiometricEnabledUseCase @Inject constructor(
 
 @Singleton
 class SetPinUseCase @Inject constructor(
-    private val pinManager: PinManager
+    private val securityPreferencesRepository: SecurityPreferencesRepository
 ) {
     suspend operator fun invoke(pin: String): Result<Boolean> {
         return try {
-            val result = pinManager.setPin(pin)
-            Result.Success(result)
+            val pinHash = hashPin(pin)
+            securityPreferencesRepository.storePinHash(pinHash)
+            val success = securityPreferencesRepository.getPinHash() != null
+            Result.Success(success)
         } catch (e: Exception) {
             Result.Error("Failed to set PIN: ${e.message}", e)
         }
     }
+
+    private fun hashPin(pin: String): String {
+        val salt = generateSalt()
+        val hash = MessageDigest.getInstance("SHA-256")
+            .digest("$pin${salt.toHex()}".toByteArray())
+        return "${hash.toHex()}:${salt.toHex()}"
+    }
+
+    private fun generateSalt(): ByteArray {
+        return ByteArray(16).also { SecureRandom().nextBytes(it) }
+    }
+
+    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 }
 
 @Singleton
 class VerifyPinUseCase @Inject constructor(
-    private val pinManager: PinManager
+    private val securityPreferencesRepository: SecurityPreferencesRepository
 ) {
     suspend operator fun invoke(pin: String): Result<Boolean> {
         return try {
-            val result = pinManager.verifyPin(pin)
-            Result.Success(result)
+            val storedHash = securityPreferencesRepository.getPinHash()
+            if (storedHash == null) {
+                return Result.Success(false)
+            }
+            val isValid = verifyPinHash(pin, storedHash)
+            Result.Success(isValid)
         } catch (e: Exception) {
             Result.Error("Failed to verify PIN: ${e.message}", e)
         }
     }
+
+    private fun verifyPinHash(inputPin: String, storedHash: String): Boolean {
+        val parts = storedHash.split(":")
+        if (parts.size != 2) return false
+
+        val (storedHashPart, saltHex) = parts
+        val inputHash = MessageDigest.getInstance("SHA-256")
+            .digest("$inputPin$saltHex".toByteArray())
+            .toHex()
+
+        return inputHash == storedHashPart
+    }
+
+    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 }
 
 @Singleton
 class IsPinSetUseCase @Inject constructor(
-    private val pinManager: PinManager
+    private val securityPreferencesRepository: SecurityPreferencesRepository
 ) {
     suspend operator fun invoke(): Result<Boolean> {
         return try {
-            Result.Success(pinManager.isPinSet())
+            val isSet = securityPreferencesRepository.getPinHash() != null
+            Result.Success(isSet)
         } catch (e: Exception) {
             Result.Error("Failed to check if PIN is set: ${e.message}", e)
         }
@@ -222,11 +258,11 @@ class IsPinSetUseCase @Inject constructor(
 
 @Singleton
 class ClearPinUseCase @Inject constructor(
-    private val pinManager: PinManager
+    private val securityPreferencesRepository: SecurityPreferencesRepository
 ) {
     suspend operator fun invoke(): Result<Unit> {
         return try {
-            pinManager.clearPin()
+            securityPreferencesRepository.clearPinHash()
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error("Failed to clear PIN: ${e.message}", e)
@@ -236,14 +272,15 @@ class ClearPinUseCase @Inject constructor(
 
 @Singleton
 class GetAvailableAuthMethodsUseCase @Inject constructor(
-    private val pinManager: PinManager,
+    private val isPinSetUseCase: IsPinSetUseCase,
     private val isBiometricEnabledUseCase: IsBiometricEnabledUseCase
 ) {
     suspend operator fun invoke(): Result<List<AuthMethod>> {
         return try {
             val methods = mutableListOf<AuthMethod>()
 
-            if (pinManager.isPinSet()) {
+            val pinResult = isPinSetUseCase()
+            if (pinResult is Result.Success && pinResult.data) {
                 methods.add(AuthMethod.PIN)
             }
 
@@ -255,7 +292,7 @@ class GetAvailableAuthMethodsUseCase @Inject constructor(
                 }
 
                 is Result.Error -> {
-                    // TODO: Log error but don't fail the whole operation
+                    // Log error but don't fail the whole operation
                 }
 
                 Result.Loading -> { /* Ignore */
@@ -271,12 +308,13 @@ class GetAvailableAuthMethodsUseCase @Inject constructor(
 
 @Singleton
 class IsAnyAuthEnabledUseCase @Inject constructor(
-    private val pinManager: PinManager,
+    private val isPinSetUseCase: IsPinSetUseCase,
     private val isBiometricEnabledUseCase: IsBiometricEnabledUseCase
 ) {
     suspend operator fun invoke(): Result<Boolean> {
         return try {
-            val pinSet = pinManager.isPinSet()
+            val pinResult = isPinSetUseCase()
+            val pinSet = pinResult is Result.Success && pinResult.data
 
             val bioEnabled = when (val bioResult = isBiometricEnabledUseCase()) {
                 is Result.Success -> bioResult.data

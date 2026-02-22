@@ -15,12 +15,6 @@ object AllUsecasesModule {
 
     @Provides
     @Singleton
-    fun providePinManager(securityPreferencesRepository: SecurityPreferencesRepository): PinManager {
-        return PinManager(securityPreferencesRepository)
-    }
-
-    @Provides
-    @Singleton
     fun provideSessionManager(securityPreferencesRepository: SecurityPreferencesRepository): SessionManager {
         return SessionManager(securityPreferencesRepository)
     }
@@ -28,7 +22,7 @@ object AllUsecasesModule {
     // Coin creation usecases
     @Provides
     @Singleton
-    fun provideCreateBitcoinCoinUseCase( ): CreateBitcoinCoinUseCase {
+    fun provideCreateBitcoinCoinUseCase(): CreateBitcoinCoinUseCase {
         return CreateBitcoinCoinUseCase()
     }
 
@@ -148,44 +142,44 @@ object AllUsecasesModule {
 
     @Provides
     @Singleton
-    fun provideSetPinUseCase(pinManager: PinManager): SetPinUseCase {
-        return SetPinUseCase(pinManager)
+    fun provideSetPinUseCase(securityPreferencesRepository: SecurityPreferencesRepository): SetPinUseCase {
+        return SetPinUseCase(securityPreferencesRepository)
     }
 
     @Provides
     @Singleton
-    fun provideVerifyPinUseCase(pinManager: PinManager): VerifyPinUseCase {
-        return VerifyPinUseCase(pinManager)
+    fun provideVerifyPinUseCase(securityPreferencesRepository: SecurityPreferencesRepository): VerifyPinUseCase {
+        return VerifyPinUseCase(securityPreferencesRepository)
     }
 
     @Provides
     @Singleton
-    fun provideIsPinSetUseCase(pinManager: PinManager): IsPinSetUseCase {
-        return IsPinSetUseCase(pinManager)
+    fun provideIsPinSetUseCase(securityPreferencesRepository: SecurityPreferencesRepository): IsPinSetUseCase {
+        return IsPinSetUseCase(securityPreferencesRepository)
     }
 
     @Provides
     @Singleton
-    fun provideClearPinUseCase(pinManager: PinManager): ClearPinUseCase {
-        return ClearPinUseCase(pinManager)
+    fun provideClearPinUseCase(securityPreferencesRepository: SecurityPreferencesRepository): ClearPinUseCase {
+        return ClearPinUseCase(securityPreferencesRepository)
     }
 
     @Provides
     @Singleton
     fun provideGetAvailableAuthMethodsUseCase(
-        pinManager: PinManager,
+        isPinSetUseCase: IsPinSetUseCase,
         isBiometricEnabledUseCase: IsBiometricEnabledUseCase
     ): GetAvailableAuthMethodsUseCase {
-        return GetAvailableAuthMethodsUseCase(pinManager, isBiometricEnabledUseCase)
+        return GetAvailableAuthMethodsUseCase(isPinSetUseCase, isBiometricEnabledUseCase)
     }
 
     @Provides
     @Singleton
     fun provideIsAnyAuthEnabledUseCase(
-        pinManager: PinManager,
+        isPinSetUseCase: IsPinSetUseCase,
         isBiometricEnabledUseCase: IsBiometricEnabledUseCase
     ): IsAnyAuthEnabledUseCase {
-        return IsAnyAuthEnabledUseCase(pinManager, isBiometricEnabledUseCase)
+        return IsAnyAuthEnabledUseCase(isPinSetUseCase, isBiometricEnabledUseCase)
     }
 
     // Session management usecases
