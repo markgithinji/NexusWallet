@@ -2,49 +2,26 @@ package com.example.nexuswallet.feature.wallet.ui
 
 import android.content.ClipboardManager
 import android.content.Context
-import android.widget.Toast
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.CurrencyBitcoin
-import androidx.compose.material.icons.filled.CurrencyExchange
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Note
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,7 +37,6 @@ import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
 import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
 import com.example.nexuswallet.feature.coin.usdc.USDCSendViewModel
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
-import com.example.nexuswallet.feature.wallet.domain.WalletType
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -69,13 +45,14 @@ import java.math.RoundingMode
 fun SendScreen(
     navController: NavController,
     walletId: String,
-    coinType: String, // "ETH", "BTC", "SOL", "USDC"
+    coinType: String,
     ethereumViewModel: EthereumSendViewModel = hiltViewModel(),
     usdcViewModel: USDCSendViewModel = hiltViewModel(),
     solanaViewModel: SolanaSendViewModel = hiltViewModel(),
     bitcoinViewModel: BitcoinSendViewModel = hiltViewModel()
 ) {
     var showMaxDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     val ethereumUiState = ethereumViewModel.uiState.collectAsState()
     val usdcState = usdcViewModel.state.collectAsState()
@@ -108,32 +85,314 @@ fun SendScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = when (coinType) {
-                                "BTC" -> Icons.Default.CurrencyBitcoin
-                                "ETH" -> Icons.Default.CurrencyExchange
-                                "SOL" -> Icons.Default.Star
-                                "USDC" -> Icons.Default.AttachMoney
-                                else -> Icons.Default.AccountBalanceWallet
+                                "BTC" -> Icons.Outlined.CurrencyBitcoin
+                                "ETH" -> Icons.Outlined.Diamond
+                                "SOL" -> Icons.Outlined.FlashOn
+                                "USDC" -> Icons.Outlined.AttachMoney
+                                else -> Icons.Outlined.AccountBalanceWallet
                             },
                             contentDescription = null,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(24.dp),
+                            tint = when (coinType) {
+                                "BTC" -> Color(0xFFF7931A)
+                                "ETH" -> Color(0xFF627EEA)
+                                "SOL" -> Color(0xFF00FFA3)
+                                "USDC" -> Color(0xFF2775CA)
+                                else -> MaterialTheme.colorScheme.primary
+                            }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Send ${getDisplayName(coinType)}")
+                        Text(
+                            text = "Send ${getDisplayName(coinType)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Black
+                        )
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            "Back",
+                            tint = Color.Black
+                        )
                     }
                 },
                 actions = {
                     if (isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    scrolledContainerColor = Color.White
+                )
             )
         },
-        bottomBar = {
+        containerColor = Color(0xFFF5F5F7)
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Scrollable content
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 80.dp),
+                contentPadding = PaddingValues(vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Balance Card
+                item {
+                    when (coinType) {
+                        "ETH" -> {
+                            SendBalanceCard(
+                                balance = ethereumUiState.value.balance,
+                                balanceFormatted = "${ethereumUiState.value.balance.setScale(6, RoundingMode.HALF_UP)} ETH",
+                                coinType = coinType,
+                                address = ethereumUiState.value.fromAddress,
+                                network = ethereumUiState.value.network
+                            )
+                        }
+                        "USDC" -> {
+                            SendBalanceCard(
+                                balance = usdcState.value.usdcBalanceDecimal,
+                                balanceFormatted = "${usdcState.value.usdcBalanceDecimal.setScale(2, RoundingMode.HALF_UP)} USDC",
+                                coinType = coinType,
+                                address = usdcState.value.fromAddress,
+                                secondaryBalance = usdcState.value.ethBalanceDecimal,
+                                secondaryBalanceFormatted = "${usdcState.value.ethBalanceDecimal.setScale(4, RoundingMode.HALF_UP)} ETH",
+                                network = usdcState.value.network.displayName
+                            )
+                        }
+                        "SOL" -> {
+                            SendBalanceCard(
+                                balance = solanaState.value.balance,
+                                balanceFormatted = solanaState.value.balanceFormatted,
+                                coinType = coinType,
+                                address = solanaState.value.walletAddress
+                            )
+                        }
+                        "BTC" -> {
+                            SendBalanceCard(
+                                balance = bitcoinState.value.balance,
+                                balanceFormatted = bitcoinState.value.balanceFormatted,
+                                coinType = coinType,
+                                address = bitcoinState.value.walletAddress,
+                                network = bitcoinState.value.network.name
+                            )
+                        }
+                    }
+                }
+
+                // Error/Info Messages
+                when (coinType) {
+                    "ETH" -> {
+                        ethereumUiState.value.error?.let { error ->
+                            item {
+                                ErrorMessage(error = error) {
+                                    ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ClearError)
+                                }
+                            }
+                        }
+                    }
+                    "USDC" -> {
+                        usdcState.value.error?.let { error ->
+                            item {
+                                ErrorMessage(error = error) {
+                                    usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ClearError)
+                                }
+                            }
+                        }
+                        usdcState.value.info?.let { info ->
+                            item {
+                                InfoMessage(info = info) {
+                                    usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ClearInfo)
+                                }
+                            }
+                        }
+                    }
+                    "SOL" -> {
+                        solanaState.value.error?.let { error ->
+                            item {
+                                ErrorMessage(error = error) {
+                                    solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ClearError)
+                                }
+                            }
+                        }
+                    }
+                    "BTC" -> {
+                        bitcoinState.value.error?.let { error ->
+                            item {
+                                ErrorMessage(error = error) {
+                                    bitcoinViewModel.clearError()
+                                }
+                            }
+                        }
+                        bitcoinState.value.info?.let { info ->
+                            item {
+                                InfoMessage(info = info) {
+                                    bitcoinViewModel.clearInfo()
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Address Input
+                item {
+                    when (coinType) {
+                        "ETH" -> {
+                            SendAddressInput(
+                                toAddress = ethereumUiState.value.toAddress,
+                                onAddressChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ToAddressChanged(it)) },
+                                coinType = coinType,
+                                isValid = ethereumUiState.value.validationError?.contains("address") == false,
+                                errorMessage = if (ethereumUiState.value.validationError?.contains("address") == true)
+                                    ethereumUiState.value.validationError else null,
+                                onPaste = { pastedText ->
+                                    ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ToAddressChanged(pastedText))
+                                }
+                            )
+                        }
+                        "USDC" -> {
+                            SendAddressInput(
+                                toAddress = usdcState.value.toAddress,
+                                onAddressChange = { usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ToAddressChanged(it)) },
+                                coinType = coinType,
+                                isValid = usdcState.value.isValidAddress,
+                                errorMessage = if (!usdcState.value.isValidAddress && usdcState.value.toAddress.isNotEmpty())
+                                    "Invalid Ethereum address" else null,
+                                onPaste = { pastedText ->
+                                    usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ToAddressChanged(pastedText))
+                                }
+                            )
+                        }
+                        "SOL" -> {
+                            SendAddressInput(
+                                toAddress = solanaState.value.toAddress,
+                                onAddressChange = { solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ToAddressChanged(it)) },
+                                coinType = coinType,
+                                isValid = solanaState.value.isAddressValid,
+                                errorMessage = solanaState.value.addressError,
+                                onPaste = { pastedText ->
+                                    solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ToAddressChanged(pastedText))
+                                }
+                            )
+                        }
+                        "BTC" -> {
+                            SendAddressInput(
+                                toAddress = bitcoinState.value.toAddress,
+                                onAddressChange = { bitcoinViewModel.updateAddress(it) },
+                                coinType = coinType,
+                                isValid = bitcoinState.value.isAddressValid,
+                                errorMessage = bitcoinState.value.addressError,
+                                network = bitcoinState.value.network,
+                                onPaste = { pastedText ->
+                                    bitcoinViewModel.updateAddress(pastedText)
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Amount Input
+                item {
+                    when (coinType) {
+                        "ETH" -> {
+                            SendAmountInput(
+                                amount = ethereumUiState.value.amount,
+                                onAmountChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.AmountChanged(it)) },
+                                balance = ethereumUiState.value.balance,
+                                coinType = coinType,
+                                onMaxClick = { showMaxDialog = true },
+                                errorMessage = if (ethereumUiState.value.validationError?.contains("balance") == true)
+                                    ethereumUiState.value.validationError else null
+                            )
+                        }
+                        "USDC" -> {
+                            SendAmountInput(
+                                amount = usdcState.value.amount,
+                                onAmountChange = { usdcViewModel.onEvent(USDCSendViewModel.SendEvent.AmountChanged(it)) },
+                                balance = usdcState.value.usdcBalanceDecimal,
+                                coinType = coinType,
+                                tokenSymbol = "USDC",
+                                onMaxClick = { showMaxDialog = true }
+                            )
+                        }
+                        "SOL" -> {
+                            SendAmountInput(
+                                amount = solanaState.value.amount,
+                                onAmountChange = { solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.AmountChanged(it)) },
+                                balance = solanaState.value.balance,
+                                coinType = coinType,
+                                onMaxClick = { showMaxDialog = true }
+                            )
+                        }
+                        "BTC" -> {
+                            SendAmountInput(
+                                amount = bitcoinState.value.amount,
+                                onAmountChange = { bitcoinViewModel.updateAmount(it) },
+                                balance = bitcoinState.value.balance,
+                                coinType = coinType,
+                                onMaxClick = { showMaxDialog = true }
+                            )
+                        }
+                    }
+                }
+
+                // Fee Selection
+                item {
+                    when (coinType) {
+                        "ETH" -> {
+                            SendFeeSelection(
+                                feeLevel = ethereumUiState.value.feeLevel,
+                                onFeeLevelChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.FeeLevelChanged(it)) },
+                                feeEstimate = ethereumUiState.value.feeEstimate,
+                                coinType = coinType
+                            )
+                        }
+                        "USDC" -> {
+                            SendFeeSelection(
+                                feeLevel = usdcState.value.feeLevel,
+                                onFeeLevelChange = { usdcViewModel.onEvent(USDCSendViewModel.SendEvent.FeeLevelChanged(it)) },
+                                feeEstimate = usdcState.value.feeEstimate,
+                                coinType = coinType
+                            )
+                        }
+                        "SOL" -> {
+                            SendFeeSelection(
+                                feeLevel = solanaState.value.feeLevel,
+                                onFeeLevelChange = { solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.FeeLevelChanged(it)) },
+                                feeEstimate = solanaState.value.feeEstimate,
+                                coinType = coinType
+                            )
+                        }
+                        "BTC" -> {
+                            SendFeeSelection(
+                                feeLevel = bitcoinState.value.feeLevel,
+                                onFeeLevelChange = { bitcoinViewModel.updateFeeLevel(it) },
+                                feeEstimate = bitcoinState.value.feeEstimate,
+                                coinType = coinType
+                            )
+                        }
+                    }
+                }
+
+                // Bottom spacing
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+
+            // Bottom Bar
             SendBottomBar(
                 isValid = when (coinType) {
                     "ETH" -> ethereumUiState.value.isValid
@@ -158,7 +417,6 @@ fun SendScreen(
                     else -> null
                 },
                 onSend = {
-                    // Navigate to review screen with all the input data
                     when (coinType) {
                         "ETH" -> {
                             navController.navigate("review/$walletId/ETH?toAddress=${ethereumUiState.value.toAddress}&amount=${ethereumUiState.value.amount}&feeLevel=${ethereumUiState.value.feeLevel.name}")
@@ -173,514 +431,73 @@ fun SendScreen(
                             navController.navigate("review/$walletId/BTC?toAddress=${bitcoinState.value.toAddress}&amount=${bitcoinState.value.amount}&feeLevel=${bitcoinState.value.feeLevel.name}")
                         }
                     }
-                }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-        ) {
-            // Balance Card
-            when (coinType) {
-                "ETH" -> {
-                    BalanceCard(
-                        balance = ethereumUiState.value.balance,
-                        balanceFormatted = "${ethereumUiState.value.balance.setScale(6, RoundingMode.HALF_UP)} ETH",
-                        coinType = coinType,
-                        address = ethereumUiState.value.fromAddress,
-                        network = ethereumUiState.value.network
-                    )
-                }
-                "USDC" -> {
-                    BalanceCard(
-                        balance = usdcState.value.usdcBalanceDecimal,
-                        balanceFormatted = "${usdcState.value.usdcBalanceDecimal.setScale(2, RoundingMode.HALF_UP)} USDC",
-                        coinType = coinType,
-                        address = usdcState.value.fromAddress,
-                        secondaryBalance = usdcState.value.ethBalanceDecimal,
-                        secondaryBalanceFormatted = "${usdcState.value.ethBalanceDecimal.setScale(4, RoundingMode.HALF_UP)} ETH",
-                        network = usdcState.value.network.displayName
-                    )
-                }
-                "SOL" -> {
-                    BalanceCard(
-                        balance = solanaState.value.balance,
-                        balanceFormatted = solanaState.value.balanceFormatted,
-                        coinType = coinType,
-                        address = solanaState.value.walletAddress
-                    )
-                }
-                "BTC" -> {
-                    BalanceCard(
-                        balance = bitcoinState.value.balance,
-                        balanceFormatted = bitcoinState.value.balanceFormatted,
-                        coinType = coinType,
-                        address = bitcoinState.value.walletAddress,
-                        network = bitcoinState.value.network.name
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Error/Info Messages
-            when (coinType) {
-                "ETH" -> {
-                    ethereumUiState.value.error?.let { error ->
-                        ErrorMessage(error = error) {
-                            ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ClearError)
-                        }
-                    }
-                }
-                "USDC" -> {
-                    usdcState.value.error?.let { error ->
-                        ErrorMessage(error = error) {
-                            usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ClearError)
-                        }
-                    }
-                    usdcState.value.info?.let { info ->
-                        InfoMessage(info = info) {
-                            usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ClearInfo)
-                        }
-                    }
-                }
-                "SOL" -> {
-                    solanaState.value.error?.let { error ->
-                        ErrorMessage(error = error) {
-                            solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ClearError)
-                        }
-                    }
-                }
-                "BTC" -> {
-                    bitcoinState.value.error?.let { error ->
-                        ErrorMessage(error = error) {
-                            bitcoinViewModel.clearError()
-                        }
-                    }
-                    bitcoinState.value.info?.let { info ->
-                        InfoMessage(info = info) {
-                            bitcoinViewModel.clearInfo()
-                        }
-                    }
-                }
-            }
-
-            // Address Input
-            when (coinType) {
-                "ETH" -> {
-                    AddressInputSection(
-                        toAddress = ethereumUiState.value.toAddress,
-                        onAddressChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ToAddressChanged(it)) },
-                        coinType = coinType,
-                        isValid = ethereumUiState.value.validationError?.contains("address") == false,
-                        errorMessage = if (ethereumUiState.value.validationError?.contains("address") == true)
-                            ethereumUiState.value.validationError else null
-                    )
-                }
-                "USDC" -> {
-                    AddressInputSection(
-                        toAddress = usdcState.value.toAddress,
-                        onAddressChange = { usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ToAddressChanged(it)) },
-                        coinType = coinType,
-                        isValid = usdcState.value.isValidAddress,
-                        errorMessage = if (!usdcState.value.isValidAddress && usdcState.value.toAddress.isNotEmpty())
-                            "Invalid Ethereum address" else null
-                    )
-                }
-                "SOL" -> {
-                    AddressInputSection(
-                        toAddress = solanaState.value.toAddress,
-                        onAddressChange = { solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ToAddressChanged(it)) },
-                        coinType = coinType,
-                        isValid = solanaState.value.isAddressValid,
-                        errorMessage = solanaState.value.addressError
-                    )
-                }
-                "BTC" -> {
-                    AddressInputSection(
-                        toAddress = bitcoinState.value.toAddress,
-                        onAddressChange = { bitcoinViewModel.updateAddress(it) },
-                        coinType = coinType,
-                        isValid = bitcoinState.value.isAddressValid,
-                        errorMessage = bitcoinState.value.addressError,
-                        network = bitcoinState.value.network
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Amount Input
-            when (coinType) {
-                "ETH" -> {
-                    AmountInputSection(
-                        amount = ethereumUiState.value.amount,
-                        onAmountChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.AmountChanged(it)) },
-                        balance = ethereumUiState.value.balance,
-                        coinType = coinType,
-                        onMaxClick = { showMaxDialog = true },
-                        errorMessage = if (ethereumUiState.value.validationError?.contains("balance") == true)
-                            ethereumUiState.value.validationError else null
-                    )
-                }
-                "USDC" -> {
-                    AmountInputSection(
-                        amount = usdcState.value.amount,
-                        onAmountChange = { usdcViewModel.onEvent(USDCSendViewModel.SendEvent.AmountChanged(it)) },
-                        balance = usdcState.value.usdcBalanceDecimal,
-                        coinType = coinType,
-                        tokenSymbol = "USDC",
-                        onMaxClick = { showMaxDialog = true }
-                    )
-                }
-                "SOL" -> {
-                    AmountInputSection(
-                        amount = solanaState.value.amount,
-                        onAmountChange = { solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.AmountChanged(it)) },
-                        balance = solanaState.value.balance,
-                        coinType = coinType,
-                        onMaxClick = { showMaxDialog = true }
-                    )
-                }
-                "BTC" -> {
-                    AmountInputSection(
-                        amount = bitcoinState.value.amount,
-                        onAmountChange = { bitcoinViewModel.updateAmount(it) },
-                        balance = bitcoinState.value.balance,
-                        coinType = coinType,
-                        onMaxClick = { showMaxDialog = true }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Fee Selection (for all coin types now)
-            when (coinType) {
-                "ETH" -> {
-                    FeeSelectionSection(
-                        feeLevel = ethereumUiState.value.feeLevel,
-                        onFeeLevelChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.FeeLevelChanged(it)) },
-                        feeEstimate = ethereumUiState.value.feeEstimate,
-                        coinType = coinType
-                    )
-                }
-                "USDC" -> {
-                    FeeSelectionSection(
-                        feeLevel = usdcState.value.feeLevel,
-                        onFeeLevelChange = { usdcViewModel.onEvent(USDCSendViewModel.SendEvent.FeeLevelChanged(it)) },
-                        feeEstimate = usdcState.value.feeEstimate,
-                        coinType = coinType
-                    )
-                }
-                "SOL" -> {
-                    FeeSelectionSection(
-                        feeLevel = solanaState.value.feeLevel,
-                        onFeeLevelChange = { solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.FeeLevelChanged(it)) },
-                        feeEstimate = solanaState.value.feeEstimate,
-                        coinType = coinType
-                    )
-                }
-                "BTC" -> {
-                    FeeSelectionSection(
-                        feeLevel = bitcoinState.value.feeLevel,
-                        onFeeLevelChange = { bitcoinViewModel.updateFeeLevel(it) },
-                        feeEstimate = bitcoinState.value.feeEstimate,
-                        coinType = coinType
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Spacer(modifier = Modifier.height(32.dp))
-        }
-
-        if (showMaxDialog) {
-            when (coinType) {
-                "ETH" -> {
-                    MaxAmountDialog(
-                        balance = ethereumUiState.value.balance,
-                        feeEstimate = ethereumUiState.value.feeEstimate,
-                        tokenSymbol = "ETH",
-                        coinType = "ETH",
-                        onDismiss = { showMaxDialog = false },
-                        onConfirm = { maxAmount ->
-                            ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.AmountChanged(maxAmount))
-                            showMaxDialog = false
-                        }
-                    )
-                }
-                "USDC" -> {
-                    MaxAmountDialog(
-                        balance = usdcState.value.usdcBalanceDecimal,
-                        feeEstimate = usdcState.value.feeEstimate,
-                        tokenSymbol = "USDC",
-                        coinType = "USDC",
-                        onDismiss = { showMaxDialog = false },
-                        onConfirm = { maxAmount ->
-                            usdcViewModel.onEvent(USDCSendViewModel.SendEvent.AmountChanged(maxAmount))
-                            showMaxDialog = false
-                        }
-                    )
-                }
-                "SOL" -> {
-                    MaxAmountDialog(
-                        balance = solanaState.value.balance,
-                        feeEstimate = solanaState.value.feeEstimate,
-                        tokenSymbol = "SOL",
-                        coinType = "SOL",
-                        onDismiss = { showMaxDialog = false },
-                        onConfirm = { maxAmount ->
-                            solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.AmountChanged(maxAmount))
-                            showMaxDialog = false
-                        }
-                    )
-                }
-                "BTC" -> {
-                    MaxAmountDialog(
-                        balance = bitcoinState.value.balance,
-                        feeEstimate = bitcoinState.value.feeEstimate,
-                        tokenSymbol = "BTC",
-                        coinType = "BTC",
-                        onDismiss = { showMaxDialog = false },
-                        onConfirm = { maxAmount ->
-                            bitcoinViewModel.updateAmount(maxAmount)
-                            showMaxDialog = false
-                        }
-                    )
-                }
-                else -> showMaxDialog = false
-            }
-        }
     }
-}
 
-// Update FeeSelectionSection to handle different fee estimate types
-@Composable
-fun FeeSelectionSection(
-    feeLevel: FeeLevel,
-    onFeeLevelChange: (FeeLevel) -> Unit,
-    feeEstimate: Any?, // Can be EthereumFeeEstimate, BitcoinFeeEstimate, etc.
-    coinType: String
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Speed,
-                    contentDescription = "Fee",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "Transaction Fee",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
+    // Max Amount Dialog
+    if (showMaxDialog) {
+        when (coinType) {
+            "ETH" -> {
+                MaxAmountDialog(
+                    balance = ethereumUiState.value.balance,
+                    feeEstimate = ethereumUiState.value.feeEstimate,
+                    tokenSymbol = "ETH",
+                    coinType = "ETH",
+                    onDismiss = { showMaxDialog = false },
+                    onConfirm = { maxAmount ->
+                        ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.AmountChanged(maxAmount))
+                        showMaxDialog = false
+                    }
                 )
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            FeeLevelSelection(
-                selectedLevel = feeLevel,
-                onLevelSelected = onFeeLevelChange
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Show different fee details based on coin type
-            when (coinType) {
-                "ETH" -> {
-                    (feeEstimate as? EthereumFeeEstimate)?.let { fee ->
-                        EthereumFeeDetails(feeEstimate = fee)
+            "USDC" -> {
+                MaxAmountDialog(
+                    balance = usdcState.value.usdcBalanceDecimal,
+                    feeEstimate = usdcState.value.feeEstimate,
+                    tokenSymbol = "USDC",
+                    coinType = "USDC",
+                    onDismiss = { showMaxDialog = false },
+                    onConfirm = { maxAmount ->
+                        usdcViewModel.onEvent(USDCSendViewModel.SendEvent.AmountChanged(maxAmount))
+                        showMaxDialog = false
                     }
-                }
-                "BTC" -> {
-                    (feeEstimate as? BitcoinFeeEstimate)?.let { fee ->
-                        BitcoinFeeDetails(feeEstimate = fee)
+                )
+            }
+            "SOL" -> {
+                MaxAmountDialog(
+                    balance = solanaState.value.balance,
+                    feeEstimate = solanaState.value.feeEstimate,
+                    tokenSymbol = "SOL",
+                    coinType = "SOL",
+                    onDismiss = { showMaxDialog = false },
+                    onConfirm = { maxAmount ->
+                        solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.AmountChanged(maxAmount))
+                        showMaxDialog = false
                     }
-                }
-                "USDC" -> {
-                    (feeEstimate as? USDCFeeEstimate)?.let { fee ->
-                        USDCFeeDetails(feeEstimate = fee)
+                )
+            }
+            "BTC" -> {
+                MaxAmountDialog(
+                    balance = bitcoinState.value.balance,
+                    feeEstimate = bitcoinState.value.feeEstimate,
+                    tokenSymbol = "BTC",
+                    coinType = "BTC",
+                    onDismiss = { showMaxDialog = false },
+                    onConfirm = { maxAmount ->
+                        bitcoinViewModel.updateAmount(maxAmount)
+                        showMaxDialog = false
                     }
-                }
-                "SOL" -> {
-                    (feeEstimate as? SolanaFeeEstimate)?.let { fee ->
-                        SolanaFeeDetails(feeEstimate = fee)
-                    }
-                }
+                )
             }
         }
     }
 }
 
 @Composable
-fun EthereumFeeDetails(feeEstimate: EthereumFeeEstimate) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Gas Price:",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${feeEstimate.gasPriceGwei} Gwei",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Total Fee:",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${feeEstimate.totalFeeEth} ETH",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-@Composable
-fun BitcoinFeeDetails(feeEstimate: BitcoinFeeEstimate) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Fee Rate:",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${feeEstimate.feePerByte} sat/byte",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Total Fee:",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${feeEstimate.totalFeeBtc} BTC",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-@Composable
-fun USDCFeeDetails(feeEstimate: USDCFeeEstimate) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Gas Price:",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${feeEstimate.gasPriceGwei} Gwei",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Total Fee:",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${feeEstimate.totalFeeEth} ETH",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-@Composable
-fun SolanaFeeDetails(feeEstimate: SolanaFeeEstimate) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Fee:",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${feeEstimate.feeSol} SOL",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Compute Units:",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = feeEstimate.computeUnits.toString(),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-@Composable
-fun BalanceCard(
+fun SendBalanceCard(
     balance: BigDecimal,
     balanceFormatted: String,
     coinType: String,
@@ -689,14 +506,23 @@ fun BalanceCard(
     secondaryBalanceFormatted: String? = null,
     network: String? = null
 ) {
+    val (coinColor, icon) = when (coinType) {
+        "BTC" -> Pair(Color(0xFFF7931A), Icons.Outlined.CurrencyBitcoin)
+        "ETH" -> Pair(Color(0xFF627EEA), Icons.Outlined.Diamond)
+        "SOL" -> Pair(Color(0xFF00FFA3), Icons.Outlined.FlashOn)
+        "USDC" -> Pair(Color(0xFF2775CA), Icons.Outlined.AttachMoney)
+        else -> Pair(MaterialTheme.colorScheme.primary, Icons.Outlined.AccountBalanceWallet)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -710,26 +536,32 @@ fun BalanceCard(
                     Text(
                         text = "Available Balance",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color(0xFF6B7280)
                     )
 
                     Text(
-                        text = "$${String.format("%.2f", balance.toDouble() * getUsdRate(coinType))}",
+                        text = "$${
+                            String.format(
+                                "%.2f",
+                                balance.toDouble() * getUsdRate(coinType)
+                            )
+                        }",
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
                     )
 
                     Text(
                         text = balanceFormatted,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = coinColor
                     )
 
                     if (secondaryBalance != null && secondaryBalanceFormatted != null) {
                         Text(
                             text = secondaryBalanceFormatted,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = Color(0xFF6B7280)
                         )
                     }
 
@@ -737,7 +569,7 @@ fun BalanceCard(
                         Text(
                             text = "Network: $network",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = Color(0xFF6B7280)
                         )
                     }
                 }
@@ -746,45 +578,52 @@ fun BalanceCard(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .background(coinColor.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = when (coinType) {
-                            "BTC" -> Icons.Default.CurrencyBitcoin
-                            "ETH" -> Icons.Default.CurrencyExchange
-                            "SOL" -> Icons.Default.Star
-                            "USDC" -> Icons.Default.AttachMoney
-                            else -> Icons.Default.AccountBalanceWallet
-                        },
-                        contentDescription = "Wallet",
-                        tint = MaterialTheme.colorScheme.primary
+                        imageVector = icon,
+                        contentDescription = coinType,
+                        tint = coinColor,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
-                text = "From: ${address.take(12)}...${address.takeLast(8)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AccountBalanceWallet,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = Color(0xFF6B7280)
+                )
+                Text(
+                    text = "From: ${address.take(6)}...${address.takeLast(4)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF6B7280),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
 
 @Composable
-fun AddressInputSection(
+fun SendAddressInput(
     toAddress: String,
     onAddressChange: (String) -> Unit,
     coinType: String,
     isValid: Boolean = true,
     errorMessage: String? = null,
-    network: BitcoinNetwork? = null
+    network: BitcoinNetwork? = null,
+    onPaste: (String) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -792,32 +631,23 @@ fun AddressInputSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Recipient",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
+            Text(
+                text = "Recipient Address",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF6B7280)
+            )
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "Recipient Address",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
                 value = toAddress,
@@ -828,41 +658,44 @@ fun AddressInputSection(
                         text = when (coinType) {
                             "BTC" -> {
                                 val networkHint = if (network == BitcoinNetwork.TESTNET)
-                                    " (testnet: m/n, 2, tb1)" else ""
+                                    " (testnet)" else ""
                                 "Enter Bitcoin address$networkHint"
                             }
                             "ETH", "USDC" -> "Enter Ethereum address (0x...)"
                             "SOL" -> "Enter Solana address"
                             else -> "Enter wallet address"
-                        }
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF9CA3AF),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(12.dp),
                 singleLine = true,
                 isError = toAddress.isNotEmpty() && !isValid,
                 supportingText = if (errorMessage != null) {
-                    { Text(errorMessage) }
+                    { Text(errorMessage, color = Color(0xFFEF4444), maxLines = 1) }
                 } else null,
-                keyboardOptions = KeyboardOptions.Default.copy(
-                    keyboardType = KeyboardType.Text
-                ),
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.QrCodeScanner,
-                        contentDescription = "Scan QR",
-                        modifier = Modifier.size(20.dp)
-                    )
-                },
                 trailingIcon = {
                     if (toAddress.isNotEmpty()) {
-                        IconButton(onClick = { onAddressChange("") }) {
-                            Icon(Icons.Default.Clear, "Clear")
+                        IconButton(
+                            onClick = { onAddressChange("") },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = "Clear",
+                                tint = Color(0xFF6B7280),
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = if (isValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                    errorBorderColor = MaterialTheme.colorScheme.error
+                    focusedBorderColor = if (isValid) Color(0xFF3B82F6) else Color(0xFFEF4444),
+                    unfocusedBorderColor = Color(0xFFE5E7EB),
+                    cursorColor = Color(0xFF3B82F6)
                 )
             )
 
@@ -875,16 +708,16 @@ fun AddressInputSection(
                 TextButton(
                     onClick = { /* Scan QR code */ },
                     colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
+                        contentColor = Color(0xFF3B82F6)
                     )
                 ) {
                     Icon(
-                        imageVector = Icons.Default.QrCode,
+                        imageVector = Icons.Outlined.QrCodeScanner,
                         contentDescription = "Scan",
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Scan QR Code")
+                    Text("Scan", maxLines = 1)
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -895,20 +728,20 @@ fun AddressInputSection(
                         val clip = clipboard.primaryClip
                         val pastedText = clip?.getItemAt(0)?.text?.toString()
                         if (!pastedText.isNullOrBlank()) {
-                            onAddressChange(pastedText)
+                            onPaste(pastedText)
                         }
                     },
                     colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
+                        contentColor = Color(0xFF3B82F6)
                     )
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ContentPaste,
+                        imageVector = Icons.Outlined.ContentPaste,
                         contentDescription = "Paste",
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Paste")
+                    Text("Paste", maxLines = 1)
                 }
             }
         }
@@ -916,7 +749,7 @@ fun AddressInputSection(
 }
 
 @Composable
-fun AmountInputSection(
+fun SendAmountInput(
     amount: String,
     onAmountChange: (String) -> Unit,
     balance: BigDecimal,
@@ -926,12 +759,23 @@ fun AmountInputSection(
     errorMessage: String? = null
 ) {
     val symbol = tokenSymbol ?: coinType
+    val (coinColor, icon) = when (coinType) {
+        "BTC" -> Pair(Color(0xFFF7931A), Icons.Outlined.CurrencyBitcoin)
+        "ETH" -> Pair(Color(0xFF627EEA), Icons.Outlined.Diamond)
+        "SOL" -> Pair(Color(0xFF00FFA3), Icons.Outlined.FlashOn)
+        "USDC" -> Pair(Color(0xFF2775CA), Icons.Outlined.AttachMoney)
+        else -> Pair(MaterialTheme.colorScheme.primary, Icons.Outlined.AccountBalanceWallet)
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -940,73 +784,110 @@ fun AmountInputSection(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(
-                    imageVector = Icons.Default.AttachMoney,
-                    contentDescription = "Amount",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
                 Text(
                     text = "Amount",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF6B7280)
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
 
                 Text(
-                    text = "Max: ${balance.toPlainString()}",
+                    text = "Max: ${
+                        balance.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros()
+                            .toPlainString()
+                    }",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color(0xFF6B7280),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { newValue ->
-                        if (newValue.matches(Regex("^\\d*\\.?\\d*\$"))) {
-                            onAmountChange(newValue)
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("0.00") },
-                    shape = RoundedCornerShape(8.dp),
-                    singleLine = true,
-                    isError = errorMessage != null,
-                    supportingText = if (errorMessage != null) {
-                        { Text(errorMessage) }
-                    } else null,
-                    keyboardOptions = KeyboardOptions.Default.copy(
-                        keyboardType = KeyboardType.Decimal
-                    ),
-                    trailingIcon = {
-                        Text(
-                            text = symbol,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(end = 8.dp)
+                // Amount TextField
+                Box(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = amount,
+                        onValueChange = { newValue ->
+                            if (newValue.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                                onAmountChange(newValue)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = {
+                            Text(
+                                "0.00",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color(0xFF9CA3AF),
+                                maxLines = 1
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        isError = errorMessage != null,
+                        supportingText = if (errorMessage != null) {
+                            { Text(errorMessage, color = Color(0xFFEF4444), maxLines = 1) }
+                        } else null,
+                        trailingIcon = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (amount.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = { onAmountChange("") },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Close,
+                                            contentDescription = "Clear",
+                                            tint = Color(0xFF6B7280),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = symbol,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = coinColor,
+                                    modifier = Modifier.padding(end = 12.dp)
+                                )
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = if (errorMessage == null) Color(0xFF3B82F6) else Color(0xFFEF4444),
+                            unfocusedBorderColor = Color(0xFFE5E7EB),
+                            cursorColor = Color(0xFF3B82F6),
+                            focusedTrailingIconColor = coinColor,
+                            unfocusedTrailingIconColor = coinColor
                         )
-                    }
-                )
+                    )
+                }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
                 Button(
                     onClick = onMaxClick,
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
+                        containerColor = Color(0xFF3B82F6)
+                    ),
+                    modifier = Modifier.height(56.dp)
                 ) {
-                    Text("MAX")
+                    Text(
+                        "MAX",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
                 }
             }
 
@@ -1024,9 +905,10 @@ fun AmountInputSection(
                 Text(
                     text = "≈ $${String.format("%.2f", usdAmount)} USD",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = Color(0xFF6B7280),
                     modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.End
+                    textAlign = TextAlign.End,
+                    maxLines = 1
                 )
             }
         }
@@ -1034,30 +916,131 @@ fun AmountInputSection(
 }
 
 @Composable
-fun FeeLevelSelection(
+fun SendFeeSelection(
+    feeLevel: FeeLevel,
+    onFeeLevelChange: (FeeLevel) -> Unit,
+    feeEstimate: Any?,
+    coinType: String
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Transaction Fee",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF6B7280)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            FeeLevelButtons(
+                selectedLevel = feeLevel,
+                onLevelSelected = onFeeLevelChange
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            when (coinType) {
+                "ETH", "USDC" -> {
+                    (feeEstimate as? EthereumFeeEstimate)?.let { fee ->
+                        FeeDetailsRow(
+                            label = "Network Fee",
+                            value = "${fee.totalFeeEth} ETH"
+                        )
+                    }
+                }
+
+                "BTC" -> {
+                    (feeEstimate as? BitcoinFeeEstimate)?.let { fee ->
+                        FeeDetailsRow(
+                            label = "Network Fee",
+                            value = "${fee.totalFeeBtc} BTC"
+                        )
+                        FeeDetailsRow(
+                            label = "Fee Rate",
+                            value = "${fee.feePerByte} sat/byte"
+                        )
+                    }
+                }
+
+                "SOL" -> {
+                    (feeEstimate as? SolanaFeeEstimate)?.let { fee ->
+                        FeeDetailsRow(
+                            label = "Network Fee",
+                            value = "${fee.feeSol} SOL"
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FeeDetailsRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = Color(0xFF6B7280)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            color = Color.Black
+        )
+    }
+}
+
+@Composable
+fun FeeLevelButtons(
     selectedLevel: FeeLevel,
     onLevelSelected: (FeeLevel) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         FeeLevelButton(
             level = FeeLevel.SLOW,
             selected = selectedLevel == FeeLevel.SLOW,
-            onClick = { onLevelSelected(FeeLevel.SLOW) }
+            onClick = { onLevelSelected(FeeLevel.SLOW) },
+            color = Color(0xFF10B981),
+            modifier = Modifier.weight(1f)
         )
 
         FeeLevelButton(
             level = FeeLevel.NORMAL,
             selected = selectedLevel == FeeLevel.NORMAL,
-            onClick = { onLevelSelected(FeeLevel.NORMAL) }
+            onClick = { onLevelSelected(FeeLevel.NORMAL) },
+            color = Color(0xFF3B82F6),
+            modifier = Modifier.weight(1f)
         )
 
         FeeLevelButton(
             level = FeeLevel.FAST,
             selected = selectedLevel == FeeLevel.FAST,
-            onClick = { onLevelSelected(FeeLevel.FAST) }
+            onClick = { onLevelSelected(FeeLevel.FAST) },
+            color = Color(0xFFF59E0B),
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -1066,46 +1049,356 @@ fun FeeLevelSelection(
 fun FeeLevelButton(
     level: FeeLevel,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    color: Color,
+    modifier: Modifier = Modifier
 ) {
-    val (text, icon, color) = when (level) {
-        FeeLevel.SLOW -> Triple("Slow", Icons.Default.Timer, Color(0xFF4CAF50))
-        FeeLevel.NORMAL -> Triple("Normal", Icons.Default.CheckCircle, Color(0xFF2196F3))
-        FeeLevel.FAST -> Triple("Fast", Icons.Default.FlashOn, Color(0xFFFF9800))
+    val (text, icon) = when (level) {
+        FeeLevel.SLOW -> Pair("Slow", Icons.Outlined.Schedule)
+        FeeLevel.NORMAL -> Pair("Normal", Icons.Outlined.Speed)
+        FeeLevel.FAST -> Pair("Fast", Icons.Outlined.FlashOn)
     }
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .width(100.dp)
-            .clickable { onClick() }
+    Card(
+        modifier = modifier
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) color.copy(alpha = 0.1f) else Color(0xFFF3F4F6)
+        ),
+        border = if (selected) BorderStroke(1.dp, color) else null
     ) {
-        Card(
-            modifier = Modifier.size(64.dp),
-            shape = CircleShape,
-            colors = CardDefaults.cardColors(
-                containerColor = if (selected) color.copy(alpha = 0.2f)
-                else MaterialTheme.colorScheme.surfaceVariant
-            ),
-            border = if (selected) BorderStroke(2.dp, color) else null
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = text,
+                tint = if (selected) color else Color(0xFF6B7280),
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (selected) color else Color(0xFF6B7280)
+            )
+        }
+    }
+}
+
+@Composable
+fun FeeLevelButton(
+    level: FeeLevel,
+    selected: Boolean,
+    onClick: () -> Unit,
+    color: Color
+) {
+    val (text, icon) = when (level) {
+        FeeLevel.SLOW -> Pair("Slow", Icons.Outlined.Schedule)
+        FeeLevel.NORMAL -> Pair("Normal", Icons.Outlined.Speed)
+        FeeLevel.FAST -> Pair("Fast", Icons.Outlined.FlashOn)
+    }
+
+    Card(
+        modifier = Modifier
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) color.copy(alpha = 0.1f) else Color(0xFFF3F4F6)
+        ),
+        border = if (selected) BorderStroke(1.dp, color) else null
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(vertical = 8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = text,
+                tint = if (selected) color else Color(0xFF6B7280),
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (selected) color else Color(0xFF6B7280)
+            )
+        }
+    }
+}
+
+@Composable
+fun SendBottomBar(
+    isValid: Boolean,
+    isLoading: Boolean,
+    validationError: String? = null,
+    error: String? = null,
+    onSend: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = Color.White,
+        shadowElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            val message = error ?: validationError
+            message?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFEF4444),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            Button(
+                onClick = onSend,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                enabled = isValid && !isLoading,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF3B82F6),
+                    disabledContainerColor = Color(0xFF3B82F6).copy(alpha = 0.5f)
+                )
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Processing...")
+                } else {
+                    Text(
+                        text = "Continue",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MaxAmountDialog(
+    balance: BigDecimal,
+    feeEstimate: Any?,
+    tokenSymbol: String,
+    coinType: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    // Extract fee based on coin type
+    val fee = when (feeEstimate) {
+        is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull()
+            ?: BigDecimal("0.00001")
+
+        is EthereumFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull()
+            ?: BigDecimal("0.001")
+
+        is USDCFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
+        is SolanaFeeEstimate -> feeEstimate.feeSol.toBigDecimalOrNull() ?: BigDecimal("0.000005")
+        else -> when (coinType) {
+            "BTC" -> BigDecimal("0.00001")
+            "ETH", "USDC" -> BigDecimal("0.001")
+            "SOL" -> BigDecimal("0.000005")
+            else -> BigDecimal("0.001")
+        }
+    }
+
+    val maxAmount = balance - fee
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(20.dp),
+        containerColor = Color.White,
+        title = {
+            Text(
+                text = "Send Maximum",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+        },
+        text = {
+            Column {
+                if (maxAmount > BigDecimal.ZERO) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Available:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF6B7280)
+                        )
+                        Text(
+                            text = "${
+                                balance.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros()
+                                    .toPlainString()
+                            } $tokenSymbol",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Black
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Network Fee:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF6B7280)
+                        )
+                        Text(
+                            text = "- ${
+                                fee.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros()
+                                    .toPlainString()
+                            } $tokenSymbol",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFFEF4444)
+                        )
+                    }
+
+                    Divider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = Color(0xFFE5E7EB),
+                        thickness = 1.dp
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Maximum Send:",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        Text(
+                            text = "${
+                                maxAmount.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros()
+                                    .toPlainString()
+                            } $tokenSymbol",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF3B82F6)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "This will send all available funds minus the network fee.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF6B7280)
+                    )
+                } else {
+                    Text(
+                        text = "Insufficient balance to cover network fee.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFFEF4444)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (maxAmount > BigDecimal.ZERO) {
+                Button(
+                    onClick = { onConfirm(maxAmount.toPlainString()) },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF3B82F6)
+                    )
+                ) {
+                    Text("Use Maximum")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = Color(0xFF6B7280)
+                )
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun InfoMessage(
+    info: String,
+    onDismiss: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFEFF6FF)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Icon(
-                    imageVector = icon,
-                    contentDescription = text,
-                    tint = if (selected) color else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(32.dp)
+                    Icons.Outlined.Info,
+                    "Info",
+                    tint = Color(0xFF3B82F6),
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = info,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF1E40AF),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.Close,
+                    "Dismiss",
+                    tint = Color(0xFF3B82F6),
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (selected) color else MaterialTheme.colorScheme.onSurface
-        )
     }
 }
 
@@ -1130,219 +1423,3 @@ private fun getUsdRate(coinType: String, tokenSymbol: String? = null): Double {
         else -> 1.0
     }
 }
-
-@Composable
-fun SendBottomBar(
-    isValid: Boolean,
-    isLoading: Boolean,
-    validationError: String? = null,
-    error: String? = null,
-    transactionState: Any? = null,
-    onSend: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        tonalElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            val message = error ?: validationError
-            message?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            Button(
-                onClick = onSend,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                enabled = isValid && !isLoading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                )
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Processing...")
-                } else {
-                    Text(
-                        text = "Continue",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-    }
-}
-@Composable
-fun MaxAmountDialog(
-    balance: BigDecimal,
-    feeEstimate: Any?, // Can be different fee estimate types
-    tokenSymbol: String,
-    coinType: String, // Add coinType to determine how to extract fee
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "Send Maximum Amount",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column {
-                // Extract fee based on coin type
-                val fee = when (feeEstimate) {
-                    is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull() ?: BigDecimal("0.00001")
-                    is EthereumFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
-                    is USDCFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
-                    is SolanaFeeEstimate -> feeEstimate.feeSol.toBigDecimalOrNull() ?: BigDecimal("0.000005")
-                    else -> BigDecimal("0.001") // Default fallback
-                }
-
-                val maxAmount = balance - fee
-
-                if (maxAmount > BigDecimal.ZERO) {
-                    Text(
-                        text = "Available balance: ${balance.toPlainString()} $tokenSymbol",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Network fee: ${fee.toPlainString()} $tokenSymbol",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Maximum sendable: ${maxAmount.toPlainString()} $tokenSymbol",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "This will send all available funds minus the network fee.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    Text(
-                        text = "Insufficient balance to cover network fee.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            val fee = when (feeEstimate) {
-                is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull() ?: BigDecimal("0.00001")
-                is EthereumFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
-                is USDCFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
-                is SolanaFeeEstimate -> feeEstimate.feeSol.toBigDecimalOrNull() ?: BigDecimal("0.000005")
-                else -> BigDecimal("0.001")
-            }
-            val maxAmount = balance - fee
-
-            if (maxAmount > BigDecimal.ZERO) {
-                Button(
-                    onClick = { onConfirm(maxAmount.toPlainString()) },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Send Maximum")
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-fun InfoMessage(
-    info: String,
-    onDismiss: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Info,
-                    "Info",
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = info,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            IconButton(onClick = onDismiss) {
-                Icon(
-                    Icons.Default.Close,
-                    "Dismiss",
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }
-    }
-}
-
-val WalletType.displayName: String
-    get() = when (this) {
-        WalletType.BITCOIN -> "Bitcoin"
-        WalletType.ETHEREUM -> "Ethereum"
-        WalletType.ETHEREUM_SEPOLIA -> "Ethereum (Sepolia)"
-        WalletType.SOLANA -> "Solana"
-        WalletType.USDC -> "USDC"
-        WalletType.MULTICHAIN -> "Multi-Chain"
-        else -> "Unknown"
-    }
