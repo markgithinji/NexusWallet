@@ -1,10 +1,6 @@
 package com.example.nexuswallet.feature.wallet.data.securityrefactor
 
-import javax.inject.Inject
-import javax.inject.Singleton
-
-@Singleton
-class KeyValidator @Inject constructor() {
+object KeyValidation {
 
     fun isValidEthereumPrivateKey(privateKey: String): Boolean {
         return try {

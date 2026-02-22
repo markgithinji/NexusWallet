@@ -56,8 +56,7 @@ class SecureMnemonicUseCase @Inject constructor(
 @Singleton
 class StorePrivateKeyUseCase @Inject constructor(
     private val keyStoreRepository: KeyStoreRepository,
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
-    private val keyValidator: KeyValidator
+    private val securityPreferencesRepository: SecurityPreferencesRepository
 ) {
     suspend operator fun invoke(
         walletId: String,
@@ -65,7 +64,7 @@ class StorePrivateKeyUseCase @Inject constructor(
         privateKey: String
     ): Result<Unit> {
         return try {
-            if (!keyValidator.validatePrivateKey(privateKey, keyType)) {
+            if (!KeyValidation.validatePrivateKey(privateKey, keyType)) {
                 return Result.Error("Invalid private key format for $keyType")
             }
 

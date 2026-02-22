@@ -228,9 +228,7 @@ class CreateWalletUseCase @Inject constructor(
 }
 
 @Singleton
-class CreateBitcoinCoinUseCase @Inject constructor(
-    private val keyValidator: KeyValidator
-) {
+class CreateBitcoinCoinUseCase @Inject constructor() {
     operator fun invoke(mnemonic: List<String>, network: BitcoinNetwork): Result<BitcoinCoin> {
         return try {
             val params = when (network) {
@@ -244,8 +242,8 @@ class CreateBitcoinCoinUseCase @Inject constructor(
             val privateKeyWIF = key.getPrivateKeyEncoded(params).toString()
 
             // Validate the generated private key
-            if (!keyValidator.isValidBitcoinPrivateKey(privateKeyWIF)) {
-                keyValidator.clearKeyFromMemory(privateKeyWIF)
+            if (!KeyValidation.isValidBitcoinPrivateKey(privateKeyWIF)) {
+                KeyValidation.clearKeyFromMemory(privateKeyWIF)
                 return Result.Error("Generated invalid Bitcoin private key")
             }
 
@@ -260,7 +258,7 @@ class CreateBitcoinCoinUseCase @Inject constructor(
             )
 
             // Clear sensitive data
-            keyValidator.clearKeyFromMemory(privateKeyWIF)
+            KeyValidation.clearKeyFromMemory(privateKeyWIF)
 
             Result.Success(bitcoinCoin)
         } catch (e: Exception) {
@@ -270,9 +268,7 @@ class CreateBitcoinCoinUseCase @Inject constructor(
 }
 
 @Singleton
-class CreateEthereumCoinUseCase @Inject constructor(
-    private val keyValidator: KeyValidator
-) {
+class CreateEthereumCoinUseCase @Inject constructor() {
     companion object {
         private const val HARDENED_BIT = 0x80000000
     }
@@ -301,8 +297,8 @@ class CreateEthereumCoinUseCase @Inject constructor(
             val privateKeyHex = "0x${derivedKey.privateKey.toString(16)}"
 
             // Validate the generated private key
-            if (!keyValidator.isValidEthereumPrivateKey(privateKeyHex)) {
-                keyValidator.clearKeyFromMemory(privateKeyHex)
+            if (!KeyValidation.isValidEthereumPrivateKey(privateKeyHex)) {
+                KeyValidation.clearKeyFromMemory(privateKeyHex)
                 return Result.Error("Generated invalid Ethereum private key")
             }
 
@@ -315,7 +311,7 @@ class CreateEthereumCoinUseCase @Inject constructor(
             )
 
             // Clear sensitive data
-            keyValidator.clearKeyFromMemory(privateKeyHex)
+            KeyValidation.clearKeyFromMemory(privateKeyHex)
 
             Result.Success(ethereumCoin)
         } catch (e: Exception) {
@@ -325,9 +321,7 @@ class CreateEthereumCoinUseCase @Inject constructor(
 }
 
 @Singleton
-class CreateSolanaCoinUseCase @Inject constructor(
-    private val keyValidator: KeyValidator
-) {
+class CreateSolanaCoinUseCase @Inject constructor() {
     operator fun invoke(mnemonic: List<String>, network: SolanaNetwork): Result<SolanaCoin> {
         return try {
             val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
@@ -336,8 +330,8 @@ class CreateSolanaCoinUseCase @Inject constructor(
             val privateKeyHex = keypair.secret.joinToString("") { "%02x".format(it) }
 
             // Validate the generated private key
-            if (!keyValidator.isValidSolanaPrivateKey(privateKeyHex)) {
-                keyValidator.clearKeyFromMemory(privateKeyHex)
+            if (!KeyValidation.isValidSolanaPrivateKey(privateKeyHex)) {
+                KeyValidation.clearKeyFromMemory(privateKeyHex)
                 return Result.Error("Generated invalid Solana private key")
             }
 
@@ -348,7 +342,7 @@ class CreateSolanaCoinUseCase @Inject constructor(
             )
 
             // Clear sensitive data
-            keyValidator.clearKeyFromMemory(privateKeyHex)
+            KeyValidation.clearKeyFromMemory(privateKeyHex)
 
             Result.Success(solanaCoin)
         } catch (e: Exception) {
@@ -370,9 +364,7 @@ class CreateSolanaCoinUseCase @Inject constructor(
 }
 
 @Singleton
-class DerivePrivateKeyFromMnemonicUseCase @Inject constructor(
-    private val keyValidator: KeyValidator
-) {
+class DerivePrivateKeyFromMnemonicUseCase @Inject constructor() {
     companion object {
         private const val HARDENED_BIT = 0x80000000
     }
@@ -392,14 +384,14 @@ class DerivePrivateKeyFromMnemonicUseCase @Inject constructor(
 
             // Validate the derived private key
             val isValid = when (keyType) {
-                "BTC_PRIVATE_KEY" -> keyValidator.isValidBitcoinPrivateKey(privateKey)
-                "ETH_PRIVATE_KEY" -> keyValidator.isValidEthereumPrivateKey(privateKey)
-                "SOLANA_PRIVATE_KEY" -> keyValidator.isValidSolanaPrivateKey(privateKey)
+                "BTC_PRIVATE_KEY" -> KeyValidation.isValidBitcoinPrivateKey(privateKey)
+                "ETH_PRIVATE_KEY" -> KeyValidation.isValidEthereumPrivateKey(privateKey)
+                "SOLANA_PRIVATE_KEY" -> KeyValidation.isValidSolanaPrivateKey(privateKey)
                 else -> false
             }
 
             if (!isValid) {
-                keyValidator.clearKeyFromMemory(privateKey)
+                KeyValidation.clearKeyFromMemory(privateKey)
                 return Result.Error("Derived invalid $keyType private key")
             }
 

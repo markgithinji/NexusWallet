@@ -13,11 +13,6 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AllUsecasesModule {
 
-
-    @Provides
-    @Singleton
-    fun provideKeyValidator(): KeyValidator = KeyValidator()
-
     @Provides
     @Singleton
     fun providePinManager(securityPreferencesRepository: SecurityPreferencesRepository): PinManager {
@@ -33,26 +28,26 @@ object AllUsecasesModule {
     // Coin creation usecases
     @Provides
     @Singleton
-    fun provideCreateBitcoinCoinUseCase(keyValidator: KeyValidator): CreateBitcoinCoinUseCase {
-        return CreateBitcoinCoinUseCase(keyValidator)
+    fun provideCreateBitcoinCoinUseCase( ): CreateBitcoinCoinUseCase {
+        return CreateBitcoinCoinUseCase()
     }
 
     @Provides
     @Singleton
-    fun provideCreateEthereumCoinUseCase(keyValidator: KeyValidator): CreateEthereumCoinUseCase {
-        return CreateEthereumCoinUseCase(keyValidator)
+    fun provideCreateEthereumCoinUseCase(): CreateEthereumCoinUseCase {
+        return CreateEthereumCoinUseCase()
     }
 
     @Provides
     @Singleton
-    fun provideCreateSolanaCoinUseCase(keyValidator: KeyValidator): CreateSolanaCoinUseCase {
-        return CreateSolanaCoinUseCase(keyValidator)
+    fun provideCreateSolanaCoinUseCase(): CreateSolanaCoinUseCase {
+        return CreateSolanaCoinUseCase()
     }
 
     @Provides
     @Singleton
-    fun provideDerivePrivateKeyFromMnemonicUseCase(keyValidator: KeyValidator): DerivePrivateKeyFromMnemonicUseCase {
-        return DerivePrivateKeyFromMnemonicUseCase(keyValidator)
+    fun provideDerivePrivateKeyFromMnemonicUseCase(): DerivePrivateKeyFromMnemonicUseCase {
+        return DerivePrivateKeyFromMnemonicUseCase()
     }
 
     // Mnemonic usecases
@@ -87,13 +82,11 @@ object AllUsecasesModule {
     @Singleton
     fun provideStorePrivateKeyUseCase(
         keyStoreRepository: KeyStoreRepository,
-        securityPreferencesRepository: SecurityPreferencesRepository,
-        keyValidator: KeyValidator
+        securityPreferencesRepository: SecurityPreferencesRepository
     ): StorePrivateKeyUseCase {
         return StorePrivateKeyUseCase(
             keyStoreRepository,
-            securityPreferencesRepository,
-            keyValidator
+            securityPreferencesRepository
         )
     }
 
