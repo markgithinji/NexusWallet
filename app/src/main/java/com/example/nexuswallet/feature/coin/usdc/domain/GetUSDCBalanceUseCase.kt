@@ -1,12 +1,11 @@
 package com.example.nexuswallet.feature.coin.usdc.domain
 
 import android.util.Log
-import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
+import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
 import com.example.nexuswallet.feature.coin.usdc.Web3jFactory
-import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
@@ -210,8 +209,9 @@ class GetUSDCWalletUseCase @Inject constructor(
 class SendUSDCUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val usdcBlockchainRepository: USDCBlockchainRepository,
-    private val keyManager: KeyManager,
-    private val usdcTransactionRepository: USDCTransactionRepository
+    private val usdcTransactionRepository: USDCTransactionRepository,
+    private val securityPreferencesRepository: com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository,
+    private val keyStoreRepository: com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
 ) {
     suspend operator fun invoke(
         walletId: String,
@@ -228,6 +228,7 @@ class SendUSDCUseCase @Inject constructor(
             val usdcCoin = wallet.usdc
                 ?: return@withContext Result.Error("USDC not enabled for this wallet")
 
+            // Get fee estimate
             val feeResult = usdcBlockchainRepository.getFeeEstimate(feeLevel, usdcCoin.network)
             val feeEstimate = when (feeResult) {
                 is Result.Success -> feeResult.data
@@ -235,6 +236,7 @@ class SendUSDCUseCase @Inject constructor(
                 Result.Loading -> return@withContext Result.Error("Failed to get fee estimate: timeout")
             }
 
+            // Get nonce
             val nonceResult = usdcBlockchainRepository.getNonce(usdcCoin.address, usdcCoin.network)
             val nonce = when (nonceResult) {
                 is Result.Success -> nonceResult.data
@@ -242,15 +244,29 @@ class SendUSDCUseCase @Inject constructor(
                 Result.Loading -> return@withContext Result.Error("Failed to get nonce: timeout")
             }
 
-            val privateKeyResult = keyManager.getPrivateKeyForSigning(walletId)
-            if (privateKeyResult.isFailure) {
-                Log.e("SendUSDCUC", "Failed to access private key")
-                return@withContext Result.Error("Cannot access private key", privateKeyResult.exceptionOrNull())
+            // Get encrypted private key directly from SecurityPreferencesRepository
+            val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
+                walletId = walletId,
+                keyType = "ETH_PRIVATE_KEY" // USDC uses Ethereum private key
+            ) ?: run {
+                Log.e("SendUSDCUC", "No private key found for wallet: $walletId")
+                return@withContext Result.Error("Private key not found for wallet")
             }
 
+            val (encryptedHex, iv) = encryptedData
+
+            // Decrypt using KeyStoreRepository directly
+            val privateKey = try {
+                keyStoreRepository.decryptString(encryptedHex, iv.toHex())
+            } catch (e: Exception) {
+                Log.e("SendUSDCUC", "Failed to decrypt private key: ${e.message}")
+                return@withContext Result.Error("Failed to decrypt private key: ${e.message}")
+            }
+
+            // Create and sign USDC transfer
             val createResult = usdcBlockchainRepository.createAndSignUSDCTransfer(
                 fromAddress = usdcCoin.address,
-                fromPrivateKey = privateKeyResult.getOrThrow(),
+                fromPrivateKey = privateKey,
                 toAddress = toAddress,
                 amount = amount,
                 gasPriceWei = BigInteger(feeEstimate.gasPriceWei),
@@ -265,6 +281,7 @@ class SendUSDCUseCase @Inject constructor(
                 Result.Loading -> return@withContext Result.Error("Failed to create USDC transfer: timeout")
             }
 
+            // Create transaction record
             val amountUnits = amount.multiply(BigDecimal("1000000")).toBigInteger()
             val transaction = USDCSendTransaction(
                 id = "usdc_tx_${System.currentTimeMillis()}",
@@ -292,6 +309,7 @@ class SendUSDCUseCase @Inject constructor(
 
             usdcTransactionRepository.saveTransaction(transaction)
 
+            // Broadcast transaction
             val broadcastResult = usdcBlockchainRepository.broadcastUSDCTransaction(signedHex, usdcCoin.network)
             val broadcastData = when (broadcastResult) {
                 is Result.Success -> broadcastResult.data
@@ -299,6 +317,7 @@ class SendUSDCUseCase @Inject constructor(
                 Result.Loading -> return@withContext Result.Error("Broadcast timeout")
             }
 
+            // Update transaction status
             val updatedTransaction = if (broadcastData.success) {
                 transaction.copy(status = TransactionStatus.SUCCESS, txHash = broadcastData.hash ?: txHash)
             } else {
@@ -326,6 +345,9 @@ class SendUSDCUseCase @Inject constructor(
             Result.Error("Send failed: ${e.message}", e)
         }
     }
+
+    // Helper extension for ByteArray to Hex
+    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 }
 
 @Singleton

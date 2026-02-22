@@ -1,7 +1,8 @@
 package com.example.nexuswallet.feature.coin.usdc.domain
 
+import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
-import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
@@ -30,14 +31,16 @@ object UseCaseModule {
     fun provideSendUSDCUseCase(
         walletRepository: WalletRepository,
         usdcBlockchainRepository: USDCBlockchainRepository,
-        keyManager: KeyManager,
-        usdcTransactionRepository: USDCTransactionRepository
+        usdcTransactionRepository: USDCTransactionRepository,
+        securityPreferencesRepository: SecurityPreferencesRepository,
+        keyStoreRepository: KeyStoreRepository,
     ): SendUSDCUseCase {
         return SendUSDCUseCase(
             walletRepository,
             usdcBlockchainRepository,
-            keyManager,
-            usdcTransactionRepository
+            usdcTransactionRepository,
+            securityPreferencesRepository,
+            keyStoreRepository
         )
     }
 
