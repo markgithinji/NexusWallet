@@ -1,30 +1,20 @@
 package com.example.nexuswallet.feature.authentication.data.repository
 
-
-import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * Handles encryption/decryption using Android KeyStore
  * Provides hardware-backed security when available
  */
-class KeyStoreRepository(private val context: Context) {
-
-    companion object {
-        private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        private const val KEY_ALIAS = "nexus_wallet_master_key"
-        private const val TRANSFORMATION = "AES/GCM/NoPadding"
-        private const val KEY_SIZE = 256
-        private const val GCM_TAG_LENGTH = 128
-    }
+class KeyStoreRepository() {
 
     private val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply {
         load(null)
@@ -54,8 +44,6 @@ class KeyStoreRepository(private val context: Context) {
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(KEY_SIZE)
             .setUserAuthenticationRequired(false)
-            .setKeyValidityForOriginationEnd(null)
-            .setKeyValidityForConsumptionEnd(null)
             .build()
 
         keyGenerator.init(keyGenParameterSpec)
@@ -67,19 +55,20 @@ class KeyStoreRepository(private val context: Context) {
      * @param plaintext The data to encrypt
      * @return Pair of encrypted bytes and IV
      */
-    suspend fun encrypt(plaintext: ByteArray): Pair<ByteArray, ByteArray> = withContext(Dispatchers.IO) {
-        try {
-            val cipher = Cipher.getInstance(TRANSFORMATION)
-            cipher.init(Cipher.ENCRYPT_MODE, getSecretKey())
+    suspend fun encrypt(plaintext: ByteArray): Pair<ByteArray, ByteArray> =
+        withContext(Dispatchers.IO) {
+            try {
+                val cipher = Cipher.getInstance(TRANSFORMATION)
+                cipher.init(Cipher.ENCRYPT_MODE, getSecretKey())
 
-            val iv = cipher.iv
-            val encrypted = cipher.doFinal(plaintext)
+                val iv = cipher.iv
+                val encrypted = cipher.doFinal(plaintext)
 
-            Pair(encrypted, iv)
-        } catch (e: Exception) {
-            throw EncryptionException("Failed to encrypt data", e)
+                Pair(encrypted, iv)
+            } catch (e: Exception) {
+                throw EncryptionException("Failed to encrypt data", e)
+            }
         }
-    }
 
     /**
      * Decrypt data using Android KeyStore
@@ -87,17 +76,18 @@ class KeyStoreRepository(private val context: Context) {
      * @param iv Initialization vector
      * @return Decrypted plaintext
      */
-    suspend fun decrypt(encryptedData: ByteArray, iv: ByteArray): ByteArray = withContext(Dispatchers.IO) {
-        try {
-            val cipher = Cipher.getInstance(TRANSFORMATION)
-            val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
-            cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
+    suspend fun decrypt(encryptedData: ByteArray, iv: ByteArray): ByteArray =
+        withContext(Dispatchers.IO) {
+            try {
+                val cipher = Cipher.getInstance(TRANSFORMATION)
+                val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
+                cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
 
-            cipher.doFinal(encryptedData)
-        } catch (e: Exception) {
-            throw EncryptionException("Failed to decrypt data", e)
+                cipher.doFinal(encryptedData)
+            } catch (e: Exception) {
+                throw EncryptionException("Failed to decrypt data", e)
+            }
         }
-    }
 
     /**
      * Encrypt string data
@@ -145,6 +135,14 @@ class KeyStoreRepository(private val context: Context) {
 
     private fun hexToBytes(hex: String): ByteArray {
         return hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+    }
+
+    companion object {
+        private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+        private const val KEY_ALIAS = "nexus_wallet_master_key"
+        private const val TRANSFORMATION = "AES/GCM/NoPadding"
+        private const val KEY_SIZE = 256
+        private const val GCM_TAG_LENGTH = 128
     }
 }
 
