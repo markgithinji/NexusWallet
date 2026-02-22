@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.authentication.data.repository
 
-
 import android.content.Context
 import android.util.Log
 import androidx.datastore.core.DataStore
@@ -25,28 +24,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
 @Singleton
 class SecurityPreferencesRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val walletLocalDataSource: WalletLocalDataSource
 ) {
-
-    private val json = Json { encodeDefaults = true }
-
-    companion object {
-        // Keys for encrypted storage
-        private val ENCRYPTED_MNEMONIC_KEY = stringPreferencesKey("encrypted_mnemonic")
-        private val ENCRYPTED_PRIVATE_KEY_KEY = stringPreferencesKey("encrypted_private_key")
-        private val ENCRYPTED_SEED_KEY = stringPreferencesKey("encrypted_seed")
-        private val ENCRYPTED_BACKUP_KEY = stringPreferencesKey("encrypted_backup")
-        private val KEY_MATERIAL_ENCRYPTED_KEY = stringPreferencesKey("key_material_encrypted")
-        private val INITIALIZATION_VECTOR_KEY = stringPreferencesKey("initialization_vector")
-        private val SALT_KEY = stringPreferencesKey("salt")
-
-        // For biometric/PIN authentication
-        private val BIOMETRIC_ENABLED_KEY = booleanPreferencesKey("biometric_enabled")
-        private val PIN_HASH_KEY = stringPreferencesKey("pin_hash")
-        private val LOCK_TIMEOUT_KEY = stringPreferencesKey("lock_timeout")
-        private val SESSION_TIMEOUT_KEY =
-            intPreferencesKey("session_timeout")
-    }
 
     suspend fun storeEncryptedMnemonic(
         walletId: String,
@@ -136,26 +114,6 @@ class SecurityPreferencesRepository @Inject constructor(
             Log.e(" SECURE_STORAGE", "Error getting encrypted private key", e)
             null
         }
-    }
-
-    suspend fun storeEncryptedBackup(
-        walletId: String,
-        backupData: WalletBackup,
-        encryptedData: String,
-        iv: ByteArray
-    ) {
-        val backupKey = stringPreferencesKey("${ENCRYPTED_BACKUP_KEY.name}_$walletId")
-        val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_backup_$walletId")
-
-        context.dataStore.edit { preferences ->
-            preferences[backupKey] = encryptedData
-            preferences[ivKey] = iv.toHex()
-        }
-
-        // Store backup metadata in regular storage
-        storeBackupMetadata(walletId, backupData)
-
-        Log.d(" SECURE_STORAGE", "Stored encrypted backup for wallet: $walletId")
     }
 
     suspend fun getEncryptedBackup(walletId: String): Pair<String, ByteArray>? {
@@ -258,14 +216,23 @@ class SecurityPreferencesRepository @Inject constructor(
         Log.d(" SECURE_STORAGE", " Cleared PIN hash")
     }
 
-
-    private suspend fun storeBackupMetadata(walletId: String, backupData: WalletBackup) {
-//        walletLocalDataSource.saveBackupMetadata(backupData)
-    }
-
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 
     private fun hexToBytes(hex: String): ByteArray {
         return hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
     }
+    companion object {
+        // Keys for encrypted storage
+        private val ENCRYPTED_MNEMONIC_KEY = stringPreferencesKey("encrypted_mnemonic")
+        private val ENCRYPTED_PRIVATE_KEY_KEY = stringPreferencesKey("encrypted_private_key")
+        private val ENCRYPTED_BACKUP_KEY = stringPreferencesKey("encrypted_backup")
+        private val INITIALIZATION_VECTOR_KEY = stringPreferencesKey("initialization_vector")
+
+        // For biometric/PIN authentication
+        private val BIOMETRIC_ENABLED_KEY = booleanPreferencesKey("biometric_enabled")
+        private val PIN_HASH_KEY = stringPreferencesKey("pin_hash")
+        private val SESSION_TIMEOUT_KEY =
+            intPreferencesKey("session_timeout")
+    }
+
 }
