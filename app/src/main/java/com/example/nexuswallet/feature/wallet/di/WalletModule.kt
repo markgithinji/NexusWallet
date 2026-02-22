@@ -2,7 +2,6 @@ package com.example.nexuswallet.feature.wallet.di
 
 import android.content.Context
 import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
@@ -10,7 +9,6 @@ import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.local.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
-import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoinDao
@@ -126,14 +124,10 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideWalletRepository(
-        localDataSource: WalletLocalDataSource,
-        securityManager: SecurityManager,
-        keyManager: KeyManager
+        localDataSource: WalletLocalDataSource
     ): WalletRepository {
         return WalletRepository(
-            localDataSource = localDataSource,
-            securityManager = securityManager,
-            keyManager = keyManager
+            localDataSource = localDataSource
         )
     }
 
@@ -142,26 +136,8 @@ object DatabaseModule {
     @Singleton
     fun provideSecureStorage(
         @ApplicationContext context: Context,
-        walletLocalDataSource: WalletLocalDataSource
     ): SecurityPreferencesRepository {
-        return SecurityPreferencesRepository(context, walletLocalDataSource)
-    }
-
-    @Provides
-    @Singleton
-    fun provideSecurityManager(
-        @ApplicationContext context: Context,
-        securityPreferencesRepository: SecurityPreferencesRepository
-    ): SecurityManager {
-        return SecurityManager(context, securityPreferencesRepository)
-    }
-
-    @Provides
-    @Singleton
-    fun provideKeyManager(
-        securityManager: SecurityManager
-    ): KeyManager {
-        return KeyManager(securityManager)
+        return SecurityPreferencesRepository(context)
     }
 
     // === Blockchain ===
