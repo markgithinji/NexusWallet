@@ -1,10 +1,11 @@
 package com.example.nexuswallet
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.authentication.domain.AuthAction
-import com.example.nexuswallet.feature.authentication.domain.SecurityManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.data.securityrefactor.IsAuthenticationRequiredUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,11 +17,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.collections.isNotEmpty
+import com.example.nexuswallet.feature.coin.Result
 
 @HiltViewModel
 class NavigationViewModel @Inject constructor(
-    private val walletRepository: WalletRepository,
-    private val securityManager: SecurityManager
+    walletRepository: WalletRepository,
+    private val isAuthenticationRequiredUseCase: IsAuthenticationRequiredUseCase
 ) : ViewModel() {
 
     val wallets: StateFlow<List<Wallet>> = walletRepository.walletsFlow
@@ -41,7 +43,20 @@ class NavigationViewModel @Inject constructor(
      */
     fun navigateToWalletDetail(walletId: String) {
         viewModelScope.launch {
-            val requiresAuth = securityManager.isAuthenticationRequired(AuthAction.VIEW_WALLET)
+            val result = isAuthenticationRequiredUseCase(AuthAction.VIEW_WALLET)
+
+            val requiresAuth = when (result) {
+                is Result.Success -> result.data
+                is Result.Error -> {
+                    // Log error and default to requiring auth for safety
+                    Log.e("NavigationVM", "Failed to check auth requirement: ${result.message}")
+                    true // Default to requiring auth on error
+                }
+                Result.Loading -> {
+                    // This shouldn't happen with our implementation
+                    true // Default to requiring auth
+                }
+            }
 
             if (requiresAuth) {
                 // Store that we need to go to auth screen first
