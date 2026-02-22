@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.coin.solana
 import android.util.Log
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
+import com.example.nexuswallet.feature.coin.BroadcastResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext

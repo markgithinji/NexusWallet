@@ -6,7 +6,7 @@ import com.example.nexuswallet.feature.coin.CachedGasPrice
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
+import com.example.nexuswallet.feature.coin.BroadcastResult
 import kotlinx.coroutines.delay
 import java.math.BigDecimal
 import java.math.BigInteger

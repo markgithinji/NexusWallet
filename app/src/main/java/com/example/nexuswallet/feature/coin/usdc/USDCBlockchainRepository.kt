@@ -10,7 +10,7 @@ import com.example.nexuswallet.feature.coin.ethereum.GasPrice
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
-import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
+import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalance
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
