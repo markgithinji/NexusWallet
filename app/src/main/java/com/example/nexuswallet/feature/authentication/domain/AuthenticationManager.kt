@@ -30,7 +30,7 @@ class AuthenticationManager(private val context: Context) {
         title: String = "Authenticate",
         subtitle: String = "Use your fingerprint or face to authenticate",
         description: String = "Authentication is required to access this feature"
-    ) = callbackFlow<AuthenticationResult> {
+    ) = callbackFlow {
         executor = ContextCompat.getMainExecutor(context)
 
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
@@ -75,18 +75,19 @@ class AuthenticationManager(private val context: Context) {
 
     /**
      * Verify PIN code with detailed logging
+     * Now uses a callback function instead of SecurityManager directly
      */
     suspend fun authenticateWithPin(
         enteredPin: String,
-        securityManager: SecurityManager
+        verifyPin: suspend (String) -> Boolean
     ): AuthenticationResult {
         Log.d("AUTH_MGR_PIN", "=== AUTH_MGR: authenticateWithPin START ===")
         Log.d("AUTH_MGR_PIN", "PIN entered: '$enteredPin'")
 
         return try {
-            Log.d("AUTH_MGR_PIN", "Calling securityManager.verifyPin('$enteredPin')...")
-            val isPinCorrect = securityManager.verifyPin(enteredPin)
-            Log.d("AUTH_MGR_PIN", "securityManager.verifyPin returned: $isPinCorrect")
+            Log.d("AUTH_MGR_PIN", "Calling verifyPin callback...")
+            val isPinCorrect = verifyPin(enteredPin)
+            Log.d("AUTH_MGR_PIN", "verifyPin callback returned: $isPinCorrect")
 
             if (isPinCorrect) {
                 Log.d("AUTH_MGR_PIN", " PIN is CORRECT - returning Success")
