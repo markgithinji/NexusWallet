@@ -1,7 +1,8 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
+import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
-import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
 import dagger.Provides
@@ -79,13 +80,15 @@ object UseCaseModule {
         walletRepository: WalletRepository,
         ethereumBlockchainRepository: EthereumBlockchainRepository,
         ethereumTransactionRepository: EthereumTransactionRepository,
-        keyManager: KeyManager
+        securityPreferencesRepository: SecurityPreferencesRepository,
+        keyStoreRepository: KeyStoreRepository,
     ): SendEthereumUseCase {
         return SendEthereumUseCase(
             walletRepository,
             ethereumBlockchainRepository,
             ethereumTransactionRepository,
-            keyManager
+            securityPreferencesRepository,
+            keyStoreRepository
         )
     }
 

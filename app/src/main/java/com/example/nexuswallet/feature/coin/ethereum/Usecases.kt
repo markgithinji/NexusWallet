@@ -4,9 +4,9 @@ import android.util.Log
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
+import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.data.securityrefactor.KeyValidator
 import com.example.nexuswallet.feature.wallet.domain.Transaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.Dispatchers
@@ -242,7 +242,8 @@ class SendEthereumUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository,
     private val ethereumTransactionRepository: EthereumTransactionRepository,
-    private val keyManager: KeyManager
+    private val securityPreferencesRepository: com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository,
+    private val keyStoreRepository: com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
 ) {
     suspend operator fun invoke(
         walletId: String,
@@ -275,7 +276,7 @@ class SendEthereumUseCase @Inject constructor(
 
             // 2. Sign transaction
             Log.d("SendEthereumUC", "Step 2: Signing transaction...")
-            val signedTransaction = signTransaction(transaction, ethereumCoin.network)
+            val signedTransaction = signTransaction(transaction, ethereumCoin.network, ethereumCoin.address)
                 ?: return@withContext Result.Error("Failed to sign transaction")
 
             Log.d("SendEthereumUC", "Transaction signed: ${signedTransaction.txHash}")
@@ -368,7 +369,8 @@ class SendEthereumUseCase @Inject constructor(
 
     private suspend fun signTransaction(
         transaction: EthereumTransaction,
-        network: EthereumNetwork
+        network: EthereumNetwork,
+        expectedAddress: String
     ): EthereumTransaction? {
         try {
             Log.d("SendEthereumUC", "Signing transaction: ${transaction.id}")
@@ -384,6 +386,25 @@ class SendEthereumUseCase @Inject constructor(
                     Log.e("SendEthereumUC", "Ethereum not enabled for wallet: ${transaction.walletId}")
                     return null
                 }
+
+            // Get encrypted private key directly from SecurityPreferencesRepository
+            val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
+                walletId = transaction.walletId,
+                keyType = "ETH_PRIVATE_KEY"
+            ) ?: run {
+                Log.e("SendEthereumUC", "No private key found for wallet: ${transaction.walletId}")
+                return null
+            }
+
+            val (encryptedHex, iv) = encryptedData
+
+            // Decrypt using KeyStoreRepository directly
+            val privateKey = try {
+                keyStoreRepository.decryptString(encryptedHex, iv.toHex())
+            } catch (e: Exception) {
+                Log.e("SendEthereumUC", "Failed to decrypt private key: ${e.message}")
+                return null
+            }
 
             // Get the nonce
             val nonceResult = ethereumBlockchainRepository.getEthereumNonce(
@@ -407,16 +428,17 @@ class SendEthereumUseCase @Inject constructor(
 
             val gasPriceWei = BigInteger(transaction.gasPriceWei)
 
-            val privateKeyResult = keyManager.getPrivateKeyForSigning(transaction.walletId)
-            if (privateKeyResult.isFailure) {
-                Log.e("SendEthereumUC", "Failed to get private key")
+            val credentials = try {
+                Credentials.create(privateKey)
+            } catch (e: Exception) {
+                Log.e("SendEthereumUC", "Failed to create credentials: ${e.message}")
                 return null
             }
-            val privateKey = privateKeyResult.getOrThrow()
 
-            val credentials = Credentials.create(privateKey)
+            // Verify private key matches wallet address
             if (credentials.address.lowercase() != ethereumCoin.address.lowercase()) {
                 Log.e("SendEthereumUC", "Private key doesn't match wallet")
+                Log.e("SendEthereumUC", "Derived: ${credentials.address}, Expected: ${ethereumCoin.address}")
                 return null
             }
 
@@ -516,6 +538,9 @@ class SendEthereumUseCase @Inject constructor(
             return BroadcastResult(success = false, error = e.message ?: "Broadcast failed")
         }
     }
+
+    // Helper extension for ByteArray to Hex
+    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 }
 
 @Singleton
