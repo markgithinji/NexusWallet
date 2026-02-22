@@ -9,17 +9,20 @@ import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.authentication.domain.AuthAction
 import com.example.nexuswallet.feature.authentication.domain.AuthenticationManager
 import com.example.nexuswallet.feature.authentication.domain.AuthenticationResult
-import com.example.nexuswallet.feature.authentication.domain.SecurityManager
+import com.example.nexuswallet.feature.wallet.data.securityrefactor.RecordAuthenticationUseCase
+import com.example.nexuswallet.feature.wallet.data.securityrefactor.VerifyPinUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.example.nexuswallet.feature.coin.Result
 
 @HiltViewModel
 class AuthenticationViewModel @Inject constructor(
-    private val securityManager: SecurityManager,
+    private val verifyPinUseCase: VerifyPinUseCase,
+    private val recordAuthenticationUseCase: RecordAuthenticationUseCase,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -40,21 +43,31 @@ class AuthenticationViewModel @Inject constructor(
     }
 
     suspend fun verifyPin(pin: String) {
-        val result = authenticationManager.authenticateWithPin(pin, securityManager)
-        _authenticationState.value = result
+        // Authenticate with PIN using the usecase
+        val result = authenticationManager.authenticateWithPin(pin) { pinToVerify ->
+            when (val verifyResult = verifyPinUseCase(pinToVerify)) {
+                is Result.Success -> verifyResult.data
+                is Result.Error -> {
+                    _errorMessage.value = verifyResult.message
+                    false
+                }
+                Result.Loading -> false
+            }
+        }
 
+        _authenticationState.value = result
         _showPinDialog.value = false
 
-        if (result is AuthenticationResult.Error) {
+        if (result is AuthenticationResult.Success) {
+            // Record authentication using the usecase
+            recordAuthenticationUseCase()
+        } else if (result is AuthenticationResult.Error) {
             _errorMessage.value = result.message
-        } else if (result is AuthenticationResult.Success) {
-
-            securityManager.recordAuthentication()
         }
     }
 
     fun recordAuthentication() {
-        securityManager.recordAuthentication()
+        recordAuthenticationUseCase()
     }
 
     fun authenticateWithBiometric(activity: FragmentActivity) {
@@ -69,7 +82,7 @@ class AuthenticationViewModel @Inject constructor(
                     _authenticationState.value = result
 
                     if (result is AuthenticationResult.Success) {
-                        recordAuthentication()
+                        recordAuthenticationUseCase()
                     }
                 }
             } catch (e: Exception) {
