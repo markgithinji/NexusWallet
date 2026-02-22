@@ -1,21 +1,27 @@
 package com.example.nexuswallet.feature.wallet.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.GetAllTransactionsUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.SyncWalletBalancesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class WalletDetailViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
-    private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase
+    private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
+    private val getAllTransactionsUseCase: GetAllTransactionsUseCase
 ) : ViewModel() {
 
     // Current wallet
@@ -25,6 +31,10 @@ class WalletDetailViewModel @Inject constructor(
     // Wallet balance
     private val _balance = MutableStateFlow<WalletBalance?>(null)
     val balance: StateFlow<WalletBalance?> = _balance
+
+    // Transactions
+    private val _transactions = MutableStateFlow<List<Any>>(emptyList())
+    val transactions: StateFlow<List<Any>> = _transactions
 
     // Loading states
     private val _isLoading = MutableStateFlow(false)
@@ -56,7 +66,10 @@ class WalletDetailViewModel @Inject constructor(
                 val loadedBalance = walletRepository.getWalletBalance(walletId)
                 _balance.value = loadedBalance
 
-                // 3. Sync balances in background using use case
+                // 3. Load transactions using usecase
+                loadTransactions(walletId)
+
+                // 4. Sync balances in background
                 viewModelScope.launch {
                     syncWalletBalancesUseCase(loadedWallet)
                     // Refresh balance after sync
@@ -69,6 +82,20 @@ class WalletDetailViewModel @Inject constructor(
                 _isLoading.value = false
             }
         }
+    }
+
+    private suspend fun loadTransactions(walletId: String) {
+        _transactions.value = getAllTransactionsUseCase(walletId)
+
+        // Optionally observe real-time updates
+        getAllTransactionsUseCase.observeTransactions(walletId)
+            .flowOn(Dispatchers.IO)
+            .catch { e ->
+                Log.e("WalletDetailVM", "Error observing transactions", e)
+            }
+            .collect { updatedTransactions ->
+                _transactions.value = updatedTransactions
+            }
     }
 
     fun getTotalUsdValue(): Double {
