@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.data.securityrefactor.CreateWalletUseCase
+import com.example.nexuswallet.feature.wallet.data.securityrefactor.GenerateMnemonicUseCase
+import com.example.nexuswallet.feature.wallet.data.securityrefactor.ValidateMnemonicUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,9 +16,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.example.nexuswallet.feature.coin.Result
+
 @HiltViewModel
 class WalletCreationViewModel @Inject constructor(
-    private val walletRepository: WalletRepository
+    private val generateMnemonicUseCase: GenerateMnemonicUseCase,
+    private val validateMnemonicUseCase: ValidateMnemonicUseCase,
+    private val createWalletUseCase: CreateWalletUseCase
 ) : ViewModel() {
 
     // UI State
@@ -59,7 +66,7 @@ class WalletCreationViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = WalletCreationUiState.Loading
             try {
-                val newMnemonic = walletRepository.generateNewMnemonic(12)
+                val newMnemonic = generateMnemonicUseCase(12)
                 _mnemonic.value = newMnemonic
                 _isMnemonicGenerated.value = true
                 _uiState.value = WalletCreationUiState.MnemonicGenerated
@@ -105,7 +112,7 @@ class WalletCreationViewModel @Inject constructor(
     }
 
     fun verifyMnemonic(): Boolean {
-        return walletRepository.validateMnemonic(_enteredWords.value)
+        return validateMnemonicUseCase(_enteredWords.value)
     }
 
     fun completeVerificationAndMoveNext(): Boolean {
@@ -150,7 +157,7 @@ class WalletCreationViewModel @Inject constructor(
                 val name = if (_walletName.value.isBlank()) "My Wallet" else _walletName.value
                 val selection = _coinSelection.value
 
-                val result = walletRepository.createWallet(
+                val result = createWalletUseCase(
                     mnemonic = mnemonicList,
                     name = name,
                     includeBitcoin = selection.includeBitcoin,
@@ -161,14 +168,17 @@ class WalletCreationViewModel @Inject constructor(
                     bitcoinNetwork = selection.bitcoinNetwork
                 )
 
-                if (result.isSuccess) {
-                    val wallet = result.getOrThrow()
-                    _uiState.value = WalletCreationUiState.WalletCreated(wallet)
-                } else {
-                    val error = result.exceptionOrNull()
-                    _uiState.value = WalletCreationUiState.Error(
-                        error?.message ?: "Failed to create wallet"
-                    )
+                when (result) {
+                    is Result.Success -> {
+                        _uiState.value = WalletCreationUiState.WalletCreated(result.data)
+                    }
+                    is Result.Error -> {
+                        _uiState.value = WalletCreationUiState.Error(result.message)
+                    }
+                    Result.Loading -> {
+                        // This shouldn't happen as our usecases don't return Loading
+                        _uiState.value = WalletCreationUiState.Error("Unexpected loading state")
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.value = WalletCreationUiState.Error(e.message ?: "Failed to create wallet")
@@ -194,4 +204,3 @@ sealed class WalletCreationUiState {
     data class WalletCreated(val wallet: Wallet) : WalletCreationUiState()
     data class Error(val message: String) : WalletCreationUiState()
 }
-
