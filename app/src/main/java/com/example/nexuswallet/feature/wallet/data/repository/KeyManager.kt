@@ -1,33 +1,16 @@
 package com.example.nexuswallet.feature.wallet.data.repository
 
-import android.content.Context
-import android.util.Log
-import com.example.nexuswallet.feature.authentication.domain.AuthAction
 import com.example.nexuswallet.feature.authentication.domain.EncryptionResult
 import com.example.nexuswallet.feature.authentication.domain.SecurityManager
-import com.example.nexuswallet.feature.wallet.domain.ChainType
-
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import org.web3j.crypto.Credentials
-import org.web3j.crypto.Keys
-import org.web3j.crypto.RawTransaction
-import org.web3j.crypto.TransactionEncoder
-import org.web3j.protocol.Web3j
-import org.web3j.protocol.http.HttpService
-import org.web3j.utils.Numeric
-import java.math.BigInteger
-import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
+
 @Singleton
 class KeyManager @Inject constructor(
     private val securityManager: SecurityManager
 ) {
-    private val scope = CoroutineScope(Dispatchers.IO)
-
     /**
-     * Get private key for signing - REAL VERSION
+     * Get private key for signing
      */
     suspend fun getPrivateKeyForSigning(
         walletId: String,
@@ -44,7 +27,8 @@ class KeyManager @Inject constructor(
             if (privateKeyResult.isFailure) {
                 val error = privateKeyResult.exceptionOrNull()
                 return Result.failure(
-                    error ?: IllegalStateException("Failed to retrieve private key for type: $keyType")
+                    error
+                        ?: IllegalStateException("Failed to retrieve private key for type: $keyType")
                 )
             }
 

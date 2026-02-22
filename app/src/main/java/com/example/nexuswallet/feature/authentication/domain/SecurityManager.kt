@@ -1,16 +1,14 @@
 package com.example.nexuswallet.feature.authentication.domain
 
-import com.example.nexuswallet.feature.wallet.domain.WalletBackup
-import kotlinx.serialization.json.Json
 import android.content.Context
 import android.util.Log
 import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.wallet.domain.WalletBackup
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.serialization.json.Json
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.text.SimpleDateFormat
@@ -26,12 +24,9 @@ import kotlin.math.max
  */
 @Singleton
 class SecurityManager @Inject constructor( //TODO: break class down to usecases
-    @ApplicationContext private val context: Context,
-    private val securityPreferencesRepository: SecurityPreferencesRepository
+    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val keyStoreRepository: KeyStoreRepository
 ) {
-
-    private val scope = CoroutineScope(Dispatchers.IO)
-    private val keyStoreRepository = KeyStoreRepository(context)
 
     private val _securityState = MutableStateFlow<SecurityState>(SecurityState.IDLE)
     val securityState: StateFlow<SecurityState> = _securityState
@@ -128,7 +123,8 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
             }
 
             // Get encrypted private key from storage WITH keyType
-            val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(walletId, keyType)
+            val encryptedData =
+                securityPreferencesRepository.getEncryptedPrivateKey(walletId, keyType)
             if (encryptedData == null) {
                 Log.e("SecurityManager", "No private key found for wallet: $walletId")
                 return Result.failure(IllegalStateException("Private key not found"))
@@ -230,62 +226,6 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
     }
 
     /**
-     * Create encrypted backup of wallet
-     */
-//    suspend fun createEncryptedBackup(walletId: String, wallet: CryptoWallet): BackupResult {
-//        return try {
-//            _securityState.value = SecurityState.BACKING_UP
-//
-//            // Get mnemonic first
-//            val mnemonic = retrieveMnemonic(walletId)
-//            if (mnemonic == null) {
-//                throw IllegalStateException("No mnemonic found for wallet")
-//            }
-//
-//            // Create backup data
-//            val backupData = WalletBackup(
-//                walletId = walletId,
-//                encryptedMnemonic = "encrypted_placeholder",
-//                encryptedPrivateKey = "encrypted_placeholder",
-//                encryptionIV = "",
-//                backupDate = System.currentTimeMillis(),
-//                walletType = wallet.walletType,
-//                metadata = mapOf(
-//                    "walletName" to wallet.name,
-//                    "address" to wallet.address,
-//                    "createdAt" to wallet.createdAt.toString()
-//                )
-//            )
-//
-//            // Encrypt entire backup
-//            val backupJson = Json.encodeToString(backupData)
-//            val (encryptedHex, ivHex) = keyStoreRepository.encryptString(backupJson)
-//
-//            // Update backup with actual encrypted data
-//            val finalBackup = backupData.copy(
-//                encryptedMnemonic = encryptedHex,
-//                encryptionIV = ivHex
-//            )
-//
-//            // Store backup
-//            securityPreferencesRepository.storeEncryptedBackup(
-//                walletId = walletId,
-//                backupData = finalBackup,
-//                encryptedData = encryptedHex,
-//                iv = hexToBytes(ivHex)
-//            )
-//
-//            _securityState.value = SecurityState.IDLE
-//            BackupResult.Success(finalBackup)
-//
-//        } catch (e: Exception) {
-//            Log.e("SecurityManager", "Failed to create backup", e)
-//            _securityState.value = SecurityState.ERROR(e.message ?: "Backup failed")
-//            BackupResult.Error(e)
-//        }
-//    }
-
-    /**
      * Restore wallet from encrypted backup
      */
     suspend fun restoreFromBackup(walletId: String): RestoreResult {
@@ -318,9 +258,6 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
         }
     }
 
-    /**
-     * Set PIN for additional security
-     */
     /**
      * Set PIN for additional security
      */
@@ -361,9 +298,6 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
     }
     /**
      * Verify PIN
-     */
-    /**
-     * Verify PIN - FIXED VERSION
      */
     suspend fun verifyPin(pin: String): Boolean {
         Log.d("SECURITY_PIN", " === VERIFY PIN START ===")
@@ -456,9 +390,6 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
     /**
      * Hash PIN using SHA-256 with salt
      */
-    /**
-     * Hash PIN using SHA-256 with salt
-     */
     private fun hashPin(pin: String): String {
         Log.d("SECURITY_HASH", " Hashing PIN: '$pin'")
 
@@ -480,9 +411,6 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
     }
 
     /**
-     * Verify PIN hash
-     */
-    /**
      * Verify PIN hash using stored salt
      */
     private fun verifyPinHash(inputPin: String, storedHash: String): Boolean {
@@ -499,7 +427,10 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
         val storedHashPart = parts[0]
         val saltHex = parts[1]
 
-        Log.d("SECURITY_HASH", "Extracted stored hash part (first 10 chars): ${storedHashPart.take(10)}...")
+        Log.d(
+            "SECURITY_HASH",
+            "Extracted stored hash part (first 10 chars): ${storedHashPart.take(10)}..."
+        )
         Log.d("SECURITY_HASH", "Extracted salt (hex): $saltHex")
         Log.d("SECURITY_HASH", "Salt length: ${saltHex.length} chars")
 
@@ -511,7 +442,10 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
         val inputHashHex = hash.toHex()
 
         Log.d("SECURITY_HASH", "Generated hash (first 10 chars): ${inputHashHex.take(10)}...")
-        Log.d("SECURITY_HASH", "Comparing: ${inputHashHex.take(10)}... == ${storedHashPart.take(10)}...")
+        Log.d(
+            "SECURITY_HASH",
+            "Comparing: ${inputHashHex.take(10)}... == ${storedHashPart.take(10)}..."
+        )
 
         val isValid = inputHashHex == storedHashPart
         Log.d("SECURITY_HASH", "Hash comparison result: $isValid")
@@ -521,7 +455,10 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
             Log.d("SECURITY_HASH", "  Input hash: $inputHashHex")
             Log.d("SECURITY_HASH", "  Stored hash: $storedHashPart")
             Log.d("SECURITY_HASH", "  Equal? ${inputHashHex == storedHashPart}")
-            Log.d("SECURITY_HASH", "  Length equal? ${inputHashHex.length == storedHashPart.length}")
+            Log.d(
+                "SECURITY_HASH",
+                "  Length equal? ${inputHashHex.length == storedHashPart.length}"
+            )
         }
 
         Log.d("SECURITY_HASH", " === VERIFY PIN HASH END (result: $isValid) ===")
@@ -544,7 +481,7 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
         Log.d(" AUTH_DEBUG", "══════════════════════════════════════════════")
         Log.d(" AUTH_DEBUG", " Previous auth time: $previousAuthTime")
         Log.d(" AUTH_DEBUG", " New auth time: $lastAuthenticationTime")
-        Log.d(" AUTH_DEBUG", " Session will expire in: ${sessionTimeout/1000} seconds")
+        Log.d(" AUTH_DEBUG", " Session will expire in: ${sessionTimeout / 1000} seconds")
         Log.d(" AUTH_DEBUG", "══════════════════════════════════════════════")
     }
 
@@ -559,7 +496,10 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
         Log.d(" SESSION_DEBUG", " Session Details:")
         Log.d(" SESSION_DEBUG", "    lastAuthenticationTime: $lastAuthenticationTime")
         Log.d(" SESSION_DEBUG", "    Is MIN_VALUE? ${lastAuthenticationTime == Long.MIN_VALUE}")
-        Log.d(" SESSION_DEBUG", "    sessionTimeout: ${sessionTimeout}ms (${sessionTimeout/1000}s)")
+        Log.d(
+            " SESSION_DEBUG",
+            "    sessionTimeout: ${sessionTimeout}ms (${sessionTimeout / 1000}s)"
+        )
 
         if (lastAuthenticationTime == Long.MIN_VALUE) {
             Log.d(" SESSION_DEBUG", " Session NOT valid: Never authenticated (MIN_VALUE)")
@@ -573,18 +513,24 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
         Log.d(" SESSION_DEBUG", " Time Calculation:")
         Log.d(" SESSION_DEBUG", "    Current time: $currentTime")
         Log.d(" SESSION_DEBUG", "    Last auth time: $lastAuthenticationTime")
-        Log.d(" SESSION_DEBUG", "    Time since auth: ${timeSinceAuth}ms (${timeSinceAuth/1000}s)")
-        Log.d(" SESSION_DEBUG", "    Timeout: ${sessionTimeout}ms (${sessionTimeout/1000}s)")
+        Log.d(
+            " SESSION_DEBUG",
+            "    Time since auth: ${timeSinceAuth}ms (${timeSinceAuth / 1000}s)"
+        )
+        Log.d(" SESSION_DEBUG", "    Timeout: ${sessionTimeout}ms (${sessionTimeout / 1000}s)")
         Log.d(" SESSION_DEBUG", "    Time remaining: ${max(0, sessionTimeout - timeSinceAuth)}ms")
 
         val isValid = timeSinceAuth < sessionTimeout
 
         if (isValid) {
             Log.d(" SESSION_DEBUG", " Session is VALID")
-            Log.d(" SESSION_DEBUG", "    User authenticated ${timeSinceAuth/1000}s ago")
+            Log.d(" SESSION_DEBUG", "    User authenticated ${timeSinceAuth / 1000}s ago")
         } else {
             Log.d(" SESSION_DEBUG", " Session is EXPIRED")
-            Log.d(" SESSION_DEBUG", "    Authentication expired ${(timeSinceAuth - sessionTimeout)/1000}s ago")
+            Log.d(
+                " SESSION_DEBUG",
+                "    Authentication expired ${(timeSinceAuth - sessionTimeout) / 1000}s ago"
+            )
         }
 
         Log.d(" SESSION_DEBUG", "══════════════════════════════════════════════")
@@ -665,6 +611,7 @@ class SecurityManager @Inject constructor( //TODO: break class down to usecases
         Log.d(" SECURITY_DEBUG", " Reason: AuthEnabled=true + SessionInvalid=true")
         return true
     }
+
     /**
      * Get available authentication methods for user
      */
@@ -737,5 +684,4 @@ sealed class SecurityState {
 sealed class PrivateKeyResult {
     data class Success(val privateKey: String) : PrivateKeyResult()
     data class Error(val exception: Exception? = null) : PrivateKeyResult()
-    object AuthenticationRequired : PrivateKeyResult()
 }
