@@ -1,7 +1,8 @@
 package com.example.nexuswallet.feature.coin.solana
 
+import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
-import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
 import dagger.Provides
@@ -57,13 +58,15 @@ object SolanaUseCaseModule {
         walletRepository: WalletRepository,
         solanaBlockchainRepository: SolanaBlockchainRepository,
         solanaTransactionRepository: SolanaTransactionRepository,
-        keyManager: KeyManager
+        securityPreferencesRepository: SecurityPreferencesRepository,
+        keyStoreRepository: KeyStoreRepository,
     ): SendSolanaUseCase {
         return SendSolanaUseCase(
             walletRepository,
             solanaBlockchainRepository,
             solanaTransactionRepository,
-            keyManager
+            securityPreferencesRepository,
+            keyStoreRepository
         )
     }
 

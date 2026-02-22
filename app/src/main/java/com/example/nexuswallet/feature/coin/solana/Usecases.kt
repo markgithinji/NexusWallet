@@ -3,8 +3,7 @@ package com.example.nexuswallet.feature.coin.solana
 import android.util.Log
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
+import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.Dispatchers
@@ -179,7 +178,8 @@ class SendSolanaUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
     private val solanaTransactionRepository: SolanaTransactionRepository,
-    private val keyManager: KeyManager
+    private val securityPreferencesRepository: com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository,
+    private val keyStoreRepository: com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
 ) {
     suspend operator fun invoke(
         walletId: String,
@@ -206,7 +206,7 @@ class SendSolanaUseCase @Inject constructor(
             val transaction = createTransaction(walletId, toAddress, amount, feeLevel, note, solanaCoin.network)
                 ?: return@withContext Result.Error("Failed to create transaction")
 
-            val signedTransaction = signTransaction(transaction, solanaCoin.network)
+            val signedTransaction = signTransaction(transaction, solanaCoin.network, solanaCoin.address)
                 ?: return@withContext Result.Error("Failed to sign transaction")
 
             val broadcastResult = broadcastTransaction(signedTransaction, solanaCoin.network)
@@ -303,7 +303,8 @@ class SendSolanaUseCase @Inject constructor(
 
     private suspend fun signTransaction(
         transaction: SolanaTransaction,
-        network: SolanaNetwork
+        network: SolanaNetwork,
+        expectedAddress: String
     ): SolanaTransaction? {
         try {
             val wallet = walletRepository.getWallet(transaction.walletId) ?: run {
@@ -325,22 +326,31 @@ class SendSolanaUseCase @Inject constructor(
                 }
             }
 
-            val privateKeyResult = keyManager.getPrivateKeyForSigning(
-                transaction.walletId,
+            // Get encrypted private key directly from SecurityPreferencesRepository
+            val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
+                walletId = transaction.walletId,
                 keyType = "SOLANA_PRIVATE_KEY"
-            )
-
-            if (privateKeyResult.isFailure) {
-                Log.e("SendSolanaUC", "Failed to get private key")
+            ) ?: run {
+                Log.e("SendSolanaUC", "No private key found for wallet: ${transaction.walletId}")
                 return null
             }
 
-            val privateKeyHex = privateKeyResult.getOrThrow()
+            val (encryptedHex, iv) = encryptedData
+
+            // Decrypt using KeyStoreRepository directly
+            val privateKeyHex = try {
+                keyStoreRepository.decryptString(encryptedHex, iv.toHex())
+            } catch (e: Exception) {
+                Log.e("SendSolanaUC", "Failed to decrypt private key: ${e.message}")
+                return null
+            }
+
             val keypair = createSolanaKeypair(privateKeyHex) ?: return null
 
             val derivedAddress = keypair.publicKey.toString()
-            if (derivedAddress != solanaCoin.address) {
+            if (derivedAddress != expectedAddress) {
                 Log.e("SendSolanaUC", "Private key doesn't match wallet")
+                Log.e("SendSolanaUC", "Derived: $derivedAddress, Expected: $expectedAddress")
                 return null
             }
 
@@ -348,7 +358,6 @@ class SendSolanaUseCase @Inject constructor(
                 fromKeypair = keypair,
                 toAddress = transaction.toAddress,
                 lamports = transaction.amountLamports,
-//                feeLevel = transaction.feeLevel,
                 network = network
             )
 
@@ -447,6 +456,9 @@ class SendSolanaUseCase @Inject constructor(
     private fun ByteArray.toHexString(): String {
         return joinToString("") { "%02x".format(it) }
     }
+
+    // Helper extension for ByteArray to Hex
+    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 }
 
 @Singleton
