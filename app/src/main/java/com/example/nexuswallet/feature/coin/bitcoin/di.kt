@@ -1,7 +1,6 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
-import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
 import dagger.Provides

@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
-import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
+import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
 import dagger.Provides
@@ -40,13 +41,15 @@ object BitcoinUseCaseModule {
         walletRepository: WalletRepository,
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
         bitcoinTransactionRepository: BitcoinTransactionRepository,
-        keyManager: KeyManager
+        securityPreferencesRepository: SecurityPreferencesRepository,
+        keyStoreRepository: KeyStoreRepository,
     ): SendBitcoinUseCase {
         return SendBitcoinUseCase(
             walletRepository,
             bitcoinBlockchainRepository,
             bitcoinTransactionRepository,
-            keyManager
+            keyStoreRepository,
+            securityPreferencesRepository
         )
     }
 

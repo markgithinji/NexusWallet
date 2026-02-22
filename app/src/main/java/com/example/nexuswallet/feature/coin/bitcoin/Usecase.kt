@@ -2,9 +2,10 @@ package com.example.nexuswallet.feature.coin.bitcoin
 
 import android.util.Log
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.wallet.data.model.BroadcastResult
-import com.example.nexuswallet.feature.wallet.data.repository.KeyManager
+import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.data.securityrefactor.GetPrivateKeyForSigningUseCase
+import com.example.nexuswallet.feature.wallet.data.securityrefactor.KeyValidator
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -131,7 +132,8 @@ class SendBitcoinUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
-    private val keyManager: KeyManager
+    private val keyStoreRepository: com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository,
+    private val securityPreferencesRepository: com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository,
 ) {
     suspend operator fun invoke(
         walletId: String,
@@ -268,18 +270,24 @@ class SendBitcoinUseCase @Inject constructor(
                 return null
             }
 
-            // Retrieve private key from secure storage
-            val privateKeyResult = keyManager.getPrivateKeyForSigning(
-                transaction.walletId,
+            // Get encrypted private key directly from SecurityPreferencesRepository
+            val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
+                walletId = transaction.walletId,
                 keyType = "BTC_PRIVATE_KEY"
-            )
-
-            if (privateKeyResult.isFailure) {
-                Log.e("SendBitcoinUC", "Failed to get private key")
+            ) ?: run {
+                Log.e("SendBitcoinUC", "No private key found for wallet: ${transaction.walletId}")
                 return null
             }
 
-            val privateKeyWIF = privateKeyResult.getOrThrow()
+            val (encryptedHex, iv) = encryptedData
+
+            // Decrypt using KeyStoreRepository directly
+            val privateKeyWIF = try {
+                keyStoreRepository.decryptString(encryptedHex, iv.toHex())
+            } catch (e: Exception) {
+                Log.e("SendBitcoinUC", "Failed to decrypt private key: ${e.message}")
+                return null
+            }
 
             val networkParams = when (bitcoinCoin.network) {
                 BitcoinNetwork.MAINNET -> MainNetParams.get()
@@ -287,12 +295,19 @@ class SendBitcoinUseCase @Inject constructor(
             }
 
             // Convert WIF format to ECKey for signing
-            val ecKey = DumpedPrivateKey.fromBase58(networkParams, privateKeyWIF).key
+            val ecKey = try {
+                DumpedPrivateKey.fromBase58(networkParams, privateKeyWIF).key
+            } catch (e: Exception) {
+                Log.e("SendBitcoinUC", "Failed to parse private key: ${e.message}")
+                return null
+            }
+
             val derivedAddress = LegacyAddress.fromKey(networkParams, ecKey).toString()
 
             // Security check: ensure private key matches wallet address
             if (derivedAddress != bitcoinCoin.address) {
                 Log.e("SendBitcoinUC", "Private key doesn't match wallet address")
+                Log.e("SendBitcoinUC", "Derived: $derivedAddress, Expected: ${bitcoinCoin.address}")
                 return null
             }
 
@@ -397,6 +412,9 @@ class SendBitcoinUseCase @Inject constructor(
             false
         }
     }
+
+    // Helper extension for ByteArray to Hex
+    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 }
 
 @Singleton
