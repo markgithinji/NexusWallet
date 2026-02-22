@@ -9,6 +9,23 @@ import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import java.util.UUID
 
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // Fix empty BitcoinTransaction networks
+        database.execSQL("""
+            UPDATE BitcoinTransaction 
+            SET network = 'TESTNET' 
+            WHERE network IS NULL OR network = ''
+        """)
+
+        // Also check BitcoinCoin table if it exists
+        database.execSQL("""
+            UPDATE bitcoin_coins 
+            SET network = 'TESTNET' 
+            WHERE network IS NULL OR network = ''
+        """)
+    }
+}
 
 // Migration from 13 to 14 - Add isIncoming to USDCTransaction
 val MIGRATION_13_14 = object : Migration(13, 14) {
