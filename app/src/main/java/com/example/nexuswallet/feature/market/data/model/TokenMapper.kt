@@ -8,12 +8,12 @@ fun CoinGeckoTokenDto.toToken(): Token {
         id = id,
         symbol = symbol,
         name = name,
-        currentPrice = currentPrice,
-        marketCap = marketCap,
-        marketCapRank = marketCapRank,
-        priceChange24h = priceChange24h,
-        priceChangePercentage24h = priceChangePercentage24h,
-        image = image,
+        currentPrice = currentPrice ?: 0.0,
+        marketCap = marketCap ?: 0.0,
+        marketCapRank = marketCapRank ?: 0,
+        priceChange24h = priceChange24h ?: 0.0,
+        priceChangePercentage24h = priceChangePercentage24h ?: 0.0,
+        image = image ?: "",
         sparklineIn7d = sparklineIn7d?.toSparklineData()
     )
 }
