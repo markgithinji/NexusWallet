@@ -396,20 +396,11 @@ fun WalletCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
             .animateContentSize(),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp,
-            pressedElevation = 4.dp
-        ),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        ),
-        border = BorderStroke(
-            width = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant
+            containerColor = Color.White
         )
     ) {
         Column(
@@ -421,7 +412,7 @@ fun WalletCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Wallet icon
@@ -429,7 +420,7 @@ fun WalletCard(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -446,44 +437,52 @@ fun WalletCard(
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
-                    // Wallet name
                     Text(
-                        text = wallet.name.take(15) + if (wallet.name.length > 15) "..." else "",
-                        style = MaterialTheme.typography.titleSmall,
+                        text = wallet.name,
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    // Balance summary
                     balance?.let {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            val totalBalance = (it.bitcoin?.usdValue ?: 0.0) +
-                                    (it.ethereum?.usdValue ?: 0.0) +
-                                    (it.solana?.usdValue ?: 0.0) +
-                                    (it.usdc?.usdValue ?: 0.0)
+                        val totalBalance = (it.bitcoin?.usdValue ?: 0.0) +
+                                (it.ethereum?.usdValue ?: 0.0) +
+                                (it.solana?.usdValue ?: 0.0) +
+                                (it.usdc?.usdValue ?: 0.0)
 
-                            Text(
-                                text = NumberFormat.getCurrencyInstance(Locale.US).format(totalBalance),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                        Text(
+                            text = NumberFormat.getCurrencyInstance(Locale.US).format(totalBalance),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Black
+                        )
                     }
 
-                    // Show coin badges in a separate row
-                    CoinBadgesRow(wallet = wallet)
+                    // Show coin badges as small indicators
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        wallet.bitcoin?.let {
+                            CoinBadge(text = "BTC", color = Color(0xFFF7931A))
+                        }
+                        wallet.ethereum?.let {
+                            CoinBadge(text = "ETH", color = Color(0xFF627EEA))
+                        }
+                        wallet.solana?.let {
+                            CoinBadge(text = "SOL", color = Color(0xFF00FFA3))
+                        }
+                        wallet.usdc?.let {
+                            CoinBadge(text = "USDC", color = Color(0xFF2775CA))
+                        }
+                    }
                 }
 
-                // Expand/collapse indicator
                 IconButton(
                     onClick = { isExpanded = !isExpanded },
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
                         imageVector = if (isExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
@@ -506,27 +505,6 @@ fun WalletCard(
                     onDelete = { showDeleteDialog = true }
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun CoinBadgesRow(wallet: Wallet) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.padding(top = 4.dp)
-    ) {
-        wallet.bitcoin?.let {
-            CoinBadge(text = "BTC", color = Color(0xFFF7931A))
-        }
-        wallet.ethereum?.let {
-            CoinBadge(text = "ETH", color = Color(0xFF627EEA))
-        }
-        wallet.solana?.let {
-            CoinBadge(text = "SOL", color = Color(0xFF00FFA3))
-        }
-        wallet.usdc?.let {
-            CoinBadge(text = "USDC", color = Color(0xFF2775CA))
         }
     }
 }
