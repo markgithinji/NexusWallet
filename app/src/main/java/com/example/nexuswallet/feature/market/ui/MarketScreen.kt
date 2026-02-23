@@ -1,6 +1,10 @@
 package com.example.nexuswallet.feature.market.ui
 
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,6 +19,7 @@ import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Refresh
@@ -28,6 +33,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
 import com.example.nexuswallet.feature.market.domain.Token
 import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class)
@@ -344,7 +353,10 @@ fun MarketList(
 }
 
 @Composable
-fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
+fun TokenItem(
+    token: Token,
+    onClick: (Token) -> Unit = {}
+) {
     val animatedPrice by animateFloatAsState(
         targetValue = token.currentPrice.toFloat(),
         animationSpec = tween(durationMillis = 300),
@@ -389,13 +401,52 @@ fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
             Spacer(modifier = Modifier.width(10.dp))
 
             // Coin icon
-            AsyncImage(
-                model = token.image,
-                contentDescription = token.name,
+            Box(
                 modifier = Modifier
-                    .size(30.dp)
+                    .size(32.dp)
                     .clip(CircleShape)
-            )
+            ) {
+                val painterState = remember { mutableStateOf<AsyncImagePainter.State?>(null) }
+
+                AsyncImage(
+                    model = token.image,
+                    contentDescription = token.name,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape),
+                    onState = { state ->
+                        painterState.value = state
+                    }
+                )
+
+                // Show shimmer while loading
+                if (painterState.value is AsyncImagePainter.State.Loading ||
+                    painterState.value == null) {
+                    ShimmerPlaceholder(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                    )
+                }
+
+                // Show error icon if failed
+                if (painterState.value is AsyncImagePainter.State.Error) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFF3F4F6)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.AccountBalanceWallet,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = Color(0xFF6B7280)
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.width(10.dp))
 
@@ -429,7 +480,7 @@ fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
                     color = Color.Black
                 )
 
-                val priceChange = token.priceChangePercentage24h
+                val priceChange = token.priceChangePercentage24h ?: 0.0
                 val changeColor = if (priceChange >= 0)
                     Color(0xFF10B981)
                 else
@@ -457,6 +508,38 @@ fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
             }
         }
     }
+}
+
+@Composable
+fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
+    val shimmerColors = listOf(
+        Color(0xFFE0E0E0),
+        Color(0xFFF5F5F5),
+        Color(0xFFE0E0E0)
+    )
+
+    val transition = rememberInfiniteTransition(label = "shimmer_simple")
+    val translateX = transition.animateFloat(
+        initialValue = -1000f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutLinearInEasing)
+        ),
+        label = "shimmer_translate"
+    )
+
+    Box(
+        modifier = modifier
+            .background(Color(0xFFE0E0E0))
+            .drawBehind {
+                val brush = Brush.linearGradient(
+                    colors = shimmerColors,
+                    start = Offset(translateX.value, 0f),
+                    end = Offset(translateX.value + 300f, 300f)
+                )
+                drawRect(brush = brush)
+            }
+    )
 }
 
 @Composable
