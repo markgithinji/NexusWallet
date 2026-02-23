@@ -4,6 +4,7 @@ import android.util.Log
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.BroadcastResult
+import com.example.nexuswallet.feature.coin.SafeApiCall
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -34,40 +35,33 @@ class SolanaBlockchainRepository @Inject constructor(
         }
     }
 
-    suspend fun getRecentBlockhash(network: SolanaNetwork = SolanaNetwork.DEVNET): Result<String> {
-        return try {
-            withContext(Dispatchers.IO) {
+    suspend fun getRecentBlockhash(network: SolanaNetwork = SolanaNetwork.DEVNET): Result<String> =
+        withContext(Dispatchers.IO) {
+            SafeApiCall.make {
                 val connection = getConnection(network)
                 val blockhash = connection.getLatestBlockhash()
                 Log.d("SolanaRepo", "Recent blockhash for ${network.name}: $blockhash")
-                Result.Success(blockhash)
+                blockhash
             }
-        } catch (e: Exception) {
-            Result.Error("Failed to get recent blockhash on ${network.name}: ${e.message}", e)
         }
-    }
 
     suspend fun getBalance(
         address: String,
         network: SolanaNetwork = SolanaNetwork.DEVNET
-    ): Result<BigDecimal> {
-        return try {
-            withContext(Dispatchers.IO) {
-                val connection = getConnection(network)
-                val publicKey = PublicKey(address)
-                val balance = connection.getBalance(publicKey)
+    ): Result<BigDecimal> = withContext(Dispatchers.IO) {
+        SafeApiCall.make {
+            val connection = getConnection(network)
+            val publicKey = PublicKey(address)
+            val balance = connection.getBalance(publicKey)
 
-                val solBalance = BigDecimal(balance).divide(
-                    BigDecimal(LAMPORTS_PER_SOL),
-                    SOL_DECIMALS,
-                    RoundingMode.HALF_UP
-                )
+            val solBalance = BigDecimal(balance).divide(
+                BigDecimal(LAMPORTS_PER_SOL),
+                SOL_DECIMALS,
+                RoundingMode.HALF_UP
+            )
 
-                Log.d("SolanaRepo", "Balance for $address on ${network.name}: $solBalance SOL")
-                Result.Success(solBalance)
-            }
-        } catch (e: Exception) {
-            Result.Error("Failed to get balance on ${network.name}: ${e.message}", e)
+            Log.d("SolanaRepo", "Balance for $address on ${network.name}: $solBalance SOL")
+            solBalance
         }
     }
 
@@ -129,7 +123,6 @@ class SolanaBlockchainRepository @Inject constructor(
         }
     }
 
-
     /**
      * Get recommended priority fee
      */
@@ -138,7 +131,7 @@ class SolanaBlockchainRepository @Inject constructor(
         accounts: List<PublicKey> = emptyList(),
         network: SolanaNetwork = SolanaNetwork.DEVNET
     ): Result<Int> = withContext(Dispatchers.IO) {
-        try {
+        SafeApiCall.make {
             val connection = getConnection(network)
 
             // Fetch recent priority fees
@@ -149,7 +142,7 @@ class SolanaBlockchainRepository @Inject constructor(
             }
 
             if (recentFees.isEmpty()) {
-                return@withContext Result.Success(0)
+                return@make 0
             }
 
             // Extract fee values and sort
@@ -163,11 +156,7 @@ class SolanaBlockchainRepository @Inject constructor(
                 "SolanaRepo",
                 "Recommended priority fee ($percentile percentile): $recommendedFee microLamports"
             )
-            Result.Success(recommendedFee.toInt())
-
-        } catch (e: Exception) {
-            Log.e("SolanaRepo", "Failed to get priority fee: ${e.message}")
-            Result.Error("Failed to get priority fee: ${e.message}", e)
+            recommendedFee.toInt()
         }
     }
 
@@ -176,70 +165,51 @@ class SolanaBlockchainRepository @Inject constructor(
         toAddress: String,
         lamports: Long,
         network: SolanaNetwork = SolanaNetwork.DEVNET
-    ): Result<SolanaSignedTransaction> {
-        return try {
-            val connection = getConnection(network)
-            val blockhash = connection.getLatestBlockhash()
-            val receiver = PublicKey(toAddress)
+    ): Result<SolanaSignedTransaction> = SafeApiCall.make {
+        val connection = getConnection(network)
+        val blockhash = connection.getLatestBlockhash()
+        val receiver = PublicKey(toAddress)
 
-            val instructions = listOf(
-                TransferInstruction(fromKeypair.publicKey, receiver, lamports)
-            )
+        val instructions = listOf(
+            TransferInstruction(fromKeypair.publicKey, receiver, lamports)
+        )
 
-            val message = TransactionMessage.newMessage(
-                feePayer = fromKeypair.publicKey,
-                recentBlockhash = blockhash,
-                instructions = instructions
-            )
+        val message = TransactionMessage.newMessage(
+            feePayer = fromKeypair.publicKey,
+            recentBlockhash = blockhash,
+            instructions = instructions
+        )
 
-            val transaction = VersionedTransaction(message)
-            transaction.sign(fromKeypair)
+        val transaction = VersionedTransaction(message)
+        transaction.sign(fromKeypair)
 
-            val serializedTx = transaction.serialize()
-            val signature = if (serializedTx.size >= 64) {
-                serializedTx.copyOfRange(0, 64).toHexString()
-            } else {
-                val hash = MessageDigest.getInstance("SHA-256").digest(serializedTx)
-                hash.copyOf(64).toHexString()
-            }
-
-            Result.Success(
-                SolanaSignedTransaction(
-                    signature = signature,
-                    serialize = { serializedTx }
-                )
-            )
-        } catch (e: Exception) {
-            Result.Error("Failed to create transaction: ${e.message}", e)
+        val serializedTx = transaction.serialize()
+        val signature = if (serializedTx.size >= 64) {
+            serializedTx.copyOfRange(0, 64).toHexString()
+        } else {
+            val hash = MessageDigest.getInstance("SHA-256").digest(serializedTx)
+            hash.copyOf(64).toHexString()
         }
+
+        SolanaSignedTransaction(
+            signature = signature,
+            serialize = { serializedTx }
+        )
     }
 
     fun broadcastTransaction(
         signedTransaction: SolanaSignedTransaction,
         network: SolanaNetwork = SolanaNetwork.DEVNET
-    ): Result<BroadcastResult> {
-        return try {
-            val connection = getConnection(network)
-            val serializedTx = signedTransaction.serialize()
-            val signature = connection.sendTransaction(serializedTx)
+    ): Result<BroadcastResult> = SafeApiCall.make {
+        val connection = getConnection(network)
+        val serializedTx = signedTransaction.serialize()
+        val signature = connection.sendTransaction(serializedTx)
 
-            Log.d("SolanaRepo", "Broadcast successful on ${network.name}: $signature")
-            Result.Success(
-                BroadcastResult(
-                    success = true,
-                    hash = signature
-                )
-            )
-
-        } catch (e: Exception) {
-            Log.e("SolanaRepo", "Broadcast failed on ${network.name}: ${e.message}")
-            Result.Success(
-                BroadcastResult(
-                    success = false,
-                    error = e.message ?: "Broadcast failed on ${network.name}"
-                )
-            )
-        }
+        Log.d("SolanaRepo", "Broadcast successful on ${network.name}: $signature")
+        BroadcastResult(
+            success = true,
+            hash = signature
+        )
     }
 
     suspend fun getTransactionSignatures(
@@ -247,7 +217,7 @@ class SolanaBlockchainRepository @Inject constructor(
         network: SolanaNetwork = SolanaNetwork.DEVNET,
         limit: Int = DEFAULT_SIGNATURE_LIMIT
     ): Result<List<SolanaTransactionResponse>> = withContext(Dispatchers.IO) {
-        try {
+        SafeApiCall.make {
             val connection = getConnection(network)
             val publicKey = PublicKey(address)
 
@@ -269,10 +239,7 @@ class SolanaBlockchainRepository @Inject constructor(
                 "SolanaRepo",
                 "Found ${responses.size} signatures for $address on ${network.name}"
             )
-            Result.Success(responses)
-
-        } catch (e: Exception) {
-            Result.Error("Failed to get signatures on ${network.name}: ${e.message}", e)
+            responses
         }
     }
 
@@ -280,7 +247,7 @@ class SolanaBlockchainRepository @Inject constructor(
         signature: String,
         network: SolanaNetwork = SolanaNetwork.DEVNET
     ): Result<SolanaTransactionDetailsResponse> = withContext(Dispatchers.IO) {
-        try {
+        SafeApiCall.make {
             val request = RpcRequest(
                 method = "getTransaction",
                 params = listOf(
@@ -297,20 +264,17 @@ class SolanaBlockchainRepository @Inject constructor(
 
             if (response.error != null) {
                 Log.e("SolanaRepo", "RPC error for tx $signature: ${response.error.message}")
-                Result.Error("RPC error: ${response.error.message}")
+                throw Exception("RPC error: ${response.error.message}")
             } else if (response.result != null) {
                 Log.d(
                     "SolanaRepo",
                     "Got transaction details for ${signature.take(8)}... on ${network.name}"
                 )
-                Result.Success(response.result)
+                response.result
             } else {
                 Log.w("SolanaRepo", "Transaction $signature not found")
-                Result.Error("Transaction not found on ${network.name}")
+                throw Exception("Transaction not found on ${network.name}")
             }
-        } catch (e: Exception) {
-            Log.e("SolanaRepo", "Failed to get transaction details: ${e.message}", e)
-            Result.Error("Failed to get transaction details on ${network.name}: ${e.message}", e)
         }
     }
 
@@ -425,7 +389,6 @@ class SolanaBlockchainRepository @Inject constructor(
         // Solana constants
         private const val LAMPORTS_PER_SOL = 1_000_000_000L
         private const val SOLANA_FIXED_FEE_LAMPORTS = 5000L
-        private const val DEFAULT_COMPUTE_UNITS = 1_400_000
         private const val SOL_DECIMALS = 9
 
         // Rate limiting
