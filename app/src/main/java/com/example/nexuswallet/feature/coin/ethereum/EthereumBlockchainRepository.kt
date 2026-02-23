@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.coin.BroadcastResult
+import com.example.nexuswallet.feature.coin.SafeApiCall
 import kotlinx.coroutines.delay
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -19,82 +20,59 @@ class EthereumBlockchainRepository @Inject constructor(
     private val etherscanApi: EtherscanApiService
 ) {
     private val gasPriceCache = mutableMapOf<String, CachedGasPrice>()
-
     private val confirmationTimeCache = mutableMapOf<String, CachedConfirmationTime>()
 
     suspend fun getEthereumBalance(
         address: String,
         network: EthereumNetwork = EthereumNetwork.Mainnet
-    ): Result<BigDecimal> {
-        return try {
-            val chainId = network.chainId
-            val apiKey = BuildConfig.ETHERSCAN_API_KEY
+    ): Result<BigDecimal> = SafeApiCall.make {
+        Log.d("EthereumRepo", "Fetching balance for $address on ${network.displayName}")
 
-            val response = etherscanApi.getEthereumBalance(
-                chainId = chainId,
-                address = address,
-                apiKey = apiKey
-            )
+        val chainId = network.chainId
+        val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
-            if (response.status == "1") {
-                val wei = BigDecimal(response.result)
-                val eth = wei.divide(BigDecimal(WEI_PER_ETH), ETH_DECIMALS, RoundingMode.HALF_UP)
-                Log.d(
-                    "EthereumRepo",
-                    "Balance fetched for $address on ${network.displayName}: $eth ETH"
-                )
-                Result.Success(eth)
-            } else {
-                Log.e(
-                    "EthereumRepo",
-                    "Balance API error for ${network.displayName}: ${response.message}"
-                )
-                Result.Error("API error: ${response.message}")
-            }
-        } catch (e: Exception) {
-            Log.e(
+        val response = etherscanApi.getEthereumBalance(
+            chainId = chainId,
+            address = address,
+            apiKey = apiKey
+        )
+
+        if (response.status == "1") {
+            val wei = BigDecimal(response.result)
+            val eth = wei.divide(BigDecimal(WEI_PER_ETH), ETH_DECIMALS, RoundingMode.HALF_UP)
+            Log.d(
                 "EthereumRepo",
-                "Failed to get balance on ${network.displayName}: ${e.message}",
-                e
+                "Balance fetched for $address on ${network.displayName}: $eth ETH"
             )
-            Result.Error("Failed to get balance: ${e.message}", e)
+            eth
+        } else {
+            throw Exception("API error: ${response.message}")
         }
     }
 
     suspend fun getEthereumTransactions(
         address: String,
         network: EthereumNetwork = EthereumNetwork.Mainnet
-    ): Result<List<EtherscanTransaction>> {
-        return try {
-            val chainId = network.chainId
-            val apiKey = BuildConfig.ETHERSCAN_API_KEY
+    ): Result<List<EtherscanTransaction>> = SafeApiCall.make {
+        Log.d("EthereumRepo", "Fetching transactions for $address on ${network.displayName}")
 
-            val response = etherscanApi.getEthereumTransactions(
-                chainId = chainId,
-                address = address,
-                apiKey = apiKey
-            )
+        val chainId = network.chainId
+        val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
-            if (response.status == "1") {
-                Log.d(
-                    "EthereumRepo",
-                    "Fetched ${response.result.size} transactions for $address on ${network.displayName}"
-                )
-                Result.Success(response.result)
-            } else {
-                Log.e(
-                    "EthereumRepo",
-                    "Transactions API error for ${network.displayName}: ${response.message}"
-                )
-                Result.Error("API error: ${response.message}")
-            }
-        } catch (e: Exception) {
-            Log.e(
+        val response = etherscanApi.getEthereumTransactions(
+            chainId = chainId,
+            address = address,
+            apiKey = apiKey
+        )
+
+        if (response.status == "1") {
+            Log.d(
                 "EthereumRepo",
-                "Failed to get transactions on ${network.displayName}: ${e.message}",
-                e
+                "Fetched ${response.result.size} transactions for $address on ${network.displayName}"
             )
-            Result.Error("Failed to get transactions: ${e.message}", e)
+            response.result
+        } else {
+            throw Exception("API error: ${response.message}")
         }
     }
 
@@ -102,95 +80,84 @@ class EthereumBlockchainRepository @Inject constructor(
      * Get current gas price from Etherscan - works for all supported chains
      * Uses gasoracle for Mainnet, proxy eth_gasPrice for other networks
      */
-    suspend fun getCurrentGasPrice(network: EthereumNetwork = EthereumNetwork.Mainnet): Result<GasPrice> {
-        return try {
-            Log.d("EthereumRepo", "Fetching gas price for network: ${network.displayName} from Etherscan")
+    suspend fun getCurrentGasPrice(network: EthereumNetwork = EthereumNetwork.Mainnet): Result<GasPrice> = SafeApiCall.make {
+        Log.d("EthereumRepo", "Fetching gas price for network: ${network.displayName} from Etherscan")
 
-            // Check cache for this specific network
-            val cacheKey = network.chainId
-            gasPriceCache[cacheKey]?.let { cached ->
-                if (System.currentTimeMillis() - cached.timestamp < GAS_PRICE_CACHE_TTL_MS) {
-                    Log.d("EthereumRepo", "Using cached gas price for ${network.displayName}")
-                    return Result.Success(cached.price)
-                } else {
-                    gasPriceCache.remove(cacheKey)
-                }
+        // Check cache for this specific network
+        val cacheKey = network.chainId
+        gasPriceCache[cacheKey]?.let { cached ->
+            if (System.currentTimeMillis() - cached.timestamp < GAS_PRICE_CACHE_TTL_MS) {
+                Log.d("EthereumRepo", "Using cached gas price for ${network.displayName}")
+                return@make cached.price
+            } else {
+                gasPriceCache.remove(cacheKey)
             }
-
-            val chainId = network.chainId
-            val apiKey = BuildConfig.ETHERSCAN_API_KEY
-
-            val gasPrice = when (network) {
-                is EthereumNetwork.Mainnet -> {
-                    // Mainnet uses gasoracle for Safe/Propose/Fast prices
-                    val response = etherscanApi.getGasPrice(
-                        chainId = chainId,
-                        apiKey = apiKey
-                    )
-
-                    if (response.status == "1") {
-                        GasPrice(
-                            safe = response.result.SafeGasPrice,
-                            propose = response.result.ProposeGasPrice,
-                            fast = response.result.FastGasPrice,
-                            lastBlock = response.result.lastBlock,
-                            baseFee = response.result.suggestBaseFee
-                        )
-                    } else {
-                        Log.e(
-                            "EthereumRepo",
-                            "Gas price API error for ${network.displayName}: ${response.message}"
-                        )
-                        return Result.Error("Gas price API error: ${response.message}")
-                    }
-                }
-
-                is EthereumNetwork.Sepolia -> {
-                    // Sepolia uses proxy eth_gasPrice endpoint
-                    val response = etherscanApi.getGasPriceProxy(
-                        chainId = chainId,
-                        apiKey = apiKey
-                    )
-
-                    // Parse hex result to wei
-                    val gasPriceWei = org.web3j.utils.Numeric.toBigInt(response.result)
-                    Log.d("EthereumRepo", "Raw gas price wei for Sepolia: $gasPriceWei")
-
-                    // Convert wei to Gwei with HIGHER PRECISION (6 decimal places)
-                    val gasPriceGwei = gasPriceWei.toBigDecimal().divide(
-                        BigDecimal(WEI_PER_GWEI),
-                        6,  // Use 6 decimal places to preserve micro-Gwei precision
-                        RoundingMode.HALF_UP
-                    )
-
-                    val priceStr = gasPriceGwei.toString()
-                    Log.d("EthereumRepo", "Gas price in Gwei for Sepolia: $priceStr")
-
-                    // For Sepolia, we use the same price for all levels with multipliers
-                    // Keep 6 decimal places throughout
-                    GasPrice(
-                        safe = (gasPriceGwei * SLOW_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString(),
-                        propose = priceStr,
-                        fast = (gasPriceGwei * FAST_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString(),
-                        lastBlock = null,
-                        baseFee = null
-                    )
-                }
-            }
-
-            // Update cache for this network
-            gasPriceCache[cacheKey] = CachedGasPrice(gasPrice, System.currentTimeMillis())
-
-            Log.d(
-                "EthereumRepo",
-                "Gas price response for ${network.displayName} - Safe: ${gasPrice.safe}, Propose: ${gasPrice.propose}, Fast: ${gasPrice.fast}"
-            )
-            Result.Success(gasPrice)
-
-        } catch (e: Exception) {
-            Log.e("EthereumRepo", "Exception getting gas price for ${network.displayName}", e)
-            Result.Error("Failed to get gas price: ${e.message}")
         }
+
+        val chainId = network.chainId
+        val apiKey = BuildConfig.ETHERSCAN_API_KEY
+
+        val gasPrice = when (network) {
+            is EthereumNetwork.Mainnet -> {
+                // Mainnet uses gasoracle for Safe/Propose/Fast prices
+                val response = etherscanApi.getGasPrice(
+                    chainId = chainId,
+                    apiKey = apiKey
+                )
+
+                if (response.status == "1") {
+                    GasPrice(
+                        safe = response.result.SafeGasPrice,
+                        propose = response.result.ProposeGasPrice,
+                        fast = response.result.FastGasPrice,
+                        lastBlock = response.result.lastBlock,
+                        baseFee = response.result.suggestBaseFee
+                    )
+                } else {
+                    throw Exception("Gas price API error: ${response.message}")
+                }
+            }
+
+            is EthereumNetwork.Sepolia -> {
+                // Sepolia uses proxy eth_gasPrice endpoint
+                val response = etherscanApi.getGasPriceProxy(
+                    chainId = chainId,
+                    apiKey = apiKey
+                )
+
+                // Parse hex result to wei
+                val gasPriceWei = org.web3j.utils.Numeric.toBigInt(response.result)
+                Log.d("EthereumRepo", "Raw gas price wei for Sepolia: $gasPriceWei")
+
+                // Convert wei to Gwei with HIGHER PRECISION (6 decimal places)
+                val gasPriceGwei = gasPriceWei.toBigDecimal().divide(
+                    BigDecimal(WEI_PER_GWEI),
+                    6,
+                    RoundingMode.HALF_UP
+                )
+
+                val priceStr = gasPriceGwei.toString()
+                Log.d("EthereumRepo", "Gas price in Gwei for Sepolia: $priceStr")
+
+                // For Sepolia, we use the same price for all levels with multipliers
+                GasPrice(
+                    safe = (gasPriceGwei * SLOW_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString(),
+                    propose = priceStr,
+                    fast = (gasPriceGwei * FAST_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString(),
+                    lastBlock = null,
+                    baseFee = null
+                )
+            }
+        }
+
+        // Update cache for this network
+        gasPriceCache[cacheKey] = CachedGasPrice(gasPrice, System.currentTimeMillis())
+
+        Log.d(
+            "EthereumRepo",
+            "Gas price response for ${network.displayName} - Safe: ${gasPrice.safe}, Propose: ${gasPrice.propose}, Fast: ${gasPrice.fast}"
+        )
+        gasPrice
     }
 
     /**
@@ -241,8 +208,7 @@ class EthereumBlockchainRepository @Inject constructor(
                 )
 
                 // Calculate wei values
-                val gasPriceWei =
-                    (BigDecimal(gasPriceGwei) * BigDecimal(WEI_PER_GWEI)).toBigInteger()
+                val gasPriceWei = (BigDecimal(gasPriceGwei) * BigDecimal(WEI_PER_GWEI)).toBigInteger()
                 val totalFeeWei = gasPriceWei.multiply(BigInteger.valueOf(GAS_LIMIT_STANDARD))
                 val totalFeeEth = BigDecimal(totalFeeWei).divide(
                     BigDecimal(WEI_PER_ETH),
@@ -321,7 +287,7 @@ class EthereumBlockchainRepository @Inject constructor(
     private suspend fun getConfirmationTimeEstimate(
         gasPriceWei: String,
         network: EthereumNetwork
-    ): Result<Int> {
+    ): Result<Int> = SafeApiCall.make {
         // Create cache key that includes both gas price and network
         val cacheKey = "${network.chainId}_$gasPriceWei"
 
@@ -329,47 +295,37 @@ class EthereumBlockchainRepository @Inject constructor(
         confirmationTimeCache[cacheKey]?.let { cached ->
             if (System.currentTimeMillis() - cached.timestamp < CONFIRMATION_TIME_CACHE_TTL_MS) {
                 Log.d("EthereumRepo", "Using cached confirmation time for ${network.displayName}: ${cached.seconds} seconds")
-                return Result.Success(cached.seconds)
+                return@make cached.seconds
             } else {
                 confirmationTimeCache.remove(cacheKey)
             }
         }
 
-        return try {
-            val chainId = network.chainId
-            val apiKey = BuildConfig.ETHERSCAN_API_KEY
+        val chainId = network.chainId
+        val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
-            Log.d("EthereumRepo", "Fetching confirmation time for ${network.displayName} with gas price: $gasPriceWei wei")
+        Log.d("EthereumRepo", "Fetching confirmation time for ${network.displayName} with gas price: $gasPriceWei wei")
 
-            val response = etherscanApi.getConfirmationTimeEstimate(
-                chainId = chainId,
-                gasPriceWei = gasPriceWei,
-                apiKey = apiKey
-            )
+        val response = etherscanApi.getConfirmationTimeEstimate(
+            chainId = chainId,
+            gasPriceWei = gasPriceWei,
+            apiKey = apiKey
+        )
 
-            if (response.status == "1") {
-                val seconds = response.result.toIntOrNull()
-                if (seconds != null) {
-                    Log.d("EthereumRepo", "Confirmation time estimate for ${network.displayName}: $seconds seconds")
+        if (response.status == "1") {
+            val seconds = response.result.toIntOrNull()
+            if (seconds != null) {
+                Log.d("EthereumRepo", "Confirmation time estimate for ${network.displayName}: $seconds seconds")
 
-                    // Cache the result
-                    confirmationTimeCache[cacheKey] = CachedConfirmationTime(seconds, System.currentTimeMillis())
+                // Cache the result
+                confirmationTimeCache[cacheKey] = CachedConfirmationTime(seconds, System.currentTimeMillis())
 
-                    Result.Success(seconds)
-                } else {
-                    Log.e("EthereumRepo", "Invalid confirmation time format: ${response.result}")
-                    Result.Error("Invalid confirmation time format")
-                }
+                seconds
             } else {
-                Log.e(
-                    "EthereumRepo",
-                    "Failed to get confirmation time for ${network.displayName}: ${response.message}"
-                )
-                Result.Error("Confirmation time API error: ${response.message}")
+                throw Exception("Invalid confirmation time format: ${response.result}")
             }
-        } catch (e: Exception) {
-            Log.e("EthereumRepo", "Error getting confirmation time for ${network.displayName}", e)
-            Result.Error("Failed to get confirmation time: ${e.message}")
+        } else {
+            throw Exception("Confirmation time API error: ${response.message}")
         }
     }
 
@@ -388,10 +344,8 @@ class EthereumBlockchainRepository @Inject constructor(
      */
     private fun formatGasPrice(price: BigDecimal): String {
         return if (price < BigDecimal.ONE) {
-            // For prices less than 1 Gwei, show with 6 decimal places
             String.format("%.6f", price)
         } else {
-            // For prices 1 Gwei or more, show with 2 decimal places
             String.format("%.2f", price)
         }
     }
@@ -399,99 +353,78 @@ class EthereumBlockchainRepository @Inject constructor(
     suspend fun getEthereumNonce(
         address: String,
         network: EthereumNetwork = EthereumNetwork.Mainnet
-    ): Result<Int> {
-        return try {
-            val chainId = network.chainId
-            val apiKey = BuildConfig.ETHERSCAN_API_KEY
+    ): Result<Int> = SafeApiCall.make {
+        Log.d(
+            "EthereumRepo",
+            "Fetching nonce for $address on ${network.displayName} with tag=pending"
+        )
 
-            Log.d(
-                "EthereumRepo",
-                "Fetching nonce for $address on ${network.displayName} with tag=pending"
-            )
+        val chainId = network.chainId
+        val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
-            val response = etherscanApi.getTransactionCount(
-                chainId = chainId,
-                address = address,
-                tag = "pending",
-                apiKey = apiKey
-            )
+        val response = etherscanApi.getTransactionCount(
+            chainId = chainId,
+            address = address,
+            tag = "pending",
+            apiKey = apiKey
+        )
 
-            Log.d("EthereumRepo", "Raw nonce response: $response")
+        Log.d("EthereumRepo", "Raw nonce response: $response")
 
-            // Handle the response based on network
-            val nonce = when (network) {
-                is EthereumNetwork.Mainnet -> {
-                    // Mainnet returns JSON-RPC format with hex result
-                    if (response.result.isNotEmpty() && response.result != "0x") {
-                        val cleanHex = if (response.result.startsWith("0x")) {
-                            response.result
-                        } else {
-                            "0x${response.result}"
-                        }
-                        val nonceValue = org.web3j.utils.Numeric.toBigInt(cleanHex).toInt()
-                        Log.d(
-                            "EthereumRepo",
-                            "Parsed Mainnet nonce: $nonceValue from hex: $cleanHex"
-                        )
-                        nonceValue
+        // Handle the response based on network
+        val nonce = when (network) {
+            is EthereumNetwork.Mainnet -> {
+                if (response.result.isNotEmpty() && response.result != "0x") {
+                    val cleanHex = if (response.result.startsWith("0x")) {
+                        response.result
                     } else {
-                        0
+                        "0x${response.result}"
                     }
-                }
-
-                is EthereumNetwork.Sepolia -> {
-                    // Sepolia returns hex format as well
-                    val nonceValue = org.web3j.utils.Numeric.toBigInt(response.result).toInt()
-                    Log.d("EthereumRepo", "Parsed Sepolia hex nonce: $nonceValue")
-                    nonceValue
+                    org.web3j.utils.Numeric.toBigInt(cleanHex).toInt()
+                } else {
+                    0
                 }
             }
 
-            Log.d("EthereumRepo", "Final nonce for $address on ${network.displayName}: $nonce")
-            Result.Success(nonce)
-
-        } catch (e: Exception) {
-            Log.e("EthereumRepo", "Failed to get nonce on ${network.displayName}: ${e.message}", e)
-            Result.Error("Failed to get nonce: ${e.message}")
+            is EthereumNetwork.Sepolia -> {
+                org.web3j.utils.Numeric.toBigInt(response.result).toInt()
+            }
         }
+
+        Log.d("EthereumRepo", "Final nonce for $address on ${network.displayName}: $nonce")
+        nonce
     }
 
     suspend fun broadcastEthereumTransaction(
         rawTx: String,
         network: EthereumNetwork = EthereumNetwork.Mainnet
-    ): Result<BroadcastResult> {
+    ): Result<BroadcastResult> = SafeApiCall.make {
         Log.d("EthereumRepo", "Broadcasting transaction on ${network.displayName}")
 
-        return try {
-            val chainId = network.chainId
-            val apiKey = BuildConfig.ETHERSCAN_API_KEY
+        val chainId = network.chainId
+        val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
-            delay(RETRY_DELAY_MS)
+        delay(RETRY_DELAY_MS)
 
-            val response = etherscanApi.broadcastTransaction(
-                chainId = chainId,
-                hex = rawTx,
-                apiKey = apiKey
-            )
+        val response = etherscanApi.broadcastTransaction(
+            chainId = chainId,
+            hex = rawTx,
+            apiKey = apiKey
+        )
 
-            Log.d("EthereumRepo", "Broadcast raw response on ${network.displayName}: $response")
+        Log.d("EthereumRepo", "Broadcast raw response on ${network.displayName}: $response")
 
-            return when (network) {
-                is EthereumNetwork.Mainnet -> handleMainnetBroadcast(response)
-                is EthereumNetwork.Sepolia -> handleSepoliaBroadcast(response)
-            }
-
-        } catch (e: Exception) {
-            Log.e("EthereumRepo", "Network error broadcasting on ${network.displayName}", e)
-            Result.Error("Network error: ${e.message}")
+        when (network) {
+            is EthereumNetwork.Mainnet -> handleMainnetBroadcast(response)
+            is EthereumNetwork.Sepolia -> handleSepoliaBroadcast(response)
         }
     }
 
-    private fun handleMainnetBroadcast(response: EtherscanBroadcastResponse): Result<BroadcastResult> {
+    private fun handleMainnetBroadcast(response: EtherscanBroadcastResponse): BroadcastResult {
         // First check if there's an error object
         response.error?.let { error ->
             Log.e("EthereumRepo", "Broadcast error on Mainnet: ${error.message}")
-            return Result.Error(error.message)
+            throw Exception(error.message)
         }
 
         // Check if result is present and looks like a transaction hash
@@ -499,22 +432,20 @@ class EthereumBlockchainRepository @Inject constructor(
             when {
                 result.startsWith("0x") && result.length == TX_HASH_LENGTH -> {
                     Log.d("EthereumRepo", "Broadcast successful on Mainnet: $result")
-                    return Result.Success(
-                        BroadcastResult(
-                            success = true,
-                            hash = result
-                        )
+                    return BroadcastResult(
+                        success = true,
+                        hash = result
                     )
                 }
 
                 result.contains("nonce") -> {
                     Log.e("EthereumRepo", "Nonce error: $result")
-                    return Result.Error("Nonce error: $result")
+                    throw Exception("Nonce error: $result")
                 }
 
                 result.contains("insufficient funds") || result.contains("balance") -> {
                     Log.e("EthereumRepo", "Insufficient funds: $result")
-                    return Result.Error("Insufficient balance: $result")
+                    throw Exception("Insufficient balance: $result")
                 }
 
                 result.contains("already known") -> {
@@ -522,14 +453,12 @@ class EthereumBlockchainRepository @Inject constructor(
                     val hashPattern = TX_HASH_REGEX
                     val hash = hashPattern.find(result)?.value
                     if (hash != null) {
-                        return Result.Success(
-                            BroadcastResult(
-                                success = true,
-                                hash = hash
-                            )
+                        return BroadcastResult(
+                            success = true,
+                            hash = hash
                         )
                     } else {
-                        return Result.Error(result)
+                        throw Exception(result)
                     }
                 }
             }
@@ -537,37 +466,35 @@ class EthereumBlockchainRepository @Inject constructor(
 
         // If we get here, something unexpected happened
         Log.e("EthereumRepo", "Broadcast failed with unexpected response")
-        return Result.Error(response.message ?: "Unknown error")
+        throw Exception(response.message ?: "Unknown error")
     }
 
-    private fun handleSepoliaBroadcast(response: EtherscanBroadcastResponse): Result<BroadcastResult> {
+    private fun handleSepoliaBroadcast(response: EtherscanBroadcastResponse): BroadcastResult {
         Log.d("EthereumRepo", "Handling Sepolia broadcast response: $response")
 
-        // First check if there's an error object (this is the actual error case)
+        // First check if there's an error object
         response.error?.let { error ->
             Log.e("EthereumRepo", "Broadcast error on Sepolia: ${error.message}")
-            return Result.Error(error.message)
+            throw Exception(error.message)
         }
 
-        // Check if result is present and looks like a transaction hash (success case)
+        // Check if result is present and looks like a transaction hash
         response.result?.let { result ->
             if (result.startsWith("0x") && result.length == TX_HASH_LENGTH) {
                 Log.d("EthereumRepo", "Broadcast successful on Sepolia: $result")
-                return Result.Success(
-                    BroadcastResult(
-                        success = true,
-                        hash = result
-                    )
+                return BroadcastResult(
+                    success = true,
+                    hash = result
                 )
             } else {
                 Log.e("EthereumRepo", "Invalid transaction hash format on Sepolia: $result")
-                return Result.Error("Invalid response format")
+                throw Exception("Invalid response format")
             }
         }
 
         // If we get here, something unexpected happened
         Log.e("EthereumRepo", "Unexpected broadcast response on Sepolia: $response")
-        return Result.Error(response.message ?: "Unknown error")
+        throw Exception(response.message ?: "Unknown error")
     }
 
     companion object {
@@ -578,8 +505,8 @@ class EthereumBlockchainRepository @Inject constructor(
         private const val ETH_DECIMALS = 18
 
         // Price multipliers for different fee levels
-        private val SLOW_PRICE_MULTIPLIER = BigDecimal("0.9")   // 10% cheaper than safe
-        private val FAST_PRICE_MULTIPLIER = BigDecimal("1.2")   // 20% more expensive than fast
+        private val SLOW_PRICE_MULTIPLIER = BigDecimal("0.9")
+        private val FAST_PRICE_MULTIPLIER = BigDecimal("1.2")
 
         // Gas price cache TTL (30 seconds)
         private const val GAS_PRICE_CACHE_TTL_MS = 30000L
@@ -591,7 +518,7 @@ class EthereumBlockchainRepository @Inject constructor(
         private const val TX_HASH_LENGTH = 66
         private val TX_HASH_REGEX = Regex("^0x[a-fA-F0-9]{64}$")
 
-        // Cache TTL for confirmation times (5 minutes since gas prices change slowly)
-        private const val CONFIRMATION_TIME_CACHE_TTL_MS = 300000L // 5 minutes
+        // Cache TTL for confirmation times (5 minutes)
+        private const val CONFIRMATION_TIME_CACHE_TTL_MS = 300000L
     }
 }
