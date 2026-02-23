@@ -15,6 +15,7 @@ object RetrofitClient {
         ignoreUnknownKeys = true
         coerceInputValues = true
         isLenient = true
+        explicitNulls = false
     }
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
