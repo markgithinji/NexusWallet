@@ -1,29 +1,33 @@
 package com.example.nexuswallet.feature.market.data.repository
 
-import com.example.nexuswallet.feature.market.data.remote.CryptoWebSocket
+import com.example.nexuswallet.feature.market.data.remote.BinanceWebSocket
+import com.example.nexuswallet.feature.market.data.remote.TokenPriceUpdate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
+import javax.inject.Singleton
 
-
-class WebSocketRepository (
-    private val webSocketManager: CryptoWebSocket = CryptoWebSocket.getInstance()
+@Singleton
+class WebSocketRepository @Inject constructor(
+    private val webSocketManager: BinanceWebSocket = BinanceWebSocket.getInstance()
 ) {
-
     init {
         webSocketManager.connect()
     }
 
+    // For simple price updates
     fun getLivePrices(): Flow<Map<String, Double>> {
-        return webSocketManager.priceUpdates.map { stringMap ->
-            stringMap.mapValues { (_, value) ->
-                value.toDoubleOrNull() ?: 0.0
-            }
-        }
+        return webSocketManager.priceUpdates
+    }
+
+    // Get full updates with price and percentage
+    fun getFullTokenUpdates(): Flow<Map<String, TokenPriceUpdate>> {
+        return webSocketManager.fullUpdates
     }
 
     fun getConnectionState(): Flow<Boolean> {
         return webSocketManager.connectionState.map { state ->
-            state == CryptoWebSocket.ConnectionState.CONNECTED
+            state == BinanceWebSocket.ConnectionState.CONNECTED
         }
     }
 
