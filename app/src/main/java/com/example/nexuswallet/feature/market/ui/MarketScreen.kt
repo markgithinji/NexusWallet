@@ -345,14 +345,6 @@ fun MarketList(
 
 @Composable
 fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
-    var pulseScale by remember { mutableStateOf(1f) }
-
-    LaunchedEffect(token.currentPrice) {
-        pulseScale = 1.02f
-        delay(100)
-        pulseScale = 1f
-    }
-
     val animatedPrice by animateFloatAsState(
         targetValue = token.currentPrice.toFloat(),
         animationSpec = tween(durationMillis = 300),
@@ -362,10 +354,6 @@ fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = pulseScale
-                scaleY = pulseScale
-            }
             .clickable { onClick(token) },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
