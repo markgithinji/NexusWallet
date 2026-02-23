@@ -1,11 +1,14 @@
 package com.example.nexuswallet.feature.market.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.market.data.remote.TokenPriceUpdate
 import com.example.nexuswallet.feature.market.data.repository.CoinGeckoRepository
 import com.example.nexuswallet.feature.market.data.repository.WebSocketRepository
 import com.example.nexuswallet.feature.market.domain.Token
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,10 +22,6 @@ class MarketViewModel(
     private val _uiState = MutableStateFlow<MarketUiState>(MarketUiState.Loading)
     val uiState: StateFlow<MarketUiState> = _uiState.asStateFlow()
 
-    // WebSocket Live Prices
-    private val _livePrices = MutableStateFlow<Map<String, Double>>(emptyMap())
-    val livePrices: StateFlow<Map<String, Double>> = _livePrices.asStateFlow()
-
     // All tokens from REST API (original, unfiltered)
     private val _allTokens = MutableStateFlow<List<Token>>(emptyList())
     val allTokens: StateFlow<List<Token>> = _allTokens.asStateFlow()
@@ -30,10 +29,6 @@ class MarketViewModel(
     // Filtered tokens (with search applied)
     private val _filteredTokens = MutableStateFlow<List<Token>>(emptyList())
     val filteredTokens: StateFlow<List<Token>> = _filteredTokens.asStateFlow()
-
-    // Refresh state
-    private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     // WebSocket connection state
     private val _isWebSocketConnected = MutableStateFlow(false)
@@ -45,38 +40,99 @@ class MarketViewModel(
 
     private var webSocketCollectorJob: Job? = null
 
+    private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
+
+    private var currentPage = 1
+    private val perPage = 100
+
     init {
-        loadMarketData()
+        loadInitialData()
         setupWebSocketObservers()
     }
 
-    private fun loadMarketData() {
+    private fun loadInitialData() {
         viewModelScope.launch {
-            try {
-                if (!_isRefreshing.value) {
-                    _uiState.value = MarketUiState.Loading
-                }
-                val tokens = coinGeckoRepository.getTopCryptocurrencies()
-                _allTokens.value = tokens
-                _uiState.value = MarketUiState.Success(tokens)
-                applySearchFilter() // Apply current search to new data
-                updateTokensWithLivePrices(tokens, _livePrices.value)
-            } catch (e: Exception) {
-                _uiState.value = MarketUiState.Error(e.message ?: "Failed to load data")
-            } finally {
-                _isRefreshing.value = false
+            _uiState.value = MarketUiState.Loading
+
+            // Load first page
+            val firstPage = coinGeckoRepository.getTopCryptocurrencies(
+                perPage = perPage,
+                page = 1
+            )
+
+            if (firstPage.isNotEmpty()) {
+                _allTokens.value = firstPage
+                _uiState.value = MarketUiState.Success(firstPage)
+                currentPage = 2
+
+                // Load next pages in background
+                loadMorePages()
+            } else {
+                _uiState.value = MarketUiState.Error("Failed to load market data")
             }
         }
     }
 
+    private fun loadMorePages() {
+        viewModelScope.launch {
+            _isLoadingMore.value = true
+
+            // Load pages 2 and 3
+            val moreTokens = mutableListOf<Token>()
+
+            for (page in currentPage..3) {
+                val tokens = coinGeckoRepository.getTopCryptocurrencies(
+                    perPage = perPage,
+                    page = page
+                )
+                moreTokens.addAll(tokens)
+
+                // Update UI incrementally
+                if (tokens.isNotEmpty()) {
+                    _allTokens.value = _allTokens.value + tokens
+                }
+
+                delay(1000) // Rate limit protection
+            }
+
+            currentPage = 4
+            _isLoadingMore.value = false
+            Log.d("MarketVM", "Total tokens loaded: ${_allTokens.value.size}")
+        }
+    }
+
+    // Load more on demand (for infinite scrolling)
+    fun loadNextPage() {
+        if (_isLoadingMore.value || currentPage > 10) return
+
+        viewModelScope.launch {
+            _isLoadingMore.value = true
+
+            val tokens = coinGeckoRepository.getTopCryptocurrencies(
+                perPage = perPage,
+                page = currentPage
+            )
+
+            if (tokens.isNotEmpty()) {
+                _allTokens.value = _allTokens.value + tokens
+                currentPage++
+            }
+
+            _isLoadingMore.value = false
+        }
+    }
+
+
     private fun setupWebSocketObservers() {
+        // Collect full token updates (price + percentage)
         webSocketCollectorJob = viewModelScope.launch {
-            webSocketRepository.getLivePrices().collect { priceUpdate ->
-                _livePrices.value = priceUpdate
-                updateAllTokensWithLivePrices(priceUpdate)
+            webSocketRepository.getFullTokenUpdates().collect { updatesMap ->
+                updateTokensWithLiveData(updatesMap)
             }
         }
 
+        // Collect connection state
         viewModelScope.launch {
             webSocketRepository.getConnectionState().collect { isConnected ->
                 _isWebSocketConnected.value = isConnected
@@ -84,34 +140,41 @@ class MarketViewModel(
         }
     }
 
-    private fun updateAllTokensWithLivePrices(livePrices: Map<String, Double>) {
+    private fun updateTokensWithLiveData(updatesMap: Map<String, TokenPriceUpdate>) {
         val currentTokens = _allTokens.value
-        updateTokensWithLivePrices(currentTokens, livePrices)
-    }
 
-    private fun updateTokensWithLivePrices(
-        restTokens: List<Token>,
-        livePrices: Map<String, Double>
-    ) {
-        val updatedTokens = restTokens.map { token ->
-            val symbolVariants = listOf(
-                token.symbol.lowercase(),
-                token.symbol.uppercase(),
-                token.id.lowercase()
-            )
-
-            val livePrice = symbolVariants.firstOrNull { livePrices.containsKey(it) }
-                ?.let { livePrices[it] }
-                ?: token.currentPrice
-
-            token.copy(currentPrice = livePrice)
+        val updatedTokens = currentTokens.map { token ->
+            val update = updatesMap[token.id]
+            if (update != null) {
+                // Update both price & percentage
+                token.copy(
+                    currentPrice = update.price,
+                    priceChange24h = update.priceChange24h,
+                    priceChangePercentage24h = update.priceChangePercentage24h
+                )
+            } else {
+                token
+            }
         }
 
         _allTokens.value = updatedTokens
-        applySearchFilter() // Re-apply search with updated prices
+        applySearchFilter()
     }
 
-    // Search functionality
+    private fun applySearchFilter() {
+        val query = _searchQuery.value
+        val tokens = _allTokens.value
+
+        _filteredTokens.value = if (query.isBlank()) {
+            tokens
+        } else {
+            tokens.filter { token ->
+                token.name.contains(query, ignoreCase = true) ||
+                        token.symbol.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
         applySearchFilter()
@@ -122,25 +185,8 @@ class MarketViewModel(
         applySearchFilter()
     }
 
-    private fun applySearchFilter() {
-        val query = _searchQuery.value
-        val tokens = _allTokens.value
-
-        val filtered = if (query.isBlank()) {
-            tokens
-        } else {
-            tokens.filter { token ->
-                token.name.contains(query, ignoreCase = true) ||
-                        token.symbol.contains(query, ignoreCase = true)
-            }
-        }
-
-        _filteredTokens.value = filtered
-    }
-
     fun refreshData() {
-        _isRefreshing.value = true
-        loadMarketData()
+        loadInitialData()
     }
 
     fun retryWebSocket() {
