@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -18,7 +19,6 @@ import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
 import org.bitcoinj.script.Script
 import org.bitcoinj.script.ScriptBuilder
-import retrofit2.HttpException
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
@@ -46,24 +46,19 @@ class BitcoinBlockchainRepository @Inject constructor(
         address: String,
         network: BitcoinNetwork = BitcoinNetwork.MAINNET
     ): Result<BigDecimal> = withContext(ioDispatcher) {
-        try {
+        SafeApiCall.make {
             val api = getApiForNetwork(network)
             val response = api.getAddressInfo(address)
 
             val confirmed = response.chainStats.fundedTxoSum - response.chainStats.spentTxoSum
-            val unconfirmed =
-                response.mempoolStats.fundedTxoSum - response.mempoolStats.spentTxoSum
+            val unconfirmed = response.mempoolStats.fundedTxoSum - response.mempoolStats.spentTxoSum
             val totalSatoshis = confirmed + unconfirmed
 
-            val btcBalance = BigDecimal(totalSatoshis).divide(
+            BigDecimal(totalSatoshis).divide(
                 BigDecimal(SATOSHIS_PER_BTC),
                 8,
                 RoundingMode.HALF_UP
             )
-
-            Result.Success(btcBalance)
-        } catch (e: Exception) {
-            Result.Error("Failed to get balance: ${e.message}", e)
         }
     }
 
@@ -75,7 +70,7 @@ class BitcoinBlockchainRepository @Inject constructor(
         inputCount: Int = DEFAULT_INPUT_COUNT,
         outputCount: Int = DEFAULT_OUTPUT_COUNT
     ): Result<BitcoinFeeEstimate> = withContext(ioDispatcher) {
-        try {
+        SafeApiCall.make {
             val api = getApiForNetwork(BitcoinNetwork.MAINNET)
             val estimates = api.getFeeEstimates()
 
@@ -102,25 +97,20 @@ class BitcoinBlockchainRepository @Inject constructor(
                 FeeLevel.FAST -> FAST_TARGET.toInt()
             }
 
-            Result.Success(
-                BitcoinFeeEstimate(
-                    feePerByte = feePerByte,
-                    totalFeeSatoshis = totalFeeSatoshis,
-                    totalFeeBtc = totalFeeBtc,
-                    estimatedTime = blockTarget * BLOCK_TIME_MINUTES * 60,
-                    priority = feeLevel,
-                    estimatedSize = estimatedSize,
-                    blockTarget = blockTarget
-                )
+            BitcoinFeeEstimate(
+                feePerByte = feePerByte,
+                totalFeeSatoshis = totalFeeSatoshis,
+                totalFeeBtc = totalFeeBtc,
+                estimatedTime = blockTarget * BLOCK_TIME_MINUTES * 60,
+                priority = feeLevel,
+                estimatedSize = estimatedSize,
+                blockTarget = blockTarget
             )
-        } catch (e: Exception) {
-            Result.Error("Failed to get fee estimate: ${e.message}", e)
         }
     }
 
     /**
      * Calculate transaction size based on number of inputs and outputs
-     * Formula: base (10) + inputs * 148 + outputs * 34
      */
     private fun calculateTransactionSize(inputCount: Int, outputCount: Int): Long {
         return BASE_TX_SIZE + (inputCount * BYTES_PER_INPUT) + (outputCount * BYTES_PER_OUTPUT)
@@ -133,47 +123,29 @@ class BitcoinBlockchainRepository @Inject constructor(
         signedHex: String,
         network: BitcoinNetwork = BitcoinNetwork.MAINNET
     ): Result<String> = withContext(ioDispatcher) {
-        try {
+        // Business logic validation first
+        if (!signedHex.matches(HEX_REGEX)) {
+            return@withContext Result.Error("Invalid transaction hex format")
+        }
+
+        SafeApiCall.make {
             val api = getApiForNetwork(network)
+            val response = api.broadcastTransaction(signedHex)
+            val txId = response.string().trim()
 
-            // Validate hex format
-            if (!signedHex.matches(HEX_REGEX)) {
-                return@withContext Result.Error("Invalid transaction hex format")
-            }
-
-            // Make the API call
-            val response = try {
-                api.broadcastTransaction(signedHex)
-            } catch (e: HttpException) {
-                val errorBody = e.response()?.errorBody()?.string()
-                return@withContext Result.Error(errorBody ?: "HTTP ${e.code()}")
-            } catch (e: Exception) {
-                return@withContext Result.Error(e.message ?: "Broadcast failed")
-            }
-
-            // Get the response body as string
-            val txId = try {
-                response.string().trim()
-            } catch (e: Exception) {
-                return@withContext Result.Error("Failed to read response")
-            }
-
-            // Blockstream returns the transaction ID as plain text on success
             if (txId.matches(TXID_REGEX)) {
-                Result.Success(txId)
+                txId
             } else {
-                Result.Error(txId)
+                throw Exception("Invalid response from network")
             }
-        } catch (e: Exception) {
-            Result.Error(e.message ?: "Broadcast failed")
         }
     }
 
     /**
      * Get UTXOs for an address
      */
-    private suspend fun getUnspentOutputs(address: String, network: BitcoinNetwork): List<UTXO> = withContext(ioDispatcher) {
-        try {
+    private suspend fun getUnspentOutputs(address: String, network: BitcoinNetwork): List<UTXO> =
+        withContext(ioDispatcher) {
             val api = getApiForNetwork(network)
             val utxos = api.getUtxos(address)
 
@@ -189,61 +161,45 @@ class BitcoinBlockchainRepository @Inject constructor(
             val result = mutableListOf<UTXO>()
 
             for (utxo in utxos) {
-                try {
-                    // Get scriptPubKey for this UTXO
-                    val scriptHex =
-                        getScriptPubKeyFromTransaction(utxo.txid, utxo.vout, network)
-
-                    if (scriptHex != null) {
-                        val bitcoinjUtxo = UTXO(
-                            outPoint = TransactionOutPoint(
-                                networkParams,
-                                utxo.vout.toLong(),
-                                Sha256Hash.wrap(utxo.txid)
-                            ),
-                            value = Coin.valueOf(utxo.value),
-                            script = Script(Utils.HEX.decode(scriptHex))
-                        )
-                        result.add(bitcoinjUtxo)
-                    }
-                } catch (e: Exception) {
-                    // Skip problematic UTXO
+                val scriptHex = getScriptPubKeyFromTransaction(utxo.txid, utxo.vout, network)
+                if (scriptHex != null) {
+                    val bitcoinjUtxo = UTXO(
+                        outPoint = TransactionOutPoint(
+                            networkParams,
+                            utxo.vout.toLong(),
+                            Sha256Hash.wrap(utxo.txid)
+                        ),
+                        value = Coin.valueOf(utxo.value),
+                        script = Script(Utils.HEX.decode(scriptHex))
+                    )
+                    result.add(bitcoinjUtxo)
                 }
             }
 
             return@withContext result
-        } catch (e: Exception) {
-            emptyList()
         }
-    }
 
     private suspend fun getScriptPubKeyFromTransaction(
         txid: String,
         vout: Int,
         network: BitcoinNetwork
     ): String? = withContext(ioDispatcher) {
-        try {
-            val api = getApiForNetwork(network)
-            val tx = api.getTransaction(txid)
+        val api = getApiForNetwork(network)
+        val tx = api.getTransaction(txid)
 
-            return@withContext if (vout < tx.vout.size) {
-                tx.vout[vout].scriptpubkey
-            } else {
-                null
-            }
-        } catch (e: Exception) {
+        return@withContext if (vout < tx.vout.size) {
+            tx.vout[vout].scriptpubkey
+        } else {
             null
         }
     }
 
     /**
      * Select UTXOs for a transaction using a simple "smallest first" strategy
-     * to minimize change and dust
      */
     private fun selectUtxos(utxos: List<UTXO>, targetSatoshis: Long): List<UTXO> {
         if (utxos.isEmpty()) return emptyList()
 
-        // Smallest-first to minimize change output (reduces future fees)
         val sortedUtxos = utxos.sortedBy { it.value.value }
         val selected = mutableListOf<UTXO>()
         var totalSelected = 0L
@@ -251,18 +207,13 @@ class BitcoinBlockchainRepository @Inject constructor(
         for (utxo in sortedUtxos) {
             selected.add(utxo)
             totalSelected += utxo.value.value
-
-            if (totalSelected >= targetSatoshis) {
-                break
-            }
+            if (totalSelected >= targetSatoshis) break
         }
 
-        // Fallback to largest-first if smallest doesn't meet target
         if (totalSelected < targetSatoshis) {
             val largestFirst = utxos.sortedByDescending { it.value.value }
             selected.clear()
             totalSelected = 0L
-
             for (utxo in largestFirst) {
                 selected.add(utxo)
                 totalSelected += utxo.value.value
@@ -298,22 +249,15 @@ class BitcoinBlockchainRepository @Inject constructor(
             val allUtxos = getUnspentOutputs(fromAddress, network)
 
             if (allUtxos.isEmpty()) {
-                return@withContext Result.Error(
-                    "No UTXOs found for address: $fromAddress"
-                )
+                return@withContext Result.Error("No UTXOs found for address: $fromAddress")
             }
 
-            // Get fee estimate first to know how much we need
-            val feeResult =
-                getFeeEstimate(feeLevel, allUtxos.size, 2) // 2 outputs (recipient + change)
-
+            val feeResult = getFeeEstimate(feeLevel, allUtxos.size, 2)
             val feeSatoshis = when (feeResult) {
                 is Result.Success -> feeResult.data.totalFeeSatoshis
-                is Result.Error -> DEFAULT_FEE_SATOSHIS
-                is Result.Loading -> DEFAULT_FEE_SATOSHIS
+                else -> DEFAULT_FEE_SATOSHIS
             }
 
-            // Select UTXOs to cover amount + fee
             val targetWithFee = satoshis + feeSatoshis
             val selectedUtxos = selectUtxos(allUtxos, targetWithFee)
 
@@ -321,7 +265,6 @@ class BitcoinBlockchainRepository @Inject constructor(
                 return@withContext Result.Error("Insufficient funds")
             }
 
-            // Add selected UTXOs as inputs
             var totalInputValue = Coin.ZERO
             for (utxo in selectedUtxos) {
                 val input = TransactionInput(
@@ -334,32 +277,19 @@ class BitcoinBlockchainRepository @Inject constructor(
                 totalInputValue = totalInputValue.add(utxo.value)
             }
 
-            // Calculate change
             val targetValue = Coin.valueOf(satoshis)
             val fee = Coin.valueOf(feeSatoshis)
             val changeValue = totalInputValue.subtract(targetValue).subtract(fee)
 
-            if (changeValue.isPositive) {
-                // Only add change if it's not dust (less than 546 satoshis)
-                // Dust outputs are uneconomical to spend later
-                if (changeValue.value >= DUST_LIMIT) {
-                    tx.addOutput(changeValue, LegacyAddress.fromKey(networkParams, fromKey))
-                } else {
-                    // Dust change is added to miner fee automatically
-                }
+            if (changeValue.isPositive && changeValue.value >= DUST_LIMIT) {
+                tx.addOutput(changeValue, LegacyAddress.fromKey(networkParams, fromKey))
             }
 
-            // Sign each input
             for (i in 0 until tx.inputs.size) {
                 val input = tx.getInput(i.toLong())
                 val utxo = selectedUtxos[i]
 
-                val hash = tx.hashForSignature(
-                    i,
-                    utxo.script,
-                    Transaction.SigHash.ALL,
-                    false
-                )
+                val hash = tx.hashForSignature(i, utxo.script, Transaction.SigHash.ALL, false)
                 val sig = fromKey.sign(hash)
                 val txSig = TransactionSignature(sig, Transaction.SigHash.ALL, false)
 
@@ -371,13 +301,7 @@ class BitcoinBlockchainRepository @Inject constructor(
                 return@withContext Result.Error("Transaction has no inputs")
             }
 
-            // Verify the transaction
-            try {
-                tx.verify()
-            } catch (e: Exception) {
-                return@withContext Result.Error("Transaction verification failed: ${e.message}")
-            }
-
+            tx.verify()
             Result.Success(tx)
         } catch (e: Exception) {
             Result.Error("Failed to create transaction: ${e.message}")
@@ -391,19 +315,15 @@ class BitcoinBlockchainRepository @Inject constructor(
         txid: String,
         network: BitcoinNetwork
     ): Result<TransactionStatus> = withContext(ioDispatcher) {
-        try {
+        SafeApiCall.make {
             val api = getApiForNetwork(network)
             val tx = api.getTransaction(txid)
 
-            val status = if (tx.status.confirmed) {
+            if (tx.status.confirmed) {
                 TransactionStatus.SUCCESS
             } else {
                 TransactionStatus.PENDING
             }
-
-            Result.Success(status)
-        } catch (e: Exception) {
-            Result.Error("Failed to get transaction status: ${e.message}")
         }
     }
 
@@ -414,11 +334,11 @@ class BitcoinBlockchainRepository @Inject constructor(
         address: String,
         network: BitcoinNetwork = BitcoinNetwork.MAINNET
     ): Result<List<BitcoinTransactionResponse>> = withContext(ioDispatcher) {
-        try {
+        SafeApiCall.make {
             val api = getApiForNetwork(network)
             val transactions = api.getAddressTransactions(address)
 
-            val mappedTransactions = transactions.mapNotNull { tx ->
+            transactions.mapNotNull { tx ->
                 parseTransaction(tx, address)?.let { parsed ->
                     BitcoinTransactionResponse(
                         txid = tx.txid,
@@ -435,10 +355,6 @@ class BitcoinBlockchainRepository @Inject constructor(
                     )
                 }
             }
-
-            Result.Success(mappedTransactions)
-        } catch (e: Exception) {
-            Result.Error("Failed to get transactions: ${e.message}", e)
         }
     }
 
@@ -455,7 +371,6 @@ class BitcoinBlockchainRepository @Inject constructor(
         }
 
         return when {
-            // Incoming transaction
             hasOutputToUs && !hasInputFromUs -> {
                 val ourOutput = tx.vout.first { it.scriptpubkey_address == address }
                 val sender = tx.vin.firstOrNull()?.prevout?.scriptpubkey_address ?: "unknown"
@@ -467,7 +382,6 @@ class BitcoinBlockchainRepository @Inject constructor(
                 )
             }
 
-            // Outgoing transaction
             hasInputFromUs -> {
                 val recipientOutput = tx.vout.firstOrNull {
                     it.scriptpubkey_address != null && it.scriptpubkey_address != address
@@ -482,7 +396,6 @@ class BitcoinBlockchainRepository @Inject constructor(
                 )
             }
 
-            // Transaction doesn't directly involve us
             else -> null
         }
     }
