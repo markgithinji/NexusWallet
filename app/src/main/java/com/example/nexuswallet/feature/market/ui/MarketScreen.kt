@@ -370,7 +370,7 @@ fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
             // Rank badge
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(24.dp)
                     .background(
                         color = Color(0xFF3B82F6).copy(alpha = 0.1f),
                         shape = CircleShape
@@ -382,22 +382,22 @@ fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF3B82F6),
-                    fontSize = 11.sp
+                    fontSize = 10.sp
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             // Coin icon
             AsyncImage(
                 model = token.image,
                 contentDescription = token.name,
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(30.dp)
                     .clip(CircleShape)
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             // Coin name and symbol
             Column(
@@ -405,7 +405,7 @@ fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
             ) {
                 Text(
                     text = token.name,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.Black,
                     maxLines = 1,
@@ -413,7 +413,7 @@ fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
                 )
                 Text(
                     text = token.symbol.uppercase(),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.labelLarge,
                     color = Color(0xFF6B7280)
                 )
             }
@@ -424,12 +424,12 @@ fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
             ) {
                 Text(
                     text = "$${animatedPrice.formatTwoDecimals()}",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
                 )
 
-                val priceChange = token.priceChangePercentage24h ?: 0.0
+                val priceChange = token.priceChangePercentage24h
                 val changeColor = if (priceChange >= 0)
                     Color(0xFF10B981)
                 else
@@ -445,12 +445,12 @@ fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
                         else
                             Icons.Outlined.TrendingDown,
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(12.dp),
                         tint = changeColor
                     )
                     Text(
                         text = "${if (priceChange >= 0) "+" else ""}${priceChange.formatTwoDecimals()}%",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.labelLarge,
                         color = changeColor
                     )
                 }
