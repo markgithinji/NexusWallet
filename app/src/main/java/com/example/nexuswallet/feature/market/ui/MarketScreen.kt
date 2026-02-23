@@ -7,8 +7,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -16,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -36,38 +40,106 @@ fun MarketScreen(
     val uiState by viewModel.uiState.collectAsState()
     val tokens by viewModel.filteredTokens.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
     val isWebSocketConnected by viewModel.isWebSocketConnected.collectAsState()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
 
-    val pullToRefreshState = rememberPullToRefreshState()
-
-    PullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = { viewModel.refreshData() },
-        state = pullToRefreshState,
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
     ) {
-        when (uiState) {
-            MarketUiState.Loading -> LoadingView()
-
-            is MarketUiState.Error -> {
-                ErrorView(
-                    message = (uiState as MarketUiState.Error).message,
-                    onRetry = { viewModel.refreshData() }
+        // Connection indicator
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                LiveIndicator(isConnected = isWebSocketConnected)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (isWebSocketConnected) "Live Updates" else "Offline",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isWebSocketConnected)
+                        Color(0xFF10B981)
+                    else
+                        Color(0xFFEF4444)
                 )
             }
 
-            is MarketUiState.Success -> {
+            Text(
+                text = "${tokens.size} coins",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Search bar
+        MarketSearchBar(
+            query = searchQuery,
+            onQueryChange = { viewModel.updateSearchQuery(it) },
+            onClear = { viewModel.clearSearch() }
+        )
+
+        // Content
+        when (uiState) {
+            MarketUiState.Loading -> {
                 if (tokens.isEmpty()) {
+                    LoadingView()
+                } else {
+                    // Show existing data while loading more
+                    MarketList(
+                        tokens = tokens,
+                        isLoadingMore = isLoadingMore,
+                        onTokenClick = { token ->
+                            navController.navigate("token/${token.id}")
+                        },
+                        onLoadMore = { viewModel.loadNextPage() }
+                    )
+                }
+            }
+
+            is MarketUiState.Error -> {
+                if (tokens.isEmpty()) {
+                    ErrorView(
+                        message = (uiState as MarketUiState.Error).message,
+                        onRetry = { viewModel.refreshData() }
+                    )
+                } else {
+                    // Show existing data with error indicator
+                    Column {
+                        Text(
+                            text = "⚠️ Connection issues. Showing cached data.",
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        MarketList(
+                            tokens = tokens,
+                            isLoadingMore = isLoadingMore,
+                            onTokenClick = { token ->
+                                navController.navigate("token/${token.id}")
+                            },
+                            onLoadMore = { viewModel.loadNextPage() }
+                        )
+                    }
+                }
+            }
+
+            is MarketUiState.Success -> {
+                if (tokens.isEmpty() && !isLoadingMore) {
                     EmptySearchResult()
                 } else {
                     MarketList(
                         tokens = tokens,
+                        isLoadingMore = isLoadingMore,
                         onTokenClick = { token ->
                             navController.navigate("token/${token.id}")
-                        }
+                        },
+                        onLoadMore = { viewModel.loadNextPage() }
                     )
                 }
             }
@@ -75,7 +147,51 @@ fun MarketScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MarketList(
+    tokens: List<Token>,
+    isLoadingMore: Boolean,
+    onTokenClick: (Token) -> Unit,
+    onLoadMore: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(tokens) { token ->
+            TokenItem(
+                token = token,
+                onClick = onTokenClick
+            )
+        }
+
+        // Loading more indicator
+        if (isLoadingMore) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        // Trigger load more when reaching the end
+        item {
+            LaunchedEffect(Unit) {
+                onLoadMore()
+            }
+        }
+    }
+}
+
 @Composable
 fun MarketSearchBar(
     query: String,
@@ -88,8 +204,13 @@ fun MarketSearchBar(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        placeholder = { Text("Search by name or symbol") },
-        singleLine = true,
+        placeholder = { Text("Search by name or symbol...") },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search"
+            )
+        },
         trailingIcon = {
             if (query.isNotBlank()) {
                 IconButton(onClick = onClear) {
@@ -99,25 +220,17 @@ fun MarketSearchBar(
                     )
                 }
             }
-        }
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(24.dp),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent
+        )
     )
 }
-
-@Composable
-fun EmptySearchResult() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "No matching coins found",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-
 
 @Composable
 fun LiveIndicator(isConnected: Boolean) {
@@ -137,19 +250,30 @@ fun LiveIndicator(isConnected: Boolean) {
     Box(
         modifier = Modifier
             .size(8.dp)
-            .clip(MaterialTheme.shapes.small)
+            .clip(CircleShape)
             .graphicsLayer {
                 alpha = 0.7f + pulse * 0.3f
                 scaleX = 1f + pulse * 0.3f
                 scaleY = 1f + pulse * 0.3f
             }
             .background(
-                color = if (isConnected)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.error
+                color = if (isConnected) Color(0xFF10B981) else Color(0xFFEF4444)
             )
     )
+}
+
+@Composable
+fun EmptySearchResult() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "No matching coins found",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
 @Composable
@@ -209,21 +333,30 @@ fun ErrorView(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-fun MarketList(tokens: List<Token>, onTokenClick: (Token) -> Unit = {}) {
+fun MarketList(tokens: List<Token>, isLoadingMore: Boolean, onTokenClick: (Token) -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(tokens) { token ->
-            TokenItem(
-                token = token,
-                onClick = onTokenClick
-            )
+            TokenItem(token = token, onClick = onTokenClick)
+        }
+
+        if (isLoadingMore) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                }
+            }
         }
     }
 }
-
 @Composable
 fun TokenItem(token: Token, onClick: (Token) -> Unit = {}) {
     var pulseScale by remember { mutableStateOf(1f) }
