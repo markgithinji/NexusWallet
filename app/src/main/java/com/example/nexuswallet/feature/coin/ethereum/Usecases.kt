@@ -1,6 +1,8 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
 import android.util.Log
+import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
@@ -9,6 +11,7 @@ import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import org.web3j.crypto.Credentials
@@ -29,101 +32,158 @@ class SyncEthereumTransactionsUseCase @Inject constructor(
     private val walletRepository: WalletRepository
 ) {
     suspend operator fun invoke(walletId: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            Log.d("SyncEthUC", "=== Syncing Ethereum transactions for wallet: $walletId ===")
+        Log.d("SyncEthUC", "=== Syncing Ethereum transactions for wallet: $walletId ===")
 
-            // Get wallet
-            val wallet = walletRepository.getWallet(walletId)
-            if (wallet == null) {
-                Log.e("SyncEthUC", "Wallet not found: $walletId")
-                return@withContext Result.Error("Wallet not found")
+        // Business logic validation
+        val wallet = walletRepository.getWallet(walletId) ?: run {
+            Log.e("SyncEthUC", "Wallet not found: $walletId")
+            return@withContext Result.Error("Wallet not found")
+        }
+
+        val ethereumCoin = wallet.ethereum ?: run {
+            Log.e("SyncEthUC", "Ethereum not enabled for wallet: ${wallet.name}")
+            return@withContext Result.Error("Ethereum not enabled")
+        }
+
+        Log.d("SyncEthUC", "Wallet: ${wallet.name}, Address: ${ethereumCoin.address}, Network: ${ethereumCoin.network.displayName}")
+
+        return@withContext when (val transactionsResult = ethereumBlockchainRepository.getEthereumTransactions(
+            address = ethereumCoin.address,
+            network = ethereumCoin.network
+        )) {
+            is Result.Success -> {
+                val transactions = transactionsResult.data
+                Log.d("SyncEthUC", "Received ${transactions.size} transactions from Etherscan")
+
+                if (transactions.isEmpty()) {
+                    Log.d("SyncEthUC", "No transactions found")
+                    return@withContext Result.Success(Unit)
+                }
+
+                // Delete existing transactions
+                ethereumTransactionRepository.deleteAllForWallet(walletId)
+                Log.d("SyncEthUC", "Deleted existing transactions")
+
+                // Save new transactions
+                var savedCount = 0
+                transactions.forEach { tx ->
+                    val isIncoming = tx.to.equals(ethereumCoin.address, ignoreCase = true)
+                    val status = when {
+                        tx.isError == "1" -> TransactionStatus.FAILED
+                        tx.receiptStatus == "1" -> TransactionStatus.SUCCESS
+                        else -> TransactionStatus.PENDING
+                    }
+
+                    val domainTx = tx.toDomain(
+                        walletId = walletId,
+                        isIncoming = isIncoming,
+                        status = status,
+                        network = ethereumCoin.network.displayName
+                    )
+                    ethereumTransactionRepository.saveTransaction(domainTx)
+                    savedCount++
+                }
+
+                Log.d("SyncEthUC", "Successfully saved $savedCount transactions")
+                Log.d("SyncEthUC", "=== Sync completed successfully for wallet $walletId ===")
+                Result.Success(Unit)
             }
 
-            // Get Ethereum coin
-            val ethereumCoin = wallet.ethereum
-            if (ethereumCoin == null) {
-                Log.e("SyncEthUC", "Ethereum not enabled for wallet: ${wallet.name}")
-                return@withContext Result.Error("Ethereum not enabled")
+            is Result.Error -> {
+                Log.e("SyncEthUC", "Failed to fetch transactions: ${transactionsResult.message}")
+                Result.Error(transactionsResult.message)
             }
 
-            Log.d("SyncEthUC", "Wallet: ${wallet.name}, Address: ${ethereumCoin.address}, Network: ${ethereumCoin.network.displayName}")
+            else -> Result.Error("Unknown error")
+        }
+    }
+}
 
-            // Fetch transactions directly from Etherscan
-            val transactionsResult = ethereumBlockchainRepository.getEthereumTransactions(
-                address = ethereumCoin.address,
+@Singleton
+class GetTransactionUseCase @Inject constructor(
+    private val ethereumTransactionRepository: EthereumTransactionRepository
+) {
+    suspend operator fun invoke(transactionId: String): Result<EthereumTransaction> {
+        // Room operation
+        val transaction = ethereumTransactionRepository.getTransaction(transactionId)
+        return if (transaction != null) {
+            Result.Success(transaction)
+        } else {
+            Result.Error("Transaction not found")
+        }
+    }
+}
+
+@Singleton
+class GetWalletTransactionsUseCase @Inject constructor(
+    private val ethereumTransactionRepository: EthereumTransactionRepository
+) {
+    fun invoke(walletId: String): Flow<Result<List<EthereumTransaction>>> {
+        return ethereumTransactionRepository.getTransactions(walletId)
+            .map { transactions ->
+                Result.Success(transactions) as Result<List<EthereumTransaction>>
+            }
+            .catch { e ->
+                // Only catch flow errors
+                emit(Result.Error("Failed to load transactions: ${e.message}"))
+            }
+    }
+}
+
+@Singleton
+class GetPendingTransactionsUseCase @Inject constructor(
+    private val ethereumTransactionRepository: EthereumTransactionRepository
+) {
+    suspend operator fun invoke(): Result<List<EthereumTransaction>> {
+        val transactions = ethereumTransactionRepository.getPendingTransactions()
+        return Result.Success(transactions)
+    }
+}
+
+@Singleton
+class ValidateAddressUseCase @Inject constructor() {
+    operator fun invoke(address: String): Boolean {
+        return address.startsWith("0x") && address.length == 42
+    }
+}
+
+@Singleton
+class GetFeeEstimateUseCase @Inject constructor(
+    private val ethereumBlockchainRepository: EthereumBlockchainRepository
+) {
+    suspend operator fun invoke(
+        feeLevel: FeeLevel = FeeLevel.NORMAL,
+        network: EthereumNetwork = EthereumNetwork.Mainnet
+    ): Result<EthereumFeeEstimate> {
+        return ethereumBlockchainRepository.getFeeEstimate(feeLevel, network)
+    }
+}
+
+@Singleton
+class GetEthereumWalletUseCase @Inject constructor(
+    private val walletRepository: WalletRepository
+) {
+    suspend operator fun invoke(walletId: String): Result<EthereumWalletInfo> {
+        val wallet = walletRepository.getWallet(walletId)
+        if (wallet == null) {
+            Log.e("GetEthereumWalletUC", "Wallet not found: $walletId")
+            return Result.Error("Wallet not found")
+        }
+
+        val ethereumCoin = wallet.ethereum
+        if (ethereumCoin == null) {
+            Log.e("GetEthereumWalletUC", "Ethereum not enabled for wallet: ${wallet.name}")
+            return Result.Error("Ethereum not enabled for this wallet")
+        }
+
+        return Result.Success(
+            EthereumWalletInfo(
+                walletId = wallet.id,
+                walletName = wallet.name,
+                walletAddress = ethereumCoin.address,
                 network = ethereumCoin.network
             )
-
-            when (transactionsResult) {
-                is Result.Success -> {
-                    val transactions = transactionsResult.data
-                    Log.d("SyncEthUC", "Received ${transactions.size} transactions from Etherscan")
-
-                    if (transactions.isEmpty()) {
-                        Log.d("SyncEthUC", "No transactions found")
-                        return@withContext Result.Success(Unit)
-                    }
-
-                    // Delete existing transactions for this wallet
-                    ethereumTransactionRepository.deleteAllForWallet(walletId)
-                    Log.d("SyncEthUC", "Deleted existing transactions")
-
-                    // Save new transactions
-                    var savedCount = 0
-                    transactions.forEachIndexed { index, tx ->
-                        // Determine if this is incoming (to address matches our wallet)
-                        val isIncoming = tx.to.equals(ethereumCoin.address, ignoreCase = true)
-
-                        // Determine status from Etherscan fields
-                        val status = when {
-                            tx.isError == "1" -> TransactionStatus.FAILED
-                            tx.receiptStatus == "1" -> TransactionStatus.SUCCESS
-                            else -> TransactionStatus.PENDING
-                        }
-
-                        // Convert block number
-                        val blockNumber = tx.blockNumber.toLongOrNull() ?: 0
-
-                        Log.d("SyncEthUC", "Transaction #$index: ${tx.hash}")
-                        Log.d("SyncEthUC", "  isIncoming: $isIncoming")
-                        Log.d("SyncEthUC", "  amount: ${tx.value} wei")
-                        Log.d("SyncEthUC", "  from: ${tx.from}")
-                        Log.d("SyncEthUC", "  to: ${tx.to}")
-                        Log.d("SyncEthUC", "  block: $blockNumber")
-                        Log.d("SyncEthUC", "  isError: ${tx.isError}")
-                        Log.d("SyncEthUC", "  receiptStatus: ${tx.receiptStatus}")
-                        Log.d("SyncEthUC", "  status: $status")
-
-                        // Convert to domain model and save
-                        val domainTx = tx.toDomain(
-                            walletId = walletId,
-                            isIncoming = isIncoming,
-                            status = status,
-                            network = ethereumCoin.network.displayName
-                        )
-                        ethereumTransactionRepository.saveTransaction(domainTx)
-                        savedCount++
-                    }
-
-                    Log.d("SyncEthUC", "Successfully saved $savedCount transactions")
-                    Log.d("SyncEthUC", "=== Sync completed successfully for wallet $walletId ===")
-                    Result.Success(Unit)
-                }
-
-                is Result.Error -> {
-                    Log.e("SyncEthUC", "Failed to fetch transactions: ${transactionsResult.message}")
-                    Result.Error(transactionsResult.message)
-                }
-
-                else -> {
-                    Log.e("SyncEthUC", "Unknown error fetching transactions")
-                    Result.Error("Unknown error")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("SyncEthUC", "Error syncing Ethereum transactions: ${e.message}", e)
-            Result.Error(e.message ?: "Sync failed")
-        }
+        )
     }
 }
 
@@ -201,47 +261,13 @@ fun EtherscanTransaction.toDomain(
     )
 }
 
-
-@Singleton
-class GetEthereumWalletUseCase @Inject constructor(
-    private val walletRepository: WalletRepository
-) {
-    suspend operator fun invoke(walletId: String): Result<EthereumWalletInfo> {
-        val wallet = walletRepository.getWallet(walletId)
-        if (wallet == null) {
-            Log.e("GetEthereumWalletUC", "Wallet not found: $walletId")
-            return Result.Error("Wallet not found")
-        }
-
-        val ethereumCoin = wallet.ethereum
-        if (ethereumCoin == null) {
-            Log.e("GetEthereumWalletUC", "Ethereum not enabled for wallet: ${wallet.name}")
-            return Result.Error("Ethereum not enabled for this wallet")
-        }
-
-        Log.d(
-            "GetEthereumWalletUC",
-            "Loaded wallet: ${wallet.name}, address: ${ethereumCoin.address.take(8)}..."
-        )
-
-        return Result.Success(
-            EthereumWalletInfo(
-                walletId = wallet.id,
-                walletName = wallet.name,
-                walletAddress = ethereumCoin.address,
-                network = ethereumCoin.network
-            )
-        )
-    }
-}
-
 @Singleton
 class SendEthereumUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository,
     private val ethereumTransactionRepository: EthereumTransactionRepository,
-    private val securityPreferencesRepository: com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository,
-    private val keyStoreRepository: com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
+    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val keyStoreRepository: KeyStoreRepository
 ) {
     suspend operator fun invoke(
         walletId: String,
@@ -250,55 +276,51 @@ class SendEthereumUseCase @Inject constructor(
         feeLevel: FeeLevel = FeeLevel.NORMAL,
         note: String? = null
     ): Result<SendEthereumResult> = withContext(Dispatchers.IO) {
-        try {
-            Log.d("SendEthereumUC", "WalletId: $walletId, To: $toAddress, Amount: $amount ETH")
+        Log.d("SendEthereumUC", "WalletId: $walletId, To: $toAddress, Amount: $amount ETH")
 
-            val wallet = walletRepository.getWallet(walletId) ?: run {
-                Log.e("SendEthereumUC", "Wallet not found: $walletId")
-                return@withContext Result.Error("Wallet not found")
-            }
-
-            val ethereumCoin = wallet.ethereum ?: run {
-                Log.e("SendEthereumUC", "Ethereum not enabled for wallet: $walletId")
-                return@withContext Result.Error("Ethereum not enabled")
-            }
-
-            Log.d("SendEthereumUC", "Network: ${ethereumCoin.network.displayName}")
-
-            // 1. Create transaction with network context
-            Log.d("SendEthereumUC", "Step 1: Creating transaction...")
-            val transaction = createTransaction(walletId, toAddress, amount, feeLevel, note, ethereumCoin.network)
-                ?: return@withContext Result.Error("Failed to create transaction")
-
-            Log.d("SendEthereumUC", "Transaction created: ${transaction.id}")
-
-            // 2. Sign transaction
-            Log.d("SendEthereumUC", "Step 2: Signing transaction...")
-            val signedTransaction = signTransaction(transaction, ethereumCoin.network, ethereumCoin.address)
-                ?: return@withContext Result.Error("Failed to sign transaction")
-
-            Log.d("SendEthereumUC", "Transaction signed: ${signedTransaction.txHash}")
-
-            // 3. Broadcast transaction
-            Log.d("SendEthereumUC", "Step 3: Broadcasting transaction...")
-            val broadcastResult = broadcastTransaction(signedTransaction, ethereumCoin.network)
-
-            Log.d("SendEthereumUC", "Broadcast result: success=${broadcastResult.success}, hash=${broadcastResult.hash}")
-
-            val sendResult = SendEthereumResult(
-                transactionId = transaction.id,
-                txHash = broadcastResult.hash ?: signedTransaction.txHash ?: "",
-                success = broadcastResult.success,
-                error = broadcastResult.error
-            )
-
-            Log.d("SendEthereumUC", "========== SEND COMPLETE ==========")
-            Result.Success(sendResult)
-
-        } catch (e: Exception) {
-            Log.e("SendEthereumUC", "Exception: ${e.message}", e)
-            Result.Error("Send failed: ${e.message}")
+        val wallet = walletRepository.getWallet(walletId) ?: run {
+            Log.e("SendEthereumUC", "Wallet not found: $walletId")
+            return@withContext Result.Error("Wallet not found")
         }
+
+        val ethereumCoin = wallet.ethereum ?: run {
+            Log.e("SendEthereumUC", "Ethereum not enabled for wallet: $walletId")
+            return@withContext Result.Error("Ethereum not enabled")
+        }
+
+        Log.d("SendEthereumUC", "Network: ${ethereumCoin.network.displayName}")
+
+        // 1. Create transaction with network context
+        Log.d("SendEthereumUC", "Step 1: Creating transaction...")
+        val transactionResult = createTransaction(walletId, toAddress, amount, feeLevel, note, ethereumCoin.network)
+        if (transactionResult is Result.Error) return@withContext transactionResult
+        val transaction = (transactionResult as Result.Success).data
+
+        Log.d("SendEthereumUC", "Transaction created: ${transaction.id}")
+
+        // 2. Sign transaction
+        Log.d("SendEthereumUC", "Step 2: Signing transaction...")
+        val signedTransactionResult = signTransaction(transaction, ethereumCoin.network, ethereumCoin.address)
+        if (signedTransactionResult is Result.Error) return@withContext signedTransactionResult
+        val signedTransaction = (signedTransactionResult as Result.Success).data
+
+        Log.d("SendEthereumUC", "Transaction signed: ${signedTransaction.txHash}")
+
+        // 3. Broadcast transaction
+        Log.d("SendEthereumUC", "Step 3: Broadcasting transaction...")
+        val broadcastResult = broadcastTransaction(signedTransaction, ethereumCoin.network)
+
+        Log.d("SendEthereumUC", "Broadcast result: success=${broadcastResult.success}, hash=${broadcastResult.hash}")
+
+        val sendResult = SendEthereumResult(
+            transactionId = transaction.id,
+            txHash = broadcastResult.hash ?: signedTransaction.txHash ?: "",
+            success = broadcastResult.success,
+            error = broadcastResult.error
+        )
+
+        Log.d("SendEthereumUC", "========== SEND COMPLETE ==========")
+        Result.Success(sendResult)
     }
 
     private suspend fun createTransaction(
@@ -308,305 +330,214 @@ class SendEthereumUseCase @Inject constructor(
         feeLevel: FeeLevel,
         note: String?,
         network: EthereumNetwork
-    ): EthereumTransaction? {
-        try {
-            val wallet = walletRepository.getWallet(walletId)
-                ?: run {
-                    Log.e("SendEthereumUC", "Wallet not found: $walletId")
-                    return null
-                }
-
-            val ethereumCoin = wallet.ethereum
-                ?: run {
-                    Log.e("SendEthereumUC", "Ethereum not enabled for wallet: $walletId")
-                    return null
-                }
-
-            Log.d("SendEthereumUC", "Creating transaction for address: ${ethereumCoin.address} on ${network.displayName}")
-
-            val feeResult = ethereumBlockchainRepository.getFeeEstimate(feeLevel, network)
-            val feeEstimate = when (feeResult) {
-                is Result.Success -> feeResult.data
-                else -> {
-                    Log.e("SendEthereumUC", "Failed to get fee estimate")
-                    return null
-                }
+    ): Result<EthereumTransaction> {
+        val wallet = walletRepository.getWallet(walletId)
+            ?: run {
+                Log.e("SendEthereumUC", "Wallet not found: $walletId")
+                return Result.Error("Wallet not found")
             }
 
-            val amountWei = amount.multiply(BigDecimal("1000000000000000000")).toBigInteger()
+        val ethereumCoin = wallet.ethereum
+            ?: run {
+                Log.e("SendEthereumUC", "Ethereum not enabled for wallet: $walletId")
+                return Result.Error("Ethereum not enabled")
+            }
 
-            return EthereumTransaction(
-                id = "tx_${System.currentTimeMillis()}",
-                walletId = walletId,
-                fromAddress = ethereumCoin.address,
-                toAddress = toAddress,
-                amountWei = amountWei.toString(),
-                amountEth = amount.toPlainString(),
-                gasPriceWei = feeEstimate.gasPriceWei,
-                gasPriceGwei = feeEstimate.gasPriceGwei,
-                gasLimit = feeEstimate.gasLimit,
-                feeWei = feeEstimate.totalFeeWei,
-                feeEth = feeEstimate.totalFeeEth,
-                nonce = 0, // Temporary value, will be updated at signing
-                chainId = network.chainId.toLong(),
-                signedHex = null,
-                txHash = null,
-                status = TransactionStatus.PENDING,
-                note = note,
-                timestamp = System.currentTimeMillis(),
-                feeLevel = feeLevel,
-                network = network.displayName,
-                data = "",
-                isIncoming = false
-            )
-        } catch (e: Exception) {
-            Log.e("SendEthereumUC", "Error creating transaction: ${e.message}", e)
-            return null
+        Log.d("SendEthereumUC", "Creating transaction for address: ${ethereumCoin.address} on ${network.displayName}")
+
+        val feeResult = ethereumBlockchainRepository.getFeeEstimate(feeLevel, network)
+        if (feeResult is Result.Error) {
+            Log.e("SendEthereumUC", "Failed to get fee estimate")
+            return Result.Error(feeResult.message)
         }
+        val feeEstimate = (feeResult as Result.Success).data
+
+        val amountWei = amount.multiply(BigDecimal("1000000000000000000")).toBigInteger()
+
+        val transaction = EthereumTransaction(
+            id = "tx_${System.currentTimeMillis()}",
+            walletId = walletId,
+            fromAddress = ethereumCoin.address,
+            toAddress = toAddress,
+            amountWei = amountWei.toString(),
+            amountEth = amount.toPlainString(),
+            gasPriceWei = feeEstimate.gasPriceWei,
+            gasPriceGwei = feeEstimate.gasPriceGwei,
+            gasLimit = feeEstimate.gasLimit,
+            feeWei = feeEstimate.totalFeeWei,
+            feeEth = feeEstimate.totalFeeEth,
+            nonce = 0, // Temporary value, will be updated at signing
+            chainId = network.chainId.toLong(),
+            signedHex = null,
+            txHash = null,
+            status = TransactionStatus.PENDING,
+            note = note,
+            timestamp = System.currentTimeMillis(),
+            feeLevel = feeLevel,
+            network = network.displayName,
+            data = "",
+            isIncoming = false
+        )
+
+        return Result.Success(transaction)
     }
 
     private suspend fun signTransaction(
         transaction: EthereumTransaction,
         network: EthereumNetwork,
         expectedAddress: String
-    ): EthereumTransaction? {
-        try {
-            Log.d("SendEthereumUC", "Signing transaction: ${transaction.id}")
+    ): Result<EthereumTransaction> {
+        Log.d("SendEthereumUC", "Signing transaction: ${transaction.id}")
 
-            val wallet = walletRepository.getWallet(transaction.walletId)
-                ?: run {
-                    Log.e("SendEthereumUC", "Wallet not found: ${transaction.walletId}")
-                    return null
-                }
-
-            val ethereumCoin = wallet.ethereum
-                ?: run {
-                    Log.e("SendEthereumUC", "Ethereum not enabled for wallet: ${transaction.walletId}")
-                    return null
-                }
-
-            // Get encrypted private key directly from SecurityPreferencesRepository
-            val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
-                walletId = transaction.walletId,
-                keyType = "ETH_PRIVATE_KEY"
-            ) ?: run {
-                Log.e("SendEthereumUC", "No private key found for wallet: ${transaction.walletId}")
-                return null
+        val wallet = walletRepository.getWallet(transaction.walletId)
+            ?: run {
+                Log.e("SendEthereumUC", "Wallet not found: ${transaction.walletId}")
+                return Result.Error("Wallet not found")
             }
 
-            val (encryptedHex, iv) = encryptedData
-
-            // Decrypt using KeyStoreRepository directly
-            val privateKey = try {
-                keyStoreRepository.decryptString(encryptedHex, iv.toHex())
-            } catch (e: Exception) {
-                Log.e("SendEthereumUC", "Failed to decrypt private key: ${e.message}")
-                return null
+        val ethereumCoin = wallet.ethereum
+            ?: run {
+                Log.e("SendEthereumUC", "Ethereum not enabled for wallet: ${transaction.walletId}")
+                return Result.Error("Ethereum not enabled")
             }
 
-            // Get the nonce
-            val nonceResult = ethereumBlockchainRepository.getEthereumNonce(
-                ethereumCoin.address,
-                network
-            )
-
-            val currentNonce = when (nonceResult) {
-                is Result.Success -> {
-                    Log.d("SendEthereumUC", "Current network nonce for ${ethereumCoin.address}: ${nonceResult.data}")
-                    nonceResult.data
-                }
-                else -> {
-                    Log.e("SendEthereumUC", "Failed to get nonce")
-                    return null
-                }
-            }
-
-            // Log the transaction's stored nonce for debugging
-            Log.d("SendEthereumUC", "Transaction stored nonce: ${transaction.nonce}")
-
-            val gasPriceWei = BigInteger(transaction.gasPriceWei)
-
-            val credentials = try {
-                Credentials.create(privateKey)
-            } catch (e: Exception) {
-                Log.e("SendEthereumUC", "Failed to create credentials: ${e.message}")
-                return null
-            }
-
-            // Verify private key matches wallet address
-            if (credentials.address.lowercase() != ethereumCoin.address.lowercase()) {
-                Log.e("SendEthereumUC", "Private key doesn't match wallet")
-                Log.e("SendEthereumUC", "Derived: ${credentials.address}, Expected: ${ethereumCoin.address}")
-                return null
-            }
-
-            // Use currentNonce
-            val rawTransaction = RawTransaction.createTransaction(
-                BigInteger.valueOf(currentNonce.toLong()),
-                gasPriceWei,
-                BigInteger.valueOf(transaction.gasLimit),
-                transaction.toAddress,
-                BigInteger(transaction.amountWei),
-                transaction.data
-            )
-
-            val chainId = network.chainId.toLong()
-            val signedMessage = TransactionEncoder.signMessage(rawTransaction, chainId, credentials)
-            val signedHex = Numeric.toHexString(signedMessage)
-
-            val txHashBytes = Hash.sha3(Numeric.hexStringToByteArray(signedHex))
-            val calculatedHash = Numeric.toHexString(txHashBytes)
-
-            // Update the transaction with the correct nonce and save
-            val updatedTransaction = transaction.copy(
-                status = TransactionStatus.PENDING,
-                txHash = calculatedHash,
-                signedHex = signedHex,
-                nonce = currentNonce
-            )
-
-            // Save the updated transaction
-            ethereumTransactionRepository.updateTransaction(updatedTransaction)
-
-            Log.d("SendEthereumUC", "Transaction signed successfully with nonce: $currentNonce")
-            return updatedTransaction
-
-        } catch (e: Exception) {
-            Log.e("SendEthereumUC", "Error signing transaction: ${e.message}", e)
-            return null
+        // Get encrypted private key
+        val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
+            walletId = transaction.walletId,
+            keyType = "ETH_PRIVATE_KEY"
+        ) ?: run {
+            Log.e("SendEthereumUC", "No private key found for wallet: ${transaction.walletId}")
+            return Result.Error("No private key found")
         }
+
+        val (encryptedHex, iv) = encryptedData
+
+        // Decrypt
+        val privateKey = try {
+            keyStoreRepository.decryptString(encryptedHex, iv.toHex())
+        } catch (e: Exception) {
+            Log.e("SendEthereumUC", "Failed to decrypt private key: ${e.message}")
+            return Result.Error("Failed to decrypt private key")
+        }
+
+        // Get the nonce
+        val nonceResult = ethereumBlockchainRepository.getEthereumNonce(
+            ethereumCoin.address,
+            network
+        )
+
+        if (nonceResult is Result.Error) {
+            Log.e("SendEthereumUC", "Failed to get nonce")
+            return Result.Error(nonceResult.message)
+        }
+        val currentNonce = (nonceResult as Result.Success).data
+
+        // Log the transaction's stored nonce for debugging
+        Log.d("SendEthereumUC", "Transaction stored nonce: ${transaction.nonce}")
+
+        val gasPriceWei = BigInteger(transaction.gasPriceWei)
+
+        val credentials = try {
+            Credentials.create(privateKey)
+        } catch (e: Exception) {
+            Log.e("SendEthereumUC", "Failed to create credentials: ${e.message}")
+            return Result.Error("Failed to create credentials")
+        }
+
+        // Verify private key matches wallet address
+        if (credentials.address.lowercase() != ethereumCoin.address.lowercase()) {
+            Log.e("SendEthereumUC", "Private key doesn't match wallet")
+            Log.e("SendEthereumUC", "Derived: ${credentials.address}, Expected: ${ethereumCoin.address}")
+            return Result.Error("Private key doesn't match wallet")
+        }
+
+        // Use currentNonce
+        val rawTransaction = RawTransaction.createTransaction(
+            BigInteger.valueOf(currentNonce.toLong()),
+            gasPriceWei,
+            BigInteger.valueOf(transaction.gasLimit),
+            transaction.toAddress,
+            BigInteger(transaction.amountWei),
+            transaction.data
+        )
+
+        val chainId = network.chainId.toLong()
+        val signedMessage = TransactionEncoder.signMessage(rawTransaction, chainId, credentials)
+        val signedHex = Numeric.toHexString(signedMessage)
+
+        val txHashBytes = Hash.sha3(Numeric.hexStringToByteArray(signedHex))
+        val calculatedHash = Numeric.toHexString(txHashBytes)
+
+        // Update the transaction with the correct nonce and save
+        val updatedTransaction = transaction.copy(
+            status = TransactionStatus.PENDING,
+            txHash = calculatedHash,
+            signedHex = signedHex,
+            nonce = currentNonce
+        )
+
+        // Save the updated transaction
+        ethereumTransactionRepository.updateTransaction(updatedTransaction)
+
+        Log.d("SendEthereumUC", "Transaction signed successfully with nonce: $currentNonce")
+        return Result.Success(updatedTransaction)
     }
 
     private suspend fun broadcastTransaction(
         transaction: EthereumTransaction,
         network: EthereumNetwork
     ): BroadcastResult {
-        try {
-            if (transaction.signedHex == null) {
-                Log.e("SendEthereumUC", "Transaction not signed")
-                return BroadcastResult(success = false, error = "Transaction not signed")
+        if (transaction.signedHex == null) {
+            Log.e("SendEthereumUC", "Transaction not signed")
+            return BroadcastResult(success = false, error = "Transaction not signed")
+        }
+
+        val wallet = walletRepository.getWallet(transaction.walletId)
+            ?: return BroadcastResult(success = false, error = "Wallet not found")
+
+        val ethereumCoin = wallet.ethereum
+            ?: return BroadcastResult(success = false, error = "Ethereum not enabled")
+
+        // Verify network matches
+        if (ethereumCoin.network.chainId != network.chainId) {
+            Log.e("SendEthereumUC", "Network mismatch during broadcast")
+            return BroadcastResult(success = false, error = "Network mismatch")
+        }
+
+        val broadcastResult = ethereumBlockchainRepository.broadcastEthereumTransaction(
+            transaction.signedHex,
+            network
+        )
+
+        return when (broadcastResult) {
+            is Result.Success -> {
+                val result = broadcastResult.data
+                val updatedTransaction = if (result.success) {
+                    transaction.copy(
+                        status = TransactionStatus.SUCCESS,
+                        txHash = result.hash ?: transaction.txHash
+                    )
+                } else {
+                    transaction.copy(status = TransactionStatus.FAILED)
+                }
+                ethereumTransactionRepository.updateTransaction(updatedTransaction)
+
+                Log.d("SendEthereumUC", "Broadcast result: ${result.success}")
+                result
             }
 
-            val wallet = walletRepository.getWallet(transaction.walletId)
-                ?: return BroadcastResult(success = false, error = "Wallet not found")
-
-            val ethereumCoin = wallet.ethereum
-                ?: return BroadcastResult(success = false, error = "Ethereum not enabled")
-
-            // Verify network matches
-            if (ethereumCoin.network.chainId != network.chainId) {
-                Log.e("SendEthereumUC", "Network mismatch during broadcast")
-                return BroadcastResult(success = false, error = "Network mismatch")
+            is Result.Error -> {
+                Log.e("SendEthereumUC", "Broadcast failed: ${broadcastResult.message}")
+                BroadcastResult(success = false, error = broadcastResult.message)
             }
 
-            val broadcastResult = ethereumBlockchainRepository.broadcastEthereumTransaction(
-                transaction.signedHex,
-                network
-            )
-
-            return when (broadcastResult) {
-                is Result.Success -> {
-                    val result = broadcastResult.data
-                    val updatedTransaction = if (result.success) {
-                        transaction.copy(
-                            status = TransactionStatus.SUCCESS,
-                            txHash = result.hash ?: transaction.txHash
-                        )
-                    } else {
-                        transaction.copy(status = TransactionStatus.FAILED)
-                    }
-                    ethereumTransactionRepository.updateTransaction(updatedTransaction)
-
-                    Log.d("SendEthereumUC", "Broadcast result: ${result.success}")
-                    result
-                }
-
-                is Result.Error -> {
-                    Log.e("SendEthereumUC", "Broadcast failed: ${broadcastResult.message}")
-                    BroadcastResult(success = false, error = broadcastResult.message)
-                }
-
-                Result.Loading -> {
-                    Log.e("SendEthereumUC", "Broadcast timeout")
-                    BroadcastResult(success = false, error = "Broadcast timeout")
-                }
+            Result.Loading -> {
+                Log.e("SendEthereumUC", "Broadcast timeout")
+                BroadcastResult(success = false, error = "Broadcast timeout")
             }
-        } catch (e: Exception) {
-            Log.e("SendEthereumUC", "Error broadcasting: ${e.message}", e)
-            return BroadcastResult(success = false, error = e.message ?: "Broadcast failed")
         }
     }
 
     // Helper extension for ByteArray to Hex
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
-}
-
-@Singleton
-class GetTransactionUseCase @Inject constructor(
-    private val ethereumTransactionRepository: EthereumTransactionRepository
-) {
-    suspend operator fun invoke(transactionId: String): Result<EthereumTransaction> {
-        return try {
-            val transaction = ethereumTransactionRepository.getTransaction(transactionId)
-            if (transaction != null) {
-                Result.Success(transaction)
-            } else {
-                Result.Error(
-                    "Transaction not found",
-                    IllegalArgumentException("Transaction not found")
-                )
-            }
-        } catch (e: Exception) {
-            Result.Error("Failed to get transaction: ${e.message}", e)
-        }
-    }
-}
-
-@Singleton
-class GetWalletTransactionsUseCase @Inject constructor(
-    private val ethereumTransactionRepository: EthereumTransactionRepository
-) {
-    fun invoke(walletId: String): Flow<Result<List<EthereumTransaction>>> {
-        return ethereumTransactionRepository.getTransactions(walletId)
-            .map { transactions ->
-                try {
-                    Result.Success(transactions)
-                } catch (e: Exception) {
-                    Result.Error("Failed to load transactions: ${e.message}", e)
-                }
-            }
-    }
-}
-
-@Singleton
-class GetPendingTransactionsUseCase @Inject constructor(
-    private val ethereumTransactionRepository: EthereumTransactionRepository
-) {
-    suspend operator fun invoke(): Result<List<EthereumTransaction>> {
-        return try {
-            val transactions = ethereumTransactionRepository.getPendingTransactions()
-            Result.Success(transactions)
-        } catch (e: Exception) {
-            Result.Error("Failed to get pending transactions: ${e.message}", e)
-        }
-    }
-}
-
-@Singleton
-class ValidateAddressUseCase @Inject constructor() {
-    operator fun invoke(address: String): Boolean {
-        return address.startsWith("0x") && address.length == 42
-    }
-}
-
-@Singleton
-class GetFeeEstimateUseCase @Inject constructor(
-    private val ethereumBlockchainRepository: EthereumBlockchainRepository
-) {
-    suspend operator fun invoke(
-        feeLevel: FeeLevel = FeeLevel.NORMAL,
-        network: EthereumNetwork = EthereumNetwork.Mainnet
-    ): Result<EthereumFeeEstimate> {
-        return ethereumBlockchainRepository.getFeeEstimate(feeLevel, network)
-    }
 }
