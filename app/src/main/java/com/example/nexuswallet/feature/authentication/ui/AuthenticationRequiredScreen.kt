@@ -40,12 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.nexuswallet.feature.authentication.domain.AuthType
+import com.example.nexuswallet.feature.coin.Result
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,7 +69,7 @@ fun AuthenticationRequiredScreen(
     val context = LocalContext.current
     val activity = context as? FragmentActivity
 
-    val authenticationState by viewModel.authenticationState.collectAsState()
+    val authenticationResult by viewModel.authenticationResult.collectAsState()
     val showPinDialog by viewModel.showPinDialog.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
 
@@ -363,18 +360,19 @@ fun AuthenticationRequiredScreen(
         }
     }
 
-    // Handle authentication result
-    LaunchedEffect(authenticationState) {
-        when (authenticationState) {
-            is AuthenticationResult.Success -> {
+    // Handle authentication result using your Result class
+    LaunchedEffect(authenticationResult) {
+        val result = authenticationResult
+        when (result) {
+            is Result.Success<AuthType> -> {
                 onAuthenticated()
                 viewModel.clearState()
             }
-            is AuthenticationResult.Error -> {
-                viewModel.setErrorMessage((authenticationState as AuthenticationResult.Error).message)
+            is Result.Error -> {
+                viewModel.setErrorMessage(result.message)
             }
             else -> {
-                // Do nothing
+                // Do nothing for Loading or null
             }
         }
     }

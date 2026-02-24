@@ -5,3 +5,8 @@ enum class AuthAction {
     SEND_TRANSACTION,
     BACKUP_WALLET
 }
+
+enum class AuthType {
+    BIOMETRIC,
+    PIN
+}
