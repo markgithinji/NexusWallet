@@ -1,9 +1,12 @@
 package com.example.nexuswallet.feature.market.data.remote
 
-
 import android.util.Log
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,7 +14,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -20,32 +22,19 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
-import java.util.concurrent.TimeUnit
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.math.min
 
-@Serializable
-data class BinanceTicker(
-    val symbol: String,        // "BTCUSDT"
-    val price: String,         // "45231.45" (current price - "c" field)
-    val priceChange: String,   // "123.45" (24h price change - "p" field)
-    val priceChangePercent: String // "2.45" (24h change percentage - "P" field)
-)
-
-@Serializable
-data class TokenPriceUpdate(
-    val tokenId: String,
-    val price: Double,
-    val priceChange24h: Double,
-    val priceChangePercentage24h: Double
-)
-
-class BinanceWebSocket : WebSocketListener() {
-
-    private val client = OkHttpClient.Builder()
-        .pingInterval(20, TimeUnit.SECONDS)
-        .build()
-
-    private val json = Json { ignoreUnknownKeys = true }
+@Singleton
+class BinanceWebSocket @Inject constructor(
+    private val okHttpClient: OkHttpClient,
+    private val json: Json,
+    ioDispatcher: CoroutineDispatcher
+) {
+    // Create scope with injected dispatcher
+    private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
+    private var connectionMonitorJob: Job? = null
 
     // Map Binance symbols to token IDs - Top 50+ coins
     private val symbolMapping = mapOf(
@@ -111,44 +100,37 @@ class BinanceWebSocket : WebSocketListener() {
         "DASHUSDT" to "dash"
     )
 
-    // Split into batches of 20 symbols per connection (Binance URL limit)
-    private val symbolBatches = symbolMapping.keys.chunked(20)
+    // Split into batches
+    private val symbolBatches = symbolMapping.keys.chunked(SYMBOLS_PER_BATCH)
     private val webSockets = mutableListOf<WebSocket>()
     private val batchConnectionStates = MutableStateFlow(List(symbolBatches.size) { false })
 
-    // Flow for full updates (price + percentage)
+    // Flows for updates
     private val _fullUpdates = MutableSharedFlow<Map<String, TokenPriceUpdate>>(
         replay = 1,
         extraBufferCapacity = 50
     )
     val fullUpdates: SharedFlow<Map<String, TokenPriceUpdate>> = _fullUpdates
 
-    // Keep the simple price updates for backward compatibility
     private val _priceUpdates = MutableSharedFlow<Map<String, Double>>(
         replay = 1,
         extraBufferCapacity = 50
     )
     val priceUpdates: SharedFlow<Map<String, Double>> = _priceUpdates
 
-    // Overall connection state (true if at least one batch is connected)
+    // Connection state
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
-    enum class ConnectionState {
-        CONNECTED, DISCONNECTED, CONNECTING, ERROR
-    }
-
     fun connect() {
-        Log.d("BinanceWS", "Attempting to connect ${symbolBatches.size} batches...")
+        Log.d(TAG, "Attempting to connect ${symbolBatches.size} batches...")
         _connectionState.value = ConnectionState.CONNECTING
         webSockets.clear()
 
-        // Connect each batch
         symbolBatches.forEachIndexed { index, batch ->
             connectBatch(batch, index)
         }
 
-        // Start connection monitor
         startConnectionMonitor()
     }
 
@@ -156,24 +138,23 @@ class BinanceWebSocket : WebSocketListener() {
         try {
             val streams = batch.joinToString("/") { "${it.lowercase()}@ticker" }
             val request = Request.Builder()
-                .url("wss://stream.binance.com:9443/ws/$streams")
+                .url("${BINANCE_WS_URL}$streams")
                 .build()
 
-            val webSocket = client.newWebSocket(request, createBatchListener(batchIndex))
+            val webSocket = okHttpClient.newWebSocket(request, createBatchListener(batchIndex))
             webSockets.add(webSocket)
 
-            Log.d("BinanceWS", "Batch $batchIndex connecting with ${batch.size} symbols")
+            Log.d(TAG, "Batch $batchIndex connecting with ${batch.size} symbols")
         } catch (e: Exception) {
-            Log.e("BinanceWS", "Failed to connect batch $batchIndex: ${e.message}")
+            Log.e(TAG, "Failed to connect batch $batchIndex: ${e.message}")
         }
     }
 
     private fun createBatchListener(batchIndex: Int) = object : WebSocketListener() {
         private var reconnectAttempts = 0
-        private val maxReconnectAttempts = 5
 
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            Log.d("BinanceWS", "Batch $batchIndex connected successfully")
+            Log.d(TAG, "Batch $batchIndex connected successfully")
             updateBatchState(batchIndex, true)
             reconnectAttempts = 0
         }
@@ -187,9 +168,9 @@ class BinanceWebSocket : WebSocketListener() {
                 val priceChange = jsonObject["p"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
                 val priceChangePercent = jsonObject["P"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
 
-                // Log periodically (every ~100 messages)
-                if (System.currentTimeMillis() % 10000 < 100) {
-                    Log.d("🔴 LIVE DATA", "Batch $batchIndex - $symbol: $$price (${priceChangePercent}%)")
+                // Log periodically
+                if (System.currentTimeMillis() % LOG_INTERVAL_MS < 100) {
+                    Log.d(TAG, "Batch $batchIndex - $symbol: $$price (${priceChangePercent}%)")
                 }
 
                 val tokenId = symbolMapping[symbol]
@@ -201,35 +182,37 @@ class BinanceWebSocket : WebSocketListener() {
                         priceChangePercentage24h = priceChangePercent
                     )
 
-                    CoroutineScope(Dispatchers.IO).launch {
+                    scope.launch {
                         _fullUpdates.emit(mapOf(tokenId to update))
                         _priceUpdates.emit(mapOf(tokenId to price))
                     }
                 }
             } catch (e: Exception) {
-                Log.e("BinanceWS", "Error parsing message in batch $batchIndex: ${e.message}")
+                Log.e(TAG, "Error parsing message in batch $batchIndex: ${e.message}")
             }
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            Log.e("BinanceWS", "Batch $batchIndex failed: ${t.message}")
+            Log.e(TAG, "Batch $batchIndex failed: ${t.message}")
             updateBatchState(batchIndex, false)
 
-            // Attempt to reconnect this batch
-            if (reconnectAttempts < maxReconnectAttempts) {
+            // Exponential backoff reconnection
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
                 reconnectAttempts++
-                val delayMs = min(3000 * reconnectAttempts, 30000).toLong()
+                val delayMs = getReconnectDelay(reconnectAttempts)
 
-                CoroutineScope(Dispatchers.IO).launch {
+                scope.launch {
                     delay(delayMs)
-                    Log.d("BinanceWS", "Attempting to reconnect batch $batchIndex (attempt $reconnectAttempts)")
+                    Log.d(TAG, "Attempting to reconnect batch $batchIndex (attempt $reconnectAttempts)")
                     connectBatch(symbolBatches[batchIndex], batchIndex)
                 }
+            } else {
+                _connectionState.value = ConnectionState.ERROR
             }
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            Log.d("BinanceWS", "Batch $batchIndex closed: $reason")
+            Log.d(TAG, "Batch $batchIndex closed: $reason")
             updateBatchState(batchIndex, false)
         }
     }
@@ -240,7 +223,6 @@ class BinanceWebSocket : WebSocketListener() {
             currentStates[batchIndex] = isConnected
             batchConnectionStates.value = currentStates
 
-            // Update overall connection state
             val anyConnected = currentStates.any { it }
             _connectionState.value = if (anyConnected)
                 ConnectionState.CONNECTED
@@ -250,34 +232,45 @@ class BinanceWebSocket : WebSocketListener() {
     }
 
     private fun startConnectionMonitor() {
-        CoroutineScope(Dispatchers.IO).launch {
+        connectionMonitorJob = scope.launch {
             batchConnectionStates.collect { states ->
                 val connectedCount = states.count { it }
                 val totalCount = states.size
                 if (connectedCount > 0) {
-                    Log.d("BinanceWS", "Connection status: $connectedCount/$totalCount batches connected")
+                    Log.d(TAG, "Connection status: $connectedCount/$totalCount batches connected")
                 }
             }
         }
     }
 
     fun disconnect() {
+        connectionMonitorJob?.cancel()
         webSockets.forEach { it.close(1000, "User disconnected") }
         webSockets.clear()
         _connectionState.value = ConnectionState.DISCONNECTED
-        Log.d("BinanceWS", "All connections closed")
+        Log.d(TAG, "All connections closed")
     }
 
-    fun getConnectedBatchesCount(): Int = batchConnectionStates.value.count { it }
+    fun cleanup() {
+        disconnect()
+        scope.cancel()
+    }
+
+    private fun getReconnectDelay(attempt: Int): Long {
+        // Exponential backoff: 3s, 6s, 12s, 24s, 30s (capped)
+        return min(
+            BASE_RECONNECT_DELAY_MS * (1 shl (attempt - 1)),
+            MAX_RECONNECT_DELAY_MS
+        )
+    }
 
     companion object {
-        @Volatile
-        private var instance: BinanceWebSocket? = null
-
-        fun getInstance(): BinanceWebSocket {
-            return instance ?: synchronized(this) {
-                instance ?: BinanceWebSocket().also { instance = it }
-            }
-        }
+        private const val TAG = "BinanceWS"
+        private const val BINANCE_WS_URL = "wss://stream.binance.com:9443/ws/"
+        private const val SYMBOLS_PER_BATCH = 20
+        private const val MAX_RECONNECT_ATTEMPTS = 5
+        private const val BASE_RECONNECT_DELAY_MS = 3000L
+        private const val MAX_RECONNECT_DELAY_MS = 30000L
+        private const val LOG_INTERVAL_MS = 10000L
     }
 }

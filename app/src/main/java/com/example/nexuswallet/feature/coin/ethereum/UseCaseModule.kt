@@ -46,12 +46,6 @@ object UseCaseModule {
 
     @Provides
     @Singleton
-    fun provideValidateAddressUseCase(): ValidateAddressUseCase {
-        return ValidateAddressUseCase()
-    }
-
-    @Provides
-    @Singleton
     fun provideGetFeeEstimateUseCase(
         ethereumBlockchainRepository: EthereumBlockchainRepository
     ): GetFeeEstimateUseCase {

@@ -8,6 +8,9 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
 import javax.inject.Singleton
 
 @Module
@@ -16,8 +19,16 @@ object MarketModule {
 
     @Provides
     @Singleton
-    fun provideBinanceWebSocket(): BinanceWebSocket {
-        return BinanceWebSocket.getInstance()
+    fun provideBinanceWebSocket(
+        okHttpClient: OkHttpClient,
+        json: Json,
+        ioDispatcher: CoroutineDispatcher
+    ): BinanceWebSocket {
+        return BinanceWebSocket(
+            okHttpClient,
+            json,
+            ioDispatcher
+        )
     }
 
     @Provides

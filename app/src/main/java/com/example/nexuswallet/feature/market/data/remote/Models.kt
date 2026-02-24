@@ -113,3 +113,15 @@ data class MarketData(
 data class Sparkline7d(
     val price: List<Double>
 )
+
+@Serializable
+data class TokenPriceUpdate(
+    val tokenId: String,
+    val price: Double,
+    val priceChange24h: Double,
+    val priceChangePercentage24h: Double
+)
+
+enum class ConnectionState {
+    CONNECTED, DISCONNECTED, CONNECTING, ERROR
+}
