@@ -341,3 +341,76 @@ class GetUSDCFeeEstimateUseCase @Inject constructor(
         return result
     }
 }
+
+@Singleton
+class ValidateUSDCFormUseCase @Inject constructor() {
+
+    data class ValidationResult(
+        val isValid: Boolean,
+        val isValidAddress: Boolean,
+        val hasSufficientBalance: Boolean,
+        val hasSufficientGas: Boolean,
+        val addressError: String? = null,
+        val amountError: String? = null,
+        val balanceError: String? = null,
+        val gasError: String? = null
+    )
+
+    operator fun invoke(
+        toAddress: String,
+        amountValue: BigDecimal,
+        usdcBalanceDecimal: BigDecimal,
+        ethBalanceDecimal: BigDecimal,
+        feeEstimate: USDCFeeEstimate?,
+        requireGas: Boolean = true
+    ): ValidationResult {
+
+        // Validate address format (Ethereum address)
+        val isValidAddress = validateAddress(toAddress)
+        val addressError = if (!isValidAddress && toAddress.isNotEmpty())
+            "Invalid Ethereum address format" else null
+
+        // Validate amount > 0
+        val isAmountValid = amountValue > BigDecimal.ZERO
+        val amountError = if (!isAmountValid && amountValue <= BigDecimal.ZERO)
+            "Amount must be greater than 0" else null
+
+        // Check sufficient USDC balance
+        val hasSufficientBalance = amountValue <= usdcBalanceDecimal && isAmountValid
+        val balanceError = if (!hasSufficientBalance && isAmountValid)
+            "Insufficient USDC balance" else null
+
+        // Check sufficient ETH for gas
+        val requiredEth = if (feeEstimate != null) {
+            BigDecimal(feeEstimate.totalFeeEth)
+        } else {
+            BigDecimal("0.0005") // fallback estimate
+        }
+
+        val hasSufficientGas = ethBalanceDecimal >= requiredEth
+        val gasError = if (!hasSufficientGas)
+            "Insufficient ETH for gas fees (need ${requiredEth.toPlainString()} ETH)"
+        else null
+
+        // Overall validation
+        val isValid = (toAddress.isEmpty() || isValidAddress) &&
+                isAmountValid &&
+                hasSufficientBalance &&
+                (if (requireGas) hasSufficientGas else true)
+
+        return ValidationResult(
+            isValid = isValid,
+            isValidAddress = isValidAddress,
+            hasSufficientBalance = hasSufficientBalance,
+            hasSufficientGas = hasSufficientGas,
+            addressError = addressError,
+            amountError = amountError,
+            balanceError = balanceError,
+            gasError = gasError
+        )
+    }
+
+    private fun validateAddress(address: String): Boolean {
+        return address.startsWith("0x") && address.length == 42
+    }
+}
