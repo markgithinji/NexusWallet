@@ -11,7 +11,7 @@ data class EtherscanBalanceResponse(
 )
 
 @Serializable
-data class EtherscanTransaction(
+data class EtherscanTransactionResponse(
     @SerialName("blockNumber") val blockNumber: String,
     @SerialName("timeStamp") val timestamp: String,
     @SerialName("hash") val hash: String,
@@ -38,7 +38,7 @@ data class EtherscanTransaction(
 data class EtherscanTransactionsResponse(
     @SerialName("status") val status: String,
     @SerialName("message") val message: String,
-    @SerialName("result") val result: List<EtherscanTransaction>
+    @SerialName("result") val result: List<EtherscanTransactionResponse>
 )
 
 @Serializable
@@ -55,11 +55,11 @@ data class EtherscanBroadcastResponse(
     @SerialName("id") val id: Int? = null,
     @SerialName("status") val status: String? = null,
     @SerialName("message") val message: String? = null,
-    @SerialName("error") val error: BroadcastError? = null
+    @SerialName("error") val error: BroadcastErrorResponse? = null
 )
 
 @Serializable
-data class BroadcastError(
+data class BroadcastErrorResponse(
     @SerialName("code") val code: Int,
     @SerialName("message") val message: String
 )
@@ -68,11 +68,11 @@ data class BroadcastError(
 data class GasPriceResponse(
     @SerialName("status") val status: String,
     @SerialName("message") val message: String,
-    @SerialName("result") val result: GasPriceResult
+    @SerialName("result") val result: GasPriceResultResponse
 )
 
 @Serializable
-data class GasPriceResult(
+data class GasPriceResultResponse(
     @SerialName("LastBlock") val lastBlock: String,
     @SerialName("SafeGasPrice") val SafeGasPrice: String,
     @SerialName("ProposeGasPrice") val ProposeGasPrice: String,
@@ -102,34 +102,4 @@ data class GasPrice(
     val fast: String,
     val lastBlock: String? = null,
     val baseFee: String? = null
-)
-
-@Serializable
-data class EtherscanTokenTransfersResponse(
-    val status: String,
-    val message: String,
-    val result: List<TokenTransaction>
-)
-
-@Serializable
-data class TokenTransaction(
-    val blockNumber: String,
-    val timeStamp: String,
-    val hash: String,
-    val nonce: String,
-    val blockHash: String,
-    val from: String,
-    val contractAddress: String,
-    val to: String,
-    val value: String,
-    val tokenName: String,
-    val tokenSymbol: String,
-    val tokenDecimal: String,
-    val transactionIndex: String,
-    val gas: String,
-    val gasPrice: String,
-    val gasUsed: String,
-    val cumulativeGasUsed: String,
-    val input: String,
-    val confirmations: String
 )

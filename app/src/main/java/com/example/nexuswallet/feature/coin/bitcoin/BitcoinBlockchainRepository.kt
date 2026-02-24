@@ -50,8 +50,8 @@ class BitcoinBlockchainRepository @Inject constructor(
             val api = getApiForNetwork(network)
             val response = api.getAddressInfo(address)
 
-            val confirmed = response.chainStats.fundedTxoSum - response.chainStats.spentTxoSum
-            val unconfirmed = response.mempoolStats.fundedTxoSum - response.mempoolStats.spentTxoSum
+            val confirmed = response.chainStatsResponse.fundedTxoSum - response.chainStatsResponse.spentTxoSum
+            val unconfirmed = response.mempoolStatsResponse.fundedTxoSum - response.mempoolStatsResponse.spentTxoSum
             val totalSatoshis = confirmed + unconfirmed
 
             BigDecimal(totalSatoshis).divide(

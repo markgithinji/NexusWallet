@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
+import com.example.nexuswallet.feature.coin.usdc.domain.EtherscanTokenTransfersResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 

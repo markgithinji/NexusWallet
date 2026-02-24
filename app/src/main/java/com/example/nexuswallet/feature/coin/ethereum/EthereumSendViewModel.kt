@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
-import kotlin.plus
+
 @HiltViewModel
 class EthereumSendViewModel @Inject constructor(
     private val getEthereumWalletUseCase: GetEthereumWalletUseCase,
@@ -24,36 +22,8 @@ class EthereumSendViewModel @Inject constructor(
     private val ethereumBlockchainRepository: EthereumBlockchainRepository
 ) : ViewModel() {
 
-    data class SendUiState(
-        val walletId: String = "",
-        val walletName: String = "",
-        val fromAddress: String = "",
-        val toAddress: String = "",
-        val amount: String = "",
-        val amountValue: BigDecimal = BigDecimal.ZERO,
-        val note: String = "",
-        val feeLevel: FeeLevel = FeeLevel.NORMAL,
-        val isLoading: Boolean = false,
-        val error: String? = null,
-        val feeEstimate: EthereumFeeEstimate? = null,
-        val balance: BigDecimal = BigDecimal.ZERO,
-        val isValid: Boolean = false,
-        val validationError: String? = null,
-        val network: String = "",
-        val step: String = ""
-    )
-
-    private val _uiState = MutableStateFlow(SendUiState())
-    val uiState: StateFlow<SendUiState> = _uiState.asStateFlow()
-
-    sealed class SendEvent {
-        data class ToAddressChanged(val address: String) : SendEvent()
-        data class AmountChanged(val amount: String) : SendEvent()
-        data class NoteChanged(val note: String) : SendEvent()
-        data class FeeLevelChanged(val feeLevel: FeeLevel) : SendEvent()
-        object Validate : SendEvent()
-        object ClearError : SendEvent()
-    }
+    private val _uiState = MutableStateFlow(EthSendUiState())
+    val uiState: StateFlow<EthSendUiState> = _uiState.asStateFlow()
 
     fun initialize(walletId: String) {
         viewModelScope.launch {

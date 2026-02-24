@@ -5,7 +5,6 @@ import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.coin.CachedGasPrice
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.SafeApiCall
 import kotlinx.coroutines.delay
@@ -52,8 +51,9 @@ class EthereumBlockchainRepository @Inject constructor(
 
     suspend fun getEthereumTransactions(
         address: String,
-        network: EthereumNetwork = EthereumNetwork.Mainnet
-    ): Result<List<EtherscanTransaction>> = SafeApiCall.make {
+        network: EthereumNetwork,
+        walletId: String
+    ): Result<List<EthereumTransaction>> = SafeApiCall.make {
         Log.d("EthereumRepo", "Fetching transactions for $address on ${network.displayName}")
 
         val chainId = network.chainId
@@ -66,11 +66,13 @@ class EthereumBlockchainRepository @Inject constructor(
         )
 
         if (response.status == "1") {
-            Log.d(
-                "EthereumRepo",
-                "Fetched ${response.result.size} transactions for $address on ${network.displayName}"
+            val transactions = response.result.toDomain(
+                walletId = walletId,
+                network = network,
+                walletAddress = address
             )
-            response.result
+            Log.d("EthereumRepo", "Fetched ${transactions.size} transactions")
+            transactions
         } else {
             throw Exception("API error: ${response.message}")
         }

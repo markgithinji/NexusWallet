@@ -6,19 +6,19 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AddressResponse(
     val address: String,
-    @SerialName("chain_stats") val chainStats: ChainStats,
-    @SerialName("mempool_stats") val mempoolStats: MempoolStats
+    @SerialName("chain_stats") val chainStatsResponse: ChainStatsResponse,
+    @SerialName("mempool_stats") val mempoolStatsResponse: MempoolStatsResponse
 )
 
 @Serializable
-data class ChainStats(
+data class ChainStatsResponse(
     @SerialName("funded_txo_sum") val fundedTxoSum: Long,
     @SerialName("spent_txo_sum") val spentTxoSum: Long,
     @SerialName("tx_count") val txCount: Int
 )
 
 @Serializable
-data class MempoolStats(
+data class MempoolStatsResponse(
     @SerialName("funded_txo_sum") val fundedTxoSum: Long,
     @SerialName("spent_txo_sum") val spentTxoSum: Long,
     @SerialName("tx_count") val txCount: Int

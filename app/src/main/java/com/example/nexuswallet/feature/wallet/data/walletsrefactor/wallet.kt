@@ -1,8 +1,7 @@
 package com.example.nexuswallet.feature.wallet.data.walletsrefactor
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
+import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 import com.example.nexuswallet.feature.coin.solana.SolanaNetwork
-import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.serialization.Serializable
 
 @Serializable

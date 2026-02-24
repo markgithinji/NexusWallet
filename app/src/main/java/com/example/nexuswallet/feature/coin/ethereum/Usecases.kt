@@ -5,7 +5,6 @@ import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRe
 import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
@@ -49,42 +48,23 @@ class SyncEthereumTransactionsUseCase @Inject constructor(
 
         return@withContext when (val transactionsResult = ethereumBlockchainRepository.getEthereumTransactions(
             address = ethereumCoin.address,
-            network = ethereumCoin.network
+            network = ethereumCoin.network,
+            walletId = walletId
         )) {
             is Result.Success -> {
                 val transactions = transactionsResult.data
                 Log.d("SyncEthUC", "Received ${transactions.size} transactions from Etherscan")
-
-                if (transactions.isEmpty()) {
-                    Log.d("SyncEthUC", "No transactions found")
-                    return@withContext Result.Success(Unit)
-                }
 
                 // Delete existing transactions
                 ethereumTransactionRepository.deleteAllForWallet(walletId)
                 Log.d("SyncEthUC", "Deleted existing transactions")
 
                 // Save new transactions
-                var savedCount = 0
-                transactions.forEach { tx ->
-                    val isIncoming = tx.to.equals(ethereumCoin.address, ignoreCase = true)
-                    val status = when {
-                        tx.isError == "1" -> TransactionStatus.FAILED
-                        tx.receiptStatus == "1" -> TransactionStatus.SUCCESS
-                        else -> TransactionStatus.PENDING
-                    }
-
-                    val domainTx = tx.toDomain(
-                        walletId = walletId,
-                        isIncoming = isIncoming,
-                        status = status,
-                        network = ethereumCoin.network.displayName
-                    )
-                    ethereumTransactionRepository.saveTransaction(domainTx)
-                    savedCount++
+                transactions.forEach { transaction ->
+                    ethereumTransactionRepository.saveTransaction(transaction)
                 }
 
-                Log.d("SyncEthUC", "Successfully saved $savedCount transactions")
+                Log.d("SyncEthUC", "Successfully saved ${transactions.size} transactions")
                 Log.d("SyncEthUC", "=== Sync completed successfully for wallet $walletId ===")
                 Result.Success(Unit)
             }
@@ -104,7 +84,6 @@ class GetTransactionUseCase @Inject constructor(
     private val ethereumTransactionRepository: EthereumTransactionRepository
 ) {
     suspend operator fun invoke(transactionId: String): Result<EthereumTransaction> {
-        // Room operation
         val transaction = ethereumTransactionRepository.getTransaction(transactionId)
         return if (transaction != null) {
             Result.Success(transaction)
@@ -190,7 +169,7 @@ class GetEthereumWalletUseCase @Inject constructor(
 /**
  * Extension function to convert EtherscanTransaction to domain EthereumTransaction
  */
-fun EtherscanTransaction.toDomain(
+fun EtherscanTransactionResponse.toDomain(
     walletId: String,
     isIncoming: Boolean,
     status: TransactionStatus,
@@ -300,7 +279,7 @@ class SendEthereumUseCase @Inject constructor(
 
         // 2. Sign transaction
         Log.d("SendEthereumUC", "Step 2: Signing transaction...")
-        val signedTransactionResult = signTransaction(transaction, ethereumCoin.network, ethereumCoin.address)
+        val signedTransactionResult = signTransaction(transaction, ethereumCoin.network)
         if (signedTransactionResult is Result.Error) return@withContext signedTransactionResult
         val signedTransaction = (signedTransactionResult as Result.Success).data
 
@@ -384,8 +363,7 @@ class SendEthereumUseCase @Inject constructor(
 
     private suspend fun signTransaction(
         transaction: EthereumTransaction,
-        network: EthereumNetwork,
-        expectedAddress: String
+        network: EthereumNetwork
     ): Result<EthereumTransaction> {
         Log.d("SendEthereumUC", "Signing transaction: ${transaction.id}")
 
