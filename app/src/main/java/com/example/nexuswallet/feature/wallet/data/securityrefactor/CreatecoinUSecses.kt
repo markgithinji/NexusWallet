@@ -2,8 +2,8 @@ package com.example.nexuswallet.feature.wallet.data.securityrefactor
 
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
+import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 import com.example.nexuswallet.feature.coin.solana.SolanaNetwork
-import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumCoin

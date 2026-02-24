@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
-import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.CreateWalletUseCase
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.GenerateMnemonicUseCase
@@ -17,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 
 @HiltViewModel
 class WalletCreationViewModel @Inject constructor(

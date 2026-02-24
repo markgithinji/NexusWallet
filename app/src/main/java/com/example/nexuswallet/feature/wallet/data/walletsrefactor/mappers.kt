@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.wallet.data.walletsrefactor
 
-import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
+import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.local.BitcoinBalanceEntity
 import com.example.nexuswallet.feature.wallet.data.local.BitcoinCoinEntity
 import com.example.nexuswallet.feature.wallet.data.local.EthereumBalanceEntity

@@ -5,18 +5,14 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -24,25 +20,16 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CurrencyBitcoin
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Note
 import androidx.compose.material.icons.filled.OpenInBrowser
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -51,18 +38,13 @@ import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendViewModel
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EthereumFeeEstimate
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendViewModel
+import com.example.nexuswallet.feature.coin.ethereum.EthereumSendEvent
 import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
 import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
+import com.example.nexuswallet.feature.coin.usdc.USDCSendEvent
 import com.example.nexuswallet.feature.coin.usdc.USDCSendViewModel
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
-import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.WalletType
-import kotlinx.coroutines.delay
-import java.math.BigDecimal
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionReviewScreen(
@@ -182,10 +164,10 @@ fun TransactionReviewScreen(
 
                                 when (coinType) {
                                     "ETH" -> {
-                                        ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ToAddressChanged(toAddress))
-                                        ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.AmountChanged(amount))
+                                        ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(toAddress))
+                                        ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(amount))
                                         feeLevel?.let {
-                                            ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
+                                            ethereumViewModel.onEvent(EthereumSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
                                         }
                                         ethereumViewModel.send { hash ->
                                             txHash = hash
@@ -194,10 +176,10 @@ fun TransactionReviewScreen(
                                         }
                                     }
                                     "USDC" -> {
-                                        usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ToAddressChanged(toAddress))
-                                        usdcViewModel.onEvent(USDCSendViewModel.SendEvent.AmountChanged(amount))
+                                        usdcViewModel.onEvent(USDCSendEvent.ToAddressChanged(toAddress))
+                                        usdcViewModel.onEvent(USDCSendEvent.AmountChanged(amount))
                                         feeLevel?.let {
-                                            usdcViewModel.onEvent(USDCSendViewModel.SendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
+                                            usdcViewModel.onEvent(USDCSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
                                         }
                                         usdcViewModel.send { hash ->
                                             txHash = hash

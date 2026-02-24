@@ -26,7 +26,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
+import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 import java.math.BigDecimal
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)

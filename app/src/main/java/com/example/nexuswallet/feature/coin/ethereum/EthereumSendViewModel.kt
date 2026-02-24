@@ -95,25 +95,25 @@ class EthereumSendViewModel @Inject constructor(
         }
     }
 
-    fun onEvent(event: SendEvent) {
+    fun onEvent(event: EthereumSendEvent) {
         viewModelScope.launch {
             when (event) {
-                is SendEvent.ToAddressChanged -> {
+                is EthereumSendEvent.ToAddressChanged -> {
                     _uiState.update { it.copy(toAddress = event.address) }
                     validateInputs()
                 }
-                is SendEvent.AmountChanged -> {
+                is EthereumSendEvent.AmountChanged -> {
                     val amountValue = event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
                     _uiState.update { it.copy(amount = event.amount, amountValue = amountValue) }
                     validateInputs()
                 }
-                is SendEvent.NoteChanged -> _uiState.update { it.copy(note = event.note) }
-                is SendEvent.FeeLevelChanged -> {
+                is EthereumSendEvent.NoteChanged -> _uiState.update { it.copy(note = event.note) }
+                is EthereumSendEvent.FeeLevelChanged -> {
                     _uiState.update { it.copy(feeLevel = event.feeLevel) }
                     updateFeeEstimate()
                 }
-                SendEvent.Validate -> validateInputs()
-                SendEvent.ClearError -> _uiState.update { it.copy(error = null, validationError = null) }
+                EthereumSendEvent.Validate -> validateInputs()
+                EthereumSendEvent.ClearError -> _uiState.update { it.copy(error = null, validationError = null) }
             }
         }
     }

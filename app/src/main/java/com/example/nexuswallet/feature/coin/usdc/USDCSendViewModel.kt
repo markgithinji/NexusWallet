@@ -140,14 +140,14 @@ class USDCSendViewModel @Inject constructor(
         }
     }
 
-    fun onEvent(event: SendEvent) {
+    fun onEvent(event: USDCSendEvent) {
         when (event) {
-            is SendEvent.ToAddressChanged -> {
+            is USDCSendEvent.ToAddressChanged -> {
                 _state.update { it.copy(toAddress = event.address) }
                 validateForm()
             }
 
-            is SendEvent.AmountChanged -> {
+            is USDCSendEvent.AmountChanged -> {
                 val amountValue = event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
                 _state.update {
                     it.copy(
@@ -158,14 +158,14 @@ class USDCSendViewModel @Inject constructor(
                 validateForm()
             }
 
-            is SendEvent.FeeLevelChanged -> {
+            is USDCSendEvent.FeeLevelChanged -> {
                 _state.update { it.copy(feeLevel = event.feeLevel) }
                 updateFeeEstimate()
             }
 
-            SendEvent.Validate -> validateForm()
-            SendEvent.ClearError -> clearError()
-            SendEvent.ClearInfo -> clearInfo()
+            USDCSendEvent.Validate -> validateForm()
+            USDCSendEvent.ClearError -> clearError()
+            USDCSendEvent.ClearInfo -> clearInfo()
         }
     }
 

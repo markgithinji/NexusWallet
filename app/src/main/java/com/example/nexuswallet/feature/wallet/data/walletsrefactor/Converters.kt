@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.wallet.data.walletsrefactor
 import androidx.room.TypeConverter
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
+import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.serialization.json.Json
 
@@ -23,14 +23,20 @@ class Converters {
     fun toBitcoinNetwork(network: String): BitcoinNetwork {
         // Handle empty or blank strings
         if (network.isBlank()) {
-            android.util.Log.w("Converters", "Empty BitcoinNetwork value found, defaulting to TESTNET")
+            android.util.Log.w(
+                "Converters",
+                "Empty BitcoinNetwork value found, defaulting to TESTNET"
+            )
             return BitcoinNetwork.TESTNET
         }
 
         return try {
             BitcoinNetwork.valueOf(network)
         } catch (e: IllegalArgumentException) {
-            android.util.Log.e("Converters", "Unknown BitcoinNetwork: '$network', defaulting to TESTNET")
+            android.util.Log.e(
+                "Converters",
+                "Unknown BitcoinNetwork: '$network', defaulting to TESTNET"
+            )
             BitcoinNetwork.TESTNET
         }
     }
@@ -44,7 +50,10 @@ class Converters {
     @TypeConverter
     fun toEthereumNetwork(network: String): EthereumNetwork {
         if (network.isBlank()) {
-            android.util.Log.w("Converters", "Empty EthereumNetwork value found, defaulting to Sepolia")
+            android.util.Log.w(
+                "Converters",
+                "Empty EthereumNetwork value found, defaulting to Sepolia"
+            )
             return EthereumNetwork.Sepolia
         }
 

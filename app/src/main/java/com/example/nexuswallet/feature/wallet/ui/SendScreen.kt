@@ -32,9 +32,11 @@ import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendViewModel
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EthereumFeeEstimate
+import com.example.nexuswallet.feature.coin.ethereum.EthereumSendEvent
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendViewModel
 import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
 import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
+import com.example.nexuswallet.feature.coin.usdc.USDCSendEvent
 import com.example.nexuswallet.feature.coin.usdc.USDCSendViewModel
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
 import java.math.BigDecimal
@@ -198,7 +200,7 @@ fun SendScreen(
                         ethereumUiState.value.error?.let { error ->
                             item {
                                 ErrorMessage(error = error) {
-                                    ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ClearError)
+                                    ethereumViewModel.onEvent(EthereumSendEvent.ClearError)
                                 }
                             }
                         }
@@ -207,14 +209,14 @@ fun SendScreen(
                         usdcState.value.error?.let { error ->
                             item {
                                 ErrorMessage(error = error) {
-                                    usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ClearError)
+                                    usdcViewModel.onEvent(USDCSendEvent.ClearError)
                                 }
                             }
                         }
                         usdcState.value.info?.let { info ->
                             item {
                                 InfoMessage(info = info) {
-                                    usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ClearInfo)
+                                    usdcViewModel.onEvent(USDCSendEvent.ClearInfo)
                                 }
                             }
                         }
@@ -252,26 +254,26 @@ fun SendScreen(
                         "ETH" -> {
                             SendAddressInput(
                                 toAddress = ethereumUiState.value.toAddress,
-                                onAddressChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ToAddressChanged(it)) },
+                                onAddressChange = { ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(it)) },
                                 coinType = coinType,
                                 isValid = ethereumUiState.value.validationError?.contains("address") == false,
                                 errorMessage = if (ethereumUiState.value.validationError?.contains("address") == true)
                                     ethereumUiState.value.validationError else null,
                                 onPaste = { pastedText ->
-                                    ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.ToAddressChanged(pastedText))
+                                    ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(pastedText))
                                 }
                             )
                         }
                         "USDC" -> {
                             SendAddressInput(
                                 toAddress = usdcState.value.toAddress,
-                                onAddressChange = { usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ToAddressChanged(it)) },
+                                onAddressChange = { usdcViewModel.onEvent(USDCSendEvent.ToAddressChanged(it)) },
                                 coinType = coinType,
                                 isValid = usdcState.value.isValidAddress,
                                 errorMessage = if (!usdcState.value.isValidAddress && usdcState.value.toAddress.isNotEmpty())
                                     "Invalid Ethereum address" else null,
                                 onPaste = { pastedText ->
-                                    usdcViewModel.onEvent(USDCSendViewModel.SendEvent.ToAddressChanged(pastedText))
+                                    usdcViewModel.onEvent(USDCSendEvent.ToAddressChanged(pastedText))
                                 }
                             )
                         }
@@ -309,7 +311,7 @@ fun SendScreen(
                         "ETH" -> {
                             SendAmountInput(
                                 amount = ethereumUiState.value.amount,
-                                onAmountChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.AmountChanged(it)) },
+                                onAmountChange = { ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(it)) },
                                 balance = ethereumUiState.value.balance,
                                 coinType = coinType,
                                 onMaxClick = { showMaxDialog = true },
@@ -320,7 +322,7 @@ fun SendScreen(
                         "USDC" -> {
                             SendAmountInput(
                                 amount = usdcState.value.amount,
-                                onAmountChange = { usdcViewModel.onEvent(USDCSendViewModel.SendEvent.AmountChanged(it)) },
+                                onAmountChange = { usdcViewModel.onEvent(USDCSendEvent.AmountChanged(it)) },
                                 balance = usdcState.value.usdcBalanceDecimal,
                                 coinType = coinType,
                                 tokenSymbol = "USDC",
@@ -354,7 +356,7 @@ fun SendScreen(
                         "ETH" -> {
                             SendFeeSelection(
                                 feeLevel = ethereumUiState.value.feeLevel,
-                                onFeeLevelChange = { ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.FeeLevelChanged(it)) },
+                                onFeeLevelChange = { ethereumViewModel.onEvent(EthereumSendEvent.FeeLevelChanged(it)) },
                                 feeEstimate = ethereumUiState.value.feeEstimate,
                                 coinType = coinType
                             )
@@ -362,7 +364,7 @@ fun SendScreen(
                         "USDC" -> {
                             SendFeeSelection(
                                 feeLevel = usdcState.value.feeLevel,
-                                onFeeLevelChange = { usdcViewModel.onEvent(USDCSendViewModel.SendEvent.FeeLevelChanged(it)) },
+                                onFeeLevelChange = { usdcViewModel.onEvent(USDCSendEvent.FeeLevelChanged(it)) },
                                 feeEstimate = usdcState.value.feeEstimate,
                                 coinType = coinType
                             )
@@ -448,7 +450,7 @@ fun SendScreen(
                     coinType = "ETH",
                     onDismiss = { showMaxDialog = false },
                     onConfirm = { maxAmount ->
-                        ethereumViewModel.onEvent(EthereumSendViewModel.SendEvent.AmountChanged(maxAmount))
+                        ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(maxAmount))
                         showMaxDialog = false
                     }
                 )
@@ -461,7 +463,7 @@ fun SendScreen(
                     coinType = "USDC",
                     onDismiss = { showMaxDialog = false },
                     onConfirm = { maxAmount ->
-                        usdcViewModel.onEvent(USDCSendViewModel.SendEvent.AmountChanged(maxAmount))
+                        usdcViewModel.onEvent(USDCSendEvent.AmountChanged(maxAmount))
                         showMaxDialog = false
                     }
                 )
