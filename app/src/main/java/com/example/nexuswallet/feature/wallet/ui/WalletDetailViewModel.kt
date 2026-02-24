@@ -41,7 +41,6 @@ class WalletDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(WalletDetailUiState(isLoading = true))
     val uiState: StateFlow<WalletDetailUiState> = _uiState.asStateFlow()
 
-    // Load wallet details
     fun loadWallet(walletId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -63,19 +62,24 @@ class WalletDetailViewModel @Inject constructor(
                 // 3. Load market percentages
                 val percentages = marketRepository.getLatestPricePercentages()
 
-                // Update UI once with all data
+                // 4. Load initial transactions
+                val initialTransactions = getAllTransactionsUseCase(walletId)
+
+                // Update UI once with all initial data
                 _uiState.update {
                     it.copy(
                         wallet = loadedWallet,
                         balance = loadedBalance,
-                        pricePercentages = percentages
+                        pricePercentages = percentages,
+                        transactions = initialTransactions,
+                        isLoading = false
                     )
                 }
 
-                // 4. Load transactions (this has flow collection)
-                loadTransactions(walletId)
+                // 5. Start observing transactions in a separate coroutine (doesn't block)
+                observeTransactions(walletId)
 
-                // 5. Sync balances in background
+                // 6. Sync balances in background (also separate)
                 viewModelScope.launch {
                     syncWalletBalancesUseCase(loadedWallet)
                     val updatedBalance = walletRepository.getWalletBalance(walletId)
@@ -83,36 +87,32 @@ class WalletDetailViewModel @Inject constructor(
                 }
 
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Failed to load wallet: ${e.message}", isLoading = false) }
-            } finally {
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update {
+                    it.copy(
+                        error = "Failed to load wallet: ${e.message}",
+                        isLoading = false
+                    )
+                }
             }
         }
     }
 
-    private suspend fun loadTransactions(walletId: String) {
-        val initialTransactions = getAllTransactionsUseCase(walletId)
-        _uiState.update { it.copy(transactions = initialTransactions) }
-
-        getAllTransactionsUseCase.observeTransactions(walletId)
-            .flowOn(Dispatchers.IO)
-            .catch { e ->
-                Log.e("WalletDetailVM", "Error observing transactions", e)
-            }
-            .collect { updatedTransactions ->
-                _uiState.update { it.copy(transactions = updatedTransactions) }
-            }
+    private fun observeTransactions(walletId: String) {
+        viewModelScope.launch {
+            getAllTransactionsUseCase.observeTransactions(walletId)
+                .flowOn(Dispatchers.IO)
+                .catch { e ->
+                    Log.e("WalletDetailVM", "Error observing transactions", e)
+                }
+                .collect { updatedTransactions ->
+                    _uiState.update { it.copy(transactions = updatedTransactions) }
+                }
+        }
     }
 
     private suspend fun loadMarketPercentages() {
         val percentages = marketRepository.getLatestPricePercentages()
         _uiState.update { it.copy(pricePercentages = percentages) }
-    }
-
-    fun debugLoadPercentages() {
-        viewModelScope.launch {
-            loadMarketPercentages()
-        }
     }
 
     fun getWalletName(): String = _uiState.value.wallet?.name ?: "Wallet Details"
