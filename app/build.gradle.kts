@@ -34,11 +34,15 @@ android {
         val etherscanKey = localProperties.getProperty("ETHERSCAN_API_KEY") ?: ""
         val covalentKey = localProperties.getProperty("COVALENT_API_KEY") ?: ""
         val alchemyKey = localProperties.getProperty("ALCHEMY_API_KEY") ?: ""
+        val coingeckoKey = localProperties.getProperty("COINGECKO_API_KEY") ?: ""
+        val cryptoPanicApiKey = localProperties.getProperty("CRYPTOPANIC_API_KEY") ?: ""
 
 
         buildConfigField("String", "ETHERSCAN_API_KEY", "\"$etherscanKey\"")
         buildConfigField("String", "COVALENT_API_KEY", "\"$covalentKey\"")
         buildConfigField("String", "ALCHEMY_API_KEY", "\"$alchemyKey\"")
+        buildConfigField("String", "COINGECKO_API_KEY", "\"$coingeckoKey\"")
+        buildConfigField("String", "CRYPTOPANIC_API_KEY", "\"$cryptoPanicApiKey\"")
     }
 
     buildTypes {
