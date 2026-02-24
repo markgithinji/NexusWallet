@@ -2,8 +2,6 @@ package com.example.nexuswallet.feature.wallet.ui
 
 import android.content.ClipboardManager
 import android.content.Context
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,6 +33,7 @@ import com.example.nexuswallet.feature.coin.ethereum.EthereumFeeEstimate
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendEvent
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendViewModel
 import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
+import com.example.nexuswallet.feature.coin.solana.SolanaSendEvent
 import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
 import com.example.nexuswallet.feature.coin.usdc.USDCSendEvent
 import com.example.nexuswallet.feature.coin.usdc.USDCSendViewModel
@@ -225,7 +224,7 @@ fun SendScreen(
                         solanaState.value.error?.let { error ->
                             item {
                                 ErrorMessage(error = error) {
-                                    solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ClearError)
+                                    solanaViewModel.onEvent(SolanaSendEvent.ClearError)
                                 }
                             }
                         }
@@ -279,12 +278,12 @@ fun SendScreen(
                         "SOL" -> {
                             SendAddressInput(
                                 toAddress = solanaState.value.toAddress,
-                                onAddressChange = { solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ToAddressChanged(it)) },
+                                onAddressChange = { solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(it)) },
                                 coinType = coinType,
                                 isValid = solanaState.value.isAddressValid,
                                 errorMessage = solanaState.value.addressError,
                                 onPaste = { pastedText ->
-                                    solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ToAddressChanged(pastedText))
+                                    solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(pastedText))
                                 }
                             )
                         }
@@ -333,7 +332,7 @@ fun SendScreen(
                         "SOL" -> {
                             SendAmountInput(
                                 amount = solanaState.value.amount,
-                                onAmountChange = { solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.AmountChanged(it)) },
+                                onAmountChange = { solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(it)) },
                                 balance = solanaState.value.balance,
                                 coinType = coinType,
                                 onMaxClick = { showMaxDialog = true }
@@ -373,7 +372,7 @@ fun SendScreen(
                         "SOL" -> {
                             SendFeeSelection(
                                 feeLevel = solanaState.value.feeLevel,
-                                onFeeLevelChange = { solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.FeeLevelChanged(it)) },
+                                onFeeLevelChange = { solanaViewModel.onEvent(SolanaSendEvent.FeeLevelChanged(it)) },
                                 feeEstimate = solanaState.value.feeEstimate,
                                 coinType = coinType
                             )
@@ -479,7 +478,7 @@ fun SendScreen(
                     coinType = "SOL",
                     onDismiss = { showMaxDialog = false },
                     onConfirm = { maxAmount ->
-                        solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.AmountChanged(maxAmount))
+                        solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(maxAmount))
                         showMaxDialog = false
                     }
                 )

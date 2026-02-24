@@ -40,6 +40,7 @@ import com.example.nexuswallet.feature.coin.ethereum.EthereumFeeEstimate
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendViewModel
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendEvent
 import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
+import com.example.nexuswallet.feature.coin.solana.SolanaSendEvent
 import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
 import com.example.nexuswallet.feature.coin.usdc.USDCSendEvent
 import com.example.nexuswallet.feature.coin.usdc.USDCSendViewModel
@@ -188,10 +189,10 @@ fun TransactionReviewScreen(
                                         }
                                     }
                                     "SOL" -> {
-                                        solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.ToAddressChanged(toAddress))
-                                        solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.AmountChanged(amount))
+                                        solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(toAddress))
+                                        solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(amount))
                                         feeLevel?.let {
-                                            solanaViewModel.onEvent(SolanaSendViewModel.SendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
+                                            solanaViewModel.onEvent(SolanaSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
                                         }
                                         solanaViewModel.send { hash ->
                                             txHash = hash

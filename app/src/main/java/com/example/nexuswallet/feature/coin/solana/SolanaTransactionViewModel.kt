@@ -23,35 +23,8 @@ class SolanaSendViewModel @Inject constructor(
     private val validateSolanaAddressUseCase: ValidateSolanaAddressUseCase
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(SendState())
-    val state: StateFlow<SendState> = _state.asStateFlow()
-
-    data class SendState(
-        val walletId: String = "",
-        val walletName: String = "",
-        val walletAddress: String = "",
-        val network: SolanaNetwork = SolanaNetwork.DEVNET,
-        val balance: BigDecimal = BigDecimal.ZERO,
-        val balanceFormatted: String = "0 SOL",
-        val toAddress: String = "",
-        val isAddressValid: Boolean = false,
-        val addressError: String? = null,
-        val amount: String = "",
-        val amountValue: BigDecimal = BigDecimal.ZERO,
-        val feeLevel: FeeLevel = FeeLevel.NORMAL,
-        val feeEstimate: SolanaFeeEstimate? = null,
-        val isLoading: Boolean = false,
-        val step: String = "",
-        val error: String? = null
-    )
-
-    sealed class SendEvent {
-        data class ToAddressChanged(val address: String) : SendEvent()
-        data class AmountChanged(val amount: String) : SendEvent()
-        data class FeeLevelChanged(val feeLevel: FeeLevel) : SendEvent()
-        object Validate : SendEvent()
-        object ClearError : SendEvent()
-    }
+    private val _state = MutableStateFlow(SolanaSendUIState())
+    val state: StateFlow<SolanaSendUIState> = _state.asStateFlow()
 
     fun init(walletId: String) {
         viewModelScope.launch {
@@ -134,15 +107,15 @@ class SolanaSendViewModel @Inject constructor(
         }
     }
 
-    fun onEvent(event: SendEvent) {
+    fun onEvent(event: SolanaSendEvent) {
         when (event) {
-            is SendEvent.ToAddressChanged -> {
+            is SolanaSendEvent.ToAddressChanged -> {
                 _state.update { it.copy(toAddress = event.address) }
                 validateAddress(event.address)
                 validateInputs()
             }
 
-            is SendEvent.AmountChanged -> {
+            is SolanaSendEvent.AmountChanged -> {
                 val amountValue = event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
                 _state.update {
                     it.copy(
@@ -153,7 +126,7 @@ class SolanaSendViewModel @Inject constructor(
                 validateInputs()
             }
 
-            is SendEvent.FeeLevelChanged -> {
+            is SolanaSendEvent.FeeLevelChanged -> {
                 _state.update { it.copy(feeLevel = event.feeLevel) }
                 viewModelScope.launch {
                     loadFeeEstimate(_state.value.network)
@@ -161,8 +134,8 @@ class SolanaSendViewModel @Inject constructor(
                 }
             }
 
-            SendEvent.Validate -> validateInputs()
-            SendEvent.ClearError -> clearError()
+            SolanaSendEvent.Validate -> validateInputs()
+            SolanaSendEvent.ClearError -> clearError()
         }
     }
 
@@ -311,7 +284,7 @@ class SolanaSendViewModel @Inject constructor(
 
     fun resetState() {
         _state.update {
-            SendState(
+            SolanaSendUIState(
                 walletId = _state.value.walletId,
                 walletName = _state.value.walletName,
                 walletAddress = _state.value.walletAddress,
