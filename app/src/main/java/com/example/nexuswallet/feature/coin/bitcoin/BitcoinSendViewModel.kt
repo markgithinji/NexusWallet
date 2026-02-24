@@ -3,6 +3,9 @@ package com.example.nexuswallet.feature.coin.bitcoin
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,14 +23,23 @@ class BitcoinSendViewModel @Inject constructor(
     private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase,
     private val sendBitcoinUseCase: SendBitcoinUseCase,
     private val validateBitcoinAddressUseCase: ValidateBitcoinAddressUseCase,
+    private val validateBitcoinTransactionUseCase: ValidateBitcoinTransactionUseCase,
+    private val walletRepository: WalletRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BtcSendUiState())
     val state: StateFlow<BtcSendUiState> = _state.asStateFlow()
 
+    private var wallet: Wallet? = null
+    private var bitcoinCoin: BitcoinCoin? = null
+
     fun init(walletId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
+
+            // Load full wallet from repository
+            wallet = walletRepository.getWallet(walletId)
+            bitcoinCoin = wallet?.bitcoin
 
             when (val result = getBitcoinWalletUseCase(walletId)) {
                 is Result.Success -> {
@@ -37,10 +49,14 @@ class BitcoinSendViewModel @Inject constructor(
                             walletId = walletInfo.walletId,
                             walletName = walletInfo.walletName,
                             walletAddress = walletInfo.walletAddress,
-                            network = walletInfo.network
+                            network = walletInfo.network,
+                            isLoading = false
                         )
                     }
+                    // Load balance after we have the address
                     loadBalance(walletInfo.walletAddress, walletInfo.network)
+                    // Load initial fee estimate
+                    updateFeeLevel(FeeLevel.NORMAL)
                 }
 
                 is Result.Error -> {
@@ -64,8 +80,7 @@ class BitcoinSendViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         balance = balance,
-                        balanceFormatted = "${balance.setScale(8, RoundingMode.HALF_UP)} BTC",
-                        isLoading = false
+                        balanceFormatted = "${balance.setScale(8, RoundingMode.HALF_UP)} BTC"
                     )
                 }
             }
@@ -73,8 +88,7 @@ class BitcoinSendViewModel @Inject constructor(
             is Result.Error -> {
                 _state.update {
                     it.copy(
-                        error = "Failed to load balance: ${balanceResult.message}",
-                        isLoading = false
+                        error = "Failed to load balance: ${balanceResult.message}"
                     )
                 }
             }
@@ -142,15 +156,31 @@ class BitcoinSendViewModel @Inject constructor(
         viewModelScope.launch {
             val state = _state.value
             val walletId = state.walletId
-            if (walletId.isEmpty()) {
-                _state.update { it.copy(error = "Wallet not loaded") }
+            val currentWallet = wallet
+            val currentBitcoinCoin = bitcoinCoin
+
+            if (walletId.isEmpty() || currentWallet == null || currentBitcoinCoin == null) {
+                _state.update { it.copy(error = "Wallet not properly loaded") }
                 return@launch
             }
 
             val toAddress = state.toAddress
             val amount = state.amountValue
+            val balance = state.balance
+            val feeEstimate = state.feeEstimate
 
-            if (!validateInputs(toAddress, amount)) {
+            val validationResult = validateBitcoinTransactionUseCase(
+                walletId = walletId,
+                wallet = currentWallet,
+                toAddress = toAddress,
+                amount = amount,
+                network = state.network,
+                balance = balance,
+                feeEstimate = feeEstimate
+            )
+
+            if (!validationResult.isValid) {
+                _state.update { it.copy(error = validationResult.errorMessage) }
                 return@launch
             }
 
@@ -192,44 +222,6 @@ class BitcoinSendViewModel @Inject constructor(
                 Result.Loading -> {}
             }
         }
-    }
-
-    private fun validateInputs(toAddress: String, amount: BigDecimal): Boolean {
-        if (toAddress.isBlank()) {
-            _state.update { it.copy(error = "Please enter a recipient address") }
-            return false
-        }
-
-        val isValid = validateBitcoinAddressUseCase(toAddress, _state.value.network)
-        if (!isValid) {
-            _state.update { it.copy(error = "Invalid Bitcoin address for ${_state.value.network.name.lowercase()}") }
-            return false
-        }
-
-        if (amount <= BigDecimal.ZERO) {
-            _state.update { it.copy(error = "Amount must be greater than 0") }
-            return false
-        }
-
-        if (toAddress == _state.value.walletAddress) {
-            _state.update { it.copy(error = "Cannot send to yourself") }
-            return false
-        }
-
-        val feeEstimate = _state.value.feeEstimate
-        val feeBtc = if (feeEstimate != null) {
-            BigDecimal(feeEstimate.totalFeeBtc)
-        } else {
-            BigDecimal("0.00001")
-        }
-
-        val totalRequired = amount + feeBtc
-        if (totalRequired > _state.value.balance) {
-            _state.update { it.copy(error = "Insufficient balance (including fees)") }
-            return false
-        }
-
-        return true
     }
 
     fun clearError() {
