@@ -7,8 +7,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.NexusWalletApplication
 import com.example.nexuswallet.feature.authentication.domain.AuthAction
-import com.example.nexuswallet.feature.authentication.domain.AuthenticationManager
-import com.example.nexuswallet.feature.authentication.domain.AuthenticationResult
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.RecordAuthenticationUseCase
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.VerifyPinUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,11 +20,8 @@ import com.example.nexuswallet.feature.coin.Result
 @HiltViewModel
 class AuthenticationViewModel @Inject constructor(
     private val verifyPinUseCase: VerifyPinUseCase,
-    private val recordAuthenticationUseCase: RecordAuthenticationUseCase,
-    @ApplicationContext private val context: Context
+    private val recordAuthenticationUseCase: RecordAuthenticationUseCase
 ) : ViewModel() {
-
-    private val authenticationManager = AuthenticationManager(context)
 
     private val _authenticationState = MutableStateFlow<AuthenticationResult?>(null)
     val authenticationState: StateFlow<AuthenticationResult?> = _authenticationState
@@ -42,65 +37,56 @@ class AuthenticationViewModel @Inject constructor(
         _errorMessage.value = null
     }
 
-    suspend fun verifyPin(pin: String) {
-        // Authenticate with PIN using the usecase
-        val result = authenticationManager.authenticateWithPin(pin) { pinToVerify ->
-            when (val verifyResult = verifyPinUseCase(pinToVerify)) {
-                is Result.Success -> verifyResult.data
-                is Result.Error -> {
-                    _errorMessage.value = verifyResult.message
-                    false
-                }
-                Result.Loading -> false
-            }
-        }
-
-        _authenticationState.value = result
-        _showPinDialog.value = false
-
-        if (result is AuthenticationResult.Success) {
-            // Record authentication using the usecase
-            recordAuthenticationUseCase()
-        } else if (result is AuthenticationResult.Error) {
-            _errorMessage.value = result.message
-        }
-    }
-
-    fun recordAuthentication() {
-        recordAuthenticationUseCase()
-    }
-
-    fun authenticateWithBiometric(activity: FragmentActivity) {
+    fun verifyPin(pin: String) {
         viewModelScope.launch {
-            try {
-                authenticationManager.authenticateWithBiometric(
-                    activity = activity,
-                    title = "Authenticate",
-                    subtitle = "Use your fingerprint or face to authenticate",
-                    description = "Authentication is required to access this feature"
-                ).collect { result ->
-                    _authenticationState.value = result
-
-                    if (result is AuthenticationResult.Success) {
+            when (val verifyResult = verifyPinUseCase(pin)) {
+                is Result.Success -> {
+                    if (verifyResult.data) {
                         recordAuthenticationUseCase()
+                        _authenticationState.value = AuthenticationResult.Success(AUTH_TYPE_PIN)
+                        _showPinDialog.value = false
+                    } else {
+                        _errorMessage.value = "Incorrect PIN"
                     }
                 }
-            } catch (e: Exception) {
-                _authenticationState.value = AuthenticationResult.Error("Biometric error: ${e.message}")
+                is Result.Error -> {
+                    _errorMessage.value = verifyResult.message
+                }
+                Result.Loading -> {
+                    // Show loading if needed
+                }
             }
         }
     }
 
-    fun cancelPinEntry() {
-        _showPinDialog.value = false
-        _authenticationState.value = AuthenticationResult.Cancelled
+    fun onBiometricSuccess() {
+        viewModelScope.launch {
+            recordAuthenticationUseCase()
+            _authenticationState.value = AuthenticationResult.Success(AUTH_TYPE_BIOMETRIC)
+        }
     }
 
     fun setErrorMessage(message: String) {
         _errorMessage.value = message
     }
 
-    fun clearError() {
+    fun cancelPinEntry() {
+        _showPinDialog.value = false
+        _authenticationState.value = null
+    }
+
+    fun clearState() {
+        _authenticationState.value = null
         _errorMessage.value = null
     }
+
+    companion object {
+        const val AUTH_TYPE_BIOMETRIC = 1
+        const val AUTH_TYPE_PIN = 2
+    }
+}
+
+sealed class AuthenticationResult {
+    data class Success(val authType: Int) : AuthenticationResult()
+    data class Error(val message: String) : AuthenticationResult()
 }
