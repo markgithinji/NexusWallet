@@ -9,6 +9,51 @@ import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import java.util.UUID
 
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // Create temporary table with new schema
+        database.execSQL("""
+            CREATE TABLE USDCSendTransaction_new (
+                id TEXT PRIMARY KEY NOT NULL,
+                walletId TEXT NOT NULL,
+                fromAddress TEXT NOT NULL,
+                toAddress TEXT NOT NULL,
+                status TEXT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                note TEXT,
+                feeLevel TEXT NOT NULL,
+                amount TEXT NOT NULL,
+                amountDecimal TEXT NOT NULL,
+                contractAddress TEXT NOT NULL,
+                network TEXT NOT NULL,  -- Still TEXT, but TypeConverter handles EthereumNetwork
+                gasPriceWei TEXT NOT NULL,
+                gasPriceGwei TEXT NOT NULL,
+                gasLimit INTEGER NOT NULL,
+                feeWei TEXT NOT NULL,
+                feeEth TEXT NOT NULL,
+                nonce INTEGER NOT NULL,
+                chainId INTEGER NOT NULL,
+                signedHex TEXT,
+                txHash TEXT,
+                ethereumTransactionId TEXT,
+                isIncoming INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+
+        // Copy data from old table
+        database.execSQL("""
+            INSERT INTO USDCSendTransaction_new 
+            SELECT * FROM USDCSendTransaction
+        """)
+
+        // Drop old table
+        database.execSQL("DROP TABLE USDCSendTransaction")
+
+        // Rename new table
+        database.execSQL("ALTER TABLE USDCSendTransaction_new RENAME TO USDCSendTransaction")
+    }
+}
+
 val MIGRATION_14_15 = object : Migration(14, 15) {
     override fun migrate(database: SupportSQLiteDatabase) {
         // Fix empty BitcoinTransaction networks

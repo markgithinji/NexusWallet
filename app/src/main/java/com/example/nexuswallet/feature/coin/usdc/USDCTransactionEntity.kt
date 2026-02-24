@@ -22,7 +22,7 @@ data class USDCTransactionEntity(
     val amount: String,
     val amountDecimal: String,
     val contractAddress: String,
-    val network: String,
+    val network: EthereumNetwork,
     val gasPriceWei: String,
     val gasPriceGwei: String,
     val gasLimit: Long,
@@ -49,7 +49,7 @@ fun USDCTransactionEntity.toDomain(): USDCTransaction {
         amount = amount,
         amountDecimal = amountDecimal,
         contractAddress = contractAddress,
-        network = network.toEthereumNetwork(),
+        network = network,
         gasPriceWei = gasPriceWei,
         gasPriceGwei = gasPriceGwei,
         gasLimit = gasLimit,
@@ -77,7 +77,7 @@ fun USDCTransaction.toEntity(): USDCTransactionEntity {
         amount = amount,
         amountDecimal = amountDecimal,
         contractAddress = contractAddress,
-        network = network.toNetworkString(),
+        network = network,
         gasPriceWei = gasPriceWei,
         gasPriceGwei = gasPriceGwei,
         gasLimit = gasLimit,
@@ -90,19 +90,4 @@ fun USDCTransaction.toEntity(): USDCTransactionEntity {
         ethereumTransactionId = ethereumTransactionId,
         isIncoming = isIncoming
     )
-}
-// Extension functions for conversion
-fun String.toEthereumNetwork(): EthereumNetwork {
-    return when (this.lowercase()) {
-        "mainnet" -> EthereumNetwork.Mainnet
-        "sepolia" -> EthereumNetwork.Sepolia
-        else -> throw IllegalArgumentException("Unknown Ethereum network: $this")
-    }
-}
-
-fun EthereumNetwork.toNetworkString(): String {
-    return when (this) {
-        is EthereumNetwork.Mainnet -> "mainnet"
-        is EthereumNetwork.Sepolia -> "sepolia"
-    }
 }
