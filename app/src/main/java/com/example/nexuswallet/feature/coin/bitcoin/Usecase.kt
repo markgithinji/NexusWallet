@@ -382,12 +382,14 @@ class ValidateBitcoinAddressUseCase @Inject constructor() {
 }
 
 @Singleton
-class ValidateBitcoinTransactionUseCase @Inject constructor(
-    private val validateBitcoinAddressUseCase: ValidateBitcoinAddressUseCase
-) {
+class ValidateBitcoinTransactionUseCase @Inject constructor() {
+
     data class ValidationResult(
         val isValid: Boolean,
-        val errorMessage: String? = null
+        val addressError: String? = null,
+        val amountError: String? = null,
+        val balanceError: String? = null,
+        val selfSendError: String? = null
     )
 
     operator fun invoke(
@@ -399,36 +401,45 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
         balance: BigDecimal,
         feeEstimate: BitcoinFeeEstimate?
     ): ValidationResult {
+
+        var addressError: String? = null
+        var amountError: String? = null
+        var balanceError: String? = null
+        var selfSendError: String? = null
+        var isValid = true
+
         // Validate wallet exists
         if (wallet == null) {
-            return ValidationResult(false, "Wallet not found")
+            return ValidationResult(false, addressError = "Wallet not found")
         }
 
         // Validate Bitcoin is enabled
-        val bitcoinCoin =
-            wallet.bitcoin ?: return ValidationResult(false, "Bitcoin not enabled for this wallet")
+        val bitcoinCoin = wallet.bitcoin
+        if (bitcoinCoin == null) {
+            return ValidationResult(false, addressError = "Bitcoin not enabled for this wallet")
+        }
 
         // Validate address is not empty
         if (toAddress.isBlank()) {
-            return ValidationResult(false, "Please enter a recipient address")
+            addressError = "Please enter a recipient address"
+            isValid = false
         }
-
         // Validate address format
-        if (!validateBitcoinAddressUseCase(toAddress, network)) {
-            return ValidationResult(
-                false,
-                "Invalid Bitcoin address for ${network.name.lowercase()}"
-            )
+        else if (!isValidBitcoinAddress(toAddress, network)) {
+            addressError = "Invalid Bitcoin address for ${network.name.lowercase()}"
+            isValid = false
         }
 
         // Validate not sending to self
-        if (toAddress == bitcoinCoin.address) {
-            return ValidationResult(false, "Cannot send to yourself")
+        if (toAddress.isNotBlank() && toAddress == bitcoinCoin.address) {
+            selfSendError = "Cannot send to yourself"
+            isValid = false
         }
 
         // Validate amount > 0
         if (amount <= BigDecimal.ZERO) {
-            return ValidationResult(false, "Amount must be greater than zero")
+            amountError = "Amount must be greater than zero"
+            isValid = false
         }
 
         // Calculate total required including fees
@@ -441,17 +452,33 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
         val totalRequired = amount + feeBtc
 
         // Check against user's actual balance
-        if (totalRequired > balance) {
-            return ValidationResult(
-                false,
-                "Insufficient balance. You have ${balance.setScale(8)} BTC but need ${
-                    totalRequired.setScale(
-                        8
-                    )
-                } BTC (including fees)"
-            )
+        if (amount > BigDecimal.ZERO && totalRequired > balance) {
+            balanceError = "Insufficient balance. You have ${balance.setScale(8)} BTC but need ${
+                totalRequired.setScale(8)
+            } BTC (including fees)"
+            isValid = false
         }
 
-        return ValidationResult(true)
+        return ValidationResult(
+            isValid = isValid,
+            addressError = addressError,
+            amountError = amountError,
+            balanceError = balanceError,
+            selfSendError = selfSendError
+        )
+    }
+
+
+    private fun isValidBitcoinAddress(address: String, network: BitcoinNetwork): Boolean {
+        return try {
+            val params = when (network) {
+                BitcoinNetwork.MAINNET -> MainNetParams.get()
+                BitcoinNetwork.TESTNET -> TestNet3Params.get()
+            }
+            Address.fromString(params, address)
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 }

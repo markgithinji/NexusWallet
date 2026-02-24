@@ -22,7 +22,6 @@ class BitcoinSendViewModel @Inject constructor(
     private val getBitcoinBalanceUseCase: GetBitcoinBalanceUseCase,
     private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase,
     private val sendBitcoinUseCase: SendBitcoinUseCase,
-    private val validateBitcoinAddressUseCase: ValidateBitcoinAddressUseCase,
     private val validateBitcoinTransactionUseCase: ValidateBitcoinTransactionUseCase,
     private val walletRepository: WalletRepository
 ) : ViewModel() {
@@ -83,6 +82,7 @@ class BitcoinSendViewModel @Inject constructor(
                         balanceFormatted = "${balance.setScale(8, RoundingMode.HALF_UP)} BTC"
                     )
                 }
+                validateInputs()
             }
 
             is Result.Error -> {
@@ -102,7 +102,12 @@ class BitcoinSendViewModel @Inject constructor(
         viewModelScope.launch {
             when (val feeResult = getBitcoinFeeEstimateUseCase(feeLevel)) {
                 is Result.Success -> {
-                    _state.update { it.copy(feeEstimate = feeResult.data) }
+                    _state.update {
+                        it.copy(
+                            feeEstimate = feeResult.data
+                        )
+                    }
+                    validateInputs()
                 }
 
                 is Result.Error -> {
@@ -116,26 +121,7 @@ class BitcoinSendViewModel @Inject constructor(
 
     fun updateAddress(address: String) {
         _state.update { it.copy(toAddress = address) }
-        validateAddress(address)
-    }
-
-    private fun validateAddress(address: String) {
-        if (address.isNotEmpty()) {
-            val isValid = validateBitcoinAddressUseCase(address, _state.value.network)
-            _state.update {
-                it.copy(
-                    isAddressValid = isValid,
-                    addressError = if (!isValid) "Invalid Bitcoin address for ${_state.value.network.name.lowercase()}" else null
-                )
-            }
-        } else {
-            _state.update {
-                it.copy(
-                    isAddressValid = false,
-                    addressError = null
-                )
-            }
-        }
+        validateInputs()
     }
 
     fun updateAmount(amount: String) {
@@ -149,6 +135,36 @@ class BitcoinSendViewModel @Inject constructor(
                 amount = amount,
                 amountValue = amountValue
             )
+        }
+        validateInputs()
+    }
+
+    private fun validateInputs() {
+        val state = _state.value
+        val currentWallet = wallet
+
+        val validationResult = validateBitcoinTransactionUseCase(
+            walletId = state.walletId,
+            wallet = currentWallet,
+            toAddress = state.toAddress,
+            amount = state.amountValue,
+            network = state.network,
+            balance = state.balance,
+            feeEstimate = state.feeEstimate
+        )
+
+        _state.update { it.copy(validationResult = validationResult) }
+
+        // Update error field for backward compatibility
+        val firstError = validationResult.addressError
+            ?: validationResult.amountError
+            ?: validationResult.balanceError
+            ?: validationResult.selfSendError
+
+        if (firstError != null) {
+            _state.update { it.copy(error = firstError) }
+        } else if (validationResult.isValid) {
+            _state.update { it.copy(error = null) }
         }
     }
 
@@ -164,23 +180,7 @@ class BitcoinSendViewModel @Inject constructor(
                 return@launch
             }
 
-            val toAddress = state.toAddress
-            val amount = state.amountValue
-            val balance = state.balance
-            val feeEstimate = state.feeEstimate
-
-            val validationResult = validateBitcoinTransactionUseCase(
-                walletId = walletId,
-                wallet = currentWallet,
-                toAddress = toAddress,
-                amount = amount,
-                network = state.network,
-                balance = balance,
-                feeEstimate = feeEstimate
-            )
-
-            if (!validationResult.isValid) {
-                _state.update { it.copy(error = validationResult.errorMessage) }
+            if (!state.validationResult.isValid) {
                 return@launch
             }
 
@@ -188,8 +188,8 @@ class BitcoinSendViewModel @Inject constructor(
 
             val result = sendBitcoinUseCase(
                 walletId = walletId,
-                toAddress = toAddress,
-                amount = amount,
+                toAddress = state.toAddress,
+                amount = state.amountValue,
                 feeLevel = state.feeLevel,
                 note = null
             )
