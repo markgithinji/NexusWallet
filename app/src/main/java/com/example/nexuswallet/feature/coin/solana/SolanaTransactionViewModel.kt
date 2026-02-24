@@ -20,8 +20,28 @@ class SolanaSendViewModel @Inject constructor(
     private val sendSolanaUseCase: SendSolanaUseCase,
     private val getSolanaBalanceUseCase: GetSolanaBalanceUseCase,
     private val getSolanaFeeEstimateUseCase: GetSolanaFeeEstimateUseCase,
-    private val validateSolanaAddressUseCase: ValidateSolanaAddressUseCase
+    private val validateSolanaSendUseCase: ValidateSolanaSendUseCase
 ) : ViewModel() {
+
+    data class SolanaSendUIState(
+        val walletId: String = "",
+        val walletName: String = "",
+        val walletAddress: String = "",
+        val network: SolanaNetwork = SolanaNetwork.DEVNET,
+        val balance: BigDecimal = BigDecimal.ZERO,
+        val balanceFormatted: String = "0 SOL",
+        val toAddress: String = "",
+        val amount: String = "",
+        val amountValue: BigDecimal = BigDecimal.ZERO,
+        val feeLevel: FeeLevel = FeeLevel.NORMAL,
+        val feeEstimate: SolanaFeeEstimate? = null,
+        val validationResult: ValidateSolanaSendUseCase.ValidationResult = ValidateSolanaSendUseCase.ValidationResult(
+            isValid = false
+        ),
+        val isLoading: Boolean = false,
+        val error: String? = null,
+        val step: String = ""
+    )
 
     private val _state = MutableStateFlow(SolanaSendUIState())
     val state: StateFlow<SolanaSendUIState> = _state.asStateFlow()
@@ -72,6 +92,7 @@ class SolanaSendViewModel @Inject constructor(
                         isLoading = false
                     )
                 }
+                validateInputs() // Re-validate after balance loads
             }
 
             is Result.Error -> {
@@ -96,6 +117,7 @@ class SolanaSendViewModel @Inject constructor(
             )) {
                 is Result.Success -> {
                     _state.update { it.copy(feeEstimate = feeResult.data) }
+                    validateInputs() // Re-validate after fee loads
                 }
 
                 is Result.Error -> {
@@ -111,8 +133,9 @@ class SolanaSendViewModel @Inject constructor(
         when (event) {
             is SolanaSendEvent.ToAddressChanged -> {
                 _state.update { it.copy(toAddress = event.address) }
-                validateAddress(event.address)
-                validateInputs()
+                viewModelScope.launch {
+                    validateInputs()
+                }
             }
 
             is SolanaSendEvent.AmountChanged -> {
@@ -123,88 +146,52 @@ class SolanaSendViewModel @Inject constructor(
                         amountValue = amountValue
                     )
                 }
-                validateInputs()
+                viewModelScope.launch {
+                    validateInputs()
+                }
             }
 
             is SolanaSendEvent.FeeLevelChanged -> {
                 _state.update { it.copy(feeLevel = event.feeLevel) }
                 viewModelScope.launch {
                     loadFeeEstimate(_state.value.network)
-                    validateInputs()
                 }
             }
 
-            SolanaSendEvent.Validate -> validateInputs()
+            SolanaSendEvent.Validate -> {
+                viewModelScope.launch {
+                    validateInputs()
+                }
+            }
             SolanaSendEvent.ClearError -> clearError()
         }
     }
 
     private fun validateInputs(): Boolean {
         val currentState = _state.value
-        val toAddress = currentState.toAddress
-        val amount = currentState.amountValue
+        val validationResult = validateSolanaSendUseCase(
+            toAddress = currentState.toAddress,
+            amountValue = currentState.amountValue,
+            walletAddress = currentState.walletAddress,
+            balance = currentState.balance,
+            feeEstimate = currentState.feeEstimate
+        )
 
-        var errorMessage: String? = null
-        var isValid = true
+        _state.update { it.copy(validationResult = validationResult) }
 
-        if (toAddress.isBlank()) {
-            errorMessage = "Please enter a recipient address"
-            isValid = false
-        } else if (!currentState.isAddressValid) {
-            errorMessage = "Invalid Solana address format"
-            isValid = false
-        } else if (amount <= BigDecimal.ZERO) {
-            errorMessage = "Amount must be greater than 0"
-            isValid = false
-        } else if (toAddress == currentState.walletAddress) {
-            errorMessage = "Cannot send to yourself"
-            isValid = false
-        } else {
-            val fee = currentState.feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal("0.000005")
-            val totalRequired = amount + fee
-            if (totalRequired > currentState.balance) {
-                errorMessage = "Insufficient balance (including fees)"
-                isValid = false
-            }
+        // Update error field for backward compatibility
+        val firstError = validationResult.addressError
+            ?: validationResult.amountError
+            ?: validationResult.balanceError
+            ?: validationResult.selfSendError
+
+        if (firstError != null) {
+            _state.update { it.copy(error = firstError) }
+        } else if (validationResult.isValid) {
+            _state.update { it.copy(error = null) }
         }
 
-        if (errorMessage != null) {
-            _state.update { it.copy(error = errorMessage) }
-        }
-        return isValid
-    }
-
-    private fun validateAddress(address: String) {
-        if (address.isNotEmpty()) {
-            when (val validationResult = validateSolanaAddressUseCase(address)) {
-                is Result.Success -> {
-                    _state.update {
-                        it.copy(
-                            isAddressValid = validationResult.data,
-                            addressError = if (!validationResult.data) "Invalid Solana address" else null
-                        )
-                    }
-                }
-
-                is Result.Error -> {
-                    _state.update {
-                        it.copy(
-                            isAddressValid = false,
-                            addressError = "Address validation failed"
-                        )
-                    }
-                }
-
-                Result.Loading -> {}
-            }
-        } else {
-            _state.update {
-                it.copy(
-                    isAddressValid = false,
-                    addressError = null
-                )
-            }
-        }
+        return validationResult.isValid
     }
 
     fun updateAmount(amount: String) {
@@ -219,6 +206,9 @@ class SolanaSendViewModel @Inject constructor(
                 amountValue = amountValue
             )
         }
+        viewModelScope.launch {
+            validateInputs()
+        }
     }
 
     fun send(onSuccess: (String) -> Unit) {
@@ -229,9 +219,6 @@ class SolanaSendViewModel @Inject constructor(
                 return@launch
             }
 
-            val toAddress = state.toAddress
-            val amount = state.amountValue
-
             if (!validateInputs()) {
                 return@launch
             }
@@ -240,8 +227,8 @@ class SolanaSendViewModel @Inject constructor(
 
             val result = sendSolanaUseCase(
                 walletId = state.walletId,
-                toAddress = toAddress,
-                amount = amount,
+                toAddress = state.toAddress,
+                amount = state.amountValue,
                 feeLevel = state.feeLevel,
                 note = null
             )

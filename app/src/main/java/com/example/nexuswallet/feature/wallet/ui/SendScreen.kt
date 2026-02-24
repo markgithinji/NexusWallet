@@ -221,13 +221,7 @@ fun SendScreen(
                         }
                     }
                     "SOL" -> {
-                        solanaState.value.error?.let { error ->
-                            item {
-                                ErrorMessage(error = error) {
-                                    solanaViewModel.onEvent(SolanaSendEvent.ClearError)
-                                }
-                            }
-                        }
+                        // Error is shown inline via validation result
                     }
                     "BTC" -> {
                         bitcoinState.value.error?.let { error ->
@@ -280,8 +274,10 @@ fun SendScreen(
                                 toAddress = solanaState.value.toAddress,
                                 onAddressChange = { solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(it)) },
                                 coinType = coinType,
-                                isValid = solanaState.value.isAddressValid,
-                                errorMessage = solanaState.value.addressError,
+                                isValid = solanaState.value.validationResult.isValid &&
+                                        solanaState.value.validationResult.addressError == null,
+                                errorMessage = solanaState.value.validationResult.addressError
+                                    ?: solanaState.value.validationResult.selfSendError,
                                 onPaste = { pastedText ->
                                     solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(pastedText))
                                 }
@@ -335,7 +331,9 @@ fun SendScreen(
                                 onAmountChange = { solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(it)) },
                                 balance = solanaState.value.balance,
                                 coinType = coinType,
-                                onMaxClick = { showMaxDialog = true }
+                                onMaxClick = { showMaxDialog = true },
+                                errorMessage = solanaState.value.validationResult.amountError
+                                    ?: solanaState.value.validationResult.balanceError
                             )
                         }
                         "BTC" -> {
@@ -399,7 +397,7 @@ fun SendScreen(
                 isValid = when (coinType) {
                     "ETH" -> ethereumUiState.value.isValid
                     "USDC" -> usdcState.value.validationResult.isValid
-                    "SOL" -> solanaState.value.isAddressValid && solanaState.value.amountValue > BigDecimal.ZERO
+                    "SOL" -> solanaState.value.validationResult.isValid
                     "BTC" -> bitcoinState.value.isAddressValid && bitcoinState.value.amountValue > BigDecimal.ZERO
                     else -> false
                 },
@@ -429,7 +427,9 @@ fun SendScreen(
                             }
                         }
                         "SOL" -> {
-                            navController.navigate("review/$walletId/SOL?toAddress=${solanaState.value.toAddress}&amount=${solanaState.value.amount}&feeLevel=${solanaState.value.feeLevel.name}")
+                            solanaViewModel.send { txHash ->
+                                navController.navigate("review/$walletId/SOL?toAddress=${solanaState.value.toAddress}&amount=${solanaState.value.amount}&feeLevel=${solanaState.value.feeLevel.name}")
+                            }
                         }
                         "BTC" -> {
                             navController.navigate("review/$walletId/BTC?toAddress=${bitcoinState.value.toAddress}&amount=${bitcoinState.value.amount}&feeLevel=${bitcoinState.value.feeLevel.name}")

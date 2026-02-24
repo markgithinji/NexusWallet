@@ -428,3 +428,85 @@ class ValidateSolanaAddressUseCase @Inject constructor(
         return result
     }
 }
+
+@Singleton
+class ValidateSolanaSendUseCase @Inject constructor(
+    private val validateSolanaAddressUseCase: ValidateSolanaAddressUseCase
+) {
+
+    data class ValidationResult(
+        val isValid: Boolean,
+        val addressError: String? = null,
+        val amountError: String? = null,
+        val balanceError: String? = null,
+        val selfSendError: String? = null
+    )
+
+    operator fun invoke(
+        toAddress: String,
+        amountValue: BigDecimal,
+        walletAddress: String,
+        balance: BigDecimal,
+        feeEstimate: SolanaFeeEstimate?
+    ): ValidationResult {
+
+        var addressError: String? = null
+        var amountError: String? = null
+        var balanceError: String? = null
+        var selfSendError: String? = null
+        var isValid = true
+
+        // Validate address is not empty
+        if (toAddress.isBlank()) {
+            addressError = "Please enter a recipient address"
+            isValid = false
+        }
+        // Validate address format
+        else {
+            val validationResult = validateSolanaAddressUseCase(toAddress)
+            when (validationResult) {
+                is Result.Success -> {
+                    if (!validationResult.data) {
+                        addressError = "Invalid Solana address format"
+                        isValid = false
+                    }
+                }
+                is Result.Error -> {
+                    addressError = "Address validation failed"
+                    isValid = false
+                }
+                Result.Loading -> {}
+            }
+        }
+
+        // Validate amount
+        if (amountValue <= BigDecimal.ZERO) {
+            amountError = "Amount must be greater than 0"
+            isValid = false
+        }
+
+        // Validate not sending to self
+        if (toAddress.isNotBlank() && toAddress == walletAddress) {
+            selfSendError = "Cannot send to yourself"
+            isValid = false
+        }
+
+        // Validate balance including fees
+        if (amountValue > BigDecimal.ZERO) {
+            val fee = feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal("0.000005")
+            val totalRequired = amountValue + fee
+            if (totalRequired > balance) {
+                balanceError = "Insufficient balance (need ${totalRequired.setScale(4, RoundingMode.HALF_UP)} SOL including fees)"
+                isValid = false
+            }
+        }
+
+        return ValidationResult(
+            isValid = isValid,
+            addressError = addressError,
+            amountError = amountError,
+            balanceError = balanceError,
+            selfSendError = selfSendError
+        )
+    }
+}
