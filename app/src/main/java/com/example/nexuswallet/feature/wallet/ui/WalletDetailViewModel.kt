@@ -59,18 +59,27 @@ class WalletDetailViewModel @Inject constructor(
 
                 // 2. Load wallet balance from repository
                 val loadedBalance = walletRepository.getWalletBalance(walletId)
-                _uiState.update { it.copy(balance = loadedBalance) }
 
-                // 3. Load transactions using usecase
+                // 3. Load market percentages
+                val percentages = marketRepository.getLatestPricePercentages()
+
+                // Update UI once with all data
+                _uiState.update {
+                    it.copy(
+                        wallet = loadedWallet,
+                        balance = loadedBalance,
+                        pricePercentages = percentages
+                    )
+                }
+
+                // 4. Load transactions (this has flow collection)
                 loadTransactions(walletId)
-
-                // 4. Load market percentages
-                loadMarketPercentages()
 
                 // 5. Sync balances in background
                 viewModelScope.launch {
                     syncWalletBalancesUseCase(loadedWallet)
-                    _uiState.update { it.copy(balance = walletRepository.getWalletBalance(walletId)) }
+                    val updatedBalance = walletRepository.getWalletBalance(walletId)
+                    _uiState.update { it.copy(balance = updatedBalance) }
                 }
 
             } catch (e: Exception) {
