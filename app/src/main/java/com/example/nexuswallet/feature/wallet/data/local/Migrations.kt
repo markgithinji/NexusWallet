@@ -9,6 +9,16 @@ import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import java.util.UUID
 
+
+val MIGRATION_16_17 = object : Migration(16, 17) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("""
+            UPDATE SolanaTransaction 
+            SET network = UPPER(network)
+            WHERE network IN ('mainnet', 'devnet', 'Mainnet', 'Devnet')
+        """)
+    }
+}
 val MIGRATION_15_16 = object : Migration(15, 16) {
     override fun migrate(database: SupportSQLiteDatabase) {
         // Create temporary table with new schema

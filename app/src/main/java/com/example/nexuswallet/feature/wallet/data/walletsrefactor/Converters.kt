@@ -4,6 +4,7 @@ import androidx.room.TypeConverter
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
+import com.example.nexuswallet.feature.coin.solana.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.serialization.json.Json
 
@@ -69,10 +70,23 @@ class Converters {
         }
     }
 
-    // Transaction Status Converter
     @TypeConverter
-    fun fromTransactionStatus(status: TransactionStatus): String {
-        return status.name
+    fun fromSolanaNetwork(network: SolanaNetwork): String {
+        return network.name
+    }
+
+    @TypeConverter
+    fun toSolanaNetwork(network: String): SolanaNetwork {
+        return try {
+            SolanaNetwork.valueOf(network)
+        } catch (e: IllegalArgumentException) {
+            // Handle legacy values
+            when (network.uppercase()) {
+                "MAINNET" -> SolanaNetwork.MAINNET
+                "DEVNET" -> SolanaNetwork.DEVNET
+                else -> SolanaNetwork.DEVNET
+            }
+        }
     }
 
     @TypeConverter
