@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
+import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.GetUSDCBalanceUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.GetUSDCFeeEstimateUseCase
@@ -55,15 +55,6 @@ class USDCSendViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(USDCSendState())
     val state: StateFlow<USDCSendState> = _state.asStateFlow()
-
-    sealed class SendEvent {
-        data class ToAddressChanged(val address: String) : SendEvent()
-        data class AmountChanged(val amount: String) : SendEvent()
-        data class FeeLevelChanged(val feeLevel: FeeLevel) : SendEvent()
-        object Validate : SendEvent()
-        object ClearError : SendEvent()
-        object ClearInfo : SendEvent()
-    }
 
     fun init(walletId: String) {
         viewModelScope.launch {

@@ -2,16 +2,16 @@ package com.example.nexuswallet.feature.coin.usdc
 
 import android.util.Log
 import com.example.nexuswallet.BuildConfig
+import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.CachedGasPrice
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 import com.example.nexuswallet.feature.coin.ethereum.EtherscanApiService
 import com.example.nexuswallet.feature.coin.ethereum.GasPrice
-import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
-import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
-import com.example.nexuswallet.feature.coin.BroadcastResult
-import com.example.nexuswallet.feature.coin.SafeApiCall
+import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransaction
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalance
 import com.example.nexuswallet.feature.wallet.domain.ChainType
 import com.example.nexuswallet.feature.wallet.domain.TokenBalance
@@ -513,18 +513,16 @@ class USDCBlockchainRepository @Inject constructor(
     }
 
     suspend fun getUSDCTransactionHistory(
+        walletId: String,
         address: String,
-        network: EthereumNetwork = EthereumNetwork.Sepolia
-    ): Result<List<TokenTransaction>> = withContext(Dispatchers.IO) {
+        network: EthereumNetwork
+    ): Result<List<USDCTransaction>> = withContext(Dispatchers.IO) {
         SafeApiCall.make {
             val chainId = network.chainId
             val usdcAddress = network.usdcContractAddress
             val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
-            Log.d(
-                "USDCRepo",
-                "=== Fetching USDC transaction history for $address on ${network.displayName} ==="
-            )
+            Log.d("USDCRepo", "Fetching USDC transactions for $address on ${network.displayName}")
 
             val response = etherscanApi.getTokenTransfers(
                 chainId = chainId,
@@ -534,20 +532,15 @@ class USDCBlockchainRepository @Inject constructor(
             )
 
             if (response.status == "1") {
-                val transactions = response.result
-                Log.d("USDCRepo", "Found ${transactions.size} USDC transactions")
-
-                transactions.take(3).forEachIndexed { i, tx ->
-                    Log.d("USDCRepo", "Tx $i: ${tx.hash.take(8)}...")
-                    Log.d("USDCRepo", "  from: ${tx.from.take(8)}...")
-                    Log.d("USDCRepo", "  to: ${tx.to.take(8)}...")
-                    Log.d("USDCRepo", "  value: ${tx.value}")
-                    Log.d("USDCRepo", "  timestamp: ${tx.timeStamp}")
+                response.result.map { tx ->
+                    tx.toDomain(
+                        walletId = walletId,
+                        network = network,
+                        walletAddress = address
+                    )
                 }
-
-                transactions
             } else {
-                throw Exception(response.message ?: "Failed to get USDC transactions")
+                throw Exception(response.message)
             }
         }
     }

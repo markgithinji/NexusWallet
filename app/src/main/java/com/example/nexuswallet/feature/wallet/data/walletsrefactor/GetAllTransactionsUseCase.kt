@@ -7,7 +7,7 @@ import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionReposito
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
 import com.example.nexuswallet.feature.coin.solana.SolanaTransactionRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
-import com.example.nexuswallet.feature.coin.usdc.domain.USDCSendTransaction
+import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -37,7 +37,7 @@ class GetAllTransactionsUseCase @Inject constructor(
                 solanaTransactionRepository.getTransactions(walletId).firstOrNull() ?: emptyList<SolanaTransaction>()
             },
             async {
-                usdcTransactionRepository.getTransactions(walletId).firstOrNull() ?: emptyList<USDCSendTransaction>()
+                usdcTransactionRepository.getTransactions(walletId).firstOrNull() ?: emptyList<USDCTransaction>()
             }
         )
 
@@ -50,7 +50,7 @@ class GetAllTransactionsUseCase @Inject constructor(
                     is BitcoinTransaction -> transaction.timestamp
                     is EthereumTransaction -> transaction.timestamp
                     is SolanaTransaction -> transaction.timestamp
-                    is USDCSendTransaction -> transaction.timestamp
+                    is USDCTransaction -> transaction.timestamp
                     else -> 0L
                 }
             }
@@ -68,7 +68,7 @@ class GetAllTransactionsUseCase @Inject constructor(
                     is BitcoinTransaction -> transaction.timestamp
                     is EthereumTransaction -> transaction.timestamp
                     is SolanaTransaction -> transaction.timestamp
-                    is USDCSendTransaction -> transaction.timestamp
+                    is USDCTransaction -> transaction.timestamp
                     else -> 0L
                 }
             }

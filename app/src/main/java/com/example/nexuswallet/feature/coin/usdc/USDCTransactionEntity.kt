@@ -3,8 +3,8 @@ package com.example.nexuswallet.feature.coin.usdc
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.coin.usdc.domain.EthereumNetwork
-import com.example.nexuswallet.feature.coin.usdc.domain.USDCSendTransaction
+import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
+import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransaction
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 
 
@@ -36,8 +36,8 @@ data class USDCTransactionEntity(
     val isIncoming: Boolean = false
 )
 
-fun USDCTransactionEntity.toDomain(): USDCSendTransaction {
-    return USDCSendTransaction(
+fun USDCTransactionEntity.toDomain(): USDCTransaction {
+    return USDCTransaction(
         id = id,
         walletId = walletId,
         fromAddress = fromAddress,
@@ -64,7 +64,7 @@ fun USDCTransactionEntity.toDomain(): USDCSendTransaction {
     )
 }
 
-fun USDCSendTransaction.toEntity(): USDCTransactionEntity {
+fun USDCTransaction.toEntity(): USDCTransactionEntity {
     return USDCTransactionEntity(
         id = id,
         walletId = walletId,

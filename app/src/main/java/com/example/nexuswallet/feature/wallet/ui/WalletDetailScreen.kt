@@ -68,7 +68,7 @@ import androidx.navigation.NavController
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
-import com.example.nexuswallet.feature.coin.usdc.domain.USDCSendTransaction
+import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransaction
 import com.example.nexuswallet.feature.market.ui.formatTwoDecimals
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumBalance
@@ -813,7 +813,7 @@ fun TransactionItem(
             )
         }
 
-        is USDCSendTransaction -> {
+        is USDCTransaction -> {
             val isIncoming = transaction.toAddress == wallet.usdc?.address
             TransactionDisplayData(
                 isIncoming = isIncoming,

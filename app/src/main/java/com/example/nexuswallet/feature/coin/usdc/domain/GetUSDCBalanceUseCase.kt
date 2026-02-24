@@ -3,30 +3,21 @@ package com.example.nexuswallet.feature.coin.usdc.domain
 import android.util.Log
 import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.coin.BroadcastResult
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
-import com.example.nexuswallet.feature.coin.usdc.Web3jFactory
+import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.TokenBalance
-import com.example.nexuswallet.feature.wallet.domain.Transaction
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalance
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.WalletType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.web3j.protocol.core.DefaultBlockParameterName
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.RoundingMode
 import javax.inject.Inject
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
-import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionRepository
-import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
-import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalance
-import java.math.BigInteger
 import javax.inject.Singleton
 
 @Singleton
@@ -52,8 +43,9 @@ class SyncUSDTransactionsUseCase @Inject constructor(
 
         Log.d("SyncUSDCUC", "Wallet: ${wallet.name}, Address: ${usdcCoin.address}")
 
-        // Fetch USDC transactions from Etherscan
+        // Fetch USDC transactions
         val transactionsResult = usdcBlockchainRepository.getUSDCTransactionHistory(
+            walletId = walletId,
             address = usdcCoin.address,
             network = usdcCoin.network
         )
@@ -74,32 +66,16 @@ class SyncUSDTransactionsUseCase @Inject constructor(
 
                 // Save new transactions
                 var savedCount = 0
-                transactions.forEachIndexed { index, tx ->
-                    // Determine if this is incoming (to address matches our wallet)
-                    val isIncoming = tx.to.equals(usdcCoin.address, ignoreCase = true)
+                transactions.forEachIndexed { index, transaction ->
+                    Log.d("SyncUSDCUC", "Transaction #$index: ${transaction.txHash?.take(8) ?: "unknown"}...")
+                    Log.d("SyncUSDCUC", "  isIncoming: ${transaction.isIncoming}")
+                    Log.d("SyncUSDCUC", "  amount: ${transaction.amountDecimal} USDC")
+                    Log.d("SyncUSDCUC", "  fee: ${transaction.feeEth} ETH")
+                    Log.d("SyncUSDCUC", "  gasPrice: ${transaction.gasPriceGwei} Gwei")
+                    Log.d("SyncUSDCUC", "  from: ${transaction.fromAddress.take(8)}...")
+                    Log.d("SyncUSDCUC", "  to: ${transaction.toAddress.take(8)}...")
 
-                    // Parse the value
-                    val decimals = tx.tokenDecimal.toIntOrNull() ?: 6
-                    val amountDecimal = convertTokenValue(tx.value, decimals)
-
-                    Log.d("SyncUSDCUC", "Transaction #$index: ${tx.hash.take(8)}...")
-                    Log.d("SyncUSDCUC", "  isIncoming: $isIncoming")
-                    Log.d("SyncUSDCUC", "  amount: ${tx.value} (raw)")
-                    Log.d("SyncUSDCUC", "  amountDecimal: $amountDecimal USDC")
-                    Log.d("SyncUSDCUC", "  from: ${tx.from.take(8)}...")
-                    Log.d("SyncUSDCUC", "  to: ${tx.to.take(8)}...")
-
-                    // Create domain transaction
-                    val domainTx = createDomainTransaction(
-                        tokenTx = tx,
-                        walletId = walletId,
-                        isIncoming = isIncoming,
-                        amountDecimal = amountDecimal,
-                        network = usdcCoin.network,
-                        contractAddress = usdcCoin.contractAddress
-                    )
-
-                    usdcTransactionRepository.saveTransaction(domainTx)
+                    usdcTransactionRepository.saveTransaction(transaction)
                     savedCount++
                 }
 
@@ -110,61 +86,11 @@ class SyncUSDTransactionsUseCase @Inject constructor(
 
             is Result.Error -> {
                 Log.e("SyncUSDCUC", "Failed to fetch transactions: ${transactionsResult.message}")
-                Result.Error(transactionsResult.message)
+                Result.Error(transactionsResult.message, transactionsResult.throwable)
             }
 
             else -> Result.Error("Unknown error")
         }
-    }
-
-    private fun convertTokenValue(value: String, decimals: Int): String {
-        return try {
-            val valueBigInt = BigInteger(value)
-            BigDecimal(valueBigInt).divide(
-                BigDecimal.TEN.pow(decimals),
-                decimals,
-                RoundingMode.HALF_UP
-            ).toPlainString()
-        } catch (e: Exception) {
-            "0"
-        }
-    }
-
-    private fun createDomainTransaction(
-        tokenTx: TokenTransaction,
-        walletId: String,
-        isIncoming: Boolean,
-        amountDecimal: String,
-        network: EthereumNetwork,
-        contractAddress: String
-    ): USDCSendTransaction {
-        val timestamp = tokenTx.timeStamp.toLongOrNull()?.times(1000) ?: System.currentTimeMillis()
-
-        return USDCSendTransaction(
-            id = "usdc_${tokenTx.hash}_${System.currentTimeMillis()}",
-            walletId = walletId,
-            fromAddress = tokenTx.from,
-            toAddress = tokenTx.to,
-            status = TransactionStatus.SUCCESS,
-            timestamp = timestamp,
-            note = null,
-            feeLevel = FeeLevel.NORMAL,
-            amount = tokenTx.value,
-            amountDecimal = amountDecimal,
-            contractAddress = contractAddress,
-            network = network,
-            gasPriceWei = tokenTx.gasPrice,
-            gasPriceGwei = "0", // Will be parsed from gasPrice if needed
-            gasLimit = tokenTx.gas.toLongOrNull() ?: 65000L,
-            feeWei = "0", // Can calculate if needed
-            feeEth = "0",
-            nonce = tokenTx.nonce.toIntOrNull() ?: 0,
-            chainId = network.chainId.toLongOrNull() ?: 1L,
-            signedHex = null,
-            txHash = tokenTx.hash,
-            ethereumTransactionId = tokenTx.hash,
-            isIncoming = isIncoming
-        )
     }
 }
 
@@ -273,7 +199,7 @@ class SendUSDCUseCase @Inject constructor(
 
         // Create transaction record
         val amountUnits = amount.multiply(BigDecimal("1000000")).toBigInteger()
-        val transaction = USDCSendTransaction(
+        val transaction = USDCTransaction(
             id = "usdc_tx_${System.currentTimeMillis()}",
             walletId = walletId,
             fromAddress = usdcCoin.address,
