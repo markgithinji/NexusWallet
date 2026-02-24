@@ -1,6 +1,9 @@
 package com.example.nexuswallet.feature.market.data.repository
 
 import com.example.nexuswallet.feature.market.data.remote.BinanceWebSocket
+import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
+import com.example.nexuswallet.feature.market.data.remote.RetrofitClient
+import com.example.nexuswallet.feature.wallet.data.repository.MarketRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,5 +26,20 @@ object MarketModule {
         binanceWebSocket: BinanceWebSocket
     ): WebSocketRepository {
         return WebSocketRepository(binanceWebSocket)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCoinGeckoApi(): CoinGeckoApi {
+        return RetrofitClient.coinGeckoApi
+    }
+
+
+    @Provides
+    @Singleton
+    fun provideMarketRepository(
+        coinGeckoApi: CoinGeckoApi
+    ): MarketRepository {
+        return MarketRepository(coinGeckoApi)
     }
 }

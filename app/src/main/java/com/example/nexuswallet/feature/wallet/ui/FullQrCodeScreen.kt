@@ -53,7 +53,7 @@ fun FullQrCodeScreen(
     walletId: String
 ) {
     val viewModel: WalletDetailViewModel = hiltViewModel()
-    val wallet by viewModel.wallet.collectAsState()
+//    val wallet by viewModel.wallet.collectAsState()
 
     LaunchedEffect(walletId) {
         viewModel.loadWallet(walletId)
