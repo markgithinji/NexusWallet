@@ -1,28 +1,26 @@
 package com.example.nexuswallet.feature.authentication.data.repository
 
-import android.content.Context
-import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
-    name = "secure_storage"
-)
-
 @Singleton
 class SecurityPreferencesRepository @Inject constructor(
-    @ApplicationContext private val context: Context,
+    private val dataStore: DataStore<Preferences>
 ) {
 
+    /**
+     * Store encrypted mnemonic for a specific wallet
+     * @param walletId The wallet identifier
+     * @param encryptedMnemonic The encrypted mnemonic string
+     * @param iv The initialization vector used for encryption
+     */
     suspend fun storeEncryptedMnemonic(
         walletId: String,
         encryptedMnemonic: String,
@@ -33,34 +31,42 @@ class SecurityPreferencesRepository @Inject constructor(
         val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_$walletId")
 
         safeEdit {
-            context.dataStore.edit { preferences ->
+            dataStore.edit { preferences ->
                 preferences[key] = encryptedMnemonic
                 preferences[ivKey] = iv.toHex()
             }
         }
-
-        Log.d("SECURE_STORAGE", "Stored encrypted mnemonic for wallet: $walletId")
     }
 
+    /**
+     * Retrieve encrypted mnemonic for a specific wallet
+     * @param walletId The wallet identifier
+     * @return Pair of encrypted mnemonic and IV, or null if not found
+     */
     suspend fun getEncryptedMnemonic(walletId: String): Pair<String, ByteArray>? {
         val key = stringPreferencesKey("${ENCRYPTED_MNEMONIC_KEY.name}_$walletId")
         val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_$walletId")
 
         return safeGet {
-            val preferences = context.dataStore.data.first()
+            val preferences = dataStore.data.first()
             val encrypted = preferences[key]
             val ivHex = preferences[ivKey]
 
             if (encrypted != null && ivHex != null) {
-                Log.d("SECURE_STORAGE", "Retrieved encrypted mnemonic for wallet: $walletId")
                 Pair(encrypted, hexToBytes(ivHex))
             } else {
-                Log.d("SECURE_STORAGE", "No encrypted mnemonic found for wallet: $walletId")
                 null
             }
         }
     }
 
+    /**
+     * Store encrypted private key for a specific wallet and key type
+     * @param walletId The wallet identifier
+     * @param keyType The type of key (e.g., "BTC", "ETH", "SOL")
+     * @param encryptedKey The encrypted private key string
+     * @param iv The initialization vector used for encryption
+     */
     suspend fun storeEncryptedPrivateKey(
         walletId: String,
         keyType: String,
@@ -71,18 +77,19 @@ class SecurityPreferencesRepository @Inject constructor(
         val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_${walletId}_$keyType")
 
         safeEdit {
-            context.dataStore.edit { preferences ->
+            dataStore.edit { preferences ->
                 preferences[key] = encryptedKey
                 preferences[ivKey] = iv.toHex()
             }
         }
-
-        Log.d(
-            "SECURE_STORAGE",
-            "Stored encrypted private key for wallet: $walletId, type: $keyType"
-        )
     }
 
+    /**
+     * Retrieve encrypted private key for a specific wallet and key type
+     * @param walletId The wallet identifier
+     * @param keyType The type of key (e.g., "BTC", "ETH", "SOL")
+     * @return Pair of encrypted private key and IV, or null if not found
+     */
     suspend fun getEncryptedPrivateKey(
         walletId: String,
         keyType: String
@@ -91,116 +98,139 @@ class SecurityPreferencesRepository @Inject constructor(
         val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_${walletId}_$keyType")
 
         return safeGet {
-            val preferences = context.dataStore.data.first()
+            val preferences = dataStore.data.first()
             val encrypted = preferences[key]
             val ivHex = preferences[ivKey]
 
             if (encrypted != null && ivHex != null) {
-                Log.d(
-                    "SECURE_STORAGE",
-                    "Retrieved encrypted private key for wallet: $walletId, type: $keyType"
-                )
                 Pair(encrypted, hexToBytes(ivHex))
             } else {
-                Log.d(
-                    "SECURE_STORAGE",
-                    "No encrypted private key found for wallet: $walletId, type: $keyType"
-                )
                 null
             }
         }
     }
 
+    /**
+     * Retrieve encrypted backup for a specific wallet
+     * @param walletId The wallet identifier
+     * @return Pair of encrypted backup and IV, or null if not found
+     */
     suspend fun getEncryptedBackup(walletId: String): Pair<String, ByteArray>? {
         val backupKey = stringPreferencesKey("${ENCRYPTED_BACKUP_KEY.name}_$walletId")
         val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_backup_$walletId")
 
         return safeGet {
-            val preferences = context.dataStore.data.first()
+            val preferences = dataStore.data.first()
             val encrypted = preferences[backupKey]
             val ivHex = preferences[ivKey]
 
             if (encrypted != null && ivHex != null) {
-                Log.d("SECURE_STORAGE", "Retrieved encrypted backup for wallet: $walletId")
                 Pair(encrypted, hexToBytes(ivHex))
             } else {
-                Log.d("SECURE_STORAGE", "No encrypted backup found for wallet: $walletId")
                 null
             }
         }
     }
 
+    /**
+     * Store hashed PIN for authentication
+     * @param pinHash The hashed PIN string
+     */
     suspend fun storePinHash(pinHash: String) {
         safeEdit {
-            context.dataStore.edit { preferences ->
+            dataStore.edit { preferences ->
                 preferences[PIN_HASH_KEY] = pinHash
             }
         }
-        Log.d("SECURE_STORAGE", "Stored PIN hash: ${pinHash.take(10)}...")
     }
 
+    /**
+     * Retrieve stored PIN hash
+     * @return The hashed PIN string, or null if not set
+     */
     suspend fun getPinHash(): String? {
         return safeGet {
-            val preferences = context.dataStore.data.first()
+            val preferences = dataStore.data.first()
             preferences[PIN_HASH_KEY]
         }
     }
 
+    /**
+     * Enable or disable biometric authentication
+     * @param enabled true to enable biometric, false to disable
+     */
     suspend fun setBiometricEnabled(enabled: Boolean) {
         safeEdit {
-            context.dataStore.edit { preferences ->
+            dataStore.edit { preferences ->
                 preferences[BIOMETRIC_ENABLED_KEY] = enabled
             }
         }
-        Log.d("SECURE_STORAGE", "Set biometric enabled: $enabled")
     }
 
+    /**
+     * Check if biometric authentication is enabled
+     * @return true if biometric is enabled, false otherwise
+     */
     suspend fun isBiometricEnabled(): Boolean {
         return safeGet(defaultValue = false) {
-            val preferences = context.dataStore.data.first()
+            val preferences = dataStore.data.first()
             preferences[BIOMETRIC_ENABLED_KEY] ?: false
         } ?: false
     }
 
     /**
-     * Clear all sensitive data (for logout)
+     * Clear all sensitive data (for logout/reset)
      */
     suspend fun clearAll() {
         safeEdit {
-            context.dataStore.edit { preferences ->
+            dataStore.edit { preferences ->
                 preferences.clear()
             }
         }
-        Log.d("SECURE_STORAGE", "Cleared all secure storage")
     }
 
+    /**
+     * Save session timeout duration
+     * @param seconds Timeout duration in seconds
+     */
     suspend fun saveSessionTimeout(seconds: Int) {
         safeEdit {
-            context.dataStore.edit { preferences ->
+            dataStore.edit { preferences ->
                 preferences[SESSION_TIMEOUT_KEY] = seconds
             }
         }
-        Log.d("SECURE_STORAGE", "Saved session timeout: ${seconds}s")
     }
 
+    /**
+     * Get session timeout duration
+     * @return Timeout duration in seconds (default: 300 seconds / 5 minutes)
+     */
     suspend fun getSessionTimeout(): Int {
         return safeGet(defaultValue = 300) {
-            val preferences = context.dataStore.data.first()
+            val preferences = dataStore.data.first()
             preferences[SESSION_TIMEOUT_KEY] ?: 300
         } ?: 300
     }
 
+    /**
+     * Clear stored PIN hash (for PIN reset)
+     */
     suspend fun clearPinHash() {
         safeEdit {
-            context.dataStore.edit { preferences ->
+            dataStore.edit { preferences ->
                 preferences.remove(PIN_HASH_KEY)
             }
         }
-        Log.d("SECURE_STORAGE", "Cleared PIN hash")
     }
 
+    /**
+     * Convert ByteArray to hexadecimal string
+     */
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 
+    /**
+     * Convert hexadecimal string to ByteArray
+     */
     private fun hexToBytes(hex: String): ByteArray {
         return hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
     }
