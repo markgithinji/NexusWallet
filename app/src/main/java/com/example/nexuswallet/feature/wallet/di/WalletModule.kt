@@ -1,6 +1,8 @@
 package com.example.nexuswallet.feature.wallet.di
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
@@ -135,18 +137,9 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideSecureStorage(
-        @ApplicationContext context: Context,
+        dataStore: DataStore<Preferences>
     ): SecurityPreferencesRepository {
-        return SecurityPreferencesRepository(context)
-    }
-
-    // === Blockchain ===
-    @Provides
-    @Singleton
-    fun provideWeb3j(): Web3j {
-        return Web3j.build(
-            HttpService("https://mainnet.infura.io/v3/demo") // TODO: Use key
-        )
+        return SecurityPreferencesRepository(dataStore)
     }
 
     // === Use Cases ===
