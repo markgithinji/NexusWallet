@@ -2,24 +2,26 @@ package com.example.nexuswallet.feature.authentication.data.repository
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
 
 /**
  * Handles encryption/decryption using Android KeyStore
  * Provides hardware-backed security when available
  */
-class KeyStoreRepository() {
 
-    private val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply {
-        load(null)
-    }
-
+@Singleton
+class KeyStoreRepository @Inject constructor(
+    private val keyStore: KeyStore,
+    private val ioDispatcher: CoroutineDispatcher
+) {
     /**
      * Get or create the secret key from Android KeyStore
      */
@@ -56,7 +58,7 @@ class KeyStoreRepository() {
      * @return Pair of encrypted bytes and IV
      */
     suspend fun encrypt(plaintext: ByteArray): Pair<ByteArray, ByteArray> =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             try {
                 val cipher = Cipher.getInstance(TRANSFORMATION)
                 cipher.init(Cipher.ENCRYPT_MODE, getSecretKey())
@@ -77,7 +79,7 @@ class KeyStoreRepository() {
      * @return Decrypted plaintext
      */
     suspend fun decrypt(encryptedData: ByteArray, iv: ByteArray): ByteArray =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             try {
                 val cipher = Cipher.getInstance(TRANSFORMATION)
                 val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
@@ -92,20 +94,22 @@ class KeyStoreRepository() {
     /**
      * Encrypt string data
      */
-    suspend fun encryptString(plaintext: String): Pair<String, String> {
-        val (encryptedBytes, iv) = encrypt(plaintext.toByteArray(Charsets.UTF_8))
-        return Pair(encryptedBytes.toHex(), iv.toHex())
-    }
+    suspend fun encryptString(plaintext: String): Pair<String, String> =
+        withContext(ioDispatcher) {
+            val (encryptedBytes, iv) = encrypt(plaintext.toByteArray(Charsets.UTF_8))
+            Pair(encryptedBytes.toHex(), iv.toHex())
+        }
 
     /**
      * Decrypt string data
      */
-    suspend fun decryptString(encryptedHex: String, ivHex: String): String {
-        val encryptedBytes = hexToBytes(encryptedHex)
-        val iv = hexToBytes(ivHex)
-        val decryptedBytes = decrypt(encryptedBytes, iv)
-        return String(decryptedBytes, Charsets.UTF_8)
-    }
+    suspend fun decryptString(encryptedHex: String, ivHex: String): String =
+        withContext(ioDispatcher) {
+            val encryptedBytes = hexToBytes(encryptedHex)
+            val iv = hexToBytes(ivHex)
+            val decryptedBytes = decrypt(encryptedBytes, iv)
+            String(decryptedBytes, Charsets.UTF_8)
+        }
 
     /**
      * Check if KeyStore is available and ready
@@ -145,5 +149,3 @@ class KeyStoreRepository() {
         private const val GCM_TAG_LENGTH = 128
     }
 }
-
-class EncryptionException(message: String, cause: Throwable? = null) : Exception(message, cause)

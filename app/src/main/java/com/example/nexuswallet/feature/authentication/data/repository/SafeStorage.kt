@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.authentication.data.repository
 
-import android.util.Log
 import java.io.IOException
 
 // Safe storage call helpers
