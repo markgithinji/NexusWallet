@@ -21,3 +21,13 @@ fun CoinGeckoTokenDto.toToken(): Token {
 fun SparklineDto.toSparklineData(): SparklineData {
     return SparklineData(price = price)
 }
+
+fun CryptoPanicPost.toNewsArticle(): NewsArticle {
+    return NewsArticle(
+        title = title,
+        summary = description,
+        publishedAt = publishedAt,
+        source = "CryptoPanic", // Default since source isn't provided
+        url = "" // No URL in free plan
+    )
+}
