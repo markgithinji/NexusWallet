@@ -52,7 +52,7 @@ data class ParsedTransaction(
     val isIncoming: Boolean
 )
 
-data class BitcoinTransactionResponse(
+data class BitcoinTransactionDto(
     val txid: String,
     val fromAddress: String,
     val toAddress: String,

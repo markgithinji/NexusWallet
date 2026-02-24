@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.NexusWalletApplication
-import com.example.nexuswallet.feature.authentication.domain.SecurityState
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.ClearAllSecurityDataUseCase
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.ClearPinUseCase
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.GetAvailableAuthMethodsUseCase

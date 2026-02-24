@@ -50,7 +50,7 @@ fun BitcoinTransaction.toEntity(): BitcoinTransactionEntity {
     )
 }
 
-fun BitcoinTransactionResponse.toDomain(
+fun BitcoinTransactionDto.toDomain(
     walletId: String,
     isIncoming: Boolean,
     network: BitcoinNetwork

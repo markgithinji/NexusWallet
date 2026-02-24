@@ -15,7 +15,7 @@ interface BitcoinApi {
     suspend fun getUtxos(@Path("address") address: String): List<UtxoResponse>
 
     @GET("tx/{txid}")
-    suspend fun getTransaction(@Path("txid") txid: String): EsploraTransaction
+    suspend fun getTransaction(@Path("txid") txid: String): EsploraTransactionResponse
 
     @GET("fee-estimates")
     suspend fun getFeeEstimates(): Map<String, Double>
@@ -25,5 +25,5 @@ interface BitcoinApi {
     suspend fun broadcastTransaction(@Body signedHex: String): ResponseBody
 
     @GET("address/{address}/txs")
-    suspend fun getAddressTransactions(@Path("address") address: String): List<EsploraTransaction>
+    suspend fun getAddressTransactions(@Path("address") address: String): List<EsploraTransactionResponse>
 }

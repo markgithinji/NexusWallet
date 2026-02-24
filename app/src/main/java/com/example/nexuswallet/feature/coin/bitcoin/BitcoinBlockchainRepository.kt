@@ -333,14 +333,14 @@ class BitcoinBlockchainRepository @Inject constructor(
     suspend fun getAddressTransactions(
         address: String,
         network: BitcoinNetwork = BitcoinNetwork.MAINNET
-    ): Result<List<BitcoinTransactionResponse>> = withContext(ioDispatcher) {
+    ): Result<List<BitcoinTransactionDto>> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val api = getApiForNetwork(network)
             val transactions = api.getAddressTransactions(address)
 
             transactions.mapNotNull { tx ->
                 parseTransaction(tx, address)?.let { parsed ->
-                    BitcoinTransactionResponse(
+                    BitcoinTransactionDto(
                         txid = tx.txid,
                         fromAddress = parsed.fromAddress,
                         toAddress = parsed.toAddress,
@@ -362,7 +362,7 @@ class BitcoinBlockchainRepository @Inject constructor(
      * Parse a transaction to extract relevant details for our address
      */
     private fun parseTransaction(
-        tx: EsploraTransaction,
+        tx: EsploraTransactionResponse,
         address: String
     ): ParsedTransaction? {
         val hasOutputToUs = tx.vout.any { it.scriptpubkey_address == address }

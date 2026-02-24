@@ -41,49 +41,20 @@ data class StatusResponse(
 )
 
 @Serializable
-data class VinResponse(
-    val txid: String,
-    val vout: Int,
-    @SerialName("scriptsig") val scriptSig: String? = null,
-    @SerialName("scriptsig_asm") val scriptSigAsm: String? = null,
-    val witness: List<String>? = null,
-    @SerialName("is_coinbase") val isCoinbase: Boolean,
-    val sequence: Long,
-    val prevout: VoutResponse? = null
-)
-
-@Serializable
-data class VoutResponse(
-    @SerialName("scriptpubkey") val scriptPubKey: String? = null,
-    @SerialName("scriptpubkey_asm") val scriptPubKeyAsm: String? = null,
-    @SerialName("scriptpubkey_type") val scriptPubKeyType: String? = null,
-    @SerialName("scriptpubkey_address") val scriptpubkey_address: String? = null,
-    val value: Long
-)
-
-@Serializable
-data class TransactionStatusResponse(
-    val confirmed: Boolean,
-    @SerialName("block_height") val block_height: Int? = null,
-    @SerialName("block_hash") val block_hash: String? = null,
-    @SerialName("block_time") val block_time: Long? = null
-)
-
-@Serializable
-data class EsploraTransaction(
+data class EsploraTransactionResponse(
     val txid: String,
     val version: Int,
     val locktime: Int,
     val size: Int,
     val weight: Int,
     val fee: Long,
-    val vin: List<EsploraVin>,
-    val vout: List<EsploraVout>,
-    val status: EsploraStatus
+    val vin: List<EsploraVinResponse>,
+    val vout: List<EsploraVoutResponse>,
+    val status: EsploraStatusResponse
 )
 
 @Serializable
-data class EsploraVin(
+data class EsploraVinResponse(
     val txid: String,
     val vout: Int,
     val is_coinbase: Boolean,
@@ -91,11 +62,11 @@ data class EsploraVin(
     val scriptsig_asm: String?,
     val sequence: Long,
     val witness: List<String>?,
-    val prevout: EsploraVout?
+    val prevout: EsploraVoutResponse?
 )
 
 @Serializable
-data class EsploraVout(
+data class EsploraVoutResponse(
     val scriptpubkey: String?,
     val scriptpubkey_asm: String?,
     val scriptpubkey_type: String?,
@@ -104,7 +75,7 @@ data class EsploraVout(
 )
 
 @Serializable
-data class EsploraStatus(
+data class EsploraStatusResponse(
     val confirmed: Boolean,
     val block_height: Int? = null,
     val block_hash: String? = null,
