@@ -11,16 +11,38 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.math.RoundingMode
 import javax.inject.Inject
 
 @HiltViewModel
 class EthereumSendViewModel @Inject constructor(
     private val getEthereumWalletUseCase: GetEthereumWalletUseCase,
     private val sendEthereumUseCase: SendEthereumUseCase,
-    private val validateAddressUseCase: ValidateAddressUseCase,
     private val getFeeEstimateUseCase: GetFeeEstimateUseCase,
-    private val ethereumBlockchainRepository: EthereumBlockchainRepository
+    private val ethereumBlockchainRepository: EthereumBlockchainRepository,
+    private val validateEthereumSendUseCase: ValidateEthereumSendUseCase
 ) : ViewModel() {
+
+    data class EthSendUiState(
+        val walletId: String = "",
+        val walletName: String = "",
+        val fromAddress: String = "",
+        val network: String = "",
+        val balance: BigDecimal = BigDecimal.ZERO,
+        val balanceFormatted: String = "0 ETH",
+        val toAddress: String = "",
+        val amount: String = "",
+        val amountValue: BigDecimal = BigDecimal.ZERO,
+        val note: String = "",
+        val feeLevel: FeeLevel = FeeLevel.NORMAL,
+        val feeEstimate: EthereumFeeEstimate? = null,
+        val validationResult: ValidateEthereumSendUseCase.ValidationResult = ValidateEthereumSendUseCase.ValidationResult(
+            isValid = false
+        ),
+        val isLoading: Boolean = false,
+        val error: String? = null,
+        val step: String = ""
+    )
 
     private val _uiState = MutableStateFlow(EthSendUiState())
     val uiState: StateFlow<EthSendUiState> = _uiState.asStateFlow()
@@ -66,9 +88,11 @@ class EthereumSendViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         balance = balance,
+                        balanceFormatted = "${balance.setScale(4, RoundingMode.HALF_UP)} ETH",
                         isLoading = false
                     )
                 }
+                validateInputs()
             }
             is Result.Error -> {
                 _uiState.update {
@@ -83,10 +107,11 @@ class EthereumSendViewModel @Inject constructor(
     }
 
     private suspend fun loadFeeEstimate() {
-        val feeEstimateResult = getFeeEstimateUseCase(FeeLevel.NORMAL)
+        val feeEstimateResult = getFeeEstimateUseCase(_uiState.value.feeLevel)
         when (feeEstimateResult) {
             is Result.Success -> {
                 _uiState.update { it.copy(feeEstimate = feeEstimateResult.data) }
+                validateInputs()
             }
             is Result.Error -> {
                 _uiState.update { it.copy(error = "Failed to load fee: ${feeEstimateResult.message}") }
@@ -104,18 +129,55 @@ class EthereumSendViewModel @Inject constructor(
                 }
                 is EthereumSendEvent.AmountChanged -> {
                     val amountValue = event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
-                    _uiState.update { it.copy(amount = event.amount, amountValue = amountValue) }
+                    _uiState.update {
+                        it.copy(
+                            amount = event.amount,
+                            amountValue = amountValue
+                        )
+                    }
                     validateInputs()
                 }
                 is EthereumSendEvent.NoteChanged -> _uiState.update { it.copy(note = event.note) }
                 is EthereumSendEvent.FeeLevelChanged -> {
                     _uiState.update { it.copy(feeLevel = event.feeLevel) }
-                    updateFeeEstimate()
+                    loadFeeEstimate()
                 }
                 EthereumSendEvent.Validate -> validateInputs()
-                EthereumSendEvent.ClearError -> _uiState.update { it.copy(error = null, validationError = null) }
+                EthereumSendEvent.ClearError -> clearError()
             }
         }
+    }
+
+    private suspend fun validateInputs(): Boolean {
+        val state = _uiState.value
+        val validationResult = validateEthereumSendUseCase(
+            toAddress = state.toAddress,
+            amountValue = state.amountValue,
+            fromAddress = state.fromAddress,
+            balance = state.balance,
+            feeLevel = state.feeLevel
+        )
+
+        _uiState.update {
+            it.copy(
+                validationResult = validationResult,
+                feeEstimate = validationResult.feeEstimate ?: it.feeEstimate
+            )
+        }
+
+        // Update error field for backward compatibility
+        val firstError = validationResult.addressError
+            ?: validationResult.amountError
+            ?: validationResult.balanceError
+            ?: validationResult.selfSendError
+
+        if (firstError != null) {
+            _uiState.update { it.copy(error = firstError) }
+        } else if (validationResult.isValid) {
+            _uiState.update { it.copy(error = null) }
+        }
+
+        return validationResult.isValid
     }
 
     fun send(onSuccess: (String) -> Unit) {
@@ -145,78 +207,26 @@ class EthereumSendViewModel @Inject constructor(
                         _uiState.update { it.copy(isLoading = false, step = "Sent!") }
                         onSuccess(sendResult.txHash)
                     } else {
-                        _uiState.update { it.copy(
-                            isLoading = false,
-                            error = sendResult.error ?: "Send failed"
-                        ) }
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = sendResult.error ?: "Send failed"
+                            )
+                        }
                     }
                 }
                 is Result.Error -> {
-                    _uiState.update { it.copy(
-                        isLoading = false,
-                        error = result.message
-                    ) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = result.message
+                        )
+                    }
                 }
                 Result.Loading -> {}
             }
         }
     }
 
-    private suspend fun validateInputs(): Boolean {
-        val state = _uiState.value
-        val toAddress = state.toAddress
-        val amount = state.amountValue
-
-        if (toAddress.isEmpty() || amount == BigDecimal.ZERO) {
-            _uiState.update {
-                it.copy(
-                    isValid = false,
-                    validationError = if (toAddress.isEmpty()) "Enter address" else "Enter amount"
-                )
-            }
-            return false
-        }
-
-        if (!validateAddressUseCase(toAddress)) {
-            _uiState.update { it.copy(isValid = false, validationError = "Invalid address") }
-            return false
-        }
-
-        if (toAddress == state.fromAddress) {
-            _uiState.update { it.copy(isValid = false, validationError = "Cannot send to yourself") }
-            return false
-        }
-
-        val feeEstimateResult = getFeeEstimateUseCase(state.feeLevel)
-        if (feeEstimateResult is Result.Success) {
-            val feeEstimate = feeEstimateResult.data
-            val totalRequired = amount + BigDecimal(feeEstimate.totalFeeEth)
-
-            if (totalRequired > state.balance) {
-                _uiState.update {
-                    it.copy(
-                        isValid = false,
-                        validationError = "Insufficient balance (including fees)",
-                        feeEstimate = feeEstimate
-                    )
-                }
-                return false
-            }
-
-            _uiState.update { it.copy(isValid = true, validationError = null, feeEstimate = feeEstimate) }
-            return true
-        }
-
-        return false
-    }
-
-    private suspend fun updateFeeEstimate() {
-        val feeEstimateResult = getFeeEstimateUseCase(_uiState.value.feeLevel)
-        if (feeEstimateResult is Result.Success) {
-            _uiState.update { it.copy(feeEstimate = feeEstimateResult.data) }
-            validateInputs()
-        }
-    }
-
-    fun clearError() = _uiState.update { it.copy(error = null, validationError = null) }
+    fun clearError() = _uiState.update { it.copy(error = null) }
 }

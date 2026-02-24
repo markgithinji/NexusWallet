@@ -249,9 +249,10 @@ fun SendScreen(
                                 toAddress = ethereumUiState.value.toAddress,
                                 onAddressChange = { ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(it)) },
                                 coinType = coinType,
-                                isValid = ethereumUiState.value.validationError?.contains("address") == false,
-                                errorMessage = if (ethereumUiState.value.validationError?.contains("address") == true)
-                                    ethereumUiState.value.validationError else null,
+                                isValid = ethereumUiState.value.validationResult.isValid &&
+                                        ethereumUiState.value.validationResult.addressError == null,
+                                errorMessage = ethereumUiState.value.validationResult.addressError
+                                    ?: ethereumUiState.value.validationResult.selfSendError,
                                 onPaste = { pastedText ->
                                     ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(pastedText))
                                 }
@@ -309,8 +310,8 @@ fun SendScreen(
                                 balance = ethereumUiState.value.balance,
                                 coinType = coinType,
                                 onMaxClick = { showMaxDialog = true },
-                                errorMessage = if (ethereumUiState.value.validationError?.contains("balance") == true)
-                                    ethereumUiState.value.validationError else null
+                                errorMessage = ethereumUiState.value.validationResult.amountError
+                                    ?: ethereumUiState.value.validationResult.balanceError
                             )
                         }
                         "USDC" -> {
@@ -395,7 +396,7 @@ fun SendScreen(
             // Bottom Bar
             SendBottomBar(
                 isValid = when (coinType) {
-                    "ETH" -> ethereumUiState.value.isValid
+                    "ETH" -> ethereumUiState.value.validationResult.isValid
                     "USDC" -> usdcState.value.validationResult.isValid
                     "SOL" -> solanaState.value.validationResult.isValid
                     "BTC" -> bitcoinState.value.isAddressValid && bitcoinState.value.amountValue > BigDecimal.ZERO
@@ -403,9 +404,9 @@ fun SendScreen(
                 },
                 isLoading = isLoading,
                 validationError = when (coinType) {
-                    "ETH" -> ethereumUiState.value.validationError
+                    "ETH" -> null // Errors are shown inline via validationResult
                     "USDC" -> null // Errors are shown inline
-                    "SOL" -> null
+                    "SOL" -> null // Errors are shown inline
                     "BTC" -> null
                     else -> null
                 },
@@ -419,7 +420,9 @@ fun SendScreen(
                 onSend = {
                     when (coinType) {
                         "ETH" -> {
-                            navController.navigate("review/$walletId/ETH?toAddress=${ethereumUiState.value.toAddress}&amount=${ethereumUiState.value.amount}&feeLevel=${ethereumUiState.value.feeLevel.name}")
+                            ethereumViewModel.send { txHash ->
+                                navController.navigate("review/$walletId/ETH?toAddress=${ethereumUiState.value.toAddress}&amount=${ethereumUiState.value.amount}&feeLevel=${ethereumUiState.value.feeLevel.name}")
+                            }
                         }
                         "USDC" -> {
                             usdcViewModel.send { txHash ->

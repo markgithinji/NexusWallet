@@ -120,9 +120,85 @@ class GetPendingTransactionsUseCase @Inject constructor(
 }
 
 @Singleton
-class ValidateAddressUseCase @Inject constructor() {
-    operator fun invoke(address: String): Boolean {
-        return address.startsWith("0x") && address.length == 42
+class ValidateEthereumSendUseCase @Inject constructor(
+    private val getFeeEstimateUseCase: GetFeeEstimateUseCase
+) {
+
+    data class ValidationResult(
+        val isValid: Boolean,
+        val addressError: String? = null,
+        val amountError: String? = null,
+        val balanceError: String? = null,
+        val selfSendError: String? = null,
+        val feeEstimate: EthereumFeeEstimate? = null
+    )
+
+    suspend operator fun invoke(
+        toAddress: String,
+        amountValue: BigDecimal,
+        fromAddress: String,
+        balance: BigDecimal,
+        feeLevel: FeeLevel
+    ): ValidationResult {
+
+        var addressError: String? = null
+        var amountError: String? = null
+        var balanceError: String? = null
+        var selfSendError: String? = null
+        var isValid = true
+        var feeEstimate: EthereumFeeEstimate? = null
+
+        // Validate address is not empty
+        if (toAddress.isBlank()) {
+            addressError = "Please enter a recipient address"
+            isValid = false
+        }
+        // Validate address format (Ethereum addresses are 0x + 40 hex chars)
+        else if (!isValidEthereumAddress(toAddress)) {
+            addressError = "Invalid Ethereum address format"
+            isValid = false
+        }
+
+        // Validate not sending to self
+        if (toAddress.isNotBlank() && toAddress.equals(fromAddress, ignoreCase = true)) {
+            selfSendError = "Cannot send to yourself"
+            isValid = false
+        }
+
+        // Validate amount
+        if (amountValue <= BigDecimal.ZERO) {
+            amountError = "Amount must be greater than 0"
+            isValid = false
+        }
+
+        // Get fee estimate and validate balance
+        if (isValid || amountValue > BigDecimal.ZERO) {
+            val feeResult = getFeeEstimateUseCase(feeLevel)
+            if (feeResult is Result.Success) {
+                feeEstimate = feeResult.data
+
+                val totalRequired = amountValue + BigDecimal(feeEstimate.totalFeeEth)
+                if (totalRequired > balance) {
+                    balanceError = "Insufficient balance (need ${totalRequired.setScale(4, RoundingMode.HALF_UP)} ETH including fees)"
+                    isValid = false
+                }
+            }
+        }
+
+        return ValidationResult(
+            isValid = isValid,
+            addressError = addressError,
+            amountError = amountError,
+            balanceError = balanceError,
+            selfSendError = selfSendError,
+            feeEstimate = feeEstimate
+        )
+    }
+
+    private fun isValidEthereumAddress(address: String): Boolean {
+        return address.startsWith("0x") &&
+                address.length == 42 &&
+                address.substring(2).all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
     }
 }
 

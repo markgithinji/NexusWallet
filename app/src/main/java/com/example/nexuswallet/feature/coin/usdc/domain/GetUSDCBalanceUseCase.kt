@@ -411,6 +411,8 @@ class ValidateUSDCFormUseCase @Inject constructor() {
     }
 
     private fun validateAddress(address: String): Boolean {
-        return address.startsWith("0x") && address.length == 42
+        return address.startsWith("0x") &&
+                address.length == 42 &&
+                address.substring(2).all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
     }
 }
