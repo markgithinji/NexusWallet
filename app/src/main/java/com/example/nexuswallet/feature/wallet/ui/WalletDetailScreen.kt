@@ -1,20 +1,59 @@
 package com.example.nexuswallet.feature.wallet.ui
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.AttachMoney
+import androidx.compose.material.icons.outlined.CurrencyBitcoin
+import androidx.compose.material.icons.outlined.Diamond
+import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.FlashOn
+import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.Receipt
+import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.TrendingDown
+import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +69,7 @@ import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCSendTransaction
+import com.example.nexuswallet.feature.market.ui.formatTwoDecimals
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalance
@@ -41,7 +81,8 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,23 +91,19 @@ fun WalletDetailScreen(
     walletId: String,
     walletViewModel: WalletDetailViewModel = hiltViewModel(),
 ) {
-    val wallet by walletViewModel.wallet.collectAsState()
-    val balance by walletViewModel.balance.collectAsState()
-    val transactions by walletViewModel.transactions.collectAsState()
-    val isLoading by walletViewModel.isLoading.collectAsState()
-    val error by walletViewModel.error.collectAsState()
+    val uiState by walletViewModel.uiState.collectAsState()
 
     // Load wallet when screen is first composed
     LaunchedEffect(walletId) {
         walletViewModel.loadWallet(walletId)
     }
 
-    if (isLoading && wallet == null) {
+    if (uiState.isLoading && uiState.wallet == null) {
         LoadingScreen()
         return
     }
 
-    error?.let {
+    uiState.error?.let {
         ErrorScreen(
             message = it,
             onRetry = { walletViewModel.loadWallet(walletId) }
@@ -98,9 +135,9 @@ fun WalletDetailScreen(
                 actions = {
                     IconButton(
                         onClick = { walletViewModel.refresh() },
-                        enabled = !isLoading
+                        enabled = !uiState.isLoading
                     ) {
-                        if (isLoading) {
+                        if (uiState.isLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp,
@@ -123,11 +160,12 @@ fun WalletDetailScreen(
         },
         containerColor = Color(0xFFF5F5F7)
     ) { padding ->
-        wallet?.let { currentWallet ->
+        uiState.wallet?.let { currentWallet ->
             WalletDetailContent(
                 wallet = currentWallet,
-                balance = balance,
-                transactions = transactions,
+                balance = uiState.balance,
+                transactions = uiState.transactions,
+                pricePercentages = uiState.pricePercentages,
                 navController = navController,
                 viewModel = walletViewModel,
                 padding = padding
@@ -145,6 +183,7 @@ fun WalletDetailContent(
     wallet: Wallet,
     balance: WalletBalance?,
     transactions: List<Any>,
+    pricePercentages: Map<String, Double>,
     navController: NavController,
     viewModel: WalletDetailViewModel,
     padding: PaddingValues
@@ -183,68 +222,68 @@ fun WalletDetailContent(
             SectionHeader(title = "Assets")
         }
 
-        // Coin List
         wallet.bitcoin?.let { coin ->
-            item {
+            // Get percentage using the collected state
+            val percentage = pricePercentages["bitcoin"]
+            item(key = "btc_${pricePercentages.hashCode()}") {
                 CoinDetailCard(
                     coinType = "BTC",
                     coin = coin,
                     balance = balance?.bitcoin,
                     color = Color(0xFFF7931A),
                     icon = Icons.Outlined.CurrencyBitcoin,
-                    onClick = {
-                        navController.navigate("coin/${wallet.id}/BTC")
-                    }
+                    onClick = { navController.navigate("coin/${wallet.id}/BTC") },
+                    priceChangePercentage = percentage
                 )
             }
         }
 
         wallet.ethereum?.let { coin ->
-            item {
+            val percentage = pricePercentages["ethereum"]
+            item(key = "eth_${pricePercentages.hashCode()}") {
                 CoinDetailCard(
                     coinType = "ETH",
                     coin = coin,
                     balance = balance?.ethereum,
                     color = Color(0xFF627EEA),
                     icon = Icons.Outlined.Diamond,
-                    onClick = {
-                        navController.navigate("coin/${wallet.id}/ETH")
-                    }
+                    onClick = { navController.navigate("coin/${wallet.id}/ETH") },
+                    priceChangePercentage = percentage
                 )
             }
         }
 
         wallet.solana?.let { coin ->
-            item {
+            val percentage = pricePercentages["solana"]
+            item(key = "sol_${pricePercentages.hashCode()}") {
                 CoinDetailCard(
                     coinType = "SOL",
                     coin = coin,
                     balance = balance?.solana,
                     color = Color(0xFF00FFA3),
                     icon = Icons.Outlined.FlashOn,
-                    onClick = {
-                        navController.navigate("coin/${wallet.id}/SOL")
-                    }
+                    onClick = { navController.navigate("coin/${wallet.id}/SOL") },
+                    priceChangePercentage = percentage
                 )
             }
         }
 
         wallet.usdc?.let { coin ->
-            item {
+            val percentage = pricePercentages["usd-coin"]
+            item(key = "usdc_${pricePercentages.hashCode()}") {
                 CoinDetailCard(
                     coinType = "USDC",
                     coin = coin,
                     balance = balance?.usdc,
                     color = Color(0xFF2775CA),
                     icon = Icons.Outlined.AttachMoney,
-                    onClick = {
-                        navController.navigate("coin/${wallet.id}/USDC")
-                    }
+                    onClick = { navController.navigate("coin/${wallet.id}/USDC") },
+                    priceChangePercentage = percentage
                 )
             }
         }
 
-        // Transactions Section - All in one container
+        // Transactions Section
         if (transactions.isNotEmpty()) {
             item {
                 TransactionsContainer(
@@ -602,7 +641,8 @@ fun CoinDetailCard(
     balance: Any?,
     color: Color,
     icon: ImageVector,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    priceChangePercentage: Double? = null
 ) {
     val (balanceAmount, usdValue) = when (balance) {
         is BitcoinBalance -> Pair(balance.btc, balance.usdValue)
@@ -615,10 +655,19 @@ fun CoinDetailCard(
     val formattedBalance = try {
         val amountDecimal = balanceAmount.toBigDecimal()
         when {
-            amountDecimal < BigDecimal("0.000001") -> amountDecimal.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
-            amountDecimal < BigDecimal("0.001") -> amountDecimal.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
-            amountDecimal < BigDecimal("1") -> amountDecimal.setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
-            else -> amountDecimal.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+            amountDecimal < BigDecimal("0.000001") -> amountDecimal.setScale(
+                8,
+                RoundingMode.HALF_UP
+            ).stripTrailingZeros().toPlainString()
+
+            amountDecimal < BigDecimal("0.001") -> amountDecimal.setScale(6, RoundingMode.HALF_UP)
+                .stripTrailingZeros().toPlainString()
+
+            amountDecimal < BigDecimal("1") -> amountDecimal.setScale(4, RoundingMode.HALF_UP)
+                .stripTrailingZeros().toPlainString()
+
+            else -> amountDecimal.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros()
+                .toPlainString()
         }
     } catch (e: Exception) {
         balanceAmount
@@ -640,7 +689,7 @@ fun CoinDetailCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Coin icon
@@ -680,7 +729,7 @@ fun CoinDetailCard(
                 )
             }
 
-            // USD Value
+            // USD Value and percentage
             Column(
                 horizontalAlignment = Alignment.End
             ) {
@@ -691,13 +740,35 @@ fun CoinDetailCard(
                     color = Color.Black,
                     maxLines = 1
                 )
-                // Placeholder for change percentage
-                Text(
-                    text = "+2.4%",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF10B981),
-                    maxLines = 1
-                )
+
+                // Show percentage if available
+                if (priceChangePercentage != null) {
+                    val changeColor = if (priceChangePercentage >= 0)
+                        Color(0xFF10B981)
+                    else
+                        Color(0xFFEF4444)
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (priceChangePercentage >= 0)
+                                Icons.Outlined.TrendingUp
+                            else
+                                Icons.Outlined.TrendingDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = changeColor
+                        )
+                        Text(
+                            text = "${if (priceChangePercentage >= 0) "+" else ""}${priceChangePercentage.formatTwoDecimals()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = changeColor
+                        )
+                    }
+                }
+                // If no percentage, show nothing
             }
         }
     }
@@ -719,6 +790,7 @@ fun TransactionItem(
                 timestamp = transaction.timestamp
             )
         }
+
         is EthereumTransaction -> {
             val isIncoming = transaction.toAddress == wallet.ethereum?.address
             TransactionDisplayData(
@@ -729,6 +801,7 @@ fun TransactionItem(
                 timestamp = transaction.timestamp
             )
         }
+
         is SolanaTransaction -> {
             val isIncoming = transaction.toAddress == wallet.solana?.address
             TransactionDisplayData(
@@ -739,6 +812,7 @@ fun TransactionItem(
                 timestamp = transaction.timestamp
             )
         }
+
         is USDCSendTransaction -> {
             val isIncoming = transaction.toAddress == wallet.usdc?.address
             TransactionDisplayData(
@@ -749,6 +823,7 @@ fun TransactionItem(
                 timestamp = transaction.timestamp
             )
         }
+
         else -> return
     }
 
