@@ -1,20 +1,30 @@
 package com.example.nexuswallet.feature.authentication.ui
 
-import android.util.Log
 import androidx.compose.foundation.background
-
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.Pin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PinEntryDialog(
     showDialog: Boolean,
@@ -24,207 +34,180 @@ fun PinEntryDialog(
     onPinEntered: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    Log.d("PIN_UI_DEBUG", " PinEntryDialog - showDialog: $showDialog")
+    if (!showDialog) return
 
-    if (showDialog) {
-        Log.d("PIN_UI_DEBUG", " Showing PIN dialog")
-
-        Dialog(onDismissRequest = {
-            Log.d("PIN_UI_DEBUG", " Dialog dismissed by user")
-            onDismiss()
-        }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = MaterialTheme.shapes.extraLarge
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Log.d("PIN_UI_DEBUG", " Dialog content rendered")
-
-                    // Title
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Subtitle
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // PIN Entry
-                    PinEntryField(
-                        maxLength = maxLength,
-                        onPinEntered = { enteredPin ->
-                            Log.d("PIN_UI_DEBUG", " PinEntryField callback: '$enteredPin'")
-                            onPinEntered(enteredPin)
-                        },
-                        onComplete = { completedPin ->
-                            Log.d("PIN_UI_DEBUG", " PIN complete in field: '$completedPin'")
-                            onPinEntered(completedPin)
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // TEST BUTTON - For debugging
-                    Button(
-                        onClick = {
-                            Log.d("PIN_UI_DEBUG", " Test PIN button clicked")
-                            onPinEntered("123456")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    ) {
-                        Text("Test PIN (123456)")
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Cancel Button
-                    TextButton(
-                        onClick = {
-                            Log.d("PIN_UI_DEBUG", " Cancel button clicked")
-                            onDismiss()
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Cancel")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PinEntryField(
-    maxLength: Int = 6,
-    onPinEntered: (String) -> Unit,
-    onComplete: (String) -> Unit
-) {
     var pin by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(horizontal = 32.dp)
-    ) {
-        // Visual PIN dots
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(vertical = 16.dp)
-        ) {
-            for (i in 0 until maxLength) {
-                PinDot(
-                    filled = i < pin.length,
-                    error = error
-                )
-            }
+    // Auto-request focus when dialog appears
+    LaunchedEffect(showDialog) {
+        if (showDialog) {
+            focusRequester.requestFocus()
         }
+    }
 
-        // Text field for PIN entry
-        OutlinedTextField(
-            value = pin,
-            onValueChange = { newValue ->
-                Log.d("PIN_FIELD_DEBUG", " onValueChange: '$newValue' (prev: '$pin')")
-
-                if (newValue.length <= maxLength && newValue.all { it.isDigit() }) {
-                    pin = newValue
-                    error = false
-
-                    // Only call onComplete when PIN is full length
-                    if (newValue.length == maxLength) {
-                        Log.d("PIN_FIELD_DEBUG", " PIN complete! Calling onComplete")
-                        onComplete(newValue)
-                    } else {
-                        Log.d("PIN_FIELD_DEBUG", "PIN not complete yet (${newValue.length}/$maxLength)")
-                        // Don't call onPinEntered for partial PINs!
-                    }
-                } else {
-                    Log.d("PIN_FIELD_DEBUG", " Invalid input")
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.NumberPassword,
-                imeAction = ImeAction.Done
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
             ),
-            visualTransformation = PasswordVisualTransformation(),
-            placeholder = { Text("Enter $maxLength-digit PIN") },
-            singleLine = true,
-            isError = error
-        )
-
-        // Debug info
-        Text(
-            text = "Debug: PIN = '$pin' (${pin.length}/$maxLength)",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 8.dp)
-        )
-
-        // Error message
-        if (error) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Incorrect PIN",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.labelSmall
-            )
-        }
-
-        // Manual submit button
-        Button(
-            onClick = {
-                Log.d("PIN_FIELD_DEBUG", " Manual submit clicked")
-                if (pin.length == maxLength) {
-                    Log.d("PIN_FIELD_DEBUG", "Submitting PIN: '$pin'")
-                    onComplete(pin)
-                } else {
-                    Log.d("PIN_FIELD_DEBUG", " PIN not complete (${pin.length}/$maxLength)")
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = pin.length == maxLength
+            elevation = CardDefaults.cardElevation(0.dp)
         ) {
-            Text("Submit PIN")
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Icon
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Pin,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Title
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Subtitle
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6B7280),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Visual PIN dots
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(vertical = 16.dp)
+                ) {
+                    for (i in 0 until maxLength) {
+                        PinDot(filled = i < pin.length)
+                    }
+                }
+
+                // Hidden text field for PIN entry
+                OutlinedTextField(
+                    value = pin,
+                    onValueChange = { newValue ->
+                        if (newValue.length <= maxLength && newValue.all { it.isDigit() }) {
+                            pin = newValue
+                            error = false
+
+                            // Auto-submit when PIN reaches max length
+                            if (newValue.length == maxLength) {
+                                onPinEntered(newValue)
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .focusRequester(focusRequester),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.NumberPassword,
+                        imeAction = ImeAction.Done
+                    ),
+                    visualTransformation = PasswordVisualTransformation(),
+                    placeholder = {
+                        Text(
+                            text = "Enter $maxLength-digit PIN",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF9CA3AF)
+                        )
+                    },
+                    singleLine = true,
+                    isError = error,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = Color(0xFFE5E7EB),
+                        errorBorderColor = Color(0xFFEF4444),
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+
+                // Error message
+                if (error) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Error,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = Color(0xFFEF4444)
+                        )
+                        Text(
+                            text = "Incorrect PIN. Please try again.",
+                            color = Color(0xFFEF4444),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Cancel Button
+                TextButton(
+                    onClick = {
+                        pin = ""
+                        error = false
+                        onDismiss()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Cancel",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color(0xFF6B7280)
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 fun PinDot(
-    filled: Boolean,
-    error: Boolean = false
+    filled: Boolean
 ) {
-    val color = when {
-        error -> MaterialTheme.colorScheme.error
-        filled -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.surfaceVariant
-    }
+    val color = if (filled) Color(0xFF3B82F6) else Color(0xFFE5E7EB)
 
     Box(
         modifier = Modifier
             .size(16.dp)
-            .background(
-                color = color,
-                shape = MaterialTheme.shapes.small
-            )
+            .clip(CircleShape)
+            .background(color)
     )
 }
