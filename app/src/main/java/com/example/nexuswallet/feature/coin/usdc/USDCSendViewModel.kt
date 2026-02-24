@@ -11,6 +11,7 @@ import com.example.nexuswallet.feature.coin.usdc.domain.GetUSDCFeeEstimateUseCas
 import com.example.nexuswallet.feature.coin.usdc.domain.GetUSDCWalletUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.SendUSDCUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
+import com.example.nexuswallet.feature.coin.usdc.domain.ValidateUSDCFormUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +27,8 @@ class USDCSendViewModel @Inject constructor(
     private val sendUSDCUseCase: SendUSDCUseCase,
     private val getUSDCBalanceUseCase: GetUSDCBalanceUseCase,
     private val getUSDCFeeEstimateUseCase: GetUSDCFeeEstimateUseCase,
-    private val getETHBalanceForGasUseCase: GetETHBalanceForGasUseCase
+    private val getETHBalanceForGasUseCase: GetETHBalanceForGasUseCase,
+    private val validateUSDCFormUseCase: ValidateUSDCFormUseCase
 ) : ViewModel() {
 
     data class USDCSendState(
@@ -44,9 +46,12 @@ class USDCSendViewModel @Inject constructor(
         val usdcBalanceDecimal: BigDecimal = BigDecimal.ZERO,
         val ethBalance: String = "0",
         val ethBalanceDecimal: BigDecimal = BigDecimal.ZERO,
-        val isValidAddress: Boolean = false,
-        val hasSufficientBalance: Boolean = false,
-        val hasSufficientGas: Boolean = false,
+        val validationResult: ValidateUSDCFormUseCase.ValidationResult = ValidateUSDCFormUseCase.ValidationResult(
+            isValid = false,
+            isValidAddress = false,
+            hasSufficientBalance = false,
+            hasSufficientGas = false
+        ),
         val isLoading: Boolean = false,
         val error: String? = null,
         val info: String? = null,
@@ -74,6 +79,7 @@ class USDCSendViewModel @Inject constructor(
                     }
 
                     loadBalances(walletId)
+                    updateFeeEstimate()
                 }
 
                 is Result.Error -> {
@@ -121,10 +127,11 @@ class USDCSendViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         ethBalance = ethBalance.toPlainString(),
-                        ethBalanceDecimal = ethBalance,
-                        isLoading = false
+                        ethBalanceDecimal = ethBalance
                     )
                 }
+                validateForm()
+                _state.update { it.copy(isLoading = false) }
             }
 
             is Result.Error -> {
@@ -171,23 +178,25 @@ class USDCSendViewModel @Inject constructor(
 
     fun send(onSuccess: (String) -> Unit) {
         viewModelScope.launch {
-            val state = _state.value
-            if (state.walletId.isEmpty()) {
+            val currentState = _state.value
+
+            if (currentState.walletId.isEmpty()) {
                 _state.update { it.copy(error = "Wallet not loaded") }
                 return@launch
             }
 
-            if (!validateForm()) {
+            if (!currentState.validationResult.isValid) {
+                validateForm() // Re-validate to show errors
                 return@launch
             }
 
             _state.update { it.copy(isLoading = true, error = null, step = "Sending USDC...") }
 
             val result = sendUSDCUseCase(
-                walletId = state.walletId,
-                toAddress = state.toAddress,
-                amount = state.amountValue,
-                feeLevel = state.feeLevel
+                walletId = currentState.walletId,
+                toAddress = currentState.toAddress,
+                amount = currentState.amountValue,
+                feeLevel = currentState.feeLevel
             )
 
             when (result) {
@@ -254,39 +263,20 @@ class USDCSendViewModel @Inject constructor(
                 )
             }
         }
+        validateForm()
     }
 
-    private fun validateForm(): Boolean {
+    private fun validateForm() {
         val currentState = _state.value
+        val validationResult = validateUSDCFormUseCase(
+            toAddress = currentState.toAddress,
+            amountValue = currentState.amountValue,
+            usdcBalanceDecimal = currentState.usdcBalanceDecimal,
+            ethBalanceDecimal = currentState.ethBalanceDecimal,
+            feeEstimate = currentState.feeEstimate
+        )
 
-        // Validate address format (Ethereum address)
-        val isValidAddress = currentState.toAddress.startsWith("0x") &&
-                currentState.toAddress.length == 42
-
-        // Check amount > 0
-        val isAmountValid = currentState.amountValue > BigDecimal.ZERO
-
-        // Check sufficient USDC balance
-        val hasSufficientBalance = currentState.amountValue <= currentState.usdcBalanceDecimal &&
-                isAmountValid
-
-        // Check sufficient ETH for gas (using fee estimate if available)
-        val requiredEth = if (currentState.feeEstimate != null) {
-            BigDecimal(currentState.feeEstimate.totalFeeEth)
-        } else {
-            BigDecimal("0.0005") // fallback
-        }
-        val hasSufficientGas = currentState.ethBalanceDecimal >= requiredEth
-
-        _state.update {
-            it.copy(
-                isValidAddress = isValidAddress,
-                hasSufficientBalance = hasSufficientBalance,
-                hasSufficientGas = hasSufficientGas
-            )
-        }
-
-        return isValidAddress && hasSufficientBalance && hasSufficientGas
+        _state.update { it.copy(validationResult = validationResult) }
     }
 
     private fun updateFeeEstimate() {
@@ -298,16 +288,6 @@ class USDCSendViewModel @Inject constructor(
                 validateForm()
             }
         }
-    }
-
-    fun debug() {
-        _state.update {
-            it.copy(info = "Debug: USDC at ${state.value.contractAddress} on ${state.value.network.displayName}")
-        }
-    }
-
-    fun getTestnetUSDC() {
-        _state.update { it.copy(info = "Get test USDC from: https://faucet.circle.com/") }
     }
 
     fun clearInfo() {

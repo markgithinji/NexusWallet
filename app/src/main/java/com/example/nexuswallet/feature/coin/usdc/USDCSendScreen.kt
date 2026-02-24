@@ -83,29 +83,29 @@ fun USDCSendScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // Debug/Faucet Button
-            Button(
-                onClick = { viewModel.debug() },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.DeveloperBoard, "Debug")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Debug USDC")
-            }
+//            // Debug/Faucet Button
+//            Button(
+//                onClick = { viewModel.debug() },
+//                modifier = Modifier.fillMaxWidth()
+//            ) {
+//                Icon(Icons.Default.DeveloperBoard, "Debug")
+//                Spacer(modifier = Modifier.width(8.dp))
+//                Text("Debug USDC")
+//            }
 
-            // Testnet Faucet Button
-            if (state.network == EthereumNetwork.Sepolia) {
-                Button(
-                    onClick = {
-                        viewModel.getTestnetUSDC()
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.WaterDrop, "Faucet")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Get Testnet USDC")
-                }
-            }
+//            // Testnet Faucet Button
+//            if (state.network == EthereumNetwork.Sepolia) {
+//                Button(
+//                    onClick = {
+//                        viewModel.getTestnetUSDC()
+//                    },
+//                    modifier = Modifier.fillMaxWidth()
+//                ) {
+//                    Icon(Icons.Default.WaterDrop, "Faucet")
+//                    Spacer(modifier = Modifier.width(8.dp))
+//                    Text("Get Testnet USDC")
+//                }
+//            }
 
             // Network Info
             Card {
@@ -205,35 +205,35 @@ fun USDCSendScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // USDC Balance
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("USDC Balance:", style = MaterialTheme.typography.labelMedium)
-                        Text(
-                            "${state.usdcBalance} USDC",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = if (state.hasSufficientBalance) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.error
-                        )
-                    }
+//                    // USDC Balance
+//                    Row(
+//                        horizontalArrangement = Arrangement.SpaceBetween,
+//                        modifier = Modifier.fillMaxWidth()
+//                    ) {
+//                        Text("USDC Balance:", style = MaterialTheme.typography.labelMedium)
+//                        Text(
+//                            "${state.usdcBalance} USDC",
+//                            style = MaterialTheme.typography.bodyMedium,
+//                            fontWeight = FontWeight.Medium,
+//                            color = if (state.hasSufficientBalance) MaterialTheme.colorScheme.primary
+//                            else MaterialTheme.colorScheme.error
+//                        )
+//                    }
 
-                    // ETH Balance for Gas
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("ETH for Gas:", style = MaterialTheme.typography.labelMedium)
-                        Text(
-                            "${state.ethBalance} ETH",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = if (state.hasSufficientGas) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.error
-                        )
-                    }
+//                    // ETH Balance for Gas
+//                    Row(
+//                        horizontalArrangement = Arrangement.SpaceBetween,
+//                        modifier = Modifier.fillMaxWidth()
+//                    ) {
+//                        Text("ETH for Gas:", style = MaterialTheme.typography.labelMedium)
+//                        Text(
+//                            "${state.ethBalance} ETH",
+//                            style = MaterialTheme.typography.bodyMedium,
+//                            fontWeight = FontWeight.Medium,
+//                            color = if (state.hasSufficientGas) MaterialTheme.colorScheme.primary
+//                            else MaterialTheme.colorScheme.error
+//                        )
+//                    }
 
                     // Estimated Gas
 //                    Row(
@@ -248,14 +248,14 @@ fun USDCSendScreen(
 //                        )
 //                    }
 
-                    // Error messages
-                    if (!state.hasSufficientBalance) {
-                        Text(
-                            "⚠️ Insufficient USDC balance. You have ${state.usdcBalance} USDC",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
+//                    // Error messages
+//                    if (!state.hasSufficientBalance) {
+//                        Text(
+//                            "⚠️ Insufficient USDC balance. You have ${state.usdcBalance} USDC",
+//                            style = MaterialTheme.typography.labelSmall,
+//                            color = MaterialTheme.colorScheme.error
+//                        )
+//                    }
 //                    if (!state.hasSufficientGas) {
 //                        Text(
 //                            "⚠️ Insufficient ETH for gas fees. You need ${state.estimatedGas} ETH but have ${state.ethBalance} ETH",
