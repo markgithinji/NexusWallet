@@ -289,8 +289,10 @@ fun SendScreen(
                                 toAddress = bitcoinState.value.toAddress,
                                 onAddressChange = { bitcoinViewModel.updateAddress(it) },
                                 coinType = coinType,
-                                isValid = bitcoinState.value.isAddressValid,
-                                errorMessage = bitcoinState.value.addressError,
+                                isValid = bitcoinState.value.validationResult.isValid &&
+                                        bitcoinState.value.validationResult.addressError == null,
+                                errorMessage = bitcoinState.value.validationResult.addressError
+                                    ?: bitcoinState.value.validationResult.selfSendError,
                                 network = bitcoinState.value.network,
                                 onPaste = { pastedText ->
                                     bitcoinViewModel.updateAddress(pastedText)
@@ -343,7 +345,9 @@ fun SendScreen(
                                 onAmountChange = { bitcoinViewModel.updateAmount(it) },
                                 balance = bitcoinState.value.balance,
                                 coinType = coinType,
-                                onMaxClick = { showMaxDialog = true }
+                                onMaxClick = { showMaxDialog = true },
+                                errorMessage = bitcoinState.value.validationResult.amountError
+                                    ?: bitcoinState.value.validationResult.balanceError
                             )
                         }
                     }
@@ -399,7 +403,7 @@ fun SendScreen(
                     "ETH" -> ethereumUiState.value.validationResult.isValid
                     "USDC" -> usdcState.value.validationResult.isValid
                     "SOL" -> solanaState.value.validationResult.isValid
-                    "BTC" -> bitcoinState.value.isAddressValid && bitcoinState.value.amountValue > BigDecimal.ZERO
+                    "BTC" -> bitcoinState.value.validationResult.isValid
                     else -> false
                 },
                 isLoading = isLoading,
