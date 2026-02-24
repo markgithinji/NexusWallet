@@ -58,69 +58,21 @@ class SyncSolanaTransactionsUseCase @Inject constructor(
 
                 var savedCount = 0
                 transactions.forEachIndexed { index, (sigInfo, details) ->
-                    val transfer = details?.let {
-                        solanaBlockchainRepository.parseTransferFromDetails(it, solanaCoin.address)
-                    }
-
-                    val status = if (details?.meta?.err == null) {
-                        when (sigInfo.confirmationStatus) {
-                            "finalized" -> TransactionStatus.SUCCESS
-                            "confirmed" -> TransactionStatus.SUCCESS
-                            "processed" -> TransactionStatus.PENDING
-                            else -> TransactionStatus.PENDING
-                        }
-                    } else {
-                        TransactionStatus.FAILED
-                    }
-
-                    val amountLamports = transfer?.amount ?: 0
-                    val amountSol = BigDecimal(amountLamports).divide(
-                        BigDecimal(1_000_000_000),
-                        9,
-                        RoundingMode.HALF_UP
-                    ).toPlainString()
-
-                    val feeLamports = details?.meta?.fee ?: 5000
-                    val feeSol = BigDecimal(feeLamports).divide(
-                        BigDecimal(1_000_000_000),
-                        9,
-                        RoundingMode.HALF_UP
-                    ).toPlainString()
-
-                    val blockhash = details?.transaction?.message?.recentBlockhash ?: ""
-                    val timestamp = (sigInfo.blockTime ?: (System.currentTimeMillis() / 1000)) * 1000
-
-                    val transaction = SolanaTransaction(
-                        id = "sol_${sigInfo.signature}_${System.currentTimeMillis()}",
+                    // Use the mapper instead of manual parsing
+                    val transaction = (sigInfo to details).toDomainTransaction(
                         walletId = walletId,
-                        fromAddress = transfer?.from ?: solanaCoin.address,
-                        toAddress = transfer?.to ?: "",
-                        status = status,
-                        timestamp = timestamp,
-                        note = null,
-                        feeLevel = FeeLevel.NORMAL,
-                        amountLamports = amountLamports,
-                        amountSol = amountSol,
-                        feeLamports = feeLamports,
-                        feeSol = feeSol,
-                        blockhash = blockhash,
-                        signedData = null,
-                        signature = sigInfo.signature,
-                        network = when (solanaCoin.network) {
-                            SolanaNetwork.MAINNET -> "mainnet"
-                            SolanaNetwork.DEVNET -> "devnet"
-                        },
-                        isIncoming = transfer?.isIncoming ?: false,
-                        slot = sigInfo.slot,
-                        blockTime = sigInfo.blockTime
+                        walletAddress = solanaCoin.address,
+                        network = solanaCoin.network  // Now passing the enum directly
                     )
 
-                    Log.d("SyncSolanaUC", "Transaction #$index on ${solanaCoin.network}: ${sigInfo.signature.take(8)}...")
-                    Log.d("SyncSolanaUC", "  isIncoming: ${transaction.isIncoming}")
-                    Log.d("SyncSolanaUC", "  amount: $amountLamports lamports ($amountSol SOL)")
+                    transaction?.let {
+                        Log.d("SyncSolanaUC", "Transaction #$index on ${solanaCoin.network}: ${it.signature?.take(8)}...")
+                        Log.d("SyncSolanaUC", "  isIncoming: ${it.isIncoming}")
+                        Log.d("SyncSolanaUC", "  amount: ${it.amountLamports} lamports (${it.amountSol} SOL)")
 
-                    solanaTransactionRepository.saveTransaction(transaction)
-                    savedCount++
+                        solanaTransactionRepository.saveTransaction(it)
+                        savedCount++
+                    }
                 }
 
                 Log.d("SyncSolanaUC", "Successfully saved $savedCount transactions on ${solanaCoin.network}")
@@ -276,10 +228,7 @@ class SendSolanaUseCase @Inject constructor(
             note = note,
             timestamp = System.currentTimeMillis(),
             feeLevel = feeLevel,
-            network = when (network) {
-                SolanaNetwork.MAINNET -> "mainnet"
-                SolanaNetwork.DEVNET -> "devnet"
-            },
+            network = network,  // Direct enum assignment, not string conversion
             isIncoming = false,
             slot = null,
             blockTime = null

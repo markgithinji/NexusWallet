@@ -23,7 +23,7 @@ data class SolanaTransaction(
     val blockhash: String,
     val signedData: String? = null,
     val signature: String? = null,
-    val network: String,
+    val network: SolanaNetwork,
     val isIncoming: Boolean = false,
     val slot: Long? = null,
     val blockTime: Long? = null

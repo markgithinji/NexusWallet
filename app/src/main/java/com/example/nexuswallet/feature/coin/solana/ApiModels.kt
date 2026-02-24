@@ -9,56 +9,14 @@ data class SolanaTransactionResponse(
     val slot: Long,
     val blockTime: Long?,
     val confirmationStatus: String?,
-    val transaction: SolanaParsedTransaction? = null
 )
 
-@Serializable
-data class SolanaParsedTransaction(
-    val message: SolanaTransactionMessage,
-    val signatures: List<String>
-)
-
-@Serializable
-data class SolanaTransactionMessage(
-    val accountKeys: List<SolanaAccountKey>,
-    val instructions: List<SolanaInstruction>
-)
-
-@Serializable
-data class SolanaAccountKey(
-    val pubkey: String,
-    val signer: Boolean,
-    val writable: Boolean
-)
-
-@Serializable
-data class SolanaInstruction(
-    val programId: String,
-    val accounts: List<Int>,
-    val data: String,
-    val parsed: SolanaParsedInstruction? = null
-)
-
-@Serializable
-data class SolanaParsedInstruction(
-    val type: String,
-    val info: SolanaTransferInfo? = null
-)
-
-@Serializable
-data class SolanaTransferInfo(
-    val source: String,
-    val destination: String,
-    val lamports: Long
-)
-
-/////////////////////
 @Serializable
 data class SolanaTransactionDetailsResponse(
     val blockTime: Long?,
     val meta: SolanaTransactionMetaResponse?,
     val slot: Long,
-    val transaction: SolanaTransactionData,
+    val transaction: SolanaTransactionDataResponse,
     val version: Int? = null
 )
 
@@ -120,24 +78,24 @@ data class SolanaUiTokenAmountResponse(
 @Serializable
 data class SolanaInnerInstructionResponse(
     val index: Int,
-    val instructions: List<SolanaInstructionData>
+    val instructions: List<SolanaInstructionDataResponse>
 )
 
 @Serializable
-data class SolanaTransactionData(
-    val message: SolanaTransactionMessageData,
+data class SolanaTransactionDataResponse(
+    val message: SolanaTransactionMessageDataResponse,
     val signatures: List<String>
 )
 
 @Serializable
-data class SolanaTransactionMessageData(
+data class SolanaTransactionMessageDataResponse(
     val accountKeys: List<String>,
-    val instructions: List<SolanaInstructionData>,
+    val instructions: List<SolanaInstructionDataResponse>,
     val recentBlockhash: String
 )
 
 @Serializable
-data class SolanaInstructionData(
+data class SolanaInstructionDataResponse(
     val programIdIndex: Int,
     val accounts: List<Int>? = null,
     val data: String

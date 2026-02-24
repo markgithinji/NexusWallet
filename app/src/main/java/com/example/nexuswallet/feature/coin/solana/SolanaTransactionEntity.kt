@@ -24,56 +24,8 @@ data class SolanaTransactionEntity(
     val blockhash: String,
     val signedData: String? = null,
     val signature: String? = null,
-    val network: String,
+    val network: SolanaNetwork,
     val isIncoming: Boolean = false,
     val slot: Long? = null,
     val blockTime: Long? = null
 )
-
-fun SolanaTransactionEntity.toDomain(): SolanaTransaction {
-    return SolanaTransaction(
-        id = id,
-        walletId = walletId,
-        fromAddress = fromAddress,
-        toAddress = toAddress,
-        status = TransactionStatus.valueOf(status),
-        timestamp = timestamp,
-        note = note,
-        feeLevel = FeeLevel.valueOf(feeLevel),
-        amountLamports = amountLamports,
-        amountSol = amountSol,
-        feeLamports = feeLamports,
-        feeSol = feeSol,
-        blockhash = blockhash,
-        signedData = signedData,
-        signature = signature,
-        network = network,
-        isIncoming = isIncoming,
-        slot = slot,
-        blockTime = blockTime
-    )
-}
-
-fun SolanaTransaction.toEntity(): SolanaTransactionEntity {
-    return SolanaTransactionEntity(
-        id = id,
-        walletId = walletId,
-        fromAddress = fromAddress,
-        toAddress = toAddress,
-        status = status.name,
-        timestamp = timestamp,
-        note = note,
-        feeLevel = feeLevel.name,
-        amountLamports = amountLamports,
-        amountSol = amountSol,
-        feeLamports = feeLamports,
-        feeSol = feeSol,
-        blockhash = blockhash,
-        signedData = signedData,
-        signature = signature,
-        network = network,
-        isIncoming = isIncoming,
-        slot = slot,
-        blockTime = blockTime
-    )
-}
