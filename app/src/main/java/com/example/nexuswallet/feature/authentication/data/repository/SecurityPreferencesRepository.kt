@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -14,7 +15,6 @@ import javax.inject.Singleton
 class SecurityPreferencesRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>
 ) {
-
     /**
      * Store encrypted mnemonic for a specific wallet
      * @param walletId The wallet identifier
@@ -190,29 +190,6 @@ class SecurityPreferencesRepository @Inject constructor(
     }
 
     /**
-     * Save session timeout duration
-     * @param seconds Timeout duration in seconds
-     */
-    suspend fun saveSessionTimeout(seconds: Int) {
-        safeEdit {
-            dataStore.edit { preferences ->
-                preferences[SESSION_TIMEOUT_KEY] = seconds
-            }
-        }
-    }
-
-    /**
-     * Get session timeout duration
-     * @return Timeout duration in seconds (default: 300 seconds / 5 minutes)
-     */
-    suspend fun getSessionTimeout(): Int {
-        return safeGet(defaultValue = 300) {
-            val preferences = dataStore.data.first()
-            preferences[SESSION_TIMEOUT_KEY] ?: 300
-        } ?: 300
-    }
-
-    /**
      * Clear stored PIN hash (for PIN reset)
      */
     suspend fun clearPinHash() {
@@ -220,6 +197,25 @@ class SecurityPreferencesRepository @Inject constructor(
             dataStore.edit { preferences ->
                 preferences.remove(PIN_HASH_KEY)
             }
+        }
+    }
+
+    suspend fun saveLastAuthenticationTime(timestamp: Long) {
+        safeEdit {
+            dataStore.edit { preferences ->
+                preferences[LAST_AUTH_TIME_KEY] = timestamp
+            }
+        }
+    }
+
+    /**
+     * Get last authentication timestamp
+     * @return timestamp in milliseconds, or null if never authenticated
+     */
+    suspend fun getLastAuthenticationTime(): Long? {
+        return safeGet {
+            val preferences = dataStore.data.first()
+            preferences[LAST_AUTH_TIME_KEY]
         }
     }
 
@@ -245,6 +241,6 @@ class SecurityPreferencesRepository @Inject constructor(
         // For biometric/PIN authentication
         private val BIOMETRIC_ENABLED_KEY = booleanPreferencesKey("biometric_enabled")
         private val PIN_HASH_KEY = stringPreferencesKey("pin_hash")
-        private val SESSION_TIMEOUT_KEY = intPreferencesKey("session_timeout")
+        private val LAST_AUTH_TIME_KEY = longPreferencesKey("last_authentication_time")
     }
 }
