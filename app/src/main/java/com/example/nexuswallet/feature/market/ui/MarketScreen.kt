@@ -47,6 +47,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.market.domain.Token
 import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,7 +137,7 @@ fun MarketScreen(
             // Content
             Box(modifier = Modifier.weight(1f)) {
                 when (uiState) {
-                    MarketUiState.Loading -> {
+                    com.example.nexuswallet.feature.coin.Result.Loading -> {
                         if (tokens.isEmpty()) {
                             LoadingView()
                         } else {
@@ -151,10 +152,10 @@ fun MarketScreen(
                         }
                     }
 
-                    is MarketUiState.Error -> {
+                    is com.example.nexuswallet.feature.coin.Result.Error -> {
                         if (tokens.isEmpty()) {
                             ErrorView(
-                                message = (uiState as MarketUiState.Error).message,
+                                message = (uiState as com.example.nexuswallet.feature.coin.Result.Error).message,
                                 onRetry = { viewModel.refreshData() }
                             )
                         } else {
@@ -214,7 +215,7 @@ fun MarketScreen(
                         }
                     }
 
-                    is MarketUiState.Success -> {
+                    is Result.Success -> {
                         if (tokens.isEmpty() && !isLoadingMore) {
                             EmptySearchResult()
                         } else {

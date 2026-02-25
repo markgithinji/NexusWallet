@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.market.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.market.data.remote.TokenPriceUpdate
 import com.example.nexuswallet.feature.market.data.repository.CoinGeckoRepository
 import com.example.nexuswallet.feature.market.data.repository.WebSocketRepository
@@ -22,12 +23,9 @@ class MarketViewModel @Inject constructor(
     private val webSocketRepository: WebSocketRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<MarketUiState>(MarketUiState.Loading)
-    val uiState: StateFlow<MarketUiState> = _uiState.asStateFlow()
-
-    // All tokens from REST API (original, unfiltered)
-    private val _allTokens = MutableStateFlow<List<Token>>(emptyList())
-    val allTokens: StateFlow<List<Token>> = _allTokens.asStateFlow()
+    // Using Result for UI state - this is our single source of truth
+    private val _uiState = MutableStateFlow<Result<List<Token>>>(Result.Loading)
+    val uiState: StateFlow<Result<List<Token>>> = _uiState.asStateFlow()
 
     // Filtered tokens (with search applied)
     private val _filteredTokens = MutableStateFlow<List<Token>>(emptyList())
@@ -48,6 +46,7 @@ class MarketViewModel @Inject constructor(
 
     private var currentPage = 1
     private val perPage = 100
+    private var allTokensCache = emptyList<Token>() // Private cache for internal use
 
     init {
         loadInitialData()
@@ -56,23 +55,28 @@ class MarketViewModel @Inject constructor(
 
     private fun loadInitialData() {
         viewModelScope.launch {
-            _uiState.value = MarketUiState.Loading
+            _uiState.value = Result.Loading
 
-            // Load first page
-            val firstPage = coinGeckoRepository.getTopCryptocurrencies(
+            when (val result = coinGeckoRepository.getTopCryptocurrencies(
                 perPage = perPage,
                 page = 1
-            )
+            )) {
+                is Result.Success -> {
+                    val firstPage = result.data
+                    allTokensCache = firstPage
+                    _uiState.value = Result.Success(firstPage)
+                    applySearchFilter() // Apply search to update filtered list
+                    currentPage = 2
 
-            if (firstPage.isNotEmpty()) {
-                _allTokens.value = firstPage
-                _uiState.value = MarketUiState.Success(firstPage)
-                currentPage = 2
+                    // Load next pages in background
+                    loadMorePages()
+                }
 
-                // Load next pages in background
-                loadMorePages()
-            } else {
-                _uiState.value = MarketUiState.Error("Failed to load market data")
+                is Result.Error -> {
+                    _uiState.value = Result.Error(result.message, result.throwable)
+                }
+
+                Result.Loading -> {} // Already handled
             }
         }
     }
@@ -82,18 +86,26 @@ class MarketViewModel @Inject constructor(
             _isLoadingMore.value = true
 
             // Load pages 2 and 3
-            val moreTokens = mutableListOf<Token>()
-
             for (page in currentPage..3) {
-                val tokens = coinGeckoRepository.getTopCryptocurrencies(
+                when (val result = coinGeckoRepository.getTopCryptocurrencies(
                     perPage = perPage,
                     page = page
-                )
-                moreTokens.addAll(tokens)
+                )) {
+                    is Result.Success -> {
+                        val tokens = result.data
+                        if (tokens.isNotEmpty()) {
+                            allTokensCache = allTokensCache + tokens
+                            // Update UI state with new combined list
+                            _uiState.value = Result.Success(allTokensCache)
+                            applySearchFilter()
+                        }
+                    }
 
-                // Update UI incrementally
-                if (tokens.isNotEmpty()) {
-                    _allTokens.value = _allTokens.value + tokens
+                    is Result.Error -> {
+                        Log.e("MarketVM", "Error loading page $page: ${result.message}")
+                    }
+
+                    Result.Loading -> {} // Not used here
                 }
 
                 delay(1000) // Rate limit protection
@@ -101,7 +113,7 @@ class MarketViewModel @Inject constructor(
 
             currentPage = 4
             _isLoadingMore.value = false
-            Log.d("MarketVM", "Total tokens loaded: ${_allTokens.value.size}")
+            Log.d("MarketVM", "Total tokens loaded: ${allTokensCache.size}")
         }
     }
 
@@ -112,20 +124,30 @@ class MarketViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoadingMore.value = true
 
-            val tokens = coinGeckoRepository.getTopCryptocurrencies(
+            when (val result = coinGeckoRepository.getTopCryptocurrencies(
                 perPage = perPage,
                 page = currentPage
-            )
+            )) {
+                is Result.Success -> {
+                    val tokens = result.data
+                    if (tokens.isNotEmpty()) {
+                        allTokensCache = allTokensCache + tokens
+                        _uiState.value = Result.Success(allTokensCache)
+                        applySearchFilter()
+                        currentPage++
+                    }
+                }
 
-            if (tokens.isNotEmpty()) {
-                _allTokens.value = _allTokens.value + tokens
-                currentPage++
+                is Result.Error -> {
+                    Log.e("MarketVM", "Error loading page $currentPage: ${result.message}")
+                }
+
+                Result.Loading -> {}
             }
 
             _isLoadingMore.value = false
         }
     }
-
 
     private fun setupWebSocketObservers() {
         // Collect full token updates (price + percentage)
@@ -144,12 +166,9 @@ class MarketViewModel @Inject constructor(
     }
 
     private fun updateTokensWithLiveData(updatesMap: Map<String, TokenPriceUpdate>) {
-        val currentTokens = _allTokens.value
-
-        val updatedTokens = currentTokens.map { token ->
+        val updatedTokens = allTokensCache.map { token ->
             val update = updatesMap[token.id]
             if (update != null) {
-                // Update both price & percentage
                 token.copy(
                     currentPrice = update.price,
                     priceChange24h = update.priceChange24h,
@@ -160,13 +179,14 @@ class MarketViewModel @Inject constructor(
             }
         }
 
-        _allTokens.value = updatedTokens
+        allTokensCache = updatedTokens
+        _uiState.value = Result.Success(updatedTokens)
         applySearchFilter()
     }
 
     private fun applySearchFilter() {
         val query = _searchQuery.value
-        val tokens = _allTokens.value
+        val tokens = allTokensCache
 
         _filteredTokens.value = if (query.isBlank()) {
             tokens
@@ -189,6 +209,9 @@ class MarketViewModel @Inject constructor(
     }
 
     fun refreshData() {
+        // Reset pagination
+        currentPage = 1
+        allTokensCache = emptyList()
         loadInitialData()
     }
 
@@ -203,10 +226,4 @@ class MarketViewModel @Inject constructor(
         webSocketCollectorJob?.cancel()
         webSocketRepository.disconnect()
     }
-}
-
-sealed class MarketUiState {
-    object Loading : MarketUiState()
-    data class Success(val tokens: List<Token>) : MarketUiState()
-    data class Error(val message: String) : MarketUiState()
 }

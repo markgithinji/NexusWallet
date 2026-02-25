@@ -6,9 +6,10 @@ import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
 import com.example.nexuswallet.feature.market.domain.Token
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.example.nexuswallet.feature.coin.Result
 
 @Singleton
-class CoinGeckoRepository@Inject constructor(
+class CoinGeckoRepository @Inject constructor(
     private val coinGeckoApi: CoinGeckoApi
 ) {
     /**
@@ -19,7 +20,7 @@ class CoinGeckoRepository@Inject constructor(
     suspend fun getTopCryptocurrencies(
         perPage: Int = 100,
         page: Int = 1
-    ): List<Token> {
+    ): Result<List<Token>> {
         return try {
             val response = coinGeckoApi.getMarkets(
                 vsCurrency = "usd",
@@ -29,10 +30,10 @@ class CoinGeckoRepository@Inject constructor(
                 sparkline = true
             )
             Log.d("CoinGeckoRepo", "API Response (page $page): ${response.size} tokens")
-            response.map { it.toToken() }
+            Result.Success(response.map { it.toToken() })
         } catch (e: Exception) {
             Log.e("CoinGeckoRepo", "Error fetching page $page: ${e.message}", e)
-            emptyList()
+            Result.Error("Failed to load page $page: ${e.message}", e)
         }
     }
 }
