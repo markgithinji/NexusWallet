@@ -1,7 +1,8 @@
-package com.example.nexuswallet.feature.wallet.data.repository
+package com.example.nexuswallet.feature.market.data.repository
 
 import android.util.Log
 import com.example.nexuswallet.BuildConfig
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.market.data.model.NewsArticle
 import com.example.nexuswallet.feature.market.data.model.toChartData
@@ -11,13 +12,9 @@ import com.example.nexuswallet.feature.market.data.remote.ChartData
 import com.example.nexuswallet.feature.market.data.remote.ChartDuration
 import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
 import com.example.nexuswallet.feature.market.data.remote.CryptoPanicApi
-import com.example.nexuswallet.feature.market.data.remote.MarketCapPoint
-import com.example.nexuswallet.feature.market.data.remote.PricePoint
 import com.example.nexuswallet.feature.market.data.remote.TokenDetail
-import com.example.nexuswallet.feature.market.data.remote.VolumePoint
-import javax.inject.Inject
-import com.example.nexuswallet.feature.coin.Result
 import retrofit2.HttpException
+import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton

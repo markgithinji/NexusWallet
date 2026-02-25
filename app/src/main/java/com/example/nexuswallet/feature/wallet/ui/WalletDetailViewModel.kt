@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.wallet.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.wallet.data.repository.MarketRepository
+import com.example.nexuswallet.feature.market.data.repository.MarketRepository
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.GetAllTransactionsUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet

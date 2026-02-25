@@ -4,7 +4,7 @@ import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.market.data.remote.BinanceWebSocket
 import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
 import com.example.nexuswallet.feature.market.data.remote.CryptoPanicApi
-import com.example.nexuswallet.feature.wallet.data.repository.MarketRepository
+import com.example.nexuswallet.feature.market.data.repository.MarketRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

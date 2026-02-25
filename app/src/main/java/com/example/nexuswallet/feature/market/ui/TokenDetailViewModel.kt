@@ -9,7 +9,7 @@ import com.example.nexuswallet.feature.market.data.remote.ChartData
 import com.example.nexuswallet.feature.market.data.remote.ChartDuration
 import com.example.nexuswallet.feature.market.data.remote.TokenDetail
 import com.example.nexuswallet.feature.market.domain.Token
-import com.example.nexuswallet.feature.wallet.data.repository.MarketRepository
+import com.example.nexuswallet.feature.market.data.repository.MarketRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
