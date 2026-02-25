@@ -30,6 +30,7 @@ import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransaction
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -424,7 +425,7 @@ fun EthGasBalanceCard(ethBalance: BigDecimal?) {
 
 @Composable
 fun TransactionsContainer(
-    transactions: List<CoinDetailViewModel.TransactionDisplayInfo>,
+    transactions: List<TransactionDisplayInfo>,
     coinType: CoinType,
     onViewAll: () -> Unit
 ) {
@@ -510,7 +511,7 @@ fun TransactionsContainer(
 
 @Composable
 fun CoinTransactionItem(
-    transaction: CoinDetailViewModel.TransactionDisplayInfo,
+    transaction: TransactionDisplayInfo,
     coinType: CoinType
 ) {
     val (symbol, displayName) = when (coinType) {
