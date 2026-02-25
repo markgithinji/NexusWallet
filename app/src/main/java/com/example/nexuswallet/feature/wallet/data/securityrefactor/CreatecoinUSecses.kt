@@ -1,5 +1,7 @@
 package com.example.nexuswallet.feature.wallet.data.securityrefactor
 
+import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
@@ -26,13 +28,10 @@ import org.bitcoinj.wallet.Wallet as BitcoinJWallet
 @Singleton
 class CreateWalletUseCase @Inject constructor(
     private val walletLocalDataSource: WalletLocalDataSource,
-    private val secureMnemonicUseCase: SecureMnemonicUseCase,
-    private val storePrivateKeyUseCase: StorePrivateKeyUseCase,
-    private val createBitcoinCoinUseCase: CreateBitcoinCoinUseCase,
-    private val createEthereumCoinUseCase: CreateEthereumCoinUseCase,
-    private val createSolanaCoinUseCase: CreateSolanaCoinUseCase,
-    private val derivePrivateKeyFromMnemonicUseCase: DerivePrivateKeyFromMnemonicUseCase
+    private val keyStoreRepository: KeyStoreRepository,
+    private val securityPreferencesRepository: SecurityPreferencesRepository
 ) {
+
     suspend operator fun invoke(
         mnemonic: List<String>,
         name: String,
@@ -47,29 +46,20 @@ class CreateWalletUseCase @Inject constructor(
         return try {
             val walletId = "wallet_${System.currentTimeMillis()}"
 
-            // Create coins with validation built into each usecase
+            // Create coins
             val bitcoinCoin = if (includeBitcoin) {
-                when (val result = createBitcoinCoinUseCase(mnemonic, bitcoinNetwork)) {
-                    is Result.Success -> result.data
-                    is Result.Error -> return Result.Error(result.message, result.throwable)
-                    Result.Loading -> return Result.Error("Unexpected loading state while creating Bitcoin coin")
-                }
+                createBitcoinCoin(mnemonic, bitcoinNetwork)
+                    ?: return Result.Error("Failed to create Bitcoin coin")
             } else null
 
             val ethereumCoin = if (includeEthereum) {
-                when (val result = createEthereumCoinUseCase(mnemonic, ethereumNetwork)) {
-                    is Result.Success -> result.data
-                    is Result.Error -> return Result.Error(result.message, result.throwable)
-                    Result.Loading -> return Result.Error("Unexpected loading state while creating Ethereum coin")
-                }
+                createEthereumCoin(mnemonic, ethereumNetwork)
+                    ?: return Result.Error("Failed to create Ethereum coin")
             } else null
 
             val solanaCoin = if (includeSolana) {
-                when (val result = createSolanaCoinUseCase(mnemonic, solanaNetwork)) {
-                    is Result.Success -> result.data
-                    is Result.Error -> return Result.Error(result.message, result.throwable)
-                    Result.Loading -> return Result.Error("Unexpected loading state while creating Solana coin")
-                }
+                createSolanaCoin(mnemonic, solanaNetwork)
+                    ?: return Result.Error("Failed to create Solana coin")
             } else null
 
             // Create USDC if requested
@@ -78,7 +68,7 @@ class CreateWalletUseCase @Inject constructor(
                     address = ethereumCoin.address,
                     publicKey = ethereumCoin.publicKey,
                     network = ethereumCoin.network,
-                    contractAddress = getUSDCContractAddress(ethereumCoin.network)
+                    contractAddress = ethereumCoin.network.usdcContractAddress
                 )
             } else null
 
@@ -96,117 +86,31 @@ class CreateWalletUseCase @Inject constructor(
             )
 
             // Store mnemonic securely
-            when (val result = secureMnemonicUseCase(walletId, mnemonic)) {
-                is Result.Error -> return Result.Error(result.message, result.throwable)
-                Result.Loading -> return Result.Error("Unexpected loading state while securing mnemonic")
-                is Result.Success -> { /* Continue */
-                }
+            if (!secureMnemonic(walletId, mnemonic)) {
+                return Result.Error("Failed to secure mnemonic")
             }
 
             // Store Bitcoin private key if included
-            if (includeBitcoin) {
-                val derivationResult = derivePrivateKeyFromMnemonicUseCase(
-                    mnemonic = mnemonic,
-                    keyType = "BTC_PRIVATE_KEY",
-                    network = bitcoinNetwork
-                )
-
-                when (derivationResult) {
-                    is Result.Success -> {
-                        val storeResult = storePrivateKeyUseCase(
-                            walletId,
-                            "BTC_PRIVATE_KEY",
-                            derivationResult.data
-                        )
-                        when (storeResult) {
-                            is Result.Error -> return Result.Error(
-                                storeResult.message,
-                                storeResult.throwable
-                            )
-
-                            Result.Loading -> return Result.Error("Unexpected loading state while storing Bitcoin key")
-                            is Result.Success -> { /* Continue */
-                            }
-                        }
-                    }
-
-                    is Result.Error -> return Result.Error(
-                        derivationResult.message,
-                        derivationResult.throwable
-                    )
-
-                    Result.Loading -> return Result.Error("Unexpected loading state while deriving Bitcoin key")
+            if (includeBitcoin && bitcoinCoin != null) {
+                val privateKey = deriveBitcoinPrivateKey(mnemonic, bitcoinNetwork)
+                if (privateKey == null || !storePrivateKey(walletId, "BTC_PRIVATE_KEY", privateKey)) {
+                    return Result.Error("Failed to store Bitcoin private key")
                 }
             }
 
             // Store Ethereum private key if included
-            if (includeEthereum) {
-                val derivationResult = derivePrivateKeyFromMnemonicUseCase(
-                    mnemonic = mnemonic,
-                    keyType = "ETH_PRIVATE_KEY",
-                    network = ethereumNetwork
-                )
-
-                when (derivationResult) {
-                    is Result.Success -> {
-                        val storeResult = storePrivateKeyUseCase(
-                            walletId,
-                            "ETH_PRIVATE_KEY",
-                            derivationResult.data
-                        )
-                        when (storeResult) {
-                            is Result.Error -> return Result.Error(
-                                storeResult.message,
-                                storeResult.throwable
-                            )
-
-                            Result.Loading -> return Result.Error("Unexpected loading state while storing Ethereum key")
-                            is Result.Success -> { /* Continue */
-                            }
-                        }
-                    }
-
-                    is Result.Error -> return Result.Error(
-                        derivationResult.message,
-                        derivationResult.throwable
-                    )
-
-                    Result.Loading -> return Result.Error("Unexpected loading state while deriving Ethereum key")
+            if (includeEthereum && ethereumCoin != null) {
+                val privateKey = deriveEthereumPrivateKey(mnemonic)
+                if (privateKey == null || !storePrivateKey(walletId, "ETH_PRIVATE_KEY", privateKey)) {
+                    return Result.Error("Failed to store Ethereum private key")
                 }
             }
 
             // Store Solana private key if included
-            if (includeSolana) {
-                val derivationResult = derivePrivateKeyFromMnemonicUseCase(
-                    mnemonic = mnemonic,
-                    keyType = "SOLANA_PRIVATE_KEY"
-                )
-
-                when (derivationResult) {
-                    is Result.Success -> {
-                        val storeResult = storePrivateKeyUseCase(
-                            walletId,
-                            "SOLANA_PRIVATE_KEY",
-                            derivationResult.data
-                        )
-                        when (storeResult) {
-                            is Result.Error -> return Result.Error(
-                                storeResult.message,
-                                storeResult.throwable
-                            )
-
-                            Result.Loading -> return Result.Error("Unexpected loading state while storing Solana key")
-                            is Result.Success -> { /* Continue */
-                            }
-                        }
-                    }
-
-                    is Result.Error -> return Result.Error(
-                        derivationResult.message,
-                        derivationResult.throwable
-                    )
-
-                    Result.Loading -> return Result.Error("Unexpected loading state while deriving Solana key")
+            if (includeSolana && solanaCoin != null) {
+                val privateKey = deriveSolanaPrivateKey(mnemonic)
+                if (privateKey == null || !storePrivateKey(walletId, "SOLANA_PRIVATE_KEY", privateKey)) {
+                    return Result.Error("Failed to store Solana private key")
                 }
             }
 
@@ -219,17 +123,13 @@ class CreateWalletUseCase @Inject constructor(
 
             Result.Success(wallet)
         } catch (e: Exception) {
-            return Result.Error("Wallet creation failed: ${e.message}", e)
+            Result.Error("Wallet creation failed: ${e.message}", e)
         }
     }
 
-    private fun getUSDCContractAddress(network: EthereumNetwork): String =
-        network.usdcContractAddress
-}
+    // ============ PRIVATE COIN CREATION METHODS ============
 
-@Singleton
-class CreateBitcoinCoinUseCase @Inject constructor() {
-    operator fun invoke(mnemonic: List<String>, network: BitcoinNetwork): Result<BitcoinCoin> {
+    private fun createBitcoinCoin(mnemonic: List<String>, network: BitcoinNetwork): BitcoinCoin? {
         return try {
             val params = when (network) {
                 BitcoinNetwork.MAINNET -> MainNetParams.get()
@@ -244,7 +144,7 @@ class CreateBitcoinCoinUseCase @Inject constructor() {
             // Validate the generated private key
             if (!KeyValidation.isValidBitcoinPrivateKey(privateKeyWIF)) {
                 KeyValidation.clearKeyFromMemory(privateKeyWIF)
-                return Result.Error("Generated invalid Bitcoin private key")
+                return null
             }
 
             val xpub = wallet.watchingKey.serializePubB58(params)
@@ -260,29 +160,17 @@ class CreateBitcoinCoinUseCase @Inject constructor() {
             // Clear sensitive data
             KeyValidation.clearKeyFromMemory(privateKeyWIF)
 
-            Result.Success(bitcoinCoin)
+            bitcoinCoin
         } catch (e: Exception) {
-            Result.Error("Failed to create Bitcoin coin: ${e.message}", e)
+            null
         }
     }
-}
 
-@Singleton
-class CreateEthereumCoinUseCase @Inject constructor() {
-    companion object {
-        private const val HARDENED_BIT = 0x80000000
-    }
-
-    operator fun invoke(mnemonic: List<String>, network: EthereumNetwork): Result<EthereumCoin> {
+    private fun createEthereumCoin(mnemonic: List<String>, network: EthereumNetwork): EthereumCoin? {
         return try {
             val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
 
-            val derivationPath = when (network) {
-                is EthereumNetwork.Mainnet -> "m/44'/60'/0'/0/0"
-                is EthereumNetwork.Sepolia -> "m/44'/60'/0'/0/0"
-                else -> "m/44'/60'/0'/0/0"
-            }
-
+            val derivationPath = "m/44'/60'/0'/0/0"
             val pathArray = derivationPath.split("/")
                 .drop(1)
                 .map { part ->
@@ -299,7 +187,7 @@ class CreateEthereumCoinUseCase @Inject constructor() {
             // Validate the generated private key
             if (!KeyValidation.isValidEthereumPrivateKey(privateKeyHex)) {
                 KeyValidation.clearKeyFromMemory(privateKeyHex)
-                return Result.Error("Generated invalid Ethereum private key")
+                return null
             }
 
             val credentials = Credentials.create(derivedKey)
@@ -313,16 +201,13 @@ class CreateEthereumCoinUseCase @Inject constructor() {
             // Clear sensitive data
             KeyValidation.clearKeyFromMemory(privateKeyHex)
 
-            Result.Success(ethereumCoin)
+            ethereumCoin
         } catch (e: Exception) {
-            Result.Error("Failed to create Ethereum coin: ${e.message}", e)
+            null
         }
     }
-}
 
-@Singleton
-class CreateSolanaCoinUseCase @Inject constructor() {
-    operator fun invoke(mnemonic: List<String>, network: SolanaNetwork): Result<SolanaCoin> {
+    private fun createSolanaCoin(mnemonic: List<String>, network: SolanaNetwork): SolanaCoin? {
         return try {
             val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
             val keypair = deriveSolanaKeypairFromSeed(seed)
@@ -332,7 +217,7 @@ class CreateSolanaCoinUseCase @Inject constructor() {
             // Validate the generated private key
             if (!KeyValidation.isValidSolanaPrivateKey(privateKeyHex)) {
                 KeyValidation.clearKeyFromMemory(privateKeyHex)
-                return Result.Error("Generated invalid Solana private key")
+                return null
             }
 
             val solanaCoin = SolanaCoin(
@@ -344,11 +229,109 @@ class CreateSolanaCoinUseCase @Inject constructor() {
             // Clear sensitive data
             KeyValidation.clearKeyFromMemory(privateKeyHex)
 
-            Result.Success(solanaCoin)
+            solanaCoin
         } catch (e: Exception) {
-            Result.Error("Failed to create Solana coin: ${e.message}", e)
+            null
         }
     }
+
+    // ============ PRIVATE KEY DERIVATION METHODS ============
+
+    private fun deriveBitcoinPrivateKey(mnemonic: List<String>, network: BitcoinNetwork): String? {
+        return try {
+            val params = when (network) {
+                BitcoinNetwork.MAINNET -> MainNetParams.get()
+                BitcoinNetwork.TESTNET -> TestNet3Params.get()
+            }
+            val seed = DeterministicSeed(mnemonic, null, "", 0L)
+            val wallet = BitcoinJWallet.fromSeed(params, seed)
+            val key = wallet.currentReceiveKey()
+            key.getPrivateKeyEncoded(params).toString()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun deriveEthereumPrivateKey(mnemonic: List<String>): String? {
+        return try {
+            val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
+            val masterKey = Bip32ECKeyPair.generateKeyPair(seed)
+
+            val derivationPath = "m/44'/60'/0'/0/0"
+            val pathArray = derivationPath.split("/")
+                .drop(1)
+                .map { part ->
+                    val isHardened = part.endsWith("'")
+                    val number = part.replace("'", "").toInt()
+                    if (isHardened) number or HARDENED_BIT.toInt() else number
+                }
+                .toIntArray()
+
+            val derivedKey = Bip32ECKeyPair.deriveKeyPair(masterKey, pathArray)
+            "0x${derivedKey.privateKey.toString(16)}"
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun deriveSolanaPrivateKey(mnemonic: List<String>): String? {
+        return try {
+            val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
+            val hash = MessageDigest.getInstance("SHA-256").digest(seed)
+
+            val expandedSeed = ByteArray(64)
+            System.arraycopy(hash, 0, expandedSeed, 0, 32)
+
+            val secondHash = MessageDigest.getInstance("SHA-256").digest(hash)
+            System.arraycopy(secondHash, 0, expandedSeed, 32, 32)
+
+            expandedSeed.joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // ============ SECURITY STORAGE METHODS ============
+
+    private suspend fun secureMnemonic(walletId: String, mnemonic: List<String>): Boolean {
+        return try {
+            val mnemonicString = mnemonic.joinToString(" ")
+            val (encryptedHex, ivHex) = keyStoreRepository.encryptString(mnemonicString)
+            securityPreferencesRepository.storeEncryptedMnemonic(
+                walletId = walletId,
+                encryptedMnemonic = encryptedHex,
+                iv = ivHex.hexToBytes()
+            )
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private suspend fun storePrivateKey(
+        walletId: String,
+        keyType: String,
+        privateKey: String
+    ): Boolean {
+        return try {
+            if (!KeyValidation.validatePrivateKey(privateKey, keyType)) {
+                return false
+            }
+
+            val (encryptedHex, ivHex) = keyStoreRepository.encryptString(privateKey)
+            securityPreferencesRepository.storeEncryptedPrivateKey(
+                walletId = walletId,
+                keyType = keyType,
+                encryptedKey = encryptedHex,
+                iv = ivHex.hexToBytes()
+            )
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    // ============ HELPER METHODS ============
 
     private fun deriveSolanaKeypairFromSeed(seed: ByteArray): Keypair {
         val hash = MessageDigest.getInstance("SHA-256").digest(seed)
@@ -361,86 +344,11 @@ class CreateSolanaCoinUseCase @Inject constructor() {
 
         return Keypair.fromSecretKey(expandedSeed)
     }
-}
 
-@Singleton
-class DerivePrivateKeyFromMnemonicUseCase @Inject constructor() {
+    private fun String.hexToBytes(): ByteArray =
+        chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+
     companion object {
         private const val HARDENED_BIT = 0x80000000
-    }
-
-    operator fun invoke(
-        mnemonic: List<String>,
-        keyType: String,
-        network: Any? = null
-    ): Result<String> {
-        return try {
-            val privateKey = when (keyType) {
-                "BTC_PRIVATE_KEY" -> deriveBitcoinPrivateKey(mnemonic, network)
-                "ETH_PRIVATE_KEY" -> deriveEthereumPrivateKey(mnemonic)
-                "SOLANA_PRIVATE_KEY" -> deriveSolanaPrivateKey(mnemonic)
-                else -> return Result.Error("Unsupported key type: $keyType")
-            }
-
-            // Validate the derived private key
-            val isValid = when (keyType) {
-                "BTC_PRIVATE_KEY" -> KeyValidation.isValidBitcoinPrivateKey(privateKey)
-                "ETH_PRIVATE_KEY" -> KeyValidation.isValidEthereumPrivateKey(privateKey)
-                "SOLANA_PRIVATE_KEY" -> KeyValidation.isValidSolanaPrivateKey(privateKey)
-                else -> false
-            }
-
-            if (!isValid) {
-                KeyValidation.clearKeyFromMemory(privateKey)
-                return Result.Error("Derived invalid $keyType private key")
-            }
-
-            Result.Success(privateKey)
-        } catch (e: Exception) {
-            Result.Error("Failed to derive $keyType private key: ${e.message}", e)
-        }
-    }
-
-    private fun deriveBitcoinPrivateKey(mnemonic: List<String>, network: Any?): String {
-        val bitcoinNetwork = network as? BitcoinNetwork ?: BitcoinNetwork.TESTNET
-        val params = when (bitcoinNetwork) {
-            BitcoinNetwork.MAINNET -> MainNetParams.get()
-            BitcoinNetwork.TESTNET -> TestNet3Params.get()
-        }
-        val seed = DeterministicSeed(mnemonic, null, "", 0L)
-        val wallet = BitcoinJWallet.fromSeed(params, seed)
-        val key = wallet.currentReceiveKey()
-        return key.getPrivateKeyEncoded(params).toString()
-    }
-
-    private fun deriveEthereumPrivateKey(mnemonic: List<String>): String {
-        val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
-        val masterKey = Bip32ECKeyPair.generateKeyPair(seed)
-
-        val derivationPath = "m/44'/60'/0'/0/0"
-        val pathArray = derivationPath.split("/")
-            .drop(1)
-            .map { part ->
-                val isHardened = part.endsWith("'")
-                val number = part.replace("'", "").toInt()
-                if (isHardened) number or HARDENED_BIT.toInt() else number
-            }
-            .toIntArray()
-
-        val derivedKey = Bip32ECKeyPair.deriveKeyPair(masterKey, pathArray)
-        return "0x${derivedKey.privateKey.toString(16)}"
-    }
-
-    private fun deriveSolanaPrivateKey(mnemonic: List<String>): String {
-        val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
-        val hash = MessageDigest.getInstance("SHA-256").digest(seed)
-
-        val expandedSeed = ByteArray(64)
-        System.arraycopy(hash, 0, expandedSeed, 0, 32)
-
-        val secondHash = MessageDigest.getInstance("SHA-256").digest(hash)
-        System.arraycopy(secondHash, 0, expandedSeed, 32, 32)
-
-        return expandedSeed.joinToString("") { "%02x".format(it) }
     }
 }
