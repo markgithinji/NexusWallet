@@ -243,15 +243,28 @@ fun Navigation() {
 
         // Receive route
         composable(
-            route = "receive/{walletId}",
+            route = "receive/{walletId}?coinType={coinType}",
             arguments = listOf(
-                navArgument("walletId") { type = NavType.StringType }
+                navArgument("walletId") { type = NavType.StringType },
+                navArgument("coinType") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "BITCOIN"
+                }
             )
         ) { backStackEntry ->
             val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+            val coinTypeString = backStackEntry.arguments?.getString("coinType") ?: "BITCOIN"
+            val coinType = try {
+                CoinType.valueOf(coinTypeString)
+            } catch (e: IllegalArgumentException) {
+                CoinType.BITCOIN
+            }
+
             ReceiveScreen(
                 navController = navController,
-                walletId = walletId
+                walletId = walletId,
+                coinType = coinType
             )
         }
 
@@ -297,7 +310,12 @@ fun Navigation() {
             )
         ) { backStackEntry ->
             val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            val coinType = backStackEntry.arguments?.getString("coinType")?.uppercase() ?: "ETH"
+            val coinTypeString = backStackEntry.arguments?.getString("coinType")?.uppercase() ?: "BITCOIN"
+            val coinType = try {
+                CoinType.valueOf(coinTypeString)
+            } catch (e: IllegalArgumentException) {
+                CoinType.BITCOIN
+            }
 
             SendScreen(
                 navController = navController,
@@ -320,7 +338,12 @@ fun Navigation() {
             )
         ) { backStackEntry ->
             val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            val coinType = backStackEntry.arguments?.getString("coinType") ?: "ETH"
+            val coinTypeString = backStackEntry.arguments?.getString("coinType")?.uppercase() ?: "BITCOIN"
+            val coinType = try {
+                CoinType.valueOf(coinTypeString)
+            } catch (e: IllegalArgumentException) {
+                CoinType.BITCOIN
+            }
             val toAddress = backStackEntry.arguments?.getString("toAddress") ?: ""
             val amount = backStackEntry.arguments?.getString("amount") ?: ""
             val feeLevel = backStackEntry.arguments?.getString("feeLevel")

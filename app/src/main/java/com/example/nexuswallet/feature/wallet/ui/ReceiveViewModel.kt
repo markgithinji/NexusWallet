@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.wallet.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +20,7 @@ class ReceiveViewModel @Inject constructor(
         val walletId: String = "",
         val walletName: String = "",
         val address: String = "",
-        val coinType: String = "",
+        val coinType: CoinType = CoinType.BITCOIN,
         val network: String = "Mainnet",
         val isLoading: Boolean = false,
         val error: String? = null,
@@ -47,27 +48,26 @@ class ReceiveViewModel @Inject constructor(
                     // Determine coin type and network
                     val (coinType, network) = when {
                         wallet.bitcoin != null -> {
-                            "BTC" to wallet.bitcoin.network.displayName
+                            CoinType.BITCOIN to wallet.bitcoin.network.displayName
                         }
                         wallet.ethereum != null -> {
-                            "ETH" to wallet.ethereum.network.displayName
+                            CoinType.ETHEREUM to wallet.ethereum.network.displayName
                         }
                         wallet.solana != null -> {
-                            "SOL" to wallet.solana.network.name
+                            CoinType.SOLANA to wallet.solana.network.name
                         }
                         wallet.usdc != null -> {
-                            "USDC" to wallet.usdc.network.displayName
+                            CoinType.USDC to wallet.usdc.network.displayName
                         }
-                        else -> "Unknown" to "Unknown"
+                        else -> CoinType.BITCOIN to "Unknown"
                     }
 
                     // Create share URL based on coin type
-                    val shareUrl = when {
-                        wallet.bitcoin != null -> "bitcoin:$address"
-                        wallet.ethereum != null -> "ethereum:$address"
-                        wallet.solana != null -> "solana:$address"
-                        wallet.usdc != null -> "ethereum:$address" // USDC uses ETH addresses
-                        else -> address
+                    val shareUrl = when (coinType) {
+                        CoinType.BITCOIN -> "bitcoin:$address"
+                        CoinType.ETHEREUM -> "ethereum:$address"
+                        CoinType.SOLANA -> "solana:$address"
+                        CoinType.USDC -> "ethereum:$address" // USDC uses ETH addresses
                     }
 
                     _uiState.update {

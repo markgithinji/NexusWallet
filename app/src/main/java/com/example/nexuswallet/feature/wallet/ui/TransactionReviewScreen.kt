@@ -22,17 +22,29 @@ import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.AttachMoney
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.CurrencyBitcoin
+import androidx.compose.material.icons.outlined.Diamond
+import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.FlashOn
+import androidx.compose.material.icons.outlined.OpenInBrowser
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendViewModel
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
@@ -51,7 +63,7 @@ import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
 fun TransactionReviewScreen(
     navController: NavController,
     walletId: String,
-    coinType: String, // "ETH", "BTC", "SOL", "USDC"
+    coinType: CoinType,
     toAddress: String,
     amount: String,
     feeLevel: String? = null,
@@ -72,19 +84,22 @@ fun TransactionReviewScreen(
     val solanaState = solanaViewModel.state.collectAsState()
     val bitcoinState = bitcoinViewModel.state.collectAsState()
 
+    // Get coin config
+    val (coinColor, icon, displayName) = getCoinConfig(coinType)
+
     // Initialize if needed
     LaunchedEffect(Unit) {
         when (coinType) {
-            "ETH" -> {
+            CoinType.ETHEREUM -> {
                 ethereumViewModel.initialize(walletId)
             }
-            "USDC" -> {
+            CoinType.USDC -> {
                 usdcViewModel.init(walletId)
             }
-            "SOL" -> {
+            CoinType.SOLANA -> {
                 solanaViewModel.init(walletId)
             }
-            "BTC" -> {
+            CoinType.BITCOIN -> {
                 bitcoinViewModel.init(walletId)
             }
         }
@@ -96,25 +111,29 @@ fun TransactionReviewScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = when (coinType) {
-                                "BTC" -> Icons.Default.CurrencyBitcoin
-                                "ETH" -> Icons.Default.CurrencyExchange
-                                "SOL" -> Icons.Default.Star
-                                "USDC" -> Icons.Default.AttachMoney
-                                else -> Icons.Default.AccountBalanceWallet
-                            },
+                            imageVector = icon,
                             contentDescription = null,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(24.dp),
+                            tint = coinColor
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Review Transaction")
+                        Text(
+                            text = "Review Transaction",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Black
+                        )
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, "Back", tint = Color.Black)
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    scrolledContainerColor = Color.White
+                )
             )
         },
         bottomBar = {
@@ -122,7 +141,8 @@ fun TransactionReviewScreen(
                 // Transaction sent - show done button
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    tonalElevation = 8.dp
+                    color = Color.White,
+                    shadowElevation = 8.dp
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -134,9 +154,12 @@ fun TransactionReviewScreen(
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF3B82F6)
+                            )
                         ) {
-                            Text("Done")
+                            Text("Done", color = Color.White)
                         }
                     }
                 }
@@ -144,7 +167,8 @@ fun TransactionReviewScreen(
                 // Send button
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    tonalElevation = 8.dp
+                    color = Color.White,
+                    shadowElevation = 8.dp
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -152,7 +176,7 @@ fun TransactionReviewScreen(
                         sendError?.let { error ->
                             Text(
                                 text = error,
-                                color = MaterialTheme.colorScheme.error,
+                                color = Color(0xFFEF4444),
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
@@ -164,7 +188,7 @@ fun TransactionReviewScreen(
                                 sendError = null
 
                                 when (coinType) {
-                                    "ETH" -> {
+                                    CoinType.ETHEREUM -> {
                                         ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(toAddress))
                                         ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(amount))
                                         feeLevel?.let {
@@ -176,7 +200,7 @@ fun TransactionReviewScreen(
                                             isSending = false
                                         }
                                     }
-                                    "USDC" -> {
+                                    CoinType.USDC -> {
                                         usdcViewModel.onEvent(USDCSendEvent.ToAddressChanged(toAddress))
                                         usdcViewModel.onEvent(USDCSendEvent.AmountChanged(amount))
                                         feeLevel?.let {
@@ -188,7 +212,7 @@ fun TransactionReviewScreen(
                                             isSending = false
                                         }
                                     }
-                                    "SOL" -> {
+                                    CoinType.SOLANA -> {
                                         solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(toAddress))
                                         solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(amount))
                                         feeLevel?.let {
@@ -200,7 +224,7 @@ fun TransactionReviewScreen(
                                             isSending = false
                                         }
                                     }
-                                    "BTC" -> {
+                                    CoinType.BITCOIN -> {
                                         bitcoinViewModel.updateAddress(toAddress)
                                         bitcoinViewModel.updateAmount(amount)
                                         feeLevel?.let {
@@ -216,24 +240,29 @@ fun TransactionReviewScreen(
                             },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            enabled = !isSending
+                            enabled = !isSending,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF3B82F6),
+                                disabledContainerColor = Color(0xFF3B82F6).copy(alpha = 0.5f)
+                            )
                         ) {
                             if (isSending) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(20.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    color = Color.White,
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(txStatus.ifEmpty { "Sending..." })
+                                Text(txStatus.ifEmpty { "Sending..." }, color = Color.White)
                             } else {
-                                Text("Confirm & Send")
+                                Text("Confirm & Send", color = Color.White)
                             }
                         }
                     }
                 }
             }
-        }
+        },
+        containerColor = Color(0xFFF5F5F7)
     ) { padding ->
         Column(
             modifier = Modifier
@@ -246,10 +275,11 @@ fun TransactionReviewScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -258,7 +288,7 @@ fun TransactionReviewScreen(
                     Text(
                         text = "You are sending",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = Color(0xFF6B7280)
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -267,7 +297,7 @@ fun TransactionReviewScreen(
                         text = "$amount ${getTokenSymbol(coinType)}",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = Color.Black
                     )
                 }
             }
@@ -276,7 +306,7 @@ fun TransactionReviewScreen(
 
             // From Address (show wallet address from state)
             when (coinType) {
-                "ETH" -> {
+                CoinType.ETHEREUM -> {
                     ethereumState.value.fromAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
                         AddressCard(
                             label = "From",
@@ -285,7 +315,7 @@ fun TransactionReviewScreen(
                         )
                     }
                 }
-                "USDC" -> {
+                CoinType.USDC -> {
                     usdcState.value.fromAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
                         AddressCard(
                             label = "From",
@@ -294,7 +324,7 @@ fun TransactionReviewScreen(
                         )
                     }
                 }
-                "SOL" -> {
+                CoinType.SOLANA -> {
                     solanaState.value.walletAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
                         AddressCard(
                             label = "From",
@@ -303,7 +333,7 @@ fun TransactionReviewScreen(
                         )
                     }
                 }
-                "BTC" -> {
+                CoinType.BITCOIN -> {
                     bitcoinState.value.walletAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
                         AddressCard(
                             label = "From",
@@ -327,22 +357,22 @@ fun TransactionReviewScreen(
 
             // Fee Preview (now using coin-specific fee displays)
             when (coinType) {
-                "ETH" -> {
+                CoinType.ETHEREUM -> {
                     ethereumState.value.feeEstimate?.let { fee ->
                         EthereumFeePreviewCard(feeEstimate = fee)
                     }
                 }
-                "BTC" -> {
+                CoinType.BITCOIN -> {
                     bitcoinState.value.feeEstimate?.let { fee ->
                         BitcoinFeePreviewCard(feeEstimate = fee)
                     }
                 }
-                "USDC" -> {
+                CoinType.USDC -> {
                     usdcState.value.feeEstimate?.let { fee ->
                         USDCFeePreviewCard(feeEstimate = fee)
                     }
                 }
-                "SOL" -> {
+                CoinType.SOLANA -> {
                     solanaState.value.feeEstimate?.let { fee ->
                         SolanaFeePreviewCard(feeEstimate = fee)
                     }
@@ -357,10 +387,11 @@ fun TransactionReviewScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color.Green.copy(alpha = 0.1f)
-                    )
+                        containerColor = Color(0xFF10B981).copy(alpha = 0.1f)
+                    ),
+                    elevation = CardDefaults.cardElevation(0.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -369,15 +400,16 @@ fun TransactionReviewScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.CheckCircle,
+                                imageVector = Icons.Outlined.CheckCircle,
                                 contentDescription = "Success",
-                                tint = Color.Green
+                                tint = Color(0xFF10B981)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Transaction Sent!",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = Color.Green
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF10B981)
                             )
                         }
 
@@ -386,7 +418,8 @@ fun TransactionReviewScreen(
                         Text(
                             text = "Hash: ${hash.take(8)}...${hash.takeLast(8)}",
                             style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace
+                            fontFamily = FontFamily.Monospace,
+                            color = Color(0xFF6B7280)
                         )
 
                         Button(
@@ -396,11 +429,14 @@ fun TransactionReviewScreen(
                                 context.startActivity(intent)
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF3B82F6)
+                            )
                         ) {
-                            Icon(Icons.Default.OpenInBrowser, "View", modifier = Modifier.size(16.dp))
+                            Icon(Icons.Outlined.OpenInBrowser, "View", modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("View on ${getExplorerName(coinType)}")
+                            Text("View on ${getExplorerName(coinType)}", color = Color.White)
                         }
                     }
                 }
@@ -413,23 +449,28 @@ fun TransactionReviewScreen(
 fun AddressCard(
     label: String,
     address: String,
-    coinType: String
+    coinType: CoinType
 ) {
     val context = LocalContext.current
+    val (coinColor, _, _) = getCoinConfig(coinType)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF6B7280)
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -441,6 +482,7 @@ fun AddressCard(
                     text = address,
                     style = MaterialTheme.typography.bodyMedium,
                     fontFamily = FontFamily.Monospace,
+                    color = Color.Black,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -452,7 +494,7 @@ fun AddressCard(
                         Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
                     }
                 ) {
-                    Icon(Icons.Default.ContentCopy, "Copy", modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.ContentCopy, "Copy", tint = coinColor, modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -465,7 +507,11 @@ fun EthereumFeePreviewCard(feeEstimate: EthereumFeeEstimate) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -473,7 +519,8 @@ fun EthereumFeePreviewCard(feeEstimate: EthereumFeeEstimate) {
             Text(
                 text = "Network Fee",
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -483,15 +530,34 @@ fun EthereumFeePreviewCard(feeEstimate: EthereumFeeEstimate) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
+                    text = "Priority:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6B7280)
+                )
+
+                Text(
                     text = feeEstimate.priority.name.lowercase().replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Total Fee:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6B7280)
                 )
 
                 Text(
                     text = "${feeEstimate.totalFeeEth} ETH",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
                 )
             }
 
@@ -502,39 +568,35 @@ fun EthereumFeePreviewCard(feeEstimate: EthereumFeeEstimate) {
                 Text(
                     text = "Gas Price:",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color(0xFF6B7280)
                 )
 
                 Text(
                     text = "${feeEstimate.gasPriceGwei} Gwei",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Gas Limit:",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Text(
-                    text = feeEstimate.gasLimit.toString(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
                 )
             }
 
             if (feeEstimate.estimatedTime != null) {
-                Text(
-                    text = "≈ ${feeEstimate.estimatedTime} seconds",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Est. Time:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF6B7280)
+                    )
+
+                    Text(
+                        text = "~${feeEstimate.estimatedTime}s",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Black
+                    )
+                }
             }
         }
     }
@@ -546,7 +608,11 @@ fun BitcoinFeePreviewCard(feeEstimate: BitcoinFeeEstimate) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -554,7 +620,8 @@ fun BitcoinFeePreviewCard(feeEstimate: BitcoinFeeEstimate) {
             Text(
                 text = "Network Fee",
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -564,15 +631,34 @@ fun BitcoinFeePreviewCard(feeEstimate: BitcoinFeeEstimate) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
+                    text = "Priority:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6B7280)
+                )
+
+                Text(
                     text = feeEstimate.priority.name.lowercase().replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Total Fee:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6B7280)
                 )
 
                 Text(
                     text = "${feeEstimate.totalFeeBtc} BTC",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
                 )
             }
 
@@ -583,39 +669,35 @@ fun BitcoinFeePreviewCard(feeEstimate: BitcoinFeeEstimate) {
                 Text(
                     text = "Fee Rate:",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color(0xFF6B7280)
                 )
 
                 Text(
                     text = "${feeEstimate.feePerByte} sat/byte",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Block Target:",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Text(
-                    text = "${feeEstimate.blockTarget} blocks",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
                 )
             }
 
             if (feeEstimate.estimatedTime != null) {
-                Text(
-                    text = "≈ ${feeEstimate.estimatedTime} seconds",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Est. Time:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF6B7280)
+                    )
+
+                    Text(
+                        text = "~${feeEstimate.estimatedTime}s",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Black
+                    )
+                }
             }
         }
     }
@@ -627,7 +709,11 @@ fun USDCFeePreviewCard(feeEstimate: USDCFeeEstimate) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -635,7 +721,8 @@ fun USDCFeePreviewCard(feeEstimate: USDCFeeEstimate) {
             Text(
                 text = "Network Fee",
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -645,15 +732,34 @@ fun USDCFeePreviewCard(feeEstimate: USDCFeeEstimate) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
+                    text = "Priority:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6B7280)
+                )
+
+                Text(
                     text = feeEstimate.priority.name.lowercase().replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Total Fee:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6B7280)
                 )
 
                 Text(
                     text = "${feeEstimate.totalFeeEth} ETH",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
                 )
             }
 
@@ -664,39 +770,35 @@ fun USDCFeePreviewCard(feeEstimate: USDCFeeEstimate) {
                 Text(
                     text = "Gas Price:",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color(0xFF6B7280)
                 )
 
                 Text(
                     text = "${feeEstimate.gasPriceGwei} Gwei",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Gas Limit:",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Text(
-                    text = feeEstimate.gasLimit.toString(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
                 )
             }
 
             if (feeEstimate.estimatedTime != null) {
-                Text(
-                    text = "≈ ${feeEstimate.estimatedTime} seconds",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Est. Time:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF6B7280)
+                    )
+
+                    Text(
+                        text = "~${feeEstimate.estimatedTime}s",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Black
+                    )
+                }
             }
         }
     }
@@ -708,7 +810,11 @@ fun SolanaFeePreviewCard(feeEstimate: SolanaFeeEstimate) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -716,7 +822,8 @@ fun SolanaFeePreviewCard(feeEstimate: SolanaFeeEstimate) {
             Text(
                 text = "Network Fee",
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -726,15 +833,34 @@ fun SolanaFeePreviewCard(feeEstimate: SolanaFeeEstimate) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
+                    text = "Priority:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6B7280)
+                )
+
+                Text(
                     text = feeEstimate.priority.name.lowercase().replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Total Fee:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6B7280)
                 )
 
                 Text(
                     text = "${feeEstimate.feeSol} SOL",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
                 )
             }
 
@@ -745,102 +871,73 @@ fun SolanaFeePreviewCard(feeEstimate: SolanaFeeEstimate) {
                 Text(
                     text = "Compute Units:",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color(0xFF6B7280)
                 )
 
                 Text(
                     text = feeEstimate.computeUnits.toString(),
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
                 )
             }
 
             if (feeEstimate.estimatedTime != null) {
-                Text(
-                    text = "≈ ${feeEstimate.estimatedTime} second",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Est. Time:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF6B7280)
+                    )
+
+                    Text(
+                        text = "~${feeEstimate.estimatedTime}s",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Black
+                    )
+                }
             }
         }
     }
 }
 
 // Helper functions
-private fun getTokenSymbol(coinType: String): String {
+private fun getTokenSymbol(coinType: CoinType): String {
     return when (coinType) {
-        "BTC" -> "BTC"
-        "SOL" -> "SOL"
-        "USDC" -> "USDC"
-        "ETH" -> "ETH"
-        else -> "TOKEN"
+        CoinType.BITCOIN -> "BTC"
+        CoinType.ETHEREUM -> "ETH"
+        CoinType.SOLANA -> "SOL"
+        CoinType.USDC -> "USDC"
     }
 }
 
-private fun getExplorerName(coinType: String): String {
+private fun getExplorerName(coinType: CoinType): String {
     return when (coinType) {
-        "BTC" -> "Blockstream"
-        "ETH" -> "Etherscan"
-        "SOL" -> "Solscan"
-        "USDC" -> "Etherscan"
-        else -> "Explorer"
+        CoinType.BITCOIN -> "Blockstream"
+        CoinType.ETHEREUM -> "Etherscan"
+        CoinType.SOLANA -> "Solscan"
+        CoinType.USDC -> "Etherscan"
     }
 }
 
-private fun getExplorerUrl(coinType: String, txHash: String): String {
+private fun getExplorerUrl(coinType: CoinType, txHash: String): String {
     return when (coinType) {
-        "BTC" -> "https://blockstream.info/tx/$txHash"
-        "ETH" -> "https://etherscan.io/tx/$txHash"
-        "SOL" -> "https://solscan.io/tx/$txHash"
-        "USDC" -> "https://etherscan.io/tx/$txHash"
-        else -> "https://etherscan.io/tx/$txHash"
+        CoinType.BITCOIN -> "https://blockstream.info/tx/$txHash"
+        CoinType.ETHEREUM -> "https://etherscan.io/tx/$txHash"
+        CoinType.SOLANA -> "https://solscan.io/tx/$txHash"
+        CoinType.USDC -> "https://etherscan.io/tx/$txHash"
     }
 }
 
-@Composable
-fun ErrorMessage(
-    error: String,
-    onDismiss: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Error,
-                contentDescription = "Error",
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(20.dp)
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = error,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.weight(1f)
-            )
-
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier.size(24.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Dismiss",
-                    tint = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
-        }
+private fun getCoinConfig(coinType: CoinType): Triple<Color, ImageVector, String> {
+    return when (coinType) {
+        CoinType.BITCOIN -> Triple(Color(0xFFF7931A), Icons.Outlined.CurrencyBitcoin, "Bitcoin")
+        CoinType.ETHEREUM -> Triple(Color(0xFF627EEA), Icons.Outlined.Diamond, "Ethereum")
+        CoinType.SOLANA -> Triple(Color(0xFF00FFA3), Icons.Outlined.FlashOn, "Solana")
+        CoinType.USDC -> Triple(Color(0xFF2775CA), Icons.Outlined.AttachMoney, "USDC")
     }
 }

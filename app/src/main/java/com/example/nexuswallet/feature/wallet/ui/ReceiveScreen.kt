@@ -74,8 +74,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.nexuswallet.feature.coin.CoinType
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 
@@ -84,6 +85,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 fun ReceiveScreen(
     navController: NavController,
     walletId: String,
+    coinType: CoinType,
     viewModel: ReceiveViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -105,32 +107,22 @@ fun ReceiveScreen(
         }
     }
 
+    val (coinColor, icon) = getCoinTypeConfig(uiState.coinType)
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = when (uiState.coinType) {
-                                "BTC" -> Icons.Outlined.CurrencyBitcoin
-                                "ETH" -> Icons.Outlined.Diamond
-                                "SOL" -> Icons.Outlined.FlashOn
-                                "USDC" -> Icons.Outlined.AttachMoney
-                                else -> Icons.Outlined.AccountBalanceWallet
-                            },
+                            imageVector = icon,
                             contentDescription = null,
                             modifier = Modifier.size(24.dp),
-                            tint = when (uiState.coinType) {
-                                "BTC" -> Color(0xFFF7931A)
-                                "ETH" -> Color(0xFF627EEA)
-                                "SOL" -> Color(0xFF00FFA3)
-                                "USDC" -> Color(0xFF2775CA)
-                                else -> MaterialTheme.colorScheme.primary
-                            }
+                            tint = coinColor
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Receive ${uiState.coinType}",
+                            text = "Receive ${uiState.coinType.name.lowercase().replaceFirstChar { it.uppercase() }}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.Black
@@ -173,6 +165,8 @@ fun ReceiveScreen(
                     clipboard.setPrimaryClip(clip)
                     viewModel.onCopyClicked()
                 },
+                coinColor = coinColor,
+                icon = icon,
                 modifier = Modifier.padding(paddingValues)
             )
         }
@@ -183,16 +177,10 @@ fun ReceiveScreen(
 private fun ReceiveContent(
     uiState: ReceiveViewModel.ReceiveUiState,
     onCopy: () -> Unit,
+    coinColor: Color,
+    icon: ImageVector,
     modifier: Modifier = Modifier
 ) {
-    val (coinColor, icon) = when (uiState.coinType) {
-        "BTC" -> Pair(Color(0xFFF7931A), Icons.Outlined.CurrencyBitcoin)
-        "ETH" -> Pair(Color(0xFF627EEA), Icons.Outlined.Diamond)
-        "SOL" -> Pair(Color(0xFF00FFA3), Icons.Outlined.FlashOn)
-        "USDC" -> Pair(Color(0xFF2775CA), Icons.Outlined.AttachMoney)
-        else -> Pair(MaterialTheme.colorScheme.primary, Icons.Outlined.AccountBalanceWallet)
-    }
-
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -263,14 +251,14 @@ private fun QrCodeSection(
                     Image(
                         bitmap = qrCodeBitmap.asImageBitmap(),
                         contentDescription = "QR Code for $address",
-                        modifier = Modifier.size(260.dp)
+                        modifier = Modifier.size(220.dp)
                     )
                 } else {
                     // Fallback if QR generation fails
                     Icon(
                         Icons.Outlined.QrCode,
                         contentDescription = "QR Code",
-                        modifier = Modifier.size(180.dp),
+                        modifier = Modifier.size(140.dp),
                         tint = coinColor
                     )
                 }
@@ -290,10 +278,17 @@ private fun QrCodeSection(
 @Composable
 private fun AddressCard(
     address: String,
-    coinType: String,
+    coinType: CoinType,
     onCopy: () -> Unit,
     copiedToClipboard: Boolean
 ) {
+    val displayName = when (coinType) {
+        CoinType.BITCOIN -> "BTC"
+        CoinType.ETHEREUM -> "ETH"
+        CoinType.SOLANA -> "SOL"
+        CoinType.USDC -> "USDC"
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -319,7 +314,7 @@ private fun AddressCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Your $coinType Address",
+                    text = "Your $displayName Address",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF6B7280)
                 )
@@ -364,7 +359,14 @@ private fun AddressCard(
 }
 
 @Composable
-private fun SecurityTips(coinType: String) {
+private fun SecurityTips(coinType: CoinType) {
+    val displayName = when (coinType) {
+        CoinType.BITCOIN -> "BTC"
+        CoinType.ETHEREUM -> "ETH"
+        CoinType.SOLANA -> "SOL"
+        CoinType.USDC -> "USDC"
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -387,7 +389,7 @@ private fun SecurityTips(coinType: String) {
             )
 
             SecurityTip(
-                text = "Only send $coinType to this address",
+                text = "Only send $displayName to this address",
                 icon = Icons.Outlined.Info
             )
             SecurityTip(
@@ -508,6 +510,15 @@ private fun ErrorView(
                 }
             }
         }
+    }
+}
+
+private fun getCoinTypeConfig(coinType: CoinType): Pair<Color, ImageVector> {
+    return when (coinType) {
+        CoinType.BITCOIN -> Pair(Color(0xFFF7931A), Icons.Outlined.CurrencyBitcoin)
+        CoinType.ETHEREUM -> Pair(Color(0xFF627EEA), Icons.Outlined.Diamond)
+        CoinType.SOLANA -> Pair(Color(0xFF00FFA3), Icons.Outlined.FlashOn)
+        CoinType.USDC -> Pair(Color(0xFF2775CA), Icons.Outlined.AttachMoney)
     }
 }
 
