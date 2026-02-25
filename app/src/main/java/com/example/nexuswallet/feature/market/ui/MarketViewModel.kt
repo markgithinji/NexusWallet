@@ -7,16 +7,19 @@ import com.example.nexuswallet.feature.market.data.remote.TokenPriceUpdate
 import com.example.nexuswallet.feature.market.data.repository.CoinGeckoRepository
 import com.example.nexuswallet.feature.market.data.repository.WebSocketRepository
 import com.example.nexuswallet.feature.market.domain.Token
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class MarketViewModel(
-    private val coinGeckoRepository: CoinGeckoRepository = CoinGeckoRepository(),
-    private val webSocketRepository: WebSocketRepository = WebSocketRepository()
+@HiltViewModel
+class MarketViewModel @Inject constructor(
+    private val coinGeckoRepository: CoinGeckoRepository,
+    private val webSocketRepository: WebSocketRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MarketUiState>(MarketUiState.Loading)
@@ -127,7 +130,7 @@ class MarketViewModel(
     private fun setupWebSocketObservers() {
         // Collect full token updates (price + percentage)
         webSocketCollectorJob = viewModelScope.launch {
-            webSocketRepository.getFullTokenUpdates().collect { updatesMap ->
+            webSocketRepository.getTokenUpdates().collect { updatesMap ->
                 updateTokensWithLiveData(updatesMap)
             }
         }

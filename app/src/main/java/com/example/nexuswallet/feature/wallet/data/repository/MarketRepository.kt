@@ -12,7 +12,6 @@ import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
 import com.example.nexuswallet.feature.market.data.remote.CryptoPanicApi
 import com.example.nexuswallet.feature.market.data.remote.MarketCapPoint
 import com.example.nexuswallet.feature.market.data.remote.PricePoint
-import com.example.nexuswallet.feature.market.data.remote.RetrofitClient
 import com.example.nexuswallet.feature.market.data.remote.TokenDetail
 import com.example.nexuswallet.feature.market.data.remote.TokenPriceUpdate
 import com.example.nexuswallet.feature.market.data.remote.VolumePoint
@@ -24,8 +23,8 @@ import javax.inject.Singleton
 
 @Singleton
 class MarketRepository @Inject constructor(
-    private val coinGeckoApi: CoinGeckoApi = RetrofitClient.coinGeckoApi,
-    private val cryptoPanicApi: CryptoPanicApi = RetrofitClient.cryptoPanicApi
+    private val coinGeckoApi: CoinGeckoApi,
+    private val cryptoPanicApi: CryptoPanicApi
 ) {
 
     private var requestCount = 0

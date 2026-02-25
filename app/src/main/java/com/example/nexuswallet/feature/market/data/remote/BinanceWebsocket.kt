@@ -3,7 +3,6 @@ package com.example.nexuswallet.feature.market.data.remote
 import android.util.Log
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -105,18 +104,12 @@ class BinanceWebSocket @Inject constructor(
     private val webSockets = mutableListOf<WebSocket>()
     private val batchConnectionStates = MutableStateFlow(List(symbolBatches.size) { false })
 
-    // Flows for updates
-    private val _fullUpdates = MutableSharedFlow<Map<String, TokenPriceUpdate>>(
+    // Flow for updates
+    private val priceUpdate = MutableSharedFlow<Map<String, TokenPriceUpdate>>(
         replay = 1,
         extraBufferCapacity = 50
     )
-    val fullUpdates: SharedFlow<Map<String, TokenPriceUpdate>> = _fullUpdates
-
-    private val _priceUpdates = MutableSharedFlow<Map<String, Double>>(
-        replay = 1,
-        extraBufferCapacity = 50
-    )
-    val priceUpdates: SharedFlow<Map<String, Double>> = _priceUpdates
+    val fullUpdates: SharedFlow<Map<String, TokenPriceUpdate>> = priceUpdate
 
     // Connection state
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
@@ -183,8 +176,7 @@ class BinanceWebSocket @Inject constructor(
                     )
 
                     scope.launch {
-                        _fullUpdates.emit(mapOf(tokenId to update))
-                        _priceUpdates.emit(mapOf(tokenId to price))
+                        priceUpdate.emit(mapOf(tokenId to update))
                     }
                 }
             } catch (e: Exception) {
@@ -249,10 +241,6 @@ class BinanceWebSocket @Inject constructor(
         webSockets.clear()
         _connectionState.value = ConnectionState.DISCONNECTED
         Log.d(TAG, "All connections closed")
-    }
-
-    fun cleanup() {
-        disconnect()
         scope.cancel()
     }
 
