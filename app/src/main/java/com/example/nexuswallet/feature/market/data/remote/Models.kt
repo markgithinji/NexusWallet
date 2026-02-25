@@ -63,14 +63,14 @@ enum class ChartDuration(val days: String, val label: String) {
 }
 
 @Serializable
-data class ImageUrls(
+data class ImageUrlsResponse(
     val thumb: String,
     val small: String,
     val large: String
 )
 
 @Serializable
-data class MarketData(
+data class MarketDataResponse(
     @SerialName("current_price")
     val currentPrice: Map<String, Double>,
     @SerialName("market_cap")
@@ -106,11 +106,11 @@ data class MarketData(
     @SerialName("atl_date")
     val atlDate: Map<String, String>,
     @SerialName("sparkline_7d")
-    val sparkline7d: Sparkline7d? = null
+    val sparkline7DResponse: Sparkline7dResponse? = null
 )
 
 @Serializable
-data class Sparkline7d(
+data class Sparkline7dResponse(
     val price: List<Double>
 )
 

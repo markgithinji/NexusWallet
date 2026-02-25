@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.market.domain
 
-// Make sure your Token model has all fields
 data class Token(
     val id: String,
     val symbol: String,

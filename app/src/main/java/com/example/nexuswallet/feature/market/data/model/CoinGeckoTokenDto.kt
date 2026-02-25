@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.market.data.model
 
-import com.example.nexuswallet.feature.market.data.remote.ImageUrls
-import com.example.nexuswallet.feature.market.data.remote.MarketData
+import com.example.nexuswallet.feature.market.data.remote.ImageUrlsResponse
+import com.example.nexuswallet.feature.market.data.remote.MarketDataResponse
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -70,7 +70,7 @@ data class CoinDetailResponse(
     val id: String,
     val symbol: String,
     val name: String,
-    val image: ImageUrls,
-    val market_data: MarketData,
+    val image: ImageUrlsResponse,
+    val market_data: MarketDataResponse,
     val description: Map<String, String>? = null
 )
