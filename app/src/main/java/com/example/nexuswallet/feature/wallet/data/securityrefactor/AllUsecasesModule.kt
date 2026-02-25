@@ -2,6 +2,15 @@ package com.example.nexuswallet.feature.wallet.data.securityrefactor
 
 import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.authentication.domain.RecordAuthenticationUseCase
+import com.example.nexuswallet.feature.authentication.domain.VerifyPinUseCase
+import com.example.nexuswallet.feature.settings.ui.ClearAllSecurityDataUseCase
+import com.example.nexuswallet.feature.settings.ui.ClearPinUseCase
+import com.example.nexuswallet.feature.settings.ui.GetAuthStatusUseCase
+import com.example.nexuswallet.feature.settings.ui.IsBiometricEnabledUseCase
+import com.example.nexuswallet.feature.settings.ui.IsPinSetUseCase
+import com.example.nexuswallet.feature.settings.ui.SetBiometricEnabledUseCase
+import com.example.nexuswallet.feature.settings.ui.SetPinUseCase
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
 import dagger.Module
 import dagger.Provides
@@ -13,37 +22,6 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AllUsecasesModule {
 
-    @Provides
-    @Singleton
-    fun provideSessionManager(securityPreferencesRepository: SecurityPreferencesRepository): SessionManager {
-        return SessionManager(securityPreferencesRepository)
-    }
-
-    // Coin creation usecases
-    @Provides
-    @Singleton
-    fun provideCreateBitcoinCoinUseCase(): CreateBitcoinCoinUseCase {
-        return CreateBitcoinCoinUseCase()
-    }
-
-    @Provides
-    @Singleton
-    fun provideCreateEthereumCoinUseCase(): CreateEthereumCoinUseCase {
-        return CreateEthereumCoinUseCase()
-    }
-
-    @Provides
-    @Singleton
-    fun provideCreateSolanaCoinUseCase(): CreateSolanaCoinUseCase {
-        return CreateSolanaCoinUseCase()
-    }
-
-    @Provides
-    @Singleton
-    fun provideDerivePrivateKeyFromMnemonicUseCase(): DerivePrivateKeyFromMnemonicUseCase {
-        return DerivePrivateKeyFromMnemonicUseCase()
-    }
-
     // Mnemonic usecases
     @Provides
     @Singleton
@@ -53,74 +31,16 @@ object AllUsecasesModule {
     @Singleton
     fun provideValidateMnemonicUseCase(): ValidateMnemonicUseCase = ValidateMnemonicUseCase()
 
-    // Security usecases
-    @Provides
-    @Singleton
-    fun provideRetrieveMnemonicUseCase(
-        keyStoreRepository: KeyStoreRepository,
-        securityPreferencesRepository: SecurityPreferencesRepository
-    ): RetrieveMnemonicUseCase {
-        return RetrieveMnemonicUseCase(keyStoreRepository, securityPreferencesRepository)
-    }
-
-    @Provides
-    @Singleton
-    fun provideSecureMnemonicUseCase(
-        keyStoreRepository: KeyStoreRepository,
-        securityPreferencesRepository: SecurityPreferencesRepository
-    ): SecureMnemonicUseCase {
-        return SecureMnemonicUseCase(keyStoreRepository, securityPreferencesRepository)
-    }
-
-    @Provides
-    @Singleton
-    fun provideStorePrivateKeyUseCase(
-        keyStoreRepository: KeyStoreRepository,
-        securityPreferencesRepository: SecurityPreferencesRepository
-    ): StorePrivateKeyUseCase {
-        return StorePrivateKeyUseCase(
-            keyStoreRepository,
-            securityPreferencesRepository
-        )
-    }
-
-    @Provides
-    @Singleton
-    fun provideGetPrivateKeyForSigningUseCase(
-        keyStoreRepository: KeyStoreRepository,
-        securityPreferencesRepository: SecurityPreferencesRepository
-    ): GetPrivateKeyForSigningUseCase {
-        return GetPrivateKeyForSigningUseCase(keyStoreRepository, securityPreferencesRepository)
-    }
-
-    @Provides
-    @Singleton
-    fun provideHasPrivateKeyUseCase(
-        securityPreferencesRepository: SecurityPreferencesRepository
-    ): HasPrivateKeyUseCase {
-        return HasPrivateKeyUseCase(securityPreferencesRepository)
-    }
-
     @Provides
     @Singleton
     fun provideClearAllSecurityDataUseCase(
         securityPreferencesRepository: SecurityPreferencesRepository,
         keyStoreRepository: KeyStoreRepository,
-        sessionManager: SessionManager
     ): ClearAllSecurityDataUseCase {
         return ClearAllSecurityDataUseCase(
             securityPreferencesRepository,
-            keyStoreRepository,
-            sessionManager
+            keyStoreRepository
         )
-    }
-
-    @Provides
-    @Singleton
-    fun provideIsKeyStoreAvailableUseCase(
-        keyStoreRepository: KeyStoreRepository
-    ): IsKeyStoreAvailableUseCase {
-        return IsKeyStoreAvailableUseCase(keyStoreRepository)
     }
 
     // PIN and Biometric usecases
@@ -167,50 +87,21 @@ object AllUsecasesModule {
     @Provides
     @Singleton
     fun provideGetAvailableAuthMethodsUseCase(
-        isPinSetUseCase: IsPinSetUseCase,
-        isBiometricEnabledUseCase: IsBiometricEnabledUseCase
-    ): GetAvailableAuthMethodsUseCase {
-        return GetAvailableAuthMethodsUseCase(isPinSetUseCase, isBiometricEnabledUseCase)
+        securityPreferencesRepository: SecurityPreferencesRepository
+    ): GetAuthStatusUseCase {
+        return GetAuthStatusUseCase (securityPreferencesRepository)
     }
 
     @Provides
     @Singleton
-    fun provideIsAnyAuthEnabledUseCase(
-        isPinSetUseCase: IsPinSetUseCase,
-        isBiometricEnabledUseCase: IsBiometricEnabledUseCase
-    ): IsAnyAuthEnabledUseCase {
-        return IsAnyAuthEnabledUseCase(isPinSetUseCase, isBiometricEnabledUseCase)
-    }
-
-    // Session management usecases
-    @Provides
-    @Singleton
-    fun provideSetSessionTimeoutUseCase(sessionManager: SessionManager): SetSessionTimeoutUseCase {
-        return SetSessionTimeoutUseCase(sessionManager)
+    fun provideIsSessionValidUseCase(securityPreferencesRepository: SecurityPreferencesRepository): IsSessionValidUseCase {
+        return IsSessionValidUseCase(securityPreferencesRepository)
     }
 
     @Provides
     @Singleton
-    fun provideIsSessionValidUseCase(sessionManager: SessionManager): IsSessionValidUseCase {
-        return IsSessionValidUseCase(sessionManager)
-    }
-
-    @Provides
-    @Singleton
-    fun provideIsAuthenticationRequiredUseCase(sessionManager: SessionManager): IsAuthenticationRequiredUseCase {
-        return IsAuthenticationRequiredUseCase(sessionManager)
-    }
-
-    @Provides
-    @Singleton
-    fun provideRecordAuthenticationUseCase(sessionManager: SessionManager): RecordAuthenticationUseCase {
-        return RecordAuthenticationUseCase(sessionManager)
-    }
-
-    @Provides
-    @Singleton
-    fun provideClearSessionUseCase(sessionManager: SessionManager): ClearSessionUseCase {
-        return ClearSessionUseCase(sessionManager)
+    fun provideRecordAuthenticationUseCase(securityPreferencesRepository: SecurityPreferencesRepository): RecordAuthenticationUseCase {
+        return RecordAuthenticationUseCase(securityPreferencesRepository)
     }
 
     // Wallet creation usecase
@@ -218,21 +109,13 @@ object AllUsecasesModule {
     @Singleton
     fun provideCreateWalletUseCase(
         walletLocalDataSource: WalletLocalDataSource,
-        secureMnemonicUseCase: SecureMnemonicUseCase,
-        storePrivateKeyUseCase: StorePrivateKeyUseCase,
-        createBitcoinCoinUseCase: CreateBitcoinCoinUseCase,
-        createEthereumCoinUseCase: CreateEthereumCoinUseCase,
-        createSolanaCoinUseCase: CreateSolanaCoinUseCase,
-        derivePrivateKeyFromMnemonicUseCase: DerivePrivateKeyFromMnemonicUseCase
+        keyStoreRepository: KeyStoreRepository,
+        securityPreferencesRepository: SecurityPreferencesRepository
     ): CreateWalletUseCase {
         return CreateWalletUseCase(
             walletLocalDataSource,
-            secureMnemonicUseCase,
-            storePrivateKeyUseCase,
-            createBitcoinCoinUseCase,
-            createEthereumCoinUseCase,
-            createSolanaCoinUseCase,
-            derivePrivateKeyFromMnemonicUseCase
+            keyStoreRepository,
+            securityPreferencesRepository
         )
     }
 }
