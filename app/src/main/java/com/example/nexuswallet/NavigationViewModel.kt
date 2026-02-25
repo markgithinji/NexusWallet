@@ -25,7 +25,7 @@ class NavigationViewModel @Inject constructor(
     private val isSessionValidUseCase: IsSessionValidUseCase
 ) : ViewModel() {
 
-    // Observe wallets directly from repository
+    // Observe wallets
     val wallets: StateFlow<List<Wallet>> = walletRepository.observeWallets()
         .stateIn(
             scope = viewModelScope,
@@ -33,11 +33,11 @@ class NavigationViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    val hasWallets: StateFlow<Boolean> = wallets.map { it.isNotEmpty() }
+    val isWalletsLoading: StateFlow<Boolean> = wallets.map { it.isEmpty() }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = false
+            initialValue = true
         )
 
     // Track if we should navigate to auth screen

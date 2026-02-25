@@ -2,11 +2,17 @@ package com.example.nexuswallet
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavType
@@ -38,28 +44,34 @@ fun Navigation() {
     val navController = rememberNavController()
     val navigationViewModel: NavigationViewModel = hiltViewModel()
 
-    // Determine if user has wallets
-    val hasWallets by navigationViewModel.hasWallets.collectAsState()
-
-    // Watch for auth navigation requests
+    // Collect all states
+    val wallets by navigationViewModel.wallets.collectAsState()
+    val isWalletsLoading by navigationViewModel.isWalletsLoading.collectAsState()
     val shouldNavigateToAuth by navigationViewModel.shouldNavigateToAuth.collectAsState()
 
     // Handle auth navigation requests
     LaunchedEffect(shouldNavigateToAuth) {
         shouldNavigateToAuth?.let { (screen, walletId) ->
-            // Navigate to auth screen first
             navController.navigate("authenticate/$screen/$walletId") {
-                // Don't add to back stack if already on same screen
                 launchSingleTop = true
             }
-
-            // Clear the navigation request
             navigationViewModel.clearAuthNavigation()
         }
     }
 
-    // Determine start destination
-    val startDestination = if (hasWallets) "main" else "welcome"
+    // Show loading screen while checking wallet status
+    if (isWalletsLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = Color(0xFF3B82F6))
+        }
+        return
+    }
+
+    // Determine start destination based on actual wallet data
+    val startDestination = if (wallets.isNotEmpty()) "main" else "welcome"
 
     NavHost(
         navController = navController,
