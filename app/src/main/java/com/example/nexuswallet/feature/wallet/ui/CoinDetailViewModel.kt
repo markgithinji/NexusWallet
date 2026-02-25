@@ -6,6 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionRepository
@@ -38,7 +39,6 @@ class CoinDetailViewModel @Inject constructor(
     private val syncEthereumTransactionsUseCase: SyncEthereumTransactionsUseCase,
     private val syncSolanaTransactionsUseCase: SyncSolanaTransactionsUseCase,
     private val syncUSDTransactionsUseCase: SyncUSDTransactionsUseCase
-
 ) : ViewModel() {
 
     data class CoinDetailState(
@@ -63,7 +63,7 @@ class CoinDetailViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    fun loadCoinDetails(walletId: String, coinType: String) {
+    fun loadCoinDetails(walletId: String, coinType: CoinType) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
@@ -71,21 +71,21 @@ class CoinDetailViewModel @Inject constructor(
             try {
                 Log.d("CoinDetailVM", "=== Loading $coinType details for wallet: $walletId ===")
 
-                // Sync transactions before loading based on coin type
+                // Sync transactions based on coin type
                 when (coinType) {
-                    "BTC" -> {
+                    CoinType.BITCOIN -> {
                         Log.d("CoinDetailVM", "Syncing Bitcoin transactions...")
                         syncBitcoinTransactionsUseCase(walletId)
                     }
-                    "ETH" -> {
+                    CoinType.ETHEREUM -> {
                         Log.d("CoinDetailVM", "Syncing Ethereum transactions...")
                         syncEthereumTransactionsUseCase(walletId)
                     }
-                    "SOL" -> {
+                    CoinType.SOLANA -> {
                         Log.d("CoinDetailVM", "Syncing Solana transactions...")
                         syncSolanaTransactionsUseCase(walletId)
                     }
-                    "USDC" -> {
+                    CoinType.USDC -> {
                         Log.d("CoinDetailVM", "Syncing USDC transactions...")
                         syncUSDTransactionsUseCase(walletId)
                     }
@@ -98,13 +98,12 @@ class CoinDetailViewModel @Inject constructor(
                 Log.d("CoinDetailVM", "Balance loaded: $balance")
 
                 val state = when (coinType) {
-                    "BTC" -> {
+                    CoinType.BITCOIN -> {
                         val coin = wallet.bitcoin ?: throw Exception("Bitcoin not enabled")
                         val coinBalance = balance?.bitcoin
 
                         Log.d("CoinDetailVM", "BTC Coin Address: ${coin.address}")
                         Log.d("CoinDetailVM", "BTC Balance from repo: ${coinBalance?.btc}")
-                        Log.d("CoinDetailVM", "BTC satoshis: ${coinBalance?.satoshis}")
 
                         CoinDetailState(
                             walletId = walletId,
@@ -115,7 +114,7 @@ class CoinDetailViewModel @Inject constructor(
                             network = coin.network.name
                         )
                     }
-                    "ETH" -> {
+                    CoinType.ETHEREUM -> {
                         val coin = wallet.ethereum ?: throw Exception("Ethereum not enabled")
                         val coinBalance = balance?.ethereum
 
@@ -131,7 +130,7 @@ class CoinDetailViewModel @Inject constructor(
                             network = coin.network.displayName
                         )
                     }
-                    "SOL" -> {
+                    CoinType.SOLANA -> {
                         val coin = wallet.solana ?: throw Exception("Solana not enabled")
                         val coinBalance = balance?.solana
 
@@ -147,7 +146,7 @@ class CoinDetailViewModel @Inject constructor(
                             network = "Mainnet"
                         )
                     }
-                    "USDC" -> {
+                    CoinType.USDC -> {
                         val coin = wallet.usdc ?: throw Exception("USDC not enabled")
                         val coinBalance = balance?.usdc
 
@@ -170,7 +169,6 @@ class CoinDetailViewModel @Inject constructor(
                             ethGasBalance = ethBalance
                         )
                     }
-                    else -> throw Exception("Unknown coin type")
                 }
 
                 Log.d("CoinDetailVM", "Final state balance: ${state.balance}")
@@ -188,10 +186,10 @@ class CoinDetailViewModel @Inject constructor(
         }
     }
 
-    private fun loadTransactions(walletId: String, coinType: String) {
+    private fun loadTransactions(walletId: String, coinType: CoinType) {
         viewModelScope.launch {
             when (coinType) {
-                "BTC" -> {
+                CoinType.BITCOIN -> {
                     bitcoinTransactionRepository.getTransactions(walletId).collect { txs ->
                         Log.d("CoinDetailVM", "BTC Transactions loaded: ${txs.size}")
                         txs.take(3).forEachIndexed { i, tx ->
@@ -200,7 +198,7 @@ class CoinDetailViewModel @Inject constructor(
                         _transactions.value = txs
                     }
                 }
-                "ETH" -> {
+                CoinType.ETHEREUM -> {
                     ethereumTransactionRepository.getTransactions(walletId).collect { txs ->
                         Log.d("CoinDetailVM", "ETH Transactions loaded: ${txs.size}")
                         txs.take(3).forEachIndexed { i, tx ->
@@ -209,7 +207,7 @@ class CoinDetailViewModel @Inject constructor(
                         _transactions.value = txs
                     }
                 }
-                "SOL" -> {
+                CoinType.SOLANA -> {
                     solanaTransactionRepository.getTransactions(walletId).collect { txs ->
                         Log.d("CoinDetailVM", "SOL Transactions loaded: ${txs.size}")
                         txs.take(3).forEachIndexed { i, tx ->
@@ -218,7 +216,7 @@ class CoinDetailViewModel @Inject constructor(
                         _transactions.value = txs
                     }
                 }
-                "USDC" -> {
+                CoinType.USDC -> {
                     usdcTransactionRepository.getTransactions(walletId).collect { txs ->
                         Log.d("CoinDetailVM", "USDC Transactions loaded: ${txs.size}")
                         _transactions.value = txs
@@ -231,14 +229,15 @@ class CoinDetailViewModel @Inject constructor(
     fun refresh() {
         val currentState = _coinDetailState.value ?: return
         Log.d("CoinDetailVM", "Refreshing...")
-        loadCoinDetails(currentState.walletId,
-            when {
-                currentState.balanceFormatted.contains("BTC") -> "BTC"
-                currentState.balanceFormatted.contains("ETH") -> "ETH"
-                currentState.balanceFormatted.contains("SOL") -> "SOL"
-                currentState.balanceFormatted.contains("USDC") -> "USDC"
-                else -> ""
-            }
-        )
+
+        val coinType = when {
+            currentState.balanceFormatted.contains("BTC") -> CoinType.BITCOIN
+            currentState.balanceFormatted.contains("ETH") -> CoinType.ETHEREUM
+            currentState.balanceFormatted.contains("SOL") -> CoinType.SOLANA
+            currentState.balanceFormatted.contains("USDC") -> CoinType.USDC
+            else -> return
+        }
+
+        loadCoinDetails(currentState.walletId, coinType)
     }
 }

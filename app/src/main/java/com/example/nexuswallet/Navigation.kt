@@ -1,5 +1,7 @@
 package com.example.nexuswallet
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -13,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredScreen
+import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
@@ -30,6 +33,7 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDetailViewModel
 import com.example.nexuswallet.feature.coin.usdc.USDCSendScreen
 import com.example.nexuswallet.feature.wallet.ui.CoinDetailScreen
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun Navigation() {
     val navController = rememberNavController()
@@ -272,14 +276,19 @@ fun Navigation() {
             )
         ) { backStackEntry ->
             val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            val coinType = backStackEntry.arguments?.getString("coinType") ?: ""
+            val coinTypeString = backStackEntry.arguments?.getString("coinType") ?: ""
+            val coinType = try {
+                CoinType.valueOf(coinTypeString)
+            } catch (e: IllegalArgumentException) {
+                CoinType.BITCOIN
+            }
+
             CoinDetailScreen(
                 navController = navController,
                 walletId = walletId,
                 coinType = coinType
             )
         }
-
         // ===== SEND FLOW SCREENS =====
 
         composable(

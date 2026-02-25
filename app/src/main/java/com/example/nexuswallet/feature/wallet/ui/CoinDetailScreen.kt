@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
@@ -40,7 +41,7 @@ import java.util.*
 fun CoinDetailScreen(
     navController: NavController,
     walletId: String,
-    coinType: String, // "BTC", "ETH", "SOL", "USDC"
+    coinType: CoinType,
     viewModel: CoinDetailViewModel = hiltViewModel()
 ) {
     val coinDetailState by viewModel.coinDetailState.collectAsState()
@@ -72,25 +73,28 @@ fun CoinDetailScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = when (coinType) {
-                                "BTC" -> Icons.Outlined.CurrencyBitcoin
-                                "ETH" -> Icons.Outlined.Diamond
-                                "SOL" -> Icons.Outlined.FlashOn
-                                "USDC" -> Icons.Outlined.AttachMoney
-                                else -> Icons.Outlined.AccountBalanceWallet
+                                CoinType.BITCOIN -> Icons.Outlined.CurrencyBitcoin
+                                CoinType.ETHEREUM -> Icons.Outlined.Diamond
+                                CoinType.SOLANA -> Icons.Outlined.FlashOn
+                                CoinType.USDC -> Icons.Outlined.AttachMoney
                             },
                             contentDescription = null,
                             modifier = Modifier.size(24.dp),
                             tint = when (coinType) {
-                                "BTC" -> Color(0xFFF7931A)
-                                "ETH" -> Color(0xFF627EEA)
-                                "SOL" -> Color(0xFF00FFA3)
-                                "USDC" -> Color(0xFF2775CA)
-                                else -> MaterialTheme.colorScheme.primary
+                                CoinType.BITCOIN -> Color(0xFFF7931A)
+                                CoinType.ETHEREUM -> Color(0xFF627EEA)
+                                CoinType.SOLANA -> Color(0xFF00FFA3)
+                                CoinType.USDC -> Color(0xFF2775CA)
                             }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "$coinType Wallet",
+                            text = when (coinType) {
+                                CoinType.BITCOIN -> "Bitcoin Wallet"
+                                CoinType.ETHEREUM -> "Ethereum Wallet"
+                                CoinType.SOLANA -> "Solana Wallet"
+                                CoinType.USDC -> "USDC Wallet"
+                            },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.Black
@@ -167,16 +171,16 @@ fun CoinDetailScreen(
                     CoinActionsCard(
                         coinType = coinType,
                         onReceive = {
-                            navController.navigate("receive/${state.walletId}?coinType=$coinType")
+                            navController.navigate("receive/${state.walletId}?coinType=${coinType.name}")
                         },
                         onSend = {
-                            navController.navigate("send/${state.walletId}/$coinType")
+                            navController.navigate("send/${state.walletId}/${coinType.name}")
                         }
                     )
                 }
 
                 // ETH Gas Balance for USDC
-                if (coinType == "USDC" && state.ethGasBalance != null) {
+                if (coinType == CoinType.USDC && state.ethGasBalance != null) {
                     item {
                         EthGasBalanceCard(ethBalance = state.ethGasBalance)
                     }
@@ -189,7 +193,7 @@ fun CoinDetailScreen(
                         coinType = coinType,
                         walletAddress = state.address,
                         onViewAll = {
-                            navController.navigate("transactions/${state.walletId}?coinType=$coinType")
+                            navController.navigate("transactions/${state.walletId}?coinType=${coinType.name}")
                         }
                     )
                 }
@@ -200,7 +204,7 @@ fun CoinDetailScreen(
 
 @Composable
 fun CoinBalanceCard(
-    coinType: String,
+    coinType: CoinType,
     balance: String,
     balanceFormatted: String,
     address: String,
@@ -209,11 +213,17 @@ fun CoinBalanceCard(
     onCopyAddress: (String) -> Unit
 ) {
     val (coinColor, icon) = when (coinType) {
-        "BTC" -> Pair(Color(0xFFF7931A), Icons.Outlined.CurrencyBitcoin)
-        "ETH" -> Pair(Color(0xFF627EEA), Icons.Outlined.Diamond)
-        "SOL" -> Pair(Color(0xFF00FFA3), Icons.Outlined.FlashOn)
-        "USDC" -> Pair(Color(0xFF2775CA), Icons.Outlined.AttachMoney)
-        else -> Pair(MaterialTheme.colorScheme.primary, Icons.Outlined.AccountBalanceWallet)
+        CoinType.BITCOIN -> Pair(Color(0xFFF7931A), Icons.Outlined.CurrencyBitcoin)
+        CoinType.ETHEREUM -> Pair(Color(0xFF627EEA), Icons.Outlined.Diamond)
+        CoinType.SOLANA -> Pair(Color(0xFF00FFA3), Icons.Outlined.FlashOn)
+        CoinType.USDC -> Pair(Color(0xFF2775CA), Icons.Outlined.AttachMoney)
+    }
+
+    val displayName = when (coinType) {
+        CoinType.BITCOIN -> "Bitcoin"
+        CoinType.ETHEREUM -> "Ethereum"
+        CoinType.SOLANA -> "Solana"
+        CoinType.USDC -> "USD Coin"
     }
 
     Card(
@@ -248,7 +258,7 @@ fun CoinBalanceCard(
                     ) {
                         Icon(
                             imageVector = icon,
-                            contentDescription = coinType,
+                            contentDescription = displayName,
                             tint = coinColor,
                             modifier = Modifier.size(24.dp)
                         )
@@ -258,7 +268,7 @@ fun CoinBalanceCard(
 
                     Column {
                         Text(
-                            text = coinType,
+                            text = displayName,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = Color.Black
@@ -332,7 +342,7 @@ fun CoinBalanceCard(
 
 @Composable
 fun CoinActionsCard(
-    coinType: String,
+    coinType: CoinType,
     onReceive: () -> Unit,
     onSend: () -> Unit
 ) {
@@ -420,7 +430,7 @@ fun EthGasBalanceCard(ethBalance: BigDecimal?) {
 @Composable
 fun TransactionsContainer(
     transactions: List<Any>,
-    coinType: String,
+    coinType: CoinType,
     walletAddress: String,
     onViewAll: () -> Unit
 ) {
@@ -508,9 +518,16 @@ fun TransactionsContainer(
 @Composable
 fun CoinTransactionItem(
     transaction: Any,
-    coinType: String,
+    coinType: CoinType,
     walletAddress: String
 ) {
+    val (symbol, displayName) = when (coinType) {
+        CoinType.BITCOIN -> Pair("BTC", "Bitcoin")
+        CoinType.ETHEREUM -> Pair("ETH", "Ethereum")
+        CoinType.SOLANA -> Pair("SOL", "Solana")
+        CoinType.USDC -> Pair("USDC", "USD Coin")
+    }
+
     val transactionInfo = when (transaction) {
         is BitcoinTransaction -> {
             TransactionInfo(
@@ -597,7 +614,7 @@ fun CoinTransactionItem(
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text = if (transactionInfo.isIncoming) "Received $coinType" else "Sent $coinType",
+                text = if (transactionInfo.isIncoming) "Received $displayName" else "Sent $displayName",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = Color.Black,
@@ -617,7 +634,7 @@ fun CoinTransactionItem(
             modifier = Modifier.widthIn(min = 80.dp, max = 120.dp)
         ) {
             Text(
-                text = "${if (transactionInfo.isIncoming) "+" else "-"}$formattedAmount $coinType",
+                text = "${if (transactionInfo.isIncoming) "+" else "-"}$formattedAmount $symbol",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = if (transactionInfo.isIncoming) Color(0xFF10B981) else Color.Black,
