@@ -48,7 +48,8 @@ import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
-import com.example.nexuswallet.feature.wallet.domain.WalletType
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletCreationScreen(
@@ -694,126 +695,6 @@ fun NetworkChip(
     }
 }
 
-// Keep all your existing composables (MnemonicBackupStep, MnemonicWordChip, SecurityWarningDialog,
-// MnemonicDisplayStep, MnemonicDisplayChip, SafetyChecklistItem, MnemonicVerificationStep,
-// SimpleSelectedChip, SimpleWordChip, WalletNameStep, WalletSuccessStep, LoadingScreen, ErrorScreen)
-// as they were - they don't need changes
-@Composable
-fun WalletCreationStepper(
-    currentStep: Int,
-    selectedWalletType: WalletType,
-    padding: PaddingValues,
-    content: @Composable () -> Unit
-) {
-    // Create dynamic step labels based on wallet type
-    val steps = when (selectedWalletType) {
-        WalletType.BITCOIN -> listOf(
-            "Bitcoin",      // Step 0
-            "Backup",       // Step 1 (Show mnemonic)
-            "Verify",       // Step 2 (Type verification)
-            "Name",         // Step 3
-            "Complete"      // Step 4
-        )
-        WalletType.ETHEREUM -> listOf(
-            "Ethereum",     // Step 0
-            "Backup",       // Step 1
-            "Verify",       // Step 2
-            "Name",         // Step 3
-            "Complete"      // Step 4
-        )
-        WalletType.MULTICHAIN -> listOf(
-            "Type",         // Step 0
-            "Backup",       // Step 1
-            "Verify",       // Step 2
-            "Name",         // Step 3
-            "Complete"      // Step 4
-        )
-        else -> listOf("Type", "Backup", "Verify", "Name", "Complete")
-    }
-
-    // Step descriptions for better UX
-    val stepDescriptions = remember(currentStep) {
-        when (currentStep) {
-            0 -> "Select your wallet type"
-            1 -> "Backup your recovery phrase"
-            2 -> "Verify your backup"
-            3 -> "Personalize your wallet"
-            4 -> "Wallet created successfully"
-            else -> ""
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
-    ) {
-        // Progress header with description
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        ) {
-            // Current step indicator
-            Text(
-                text = "Step ${currentStep + 1} of ${steps.size}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Medium
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Step description
-            Text(
-                text = stepDescriptions,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        // Visual step indicators
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            steps.forEachIndexed { index, step ->
-                StepIndicator(
-                    stepNumber = index + 1,
-                    stepName = step,
-                    isActive = index == currentStep,
-                    isCompleted = index < currentStep,
-                    isNext = index == currentStep + 1
-                )
-            }
-        }
-
-        // Progress bar
-        LinearProgressIndicator(
-            progress = { (currentStep + 1) / steps.size.toFloat() },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-                .height(4.dp),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Content
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp)
-        ) {
-            content()
-        }
-    }
-}
-
 @Composable
 fun SecurityWarningDialog(
     onAccept: () -> Unit,
@@ -1448,7 +1329,7 @@ fun WalletNameStep(
 
 @Composable
 fun WalletSuccessStep(
-    wallet: Wallet,  // Changed from CryptoWallet to Wallet
+    wallet: Wallet,
     onFinish: () -> Unit
 ) {
     Column(

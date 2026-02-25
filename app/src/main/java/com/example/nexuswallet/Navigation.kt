@@ -28,7 +28,6 @@ import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailViewModel
 import com.example.nexuswallet.feature.coin.usdc.USDCSendScreen
-import com.example.nexuswallet.feature.wallet.domain.WalletType
 import com.example.nexuswallet.feature.wallet.ui.CoinDetailScreen
 
 @Composable

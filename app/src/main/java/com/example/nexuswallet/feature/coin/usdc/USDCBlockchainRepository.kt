@@ -13,8 +13,6 @@ import com.example.nexuswallet.feature.coin.ethereum.GasPrice
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransaction
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalance
-import com.example.nexuswallet.feature.wallet.domain.ChainType
-import com.example.nexuswallet.feature.wallet.domain.TokenBalance
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.web3j.abi.FunctionEncoder
@@ -44,6 +42,7 @@ class USDCBlockchainRepository @Inject constructor(
     // Gas price cache - stores gas price per network with timestamp
     private val gasPriceCache = mutableMapOf<String, CachedGasPrice>()
 
+    // Update getUSDCBalance to return USDCBalance
     suspend fun getUSDCBalance(
         address: String,
         network: EthereumNetwork = EthereumNetwork.Sepolia
@@ -53,23 +52,16 @@ class USDCBlockchainRepository @Inject constructor(
 
             val usdcBalance = getUSDCBalanceViaWeb3j(address, network)
 
-            val result = USDCBalance(
-                address = address,
-                amount = usdcBalance.balance,
-                amountDecimal = usdcBalance.balanceDecimal,
-                usdValue = usdcBalance.usdValue
-            )
-
-            Log.d("USDCRepo", "USDC balance for $address: ${result.amountDecimal} USDC")
-            result
+            Log.d("USDCRepo", "USDC balance for $address: ${usdcBalance.amountDecimal} USDC")
+            usdcBalance
         }
     }
 
     private suspend fun getUSDCBalanceViaWeb3j(
         address: String,
         network: EthereumNetwork
-    ): TokenBalance = withContext(Dispatchers.IO) {
-        val result = SafeApiCall.make<TokenBalance> {
+    ): USDCBalance = withContext(Dispatchers.IO) {
+        val result = SafeApiCall.make<USDCBalance> {
             val web3j = web3jFactory.create(network)
             val usdcAddress = network.usdcContractAddress
 
@@ -97,10 +89,10 @@ class USDCBlockchainRepository @Inject constructor(
             val result = response.result
 
             if (result == "0x") {
-                return@make createTokenBalance(
+                return@make createUSDCBalance(
                     balanceRaw = "0",
                     balanceDecimal = BigDecimal.ZERO,
-                    network = network
+                    address = address,
                 )
             }
 
@@ -123,10 +115,10 @@ class USDCBlockchainRepository @Inject constructor(
                 RoundingMode.HALF_UP
             )
 
-            createTokenBalance(
+            createUSDCBalance(
                 balanceRaw = balanceRaw,
                 balanceDecimal = balanceDecimal,
-                network = network
+                address = address
             )
         }
 
@@ -135,6 +127,20 @@ class USDCBlockchainRepository @Inject constructor(
             is Result.Error -> throw Exception(result.message, result.throwable)
             Result.Loading -> throw Exception("Unexpected loading state")
         }
+    }
+
+    // Helper to create USDCBalance
+    private fun createUSDCBalance(
+        balanceRaw: String,
+        balanceDecimal: BigDecimal,
+        address: String
+    ): USDCBalance {
+        return USDCBalance(
+            address = address,
+            amount = balanceRaw,
+            amountDecimal = balanceDecimal.toPlainString(),
+            usdValue = balanceDecimal.toDouble() // USDC is pegged 1:1 with USD
+        )
     }
 
     /**
@@ -491,25 +497,6 @@ class USDCBlockchainRepository @Inject constructor(
                 nonce
             }
         }
-    }
-
-    private fun createTokenBalance(
-        balanceRaw: String,
-        balanceDecimal: BigDecimal,
-        network: EthereumNetwork
-    ): TokenBalance {
-        return TokenBalance(
-            tokenId = "usdc_${network::class.simpleName?.lowercase() ?: "unknown"}",
-            symbol = "USDC",
-            name = "USD Coin",
-            contractAddress = network.usdcContractAddress,
-            balance = balanceRaw,
-            balanceDecimal = balanceDecimal.toPlainString(),
-            usdPrice = 1.0,
-            usdValue = balanceDecimal.toDouble(),
-            decimals = USDC_DECIMALS,
-            chain = if (network.isTestnet) ChainType.ETHEREUM_SEPOLIA else ChainType.ETHEREUM
-        )
     }
 
     suspend fun getUSDCTransactionHistory(
