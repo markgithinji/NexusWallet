@@ -44,23 +44,23 @@ fun CoinDetailScreen(
     coinType: CoinType,
     viewModel: CoinDetailViewModel = hiltViewModel()
 ) {
-    val coinDetailState by viewModel.coinDetailState.collectAsState()
-    val transactions by viewModel.transactions.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.loadCoinDetails(walletId, coinType)
     }
 
-    if (isLoading && coinDetailState == null) {
+    // Show loading only on initial load
+    if (state.isLoading && state.address.isEmpty()) {
         LoadingScreen()
         return
     }
 
-    error?.let {
+    // Show error if present
+    state.error?.let { errorMessage ->
         ErrorScreen(
-            message = it,
+            message = errorMessage,
             onRetry = { viewModel.loadCoinDetails(walletId, coinType) }
         )
         return
@@ -113,9 +113,9 @@ fun CoinDetailScreen(
                 actions = {
                     IconButton(
                         onClick = { viewModel.refresh() },
-                        enabled = !isLoading
+                        enabled = !state.isLoading
                     ) {
-                        if (isLoading) {
+                        if (state.isLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp,
@@ -138,65 +138,61 @@ fun CoinDetailScreen(
         },
         containerColor = Color(0xFFF5F5F7)
     ) { padding ->
-        coinDetailState?.let { state ->
-            val context = LocalContext.current
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Balance Card
-                item {
-                    CoinBalanceCard(
-                        coinType = coinType,
-                        balance = state.balance,
-                        balanceFormatted = state.balanceFormatted,
-                        address = state.address,
-                        network = state.network,
-                        usdValue = state.usdValue,
-                        onCopyAddress = { address ->
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText("Address", address)
-                            clipboard.setPrimaryClip(clip)
-                            Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
-                        }
-                    )
-                }
-
-                // Actions
-                item {
-                    CoinActionsCard(
-                        coinType = coinType,
-                        onReceive = {
-                            navController.navigate("receive/${state.walletId}?coinType=${coinType.name}")
-                        },
-                        onSend = {
-                            navController.navigate("send/${state.walletId}/${coinType.name}")
-                        }
-                    )
-                }
-
-                // ETH Gas Balance for USDC
-                if (coinType == CoinType.USDC && state.ethGasBalance != null) {
-                    item {
-                        EthGasBalanceCard(ethBalance = state.ethGasBalance)
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Balance Card
+            item {
+                CoinBalanceCard(
+                    coinType = coinType,
+                    balance = state.balance,
+                    balanceFormatted = state.balanceFormatted,
+                    address = state.address,
+                    network = state.network,
+                    usdValue = state.usdValue,
+                    onCopyAddress = { address ->
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("Address", address)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
                     }
-                }
+                )
+            }
 
-                // Recent Transactions
+            // Actions
+            item {
+                CoinActionsCard(
+                    coinType = coinType,
+                    onReceive = {
+                        navController.navigate("receive/${state.walletId}?coinType=${coinType.name}")
+                    },
+                    onSend = {
+                        navController.navigate("send/${state.walletId}/${coinType.name}")
+                    }
+                )
+            }
+
+            // ETH Gas Balance for USDC
+            if (coinType == CoinType.USDC && state.ethGasBalance != null) {
                 item {
-                    TransactionsContainer(
-                        transactions = transactions,
-                        coinType = coinType,
-                        walletAddress = state.address,
-                        onViewAll = {
-                            navController.navigate("transactions/${state.walletId}?coinType=${coinType.name}")
-                        }
-                    )
+                    EthGasBalanceCard(ethBalance = state.ethGasBalance)
                 }
+            }
+
+            // Recent Transactions
+            item {
+                TransactionsContainer(
+                    transactions = state.transactions,
+                    coinType = coinType,
+                    walletAddress = state.address,
+                    onViewAll = {
+                        navController.navigate("transactions/${state.walletId}?coinType=${coinType.name}")
+                    }
+                )
             }
         }
     }

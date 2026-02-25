@@ -23,6 +23,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import kotlin.collections.emptyList
@@ -48,25 +50,25 @@ class CoinDetailViewModel @Inject constructor(
         val balanceFormatted: String = "0",
         val usdValue: Double = 0.0,
         val network: String = "",
-        val ethGasBalance: BigDecimal? = null
+        val coinType: CoinType? = null,
+        val ethGasBalance: BigDecimal? = null,
+        val transactions: List<Any> = emptyList(),
+        val isLoading: Boolean = false,
+        val error: String? = null
     )
 
-    private val _coinDetailState = MutableStateFlow<CoinDetailState?>(null)
-    val coinDetailState: StateFlow<CoinDetailState?> = _coinDetailState
-
-    private val _transactions = MutableStateFlow<List<Any>>(emptyList())
-    val transactions: StateFlow<List<Any>> = _transactions
-
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error
+    private val _state = MutableStateFlow(CoinDetailState())
+    val state: StateFlow<CoinDetailState> = _state.asStateFlow()
 
     fun loadCoinDetails(walletId: String, coinType: CoinType) {
         viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
+            _state.update {
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    coinType = coinType
+                )
+            }
 
             try {
                 Log.d("CoinDetailVM", "=== Loading $coinType details for wallet: $walletId ===")
@@ -97,7 +99,8 @@ class CoinDetailViewModel @Inject constructor(
                 val balance = walletRepository.getWalletBalance(walletId)
                 Log.d("CoinDetailVM", "Balance loaded: $balance")
 
-                val state = when (coinType) {
+                // Update state with coin details
+                when (coinType) {
                     CoinType.BITCOIN -> {
                         val coin = wallet.bitcoin ?: throw Exception("Bitcoin not enabled")
                         val coinBalance = balance?.bitcoin
@@ -105,14 +108,16 @@ class CoinDetailViewModel @Inject constructor(
                         Log.d("CoinDetailVM", "BTC Coin Address: ${coin.address}")
                         Log.d("CoinDetailVM", "BTC Balance from repo: ${coinBalance?.btc}")
 
-                        CoinDetailState(
-                            walletId = walletId,
-                            address = coin.address,
-                            balance = coinBalance?.btc ?: "0",
-                            balanceFormatted = "${coinBalance?.btc ?: "0"} BTC",
-                            usdValue = coinBalance?.usdValue ?: 0.0,
-                            network = coin.network.name
-                        )
+                        _state.update {
+                            it.copy(
+                                walletId = walletId,
+                                address = coin.address,
+                                balance = coinBalance?.btc ?: "0",
+                                balanceFormatted = "${coinBalance?.btc ?: "0"} BTC",
+                                usdValue = coinBalance?.usdValue ?: 0.0,
+                                network = coin.network.name
+                            )
+                        }
                     }
                     CoinType.ETHEREUM -> {
                         val coin = wallet.ethereum ?: throw Exception("Ethereum not enabled")
@@ -121,14 +126,16 @@ class CoinDetailViewModel @Inject constructor(
                         Log.d("CoinDetailVM", "ETH Address: ${coin.address}")
                         Log.d("CoinDetailVM", "ETH Balance from repo: ${coinBalance?.eth}")
 
-                        CoinDetailState(
-                            walletId = walletId,
-                            address = coin.address,
-                            balance = coinBalance?.eth ?: "0",
-                            balanceFormatted = "${coinBalance?.eth ?: "0"} ETH",
-                            usdValue = coinBalance?.usdValue ?: 0.0,
-                            network = coin.network.displayName
-                        )
+                        _state.update {
+                            it.copy(
+                                walletId = walletId,
+                                address = coin.address,
+                                balance = coinBalance?.eth ?: "0",
+                                balanceFormatted = "${coinBalance?.eth ?: "0"} ETH",
+                                usdValue = coinBalance?.usdValue ?: 0.0,
+                                network = coin.network.displayName
+                            )
+                        }
                     }
                     CoinType.SOLANA -> {
                         val coin = wallet.solana ?: throw Exception("Solana not enabled")
@@ -137,14 +144,16 @@ class CoinDetailViewModel @Inject constructor(
                         Log.d("CoinDetailVM", "SOL Address: ${coin.address}")
                         Log.d("CoinDetailVM", "SOL Balance from repo: ${coinBalance?.sol}")
 
-                        CoinDetailState(
-                            walletId = walletId,
-                            address = coin.address,
-                            balance = coinBalance?.sol ?: "0",
-                            balanceFormatted = "${coinBalance?.sol ?: "0"} SOL",
-                            usdValue = coinBalance?.usdValue ?: 0.0,
-                            network = "Mainnet"
-                        )
+                        _state.update {
+                            it.copy(
+                                walletId = walletId,
+                                address = coin.address,
+                                balance = coinBalance?.sol ?: "0",
+                                balanceFormatted = "${coinBalance?.sol ?: "0"} SOL",
+                                usdValue = coinBalance?.usdValue ?: 0.0,
+                                network = "Mainnet"
+                            )
+                        }
                     }
                     CoinType.USDC -> {
                         val coin = wallet.usdc ?: throw Exception("USDC not enabled")
@@ -159,29 +168,34 @@ class CoinDetailViewModel @Inject constructor(
                         Log.d("CoinDetailVM", "USDC Address: ${coin.address}")
                         Log.d("CoinDetailVM", "USDC Balance from repo: ${coinBalance?.amountDecimal}")
 
-                        CoinDetailState(
-                            walletId = walletId,
-                            address = coin.address,
-                            balance = coinBalance?.amountDecimal ?: "0",
-                            balanceFormatted = "${coinBalance?.amountDecimal ?: "0"} USDC",
-                            usdValue = coinBalance?.usdValue ?: 0.0,
-                            network = coin.network.displayName,
-                            ethGasBalance = ethBalance
-                        )
+                        _state.update {
+                            it.copy(
+                                walletId = walletId,
+                                address = coin.address,
+                                balance = coinBalance?.amountDecimal ?: "0",
+                                balanceFormatted = "${coinBalance?.amountDecimal ?: "0"} USDC",
+                                usdValue = coinBalance?.usdValue ?: 0.0,
+                                network = coin.network.displayName,
+                                ethGasBalance = ethBalance
+                            )
+                        }
                     }
                 }
 
-                Log.d("CoinDetailVM", "Final state balance: ${state.balance}")
-                Log.d("CoinDetailVM", "Final state formatted: ${state.balanceFormatted}")
+                Log.d("CoinDetailVM", "Final state balance: ${_state.value.balance}")
+                Log.d("CoinDetailVM", "Final state formatted: ${_state.value.balanceFormatted}")
 
-                _coinDetailState.value = state
+                // Load transactions
                 loadTransactions(walletId, coinType)
 
             } catch (e: Exception) {
                 Log.e("CoinDetailVM", "Error: ${e.message}")
-                _error.value = e.message
-            } finally {
-                _isLoading.value = false
+                _state.update {
+                    it.copy(
+                        error = e.message,
+                        isLoading = false
+                    )
+                }
             }
         }
     }
@@ -195,7 +209,7 @@ class CoinDetailViewModel @Inject constructor(
                         txs.take(3).forEachIndexed { i, tx ->
                             Log.d("CoinDetailVM", "  BTC Tx $i: amount=${tx.amountBtc}, incoming=${(tx as? BitcoinTransaction)?.isIncoming}")
                         }
-                        _transactions.value = txs
+                        _state.update { it.copy(transactions = txs, isLoading = false) }
                     }
                 }
                 CoinType.ETHEREUM -> {
@@ -204,7 +218,7 @@ class CoinDetailViewModel @Inject constructor(
                         txs.take(3).forEachIndexed { i, tx ->
                             Log.d("CoinDetailVM", "  ETH Tx $i: amount=${tx.amountEth}, incoming=${tx.isIncoming}")
                         }
-                        _transactions.value = txs
+                        _state.update { it.copy(transactions = txs, isLoading = false) }
                     }
                 }
                 CoinType.SOLANA -> {
@@ -213,13 +227,13 @@ class CoinDetailViewModel @Inject constructor(
                         txs.take(3).forEachIndexed { i, tx ->
                             Log.d("CoinDetailVM", "  SOL Tx $i: amount=${tx.amountSol}, incoming=${tx.isIncoming}")
                         }
-                        _transactions.value = txs
+                        _state.update { it.copy(transactions = txs, isLoading = false) }
                     }
                 }
                 CoinType.USDC -> {
                     usdcTransactionRepository.getTransactions(walletId).collect { txs ->
                         Log.d("CoinDetailVM", "USDC Transactions loaded: ${txs.size}")
-                        _transactions.value = txs
+                        _state.update { it.copy(transactions = txs, isLoading = false) }
                     }
                 }
             }
@@ -227,17 +241,13 @@ class CoinDetailViewModel @Inject constructor(
     }
 
     fun refresh() {
-        val currentState = _coinDetailState.value ?: return
-        Log.d("CoinDetailVM", "Refreshing...")
-
-        val coinType = when {
-            currentState.balanceFormatted.contains("BTC") -> CoinType.BITCOIN
-            currentState.balanceFormatted.contains("ETH") -> CoinType.ETHEREUM
-            currentState.balanceFormatted.contains("SOL") -> CoinType.SOLANA
-            currentState.balanceFormatted.contains("USDC") -> CoinType.USDC
-            else -> return
+        val currentState = _state.value
+        if (currentState.walletId.isNotEmpty() && currentState.coinType != null) {
+            loadCoinDetails(currentState.walletId, currentState.coinType)
         }
+    }
 
-        loadCoinDetails(currentState.walletId, coinType)
+    fun clearError() {
+        _state.update { it.copy(error = null) }
     }
 }
