@@ -20,7 +20,6 @@ import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
-import com.example.nexuswallet.feature.wallet.ui.FullQrCodeScreen
 import com.example.nexuswallet.feature.wallet.ui.ReceiveScreen
 import com.example.nexuswallet.feature.wallet.ui.SendScreen
 import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
@@ -128,19 +127,6 @@ fun Navigation() {
 //                walletViewModel = walletViewModel
 //            )
 //        }
-
-        composable(
-            route = "qrCode/{walletId}",
-            arguments = listOf(
-                navArgument("walletId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            FullQrCodeScreen(
-                navController = navController,
-                walletId = walletId
-            )
-        }
 
         // Token Detail
         composable(

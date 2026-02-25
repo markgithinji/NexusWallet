@@ -53,7 +53,7 @@ class ReceiveViewModel @Inject constructor(
                             "ETH" to wallet.ethereum.network.displayName
                         }
                         wallet.solana != null -> {
-                            "SOL" to "Mainnet" // TODO: Add displayName to SolanaNetwork
+                            "SOL" to wallet.solana.network.name
                         }
                         wallet.usdc != null -> {
                             "USDC" to wallet.usdc.network.displayName

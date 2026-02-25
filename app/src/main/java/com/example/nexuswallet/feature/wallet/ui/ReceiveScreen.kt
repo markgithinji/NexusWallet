@@ -4,6 +4,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -63,6 +65,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -72,6 +76,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -167,30 +173,16 @@ fun ReceiveScreen(
                     clipboard.setPrimaryClip(clip)
                     viewModel.onCopyClicked()
                 },
-                onShare = {
-                    val shareIntent = Intent().apply {
-                        action = Intent.ACTION_SEND
-                        putExtra(Intent.EXTRA_TEXT, uiState.shareUrl)
-                        type = "text/plain"
-                    }
-                    context.startActivity(Intent.createChooser(shareIntent, "Share Wallet Address"))
-                },
-                onViewFullQR = {
-                    navController.navigate("qrCode/${walletId}")
-                },
                 modifier = Modifier.padding(paddingValues)
             )
         }
     }
 }
 
-
 @Composable
 private fun ReceiveContent(
     uiState: ReceiveViewModel.ReceiveUiState,
     onCopy: () -> Unit,
-    onShare: () -> Unit,
-    onViewFullQR: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val (coinColor, icon) = when (uiState.coinType) {
@@ -209,129 +201,22 @@ private fun ReceiveContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Wallet Header
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(0.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(coinColor.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = uiState.coinType,
-                            tint = coinColor,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-
-                    Column {
-                        Text(
-                            text = uiState.walletName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.Black
-                        )
-                        if (uiState.network != "MAINNET" && uiState.network != "Mainnet") {
-                            Text(
-                                text = uiState.network,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF6B7280)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
         // QR Code Section
         item {
             QrCodeSection(
                 address = uiState.address,
-                coinType = uiState.coinType,
-                onViewFullQR = onViewFullQR,
                 coinColor = coinColor
             )
         }
 
-        // Address Card
+        // Address Card with Copy Icon
         item {
             AddressCard(
                 address = uiState.address,
                 coinType = uiState.coinType,
-                onCopy = onCopy
+                onCopy = onCopy,
+                copiedToClipboard = uiState.copiedToClipboard
             )
-        }
-
-        // Action Buttons
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Button(
-                    onClick = onCopy,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF3B82F6)
-                    )
-                ) {
-                    if (uiState.copiedToClipboard) {
-                        Icon(
-                            Icons.Outlined.CheckCircle,
-                            contentDescription = "Copied",
-                            modifier = Modifier.size(18.dp),
-                            tint = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Copied!", color = Color.White)
-                    } else {
-                        Icon(
-                            Icons.Outlined.ContentCopy,
-                            contentDescription = "Copy",
-                            modifier = Modifier.size(18.dp),
-                            tint = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Copy", color = Color.White)
-                    }
-                }
-
-                Button(
-                    onClick = onShare,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF6B7280)
-                    )
-                ) {
-                    Icon(
-                        Icons.Outlined.Share,
-                        contentDescription = "Share",
-                        modifier = Modifier.size(18.dp),
-                        tint = Color.White
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Share", color = Color.White)
-                }
-            }
         }
 
         // Security Tips
@@ -344,14 +229,10 @@ private fun ReceiveContent(
 @Composable
 private fun QrCodeSection(
     address: String,
-    coinType: String,
-    onViewFullQR: () -> Unit,
     coinColor: Color
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onViewFullQR),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
@@ -367,34 +248,40 @@ private fun QrCodeSection(
             // QR Code
             Box(
                 modifier = Modifier
-                    .size(200.dp)
+                    .size(240.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(coinColor.copy(alpha = 0.05f))
                     .border(1.dp, coinColor.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                // TODO: Replace with actual QR code generation
-                Icon(
-                    Icons.Outlined.QrCode,
-                    contentDescription = "QR Code",
-                    modifier = Modifier.size(120.dp),
-                    tint = coinColor
-                )
+                // Generate QR Code from address
+                val qrCodeBitmap = remember(address) {
+                    generateQrCode(address)
+                }
+
+                if (qrCodeBitmap != null) {
+                    Image(
+                        bitmap = qrCodeBitmap.asImageBitmap(),
+                        contentDescription = "QR Code for $address",
+                        modifier = Modifier.size(260.dp)
+                    )
+                } else {
+                    // Fallback if QR generation fails
+                    Icon(
+                        Icons.Outlined.QrCode,
+                        contentDescription = "QR Code",
+                        modifier = Modifier.size(180.dp),
+                        tint = coinColor
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Scan to receive $coinType",
+                text = "Scan to receive",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF6B7280)
-            )
-
-            Text(
-                text = "Tap to view full screen",
-                style = MaterialTheme.typography.labelSmall,
-                color = coinColor,
-                modifier = Modifier.padding(top = 4.dp)
             )
         }
     }
@@ -404,7 +291,8 @@ private fun QrCodeSection(
 private fun AddressCard(
     address: String,
     coinType: String,
-    onCopy: () -> Unit
+    onCopy: () -> Unit,
+    copiedToClipboard: Boolean
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -439,32 +327,38 @@ private fun AddressCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Full address
-            Text(
-                text = address,
-                style = MaterialTheme.typography.bodyMedium,
-                fontFamily = FontFamily.Monospace,
-                color = Color.Black,
+            // Address with copy icon
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFFF9FAFB), RoundedCornerShape(12.dp))
-                    .padding(16.dp),
-                textAlign = TextAlign.Center,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = address,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = FontFamily.Monospace,
+                    color = Color.Black,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Short address
-            Text(
-                text = "${address.take(8)}...${address.takeLast(6)}",
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
-                color = Color(0xFF6B7280),
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
+                IconButton(
+                    onClick = onCopy,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = if (copiedToClipboard)
+                            Icons.Outlined.CheckCircle
+                        else
+                            Icons.Outlined.ContentCopy,
+                        contentDescription = "Copy Address",
+                        tint = if (copiedToClipboard) Color(0xFF10B981) else Color(0xFF6B7280)
+                    )
+                }
+            }
         }
     }
 }
@@ -614,5 +508,30 @@ private fun ErrorView(
                 }
             }
         }
+    }
+}
+
+// Helper function to generate QR code
+private fun generateQrCode(content: String): Bitmap? {
+    return try {
+        val writer = QRCodeWriter()
+        val bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, 512, 512)
+        val width = bitMatrix.width
+        val height = bitMatrix.height
+        val pixels = IntArray(width * height)
+
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                pixels[y * width + x] = if (bitMatrix.get(x, y)) {
+                    Color.Black.toArgb()
+                } else {
+                    Color.White.toArgb()
+                }
+            }
+        }
+
+        Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)
+    } catch (e: Exception) {
+        null
     }
 }
