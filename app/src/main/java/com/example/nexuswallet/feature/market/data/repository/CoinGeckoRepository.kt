@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.market.domain.Token
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.SafeApiCall
 
 @Singleton
 class CoinGeckoRepository @Inject constructor(
@@ -21,19 +22,23 @@ class CoinGeckoRepository @Inject constructor(
         perPage: Int = 100,
         page: Int = 1
     ): Result<List<Token>> {
-        return try {
-            val response = coinGeckoApi.getMarkets(
+        val result = SafeApiCall.make {
+            coinGeckoApi.getMarkets(
                 vsCurrency = "usd",
                 order = "market_cap_desc",
                 perPage = perPage,
                 page = page,
                 sparkline = true
             )
-            Log.d("CoinGeckoRepo", "API Response (page $page): ${response.size} tokens")
-            Result.Success(response.map { it.toToken() })
-        } catch (e: Exception) {
-            Log.e("CoinGeckoRepo", "Error fetching page $page: ${e.message}", e)
-            Result.Error("Failed to load page $page: ${e.message}", e)
+        }
+
+        return when (result) {
+            is Result.Success -> {
+                val tokens = result.data.map { it.toToken() }
+                Result.Success(tokens)
+            }
+            is Result.Error -> Result.Error(result.message, result.throwable)
+            Result.Loading -> Result.Loading
         }
     }
 }
