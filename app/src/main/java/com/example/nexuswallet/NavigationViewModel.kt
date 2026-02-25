@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.authentication.domain.AuthAction
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.IsAuthenticationRequiredUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,11 +17,12 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.collections.isNotEmpty
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.wallet.data.securityrefactor.IsSessionValidUseCase
 
 @HiltViewModel
 class NavigationViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
-    private val isAuthenticationRequiredUseCase: IsAuthenticationRequiredUseCase
+    private val isSessionValidUseCase: IsSessionValidUseCase
 ) : ViewModel() {
 
     // Observe wallets directly from repository
@@ -49,13 +49,13 @@ class NavigationViewModel @Inject constructor(
      */
     fun navigateToWalletDetail(walletId: String) {
         viewModelScope.launch {
-            val result = isAuthenticationRequiredUseCase(AuthAction.VIEW_WALLET)
+            val result = isSessionValidUseCase()
 
             val requiresAuth = when (result) {
-                is Result.Success -> result.data
+                is Result.Success -> !result.data  // If session is NOT valid, require auth
                 is Result.Error -> {
                     // Log error and default to requiring auth for safety
-                    Log.e("NavigationVM", "Failed to check auth requirement: ${result.message}")
+                    Log.e("NavigationVM", "Failed to check session validity: ${result.message}")
                     true // Default to requiring auth on error
                 }
                 Result.Loading -> {
@@ -82,5 +82,9 @@ class NavigationViewModel @Inject constructor(
 
     suspend fun getWalletById(walletId: String): Wallet? {
         return walletRepository.getWallet(walletId)
+    }
+
+    fun findWalletById(walletId: String): Wallet? {
+        return wallets.value.find { it.id == walletId }
     }
 }

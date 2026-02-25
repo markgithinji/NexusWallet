@@ -3,22 +3,12 @@ package com.example.nexuswallet.feature.settings.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.NexusWalletApplication
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.ClearAllSecurityDataUseCase
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.ClearPinUseCase
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.GetAvailableAuthMethodsUseCase
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.IsAnyAuthEnabledUseCase
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.IsBiometricEnabledUseCase
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.IsPinSetUseCase
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.SetBiometricEnabledUseCase
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.SetPinUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.AuthMethod
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,14 +16,11 @@ import kotlinx.coroutines.flow.update
 
 @HiltViewModel
 class SecuritySettingsViewModel @Inject constructor(
-    private val isBiometricEnabledUseCase: IsBiometricEnabledUseCase,
+    private val getAuthStatusUseCase: GetAuthStatusUseCase,
     private val setBiometricEnabledUseCase: SetBiometricEnabledUseCase,
-    private val isPinSetUseCase: IsPinSetUseCase,
     private val setPinUseCase: SetPinUseCase,
     private val clearPinUseCase: ClearPinUseCase,
-    private val clearAllSecurityDataUseCase: ClearAllSecurityDataUseCase,
-    private val isAnyAuthEnabledUseCase: IsAnyAuthEnabledUseCase,
-    private val getAvailableAuthMethodsUseCase: GetAvailableAuthMethodsUseCase
+    private val clearAllSecurityDataUseCase: ClearAllSecurityDataUseCase
 ) : ViewModel() {
 
     // UI State
@@ -62,39 +49,23 @@ class SecuritySettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = Result.Loading
 
-            // Load all security statuses in parallel
-            val bioDeferred = async { isBiometricEnabledUseCase() }
-            val pinDeferred = async { isPinSetUseCase() }
-            val methodsDeferred = async { getAvailableAuthMethodsUseCase() }
-            val anyAuthDeferred = async { isAnyAuthEnabledUseCase() }
-
-            val bioResult = bioDeferred.await()
-            val pinResult = pinDeferred.await()
-            val methodsResult = methodsDeferred.await()
-            val anyAuthResult = anyAuthDeferred.await()
-
-            // Check for errors
-            val errors = listOfNotNull(
-                (bioResult as? Result.Error)?.let { "Biometric: ${it.message}" },
-                (pinResult as? Result.Error)?.let { "PIN: ${it.message}" },
-                (methodsResult as? Result.Error)?.let { "Methods: ${it.message}" },
-                (anyAuthResult as? Result.Error)?.let { "Auth: ${it.message}" }
-            )
-
-            if (errors.isNotEmpty()) {
-                _uiState.value = Result.Error("Failed to load security status: ${errors.joinToString(", ")}")
-                return@launch
+            when (val result = getAuthStatusUseCase()) {
+                is Result.Success -> {
+                    val status = result.data
+                    _uiState.value = Result.Success(
+                        SecurityUiState(
+                            isBiometricEnabled = status.isBiometricEnabled,
+                            isPinSet = status.isPinSet,
+                            availableAuthMethods = status.availableMethods,
+                            isAnyAuthEnabled = status.isAnyAuthEnabled
+                        )
+                    )
+                }
+                is Result.Error -> {
+                    _uiState.value = Result.Error(result.message)
+                }
+                Result.Loading -> { /* Ignore */ }
             }
-
-            // Extract successful results
-            val securityState = SecurityUiState(
-                isBiometricEnabled = (bioResult as Result.Success).data,
-                isPinSet = (pinResult as Result.Success).data,
-                availableAuthMethods = (methodsResult as Result.Success).data,
-                isAnyAuthEnabled = (anyAuthResult as Result.Success).data
-            )
-
-            _uiState.value = Result.Success(securityState)
         }
     }
 
@@ -104,21 +75,7 @@ class SecuritySettingsViewModel @Inject constructor(
 
             when (val result = setBiometricEnabledUseCase(enabled)) {
                 is Result.Success -> {
-                    // Update the current UI state
-                    _uiState.update { currentState ->
-                        when (currentState) {
-                            is Result.Success -> {
-                                val updatedState = currentState.data.copy(
-                                    isBiometricEnabled = enabled,
-                                    isAnyAuthEnabled = enabled || currentState.data.isPinSet
-                                )
-                                Result.Success(updatedState)
-                            }
-                            else -> currentState
-                        }
-                    }
-                    // Refresh auth methods
-                    refreshAuthMethods()
+                    refreshAuthStatus()
                 }
                 is Result.Error -> {
                     Log.e("SecurityVM", "Failed to set biometric: ${result.message}")
@@ -130,14 +87,18 @@ class SecuritySettingsViewModel @Inject constructor(
         }
     }
 
-    private suspend fun refreshAuthMethods() {
-        when (val methodsResult = getAvailableAuthMethodsUseCase()) {
+    private suspend fun refreshAuthStatus() {
+        when (val result = getAuthStatusUseCase()) {
             is Result.Success -> {
+                val status = result.data
                 _uiState.update { currentState ->
                     when (currentState) {
                         is Result.Success -> {
                             val updatedState = currentState.data.copy(
-                                availableAuthMethods = methodsResult.data
+                                isBiometricEnabled = status.isBiometricEnabled,
+                                isPinSet = status.isPinSet,
+                                availableAuthMethods = status.availableMethods,
+                                isAnyAuthEnabled = status.isAnyAuthEnabled
                             )
                             Result.Success(updatedState)
                         }
@@ -146,7 +107,7 @@ class SecuritySettingsViewModel @Inject constructor(
                 }
             }
             is Result.Error -> {
-                Log.e("SecurityVM", "Failed to refresh auth methods: ${methodsResult.message}")
+                Log.e("SecurityVM", "Failed to refresh auth status: ${result.message}")
             }
             Result.Loading -> { /* Ignore */ }
         }
@@ -155,8 +116,8 @@ class SecuritySettingsViewModel @Inject constructor(
     fun createBackup() {
         viewModelScope.launch {
             _operationState.value = SecurityOperation.BACKING_UP
-            // TODO: Implement backup logic using backup usecases when available
-            delay(2000) // Simulate work
+            // TODO: Implement backup logic
+            delay(2000)
             _operationState.value = SecurityOperation.IDLE
         }
     }
@@ -164,8 +125,8 @@ class SecuritySettingsViewModel @Inject constructor(
     fun restoreBackup() {
         viewModelScope.launch {
             _operationState.value = SecurityOperation.RESTORING
-            // TODO: Implement restore logic using backup usecases when available
-            delay(2000) // Simulate work
+            // TODO: Implement restore logic
+            delay(2000)
             _operationState.value = SecurityOperation.IDLE
         }
     }
@@ -174,7 +135,7 @@ class SecuritySettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _operationState.value = SecurityOperation.UPDATING
             // TODO: Implement delete backup logic
-            delay(1000) // Simulate work
+            delay(1000)
             _operationState.value = SecurityOperation.IDLE
         }
     }
@@ -185,21 +146,7 @@ class SecuritySettingsViewModel @Inject constructor(
 
             when (val result = clearAllSecurityDataUseCase()) {
                 is Result.Success -> {
-                    // Reset UI state
-                    _uiState.update { currentState ->
-                        when (currentState) {
-                            is Result.Success -> {
-                                val updatedState = currentState.data.copy(
-                                    isBiometricEnabled = false,
-                                    isPinSet = false
-                                )
-                                Result.Success(updatedState)
-                            }
-                            else -> currentState
-                        }
-                    }
-                    // Refresh auth methods
-                    refreshAuthMethods()
+                    refreshAuthStatus()
                 }
                 is Result.Error -> {
                     Log.e("SecurityVM", "Failed to clear all data: ${result.message}")
@@ -223,22 +170,8 @@ class SecuritySettingsViewModel @Inject constructor(
             when (val result = setPinUseCase(pin)) {
                 is Result.Success -> {
                     if (result.data) {
-                        // Update UI state
-                        _uiState.update { currentState ->
-                            when (currentState) {
-                                is Result.Success -> {
-                                    val updatedState = currentState.data.copy(
-                                        isPinSet = true,
-                                        isAnyAuthEnabled = true
-                                    )
-                                    Result.Success(updatedState)
-                                }
-                                else -> currentState
-                            }
-                        }
+                        refreshAuthStatus()
                         _showPinSetupDialog.value = false
-                        // Refresh auth methods
-                        refreshAuthMethods()
                         true
                     } else {
                         _pinSetupError.value = "Failed to set PIN"
@@ -273,21 +206,7 @@ class SecuritySettingsViewModel @Inject constructor(
 
             when (val result = clearPinUseCase()) {
                 is Result.Success -> {
-                    // Update UI state
-                    _uiState.update { currentState ->
-                        when (currentState) {
-                            is Result.Success -> {
-                                val updatedState = currentState.data.copy(
-                                    isPinSet = false,
-                                    isAnyAuthEnabled = currentState.data.isBiometricEnabled
-                                )
-                                Result.Success(updatedState)
-                            }
-                            else -> currentState
-                        }
-                    }
-                    // Refresh auth methods
-                    refreshAuthMethods()
+                    refreshAuthStatus()
                 }
                 is Result.Error -> {
                     Log.e("SecurityVM", "Failed to remove PIN: ${result.message}")
