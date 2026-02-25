@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.market.data.model.NewsArticle
 import com.example.nexuswallet.feature.market.data.remote.ChartData
 import com.example.nexuswallet.feature.market.data.remote.ChartDuration
@@ -133,8 +134,8 @@ fun TokenDetailScreen(
         },
         containerColor = Color(0xFFF5F5F7)
     ) { padding ->
-        when (uiState) {
-            is TokenDetailUiState.Loading -> {
+        when (val state = uiState) {
+            is Result.Loading -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -145,7 +146,7 @@ fun TokenDetailScreen(
                 }
             }
 
-            is TokenDetailUiState.Error -> {
+            is Result.Error -> {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -162,7 +163,7 @@ fun TokenDetailScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = (uiState as TokenDetailUiState.Error).message,
+                        text = state.message,
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center
                     )
@@ -176,8 +177,8 @@ fun TokenDetailScreen(
                 }
             }
 
-            is TokenDetailUiState.Success -> {
-                val token = (uiState as TokenDetailUiState.Success).token
+            is Result.Success -> {
+                val token = state.data
 
                 LazyColumn(
                     modifier = Modifier
@@ -848,175 +849,6 @@ fun StatRowWithChange(
     }
 }
 
-@Composable
-fun PriceChart(
-    chartData: ChartData?,
-    selectedDuration: ChartDuration,
-    isLoading: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            // Header with title and duration selector
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Price Chart",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-
-                // Duration chips
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    ChartDuration.values().forEach { duration ->
-                        FilterChip(
-                            selected = selectedDuration == duration,
-                            onClick = { /* Will be handled by ViewModel */ },
-                            label = {
-                                Text(
-                                    text = duration.label,
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFF3B82F6),
-                                selectedLabelColor = Color.White
-                            )
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Chart area
-            if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(32.dp),
-                        color = Color(0xFF3B82F6),
-                        strokeWidth = 2.dp
-                    )
-                }
-            } else if (chartData != null && chartData.prices.isNotEmpty()) {
-                PriceLineChart(
-                    pricePoints = chartData.prices,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .background(Color(0xFFF3F4F6), RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No chart data available",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280)
-                    )
-                }
-            }
-
-            // Price stats
-            if (chartData != null && chartData.prices.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                val firstPrice = chartData.prices.first().price
-                val lastPrice = chartData.prices.last().price
-                val priceChange = lastPrice - firstPrice
-                val priceChangePercent = (priceChange / firstPrice) * 100
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = "Open",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF6B7280)
-                        )
-                        Text(
-                            text = "$${firstPrice.formatPrice()}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Change",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF6B7280)
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = if (priceChange >= 0)
-                                    Icons.Outlined.TrendingUp
-                                else
-                                    Icons.Outlined.TrendingDown,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = if (priceChange >= 0) Color(0xFF10B981) else Color(0xFFEF4444)
-                            )
-                            Text(
-                                text = "${if (priceChange >= 0) "+" else ""}${priceChangePercent.formatTwoDecimals()}%",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (priceChange >= 0) Color(0xFF10B981) else Color(
-                                    0xFFEF4444
-                                )
-                            )
-                        }
-                    }
-
-                    Column(
-                        horizontalAlignment = Alignment.End
-                    ) {
-                        Text(
-                            text = "Close",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF6B7280)
-                        )
-                        Text(
-                            text = "$${lastPrice.formatPrice()}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun NewsCard(
@@ -1114,13 +946,11 @@ fun NewsCard(
 fun NewsItem(
     article: NewsArticle
 ) {
-    val context = LocalContext.current
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-               // TODO: Handle news item click
+                // TODO: Handle news item click
             },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FAFB)),
@@ -1226,6 +1056,7 @@ fun Double.formatPrice(): String {
         else -> String.format("%,.6f", this)
     }
 }
+
 
 fun formatLargeNumber(number: Double): String {
     return when {

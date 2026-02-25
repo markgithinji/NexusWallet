@@ -23,7 +23,7 @@ class MarketViewModel @Inject constructor(
     private val webSocketRepository: WebSocketRepository
 ) : ViewModel() {
 
-    // Using Result for UI state - this is our single source of truth
+    // Using Result for UI state
     private val _uiState = MutableStateFlow<Result<List<Token>>>(Result.Loading)
     val uiState: StateFlow<Result<List<Token>>> = _uiState.asStateFlow()
 

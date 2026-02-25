@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.example.nexuswallet.feature.coin.Result
 
 @HiltViewModel
 class TokenDetailViewModel @Inject constructor(
@@ -39,8 +40,9 @@ class TokenDetailViewModel @Inject constructor(
         "avalanche-2" to "Avalanche"
     )
 
-    private val _uiState = MutableStateFlow<TokenDetailUiState>(TokenDetailUiState.Loading)
-    val uiState: StateFlow<TokenDetailUiState> = _uiState.asStateFlow()
+    // Using Result for UI state
+    private val _uiState = MutableStateFlow<Result<TokenDetail>>(Result.Loading)
+    val uiState: StateFlow<Result<TokenDetail>> = _uiState.asStateFlow()
 
     private val _chartData = MutableStateFlow<ChartData?>(null)
     val chartData: StateFlow<ChartData?> = _chartData.asStateFlow()
@@ -66,16 +68,13 @@ class TokenDetailViewModel @Inject constructor(
 
     private fun loadTokenDetails() {
         viewModelScope.launch {
-            _uiState.value = TokenDetailUiState.Loading
-            try {
-                val token = marketRepository.getTokenDetails(tokenId)
-                if (token != null) {
-                    _uiState.value = TokenDetailUiState.Success(token)
-                } else {
-                    _uiState.value = TokenDetailUiState.Error("Token not found")
-                }
-            } catch (e: Exception) {
-                _uiState.value = TokenDetailUiState.Error(e.message ?: "Failed to load token details")
+            _uiState.value = Result.Loading
+
+            val token = marketRepository.getTokenDetails(tokenId)
+            if (token != null) {
+                _uiState.value = Result.Success(token)
+            } else {
+                _uiState.value = Result.Error("Token not found")
             }
         }
     }
@@ -85,14 +84,9 @@ class TokenDetailViewModel @Inject constructor(
             _isLoadingChart.value = true
             _selectedDuration.value = duration
 
-            try {
-                val chart = marketRepository.getMarketChart(tokenId, duration)
-                _chartData.value = chart
-            } catch (e: Exception) {
-                Log.e("TokenDetailVM", "Error loading chart: ${e.message}")
-            } finally {
-                _isLoadingChart.value = false
-            }
+            val chart = marketRepository.getMarketChart(tokenId, duration)
+            _chartData.value = chart
+            _isLoadingChart.value = false
         }
     }
 
@@ -103,14 +97,9 @@ class TokenDetailViewModel @Inject constructor(
             // Get display name for news search
             val searchQuery = tokenDisplayNames[tokenId] ?: tokenId.replaceFirstChar { it.uppercase() }
 
-            try {
-                val news = marketRepository.getCoinNews(searchQuery)
-                _newsArticles.value = news
-            } catch (e: Exception) {
-                Log.e("TokenDetailVM", "Error loading news: ${e.message}")
-            } finally {
-                _isLoadingNews.value = false
-            }
+            val news = marketRepository.getCoinNews(searchQuery)
+            _newsArticles.value = news
+            _isLoadingNews.value = false
         }
     }
 
@@ -125,10 +114,4 @@ class TokenDetailViewModel @Inject constructor(
         loadChartData(_selectedDuration.value)
         loadNews()
     }
-}
-
-sealed class TokenDetailUiState {
-    object Loading : TokenDetailUiState()
-    data class Success(val token: TokenDetail) : TokenDetailUiState()
-    data class Error(val message: String) : TokenDetailUiState()
 }

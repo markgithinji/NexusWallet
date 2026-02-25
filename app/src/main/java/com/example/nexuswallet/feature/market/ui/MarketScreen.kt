@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -56,7 +57,7 @@ fun MarketScreen(
     navController: NavController,
     padding: PaddingValues
 ) {
-    val viewModel: MarketViewModel = viewModel()
+    val viewModel: MarketViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
     val tokens by viewModel.filteredTokens.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
