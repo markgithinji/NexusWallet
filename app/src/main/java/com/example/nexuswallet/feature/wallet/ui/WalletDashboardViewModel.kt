@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.ui
 
+import android.util.Log
 import  com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
 
 
@@ -11,54 +12,67 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
 import kotlin.collections.forEach
 import kotlin.collections.isNotEmpty
+import com.example.nexuswallet.feature.coin.Result
+import kotlinx.coroutines.flow.catch
 
 @HiltViewModel
 class WalletDashboardViewModel @Inject constructor(
     private val walletRepository: WalletRepository
 ) : ViewModel() {
 
-    // Wallets list
-    private val _wallets = MutableStateFlow<List<Wallet>>(emptyList())
-    val wallets: StateFlow<List<Wallet>> = _wallets
+    // Unified UI State using Result class
+    private val _uiState = MutableStateFlow<Result<List<Wallet>>>(Result.Loading)
+    val uiState: StateFlow<Result<List<Wallet>>> = _uiState.asStateFlow()
 
     // Balances map
     private val _balances = MutableStateFlow<Map<String, WalletBalance>>(emptyMap())
-    val balances: StateFlow<Map<String, WalletBalance>> = _balances
+    val balances: StateFlow<Map<String, WalletBalance>> = _balances.asStateFlow()
 
     // Total portfolio value
     private val _totalPortfolioValue = MutableStateFlow(BigDecimal.ZERO)
-    val totalPortfolioValue: StateFlow<BigDecimal> = _totalPortfolioValue
+    val totalPortfolioValue: StateFlow<BigDecimal> = _totalPortfolioValue.asStateFlow()
 
-    // Loading state
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
+    // Loading state for specific operations (delete, refresh)
+    private val _isOperationLoading = MutableStateFlow(false)
+    val isOperationLoading: StateFlow<Boolean> = _isOperationLoading.asStateFlow()
 
-    // Error state
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error
+    // Operation error state
+    private val _operationError = MutableStateFlow<String?>(null)
+    val operationError: StateFlow<String?> = _operationError.asStateFlow()
 
     init {
-        // Observe wallets from repository
+        observeWallets()
+    }
+
+    private fun observeWallets() {
         viewModelScope.launch {
-            walletRepository.walletsFlow.collectLatest { walletsList ->
-                _wallets.value = walletsList
-                loadBalances(walletsList)
-                calculateTotalPortfolio(walletsList)
-            }
+            walletRepository.observeWallets()
+                .catch { e ->
+                    _uiState.value = Result.Error("Failed to load wallets: ${e.message}")
+                }
+                .collectLatest { walletsList ->
+                    if (walletsList.isEmpty()) {
+                        _uiState.value = Result.Success(emptyList())
+                    } else {
+                        _uiState.value = Result.Success(walletsList)
+                        loadBalances(walletsList)
+                        calculateTotalPortfolio(walletsList)
+                    }
+                }
         }
     }
 
     private fun loadBalances(wallets: List<Wallet>) {
         viewModelScope.launch {
-            _isLoading.value = true
             try {
-                val balancesMap = mutableMapOf<String, com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance>()
+                val balancesMap = mutableMapOf<String, WalletBalance>()
                 wallets.forEach { wallet ->
                     val balance = walletRepository.getWalletBalance(wallet.id)
                     if (balance != null) {
@@ -66,27 +80,18 @@ class WalletDashboardViewModel @Inject constructor(
                     }
                 }
                 _balances.value = balancesMap
-                _error.value = null
             } catch (e: Exception) {
-                _error.value = "Failed to load balances: ${e.message}"
-            } finally {
-                _isLoading.value = false
+                // Don't update UI state for balance errors, just log
+                Log.e("WalletVM", "Failed to load balances: ${e.message}")
             }
         }
     }
 
     private fun calculateTotalPortfolio(wallets: List<Wallet>) {
         viewModelScope.launch {
-            var total = BigDecimal.ZERO
-            wallets.forEach { wallet ->
-                val balance = walletRepository.getWalletBalance(wallet.id)
-                balance?.let {
-                    // Add up all coin USD values
-                    total += BigDecimal(it.bitcoin?.usdValue ?: 0.0)
-                    total += BigDecimal(it.ethereum?.usdValue ?: 0.0)
-                    total += BigDecimal(it.solana?.usdValue ?: 0.0)
-                    total += BigDecimal(it.usdc?.usdValue ?: 0.0)
-                }
+            val total = wallets.sumOf { wallet ->
+                val balance = _balances.value[wallet.id]
+                BigDecimal(balance?.totalUsdValue ?: 0.0)
             }
             _totalPortfolioValue.value = total
         }
@@ -98,41 +103,67 @@ class WalletDashboardViewModel @Inject constructor(
 
     fun deleteWallet(walletId: String) {
         viewModelScope.launch {
-            _isLoading.value = true
+            _isOperationLoading.value = true
+            _operationError.value = null
             try {
                 walletRepository.deleteWallet(walletId)
-                _error.value = null
             } catch (e: Exception) {
-                _error.value = "Failed to delete wallet: ${e.message}"
+                _operationError.value = "Failed to delete wallet: ${e.message}"
             } finally {
-                _isLoading.value = false
+                _isOperationLoading.value = false
             }
         }
     }
 
     fun refresh() {
         viewModelScope.launch {
-            _isLoading.value = true
+            _isOperationLoading.value = true
+            _operationError.value = null
             try {
-                loadBalances(_wallets.value)
-                calculateTotalPortfolio(_wallets.value)
+                // Force reload balances for current wallets
+                val currentWallets = when (val state = _uiState.value) {
+                    is Result.Success -> state.data
+                    else -> emptyList()
+                }
+                loadBalances(currentWallets)
+                calculateTotalPortfolio(currentWallets)
             } catch (e: Exception) {
-                _error.value = "Failed to refresh: ${e.message}"
+                _operationError.value = "Failed to refresh: ${e.message}"
             } finally {
-                _isLoading.value = false
+                _isOperationLoading.value = false
             }
         }
     }
 
-    fun clearError() {
-        _error.value = null
+    fun clearOperationError() {
+        _operationError.value = null
     }
 
     fun hasWallets(): Boolean {
-        return _wallets.value.isNotEmpty()
+        return when (val state = _uiState.value) {
+            is Result.Success -> state.data.isNotEmpty()
+            else -> false
+        }
     }
 
     fun getWalletCount(): Int {
-        return _wallets.value.size
+        return when (val state = _uiState.value) {
+            is Result.Success -> state.data.size
+            else -> 0
+        }
+    }
+
+    fun getWallets(): List<Wallet> {
+        return when (val state = _uiState.value) {
+            is Result.Success -> state.data
+            else -> emptyList()
+        }
     }
 }
+
+// Extension property
+val WalletBalance.totalUsdValue: Double
+    get() = (bitcoin?.usdValue ?: 0.0) +
+            (ethereum?.usdValue ?: 0.0) +
+            (solana?.usdValue ?: 0.0) +
+            (usdc?.usdValue ?: 0.0)

@@ -21,11 +21,17 @@ import com.example.nexuswallet.feature.coin.Result
 
 @HiltViewModel
 class NavigationViewModel @Inject constructor(
-    walletRepository: WalletRepository,
+    private val walletRepository: WalletRepository,
     private val isAuthenticationRequiredUseCase: IsAuthenticationRequiredUseCase
 ) : ViewModel() {
 
-    val wallets: StateFlow<List<Wallet>> = walletRepository.walletsFlow
+    // Observe wallets directly from repository
+    val wallets: StateFlow<List<Wallet>> = walletRepository.observeWallets()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
 
     val hasWallets: StateFlow<Boolean> = wallets.map { it.isNotEmpty() }
         .stateIn(
@@ -74,7 +80,7 @@ class NavigationViewModel @Inject constructor(
         }
     }
 
-    fun getWalletById(walletId: String): Wallet? {
-        return wallets.value.find { it.id == walletId }
+    suspend fun getWalletById(walletId: String): Wallet? {
+        return walletRepository.getWallet(walletId)
     }
 }

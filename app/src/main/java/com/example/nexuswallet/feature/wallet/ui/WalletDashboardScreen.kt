@@ -34,6 +34,7 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.*
+import com.example.nexuswallet.feature.coin.Result
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -41,31 +42,37 @@ fun WalletDashboardScreen(
     navController: NavController,
     navigationViewModel: NavigationViewModel,
     padding: PaddingValues,
+    viewModel: WalletDashboardViewModel = hiltViewModel()
 ) {
-    val wallets by navigationViewModel.wallets.collectAsState()
-    val viewModel: WalletDashboardViewModel = hiltViewModel()
+    val uiState by viewModel.uiState.collectAsState()
+    val balances by viewModel.balances.collectAsState()
     val totalPortfolio by viewModel.totalPortfolioValue.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val isOperationLoading by viewModel.isOperationLoading.collectAsState()
+    val operationError by viewModel.operationError.collectAsState()
 
     var isRefreshing by remember { mutableStateOf(false) }
 
-    AnimatedContent(
-        targetState = Triple(isLoading, error, wallets.isEmpty()),
-        transitionSpec = {
-            fadeIn(animationSpec = tween(300)) with fadeOut(animationSpec = tween(300))
+    // Show error snackbar if operation fails
+    LaunchedEffect(operationError) {
+        operationError?.let {
+            viewModel.clearOperationError()
         }
-    ) { (loading, errorMsg, emptyWallets) ->
-        when {
-            loading -> LoadingScreen()
-            errorMsg != null -> ErrorScreen(
-                message = errorMsg,
-                onRetry = { viewModel.refresh() }
-            )
-            emptyWallets -> EmptyWalletsScreen(
-                onCreateWallet = { navController.navigate("createWallet") }
-            )
-            else -> {
+    }
+
+    when (val state = uiState) {
+        is Result.Loading -> LoadingScreen()
+
+        is Result.Error -> ErrorScreen(
+            message = state.message,
+            onRetry = { viewModel.refresh() }
+        )
+
+        is Result.Success -> {
+            if (state.data.isEmpty()) {
+                EmptyWalletsScreen(
+                    onCreateWallet = { navController.navigate("createWallet") }
+                )
+            } else {
                 Box(modifier = Modifier.fillMaxSize()) {
                     // Background
                     Box(
@@ -76,9 +83,9 @@ fun WalletDashboardScreen(
 
                     // Main content
                     DashboardContent(
-                        wallets = wallets,
+                        wallets = state.data,
                         totalPortfolio = totalPortfolio,
-                        balances = viewModel.balances.collectAsState().value,
+                        balances = balances,
                         onWalletClick = { wallet ->
                             navigationViewModel.navigateToWalletDetail(wallet.id)
                         },
@@ -90,7 +97,7 @@ fun WalletDashboardScreen(
                             viewModel.refresh()
                             isRefreshing = false
                         },
-                        isRefreshing = isRefreshing
+                        isRefreshing = isRefreshing || isOperationLoading
                     )
                 }
             }
@@ -197,17 +204,28 @@ fun DashboardTopBar(
 ) {
     TopAppBar(
         title = {
-            Text(
-                text = "Dashboard",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Dashboard,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Dashboard",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         },
         navigationIcon = {
             IconButton(onClick = { /* Open drawer */ }) {
                 Icon(
                     imageVector = Icons.Outlined.Menu,
-                    contentDescription = "Menu"
+                    contentDescription = "Menu",
+                    tint = Color.Black
                 )
             }
         },
@@ -223,6 +241,7 @@ fun DashboardTopBar(
                     Icon(
                         imageVector = Icons.Outlined.Refresh,
                         contentDescription = "Refresh",
+                        tint = Color.Black,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -554,9 +573,7 @@ fun WalletExpandedContent(
                         symbol = "Bitcoin",
                         amount = "${NumberFormat.getNumberInstance(Locale.US).format(btc.btc.toDoubleOrNull() ?: 0.0)} BTC",
                         usdValue = btc.usdValue,
-                        color = Color(0xFFF7931A),
-                        change = "+3.35%",
-                        isPositive = true
+                        color = Color(0xFFF7931A)
                     )
                 }
                 it.ethereum?.let { eth ->
@@ -565,9 +582,7 @@ fun WalletExpandedContent(
                         symbol = "Ethereum",
                         amount = "${NumberFormat.getNumberInstance(Locale.US).format(eth.eth.toDoubleOrNull() ?: 0.0)} ETH",
                         usdValue = eth.usdValue,
-                        color = Color(0xFF627EEA),
-                        change = "+1.06%",
-                        isPositive = true
+                        color = Color(0xFF627EEA)
                     )
                 }
                 it.solana?.let { sol ->
@@ -576,9 +591,7 @@ fun WalletExpandedContent(
                         symbol = "Solana",
                         amount = "${NumberFormat.getNumberInstance(Locale.US).format(sol.sol.toDoubleOrNull() ?: 0.0)} SOL",
                         usdValue = sol.usdValue,
-                        color = Color(0xFF00FFA3),
-                        change = "+2.35%",
-                        isPositive = true
+                        color = Color(0xFF00FFA3)
                     )
                 }
                 it.usdc?.let { usdc ->
@@ -587,9 +600,7 @@ fun WalletExpandedContent(
                         symbol = "USDC",
                         amount = "${NumberFormat.getNumberInstance(Locale.US).format(usdc.amountDecimal.toDoubleOrNull() ?: 0.0)} USDC",
                         usdValue = usdc.usdValue,
-                        color = Color(0xFF2775CA),
-                        change = "-0.95%",
-                        isPositive = false
+                        color = Color(0xFF2775CA)
                     )
                 }
             }
@@ -629,9 +640,7 @@ fun CoinBalanceRow(
     symbol: String,
     amount: String,
     usdValue: Double,
-    color: Color,
-    change: String,
-    isPositive: Boolean
+    color: Color
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -664,33 +673,13 @@ fun CoinBalanceRow(
             }
         }
 
-        // Right side - USD value and change
-        Column(
-            horizontalAlignment = Alignment.End
-        ) {
-            Text(
-                text = NumberFormat.getCurrencyInstance(Locale.US).format(usdValue),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Black
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Icon(
-                    imageVector = if (isPositive) Icons.Outlined.TrendingUp else Icons.Outlined.TrendingDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(12.dp),
-                    tint = if (isPositive) Color(0xFF10B981) else Color(0xFFEF4444)
-                )
-                Text(
-                    text = change,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isPositive) Color(0xFF10B981) else Color(0xFFEF4444)
-                )
-            }
-        }
+        // Right side - USD value
+        Text(
+            text = NumberFormat.getCurrencyInstance(Locale.US).format(usdValue),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black
+        )
     }
 }
 
@@ -753,7 +742,8 @@ fun EmptyWalletsScreen(
                 ) {
                     Text(
                         "Create Wallet",
-                        style = MaterialTheme.typography.labelLarge
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White
                     )
                 }
             }
@@ -831,7 +821,8 @@ fun ErrorScreen(message: String, onRetry: () -> Unit) {
                 ) {
                     Text(
                         "Try Again",
-                        style = MaterialTheme.typography.labelLarge
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White
                     )
                 }
             }
