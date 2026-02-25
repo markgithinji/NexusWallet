@@ -5,7 +5,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -20,6 +20,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.toRoute
 import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredScreen
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.market.ui.MarketScreen
@@ -29,8 +30,6 @@ import com.example.nexuswallet.feature.settings.ui.SettingsScreen
 import com.example.nexuswallet.feature.wallet.ui.ReceiveScreen
 import com.example.nexuswallet.feature.wallet.ui.SendScreen
 import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
-
-//import com.example.nexuswallet.feature.wallet.domain.WalletDataManager
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailScreen
@@ -44,7 +43,7 @@ fun Navigation() {
     val navController = rememberNavController()
     val navigationViewModel: NavigationViewModel = hiltViewModel()
 
-    // Collect all states
+    // Collect states
     val wallets by navigationViewModel.wallets.collectAsState()
     val isWalletsLoading by navigationViewModel.isWalletsLoading.collectAsState()
     val shouldNavigateToAuth by navigationViewModel.shouldNavigateToAuth.collectAsState()
@@ -52,9 +51,7 @@ fun Navigation() {
     // Handle auth navigation requests
     LaunchedEffect(shouldNavigateToAuth) {
         shouldNavigateToAuth?.let { (screen, walletId) ->
-            navController.navigate("authenticate/$screen/$walletId") {
-                launchSingleTop = true
-            }
+            navController.navigate(AuthenticateRoute(screen, walletId))
             navigationViewModel.clearAuthNavigation()
         }
     }
@@ -70,44 +67,40 @@ fun Navigation() {
         return
     }
 
-    // Determine start destination based on actual wallet data
-    val startDestination = if (wallets.isNotEmpty()) "main" else "welcome"
+    // Determine start destination
+    val startDestination = if (wallets.isNotEmpty()) MainRoute else WelcomeRoute
 
     NavHost(
         navController = navController,
         startDestination = startDestination
     ) {
-        // Welcome Screen
-        composable("welcome") {
+        composable<WelcomeRoute> {
             WelcomeScreen(
-                onCreateWallet = { navController.navigate("createWallet") },
+                onCreateWallet = { navController.navigate(CreateWalletRoute) },
                 onImportWallet = { /* TODO */ },
                 onSkip = {
-                    navController.navigate("main") {
-                        popUpTo("welcome") { inclusive = true }
+                    navController.navigate(MainRoute) {
+                        popUpTo<WelcomeRoute> { inclusive = true }
                     }
                 }
             )
         }
 
-        // Main App with Tabs
-        composable("main") {
+        composable<MainRoute> {
             MainTabScreen(
                 navController = navController,
                 navigationViewModel = navigationViewModel
             )
         }
 
-        // Market Screen (accessible from tabs)
-        composable("market") {
+        composable<MarketRoute> {
             MarketScreen(
                 navController = navController,
                 padding = PaddingValues(0.dp)
             )
         }
 
-        // Wallet Creation
-        composable("createWallet") {
+        composable<CreateWalletRoute> {
             val viewModel = hiltViewModel<WalletCreationViewModel>()
             WalletCreationScreen(
                 navController = navController,
@@ -115,246 +108,109 @@ fun Navigation() {
             )
         }
 
-        // Wallet Detail
-//        composable(
-//            route = "walletDetail/{walletId}",
-//            arguments = listOf(
-//                navArgument("walletId") {
-//                    type = NavType.StringType
-//                }
-//            )
-//        ) { backStackEntry ->
-//            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-//            val walletViewModel = hiltViewModel<WalletDetailViewModel>()
-//            val blockchainViewModel = hiltViewModel<BlockchainViewModel>()
-//
-//            LaunchedEffect(walletId) {
-//                if (walletId.isNotBlank()) {
-//                    walletViewModel.loadWallet(walletId)
-//                }
-//            }
-//
-//            WalletDetailScreen(
-//                navController = navController,
-//                walletViewModel = walletViewModel
-//            )
-//        }
+        composable<SettingsRoute> {
+            SettingsScreen(navController = navController)
+        }
 
-        // Token Detail
-        composable(
-            route = "token/{tokenId}",
-            arguments = listOf(
-                navArgument("tokenId") {
-                    type = NavType.StringType
-                }
+        composable<SecuritySettingsRoute> {
+            SecuritySettingsScreen(navController = navController)
+        }
+
+        composable<WalletDetailRoute> { backStackEntry ->
+            val args = backStackEntry.toRoute<WalletDetailRoute>()
+            WalletDetailScreen(
+                navController = navController,
+                walletId = args.walletId
             )
-        ) { backStackEntry ->
-            val tokenId = backStackEntry.arguments?.getString("tokenId") ?: "bitcoin"
+        }
+
+        composable<CoinDetailRoute> { backStackEntry ->
+            val args = backStackEntry.toRoute<CoinDetailRoute>()
+            CoinDetailScreen(
+                navController = navController,
+                walletId = args.walletId,
+                coinType = args.coinType
+            )
+        }
+
+        composable<ReceiveRoute> { backStackEntry ->
+            val args = backStackEntry.toRoute<ReceiveRoute>()
+            ReceiveScreen(
+                navController = navController,
+                walletId = args.walletId,
+                coinType = args.coinType
+            )
+        }
+
+        composable<SendRoute> { backStackEntry ->
+            val args = backStackEntry.toRoute<SendRoute>()
+            SendScreen(
+                navController = navController,
+                walletId = args.walletId,
+                coinType = args.coinType
+            )
+        }
+
+        composable<ReviewRoute> { backStackEntry ->
+            val args = backStackEntry.toRoute<ReviewRoute>()
+            TransactionReviewScreen(
+                navController = navController,
+                walletId = args.walletId,
+                coinType = args.coinType,
+                toAddress = args.toAddress,
+                amount = args.amount,
+                feeLevel = args.feeLevel
+            )
+        }
+
+        composable<TokenDetailRoute> { backStackEntry ->
+            val args = backStackEntry.toRoute<TokenDetailRoute>()
             TokenDetailScreen(
                 navController = navController,
-                tokenId = tokenId
+                tokenId = args.tokenId
             )
         }
 
-        composable("securitySettings") {
-            SecuritySettingsScreen(
-                navController = navController
+        composable<BackupRoute> { backStackEntry ->
+            val args = backStackEntry.toRoute<BackupRoute>()
+            BackupScreen(
+                navController = navController,
+                walletId = args.walletId
             )
         }
 
-        composable("settings") {
-            SettingsScreen(
-                navController = navController
-            )
-        }
-
-        composable("receive/{walletId}") { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            ReceiveScreen(navController, walletId)
-        }
-
-        composable(
-            route = "authenticate/{screen}/{walletId}",
-            arguments = listOf(
-                navArgument("screen") { type = NavType.StringType },
-                navArgument("walletId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val screen = backStackEntry.arguments?.getString("screen") ?: ""
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
+        composable<AuthenticateRoute> { backStackEntry ->
+            val args = backStackEntry.toRoute<AuthenticateRoute>()
 
             AuthenticationRequiredScreen(
                 onAuthenticated = {
-                    // Navigate to the appropriate screen after authentication
-                    when (screen) {
+                    when (args.screen) {
                         "walletDetail" -> {
-                            navController.navigate("walletDetail/$walletId") {
-                                popUpTo("authenticate/{screen}/{walletId}") {
-                                    inclusive = true
-                                }
+                            navController.navigate(WalletDetailRoute(args.walletId)) {
+                                popUpTo<AuthenticateRoute> { inclusive = true }
                             }
                         }
-
                         "send" -> {
-                            navController.navigate("send/$walletId") {
-                                popUpTo("authenticate/{screen}/{walletId}") {
-                                    inclusive = true
-                                }
+                            // TODO: pass coin type here
+                            navController.navigate(SendRoute(args.walletId, CoinType.BITCOIN)) {
+                                popUpTo<AuthenticateRoute> { inclusive = true }
                             }
                         }
-
                         "backup" -> {
-                            navController.navigate("backup/$walletId") {
-                                popUpTo("authenticate/{screen}/{walletId}") {
-                                    inclusive = true
-                                }
+                            navController.navigate(BackupRoute(args.walletId)) {
+                                popUpTo<AuthenticateRoute> { inclusive = true }
                             }
                         }
-
                         else -> {
-                            // Fallback to main
-                            navController.navigate("main") {
-                                popUpTo("authenticate/{screen}/{walletId}") {
-                                    inclusive = true
-                                }
+                            navController.navigate(MainRoute) {
+                                popUpTo<AuthenticateRoute> { inclusive = true }
                             }
                         }
                     }
                 },
                 onCancel = {
-                    navController.navigateUp()
+                    navController.popBackStack()
                 }
-            )
-        }
-
-        // Add backup route
-        composable(
-            route = "backup/{walletId}",
-            arguments = listOf(
-                navArgument("walletId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            BackupScreen(
-                navController = navController,
-                walletId = walletId
-            )
-        }
-
-        // Receive route
-        composable(
-            route = "receive/{walletId}?coinType={coinType}",
-            arguments = listOf(
-                navArgument("walletId") { type = NavType.StringType },
-                navArgument("coinType") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = "BITCOIN"
-                }
-            )
-        ) { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            val coinTypeString = backStackEntry.arguments?.getString("coinType") ?: "BITCOIN"
-            val coinType = try {
-                CoinType.valueOf(coinTypeString)
-            } catch (e: IllegalArgumentException) {
-                CoinType.BITCOIN
-            }
-
-            ReceiveScreen(
-                navController = navController,
-                walletId = walletId,
-                coinType = coinType
-            )
-        }
-
-        composable(
-            route = "walletDetail/{walletId}",
-            arguments = listOf(navArgument("walletId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            WalletDetailScreen(
-                navController = navController,
-                walletId = walletId
-            )
-        }
-
-        composable(
-            route = "coin/{walletId}/{coinType}",
-            arguments = listOf(
-                navArgument("walletId") { type = NavType.StringType },
-                navArgument("coinType") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            val coinTypeString = backStackEntry.arguments?.getString("coinType") ?: ""
-            val coinType = try {
-                CoinType.valueOf(coinTypeString)
-            } catch (e: IllegalArgumentException) {
-                CoinType.BITCOIN
-            }
-
-            CoinDetailScreen(
-                navController = navController,
-                walletId = walletId,
-                coinType = coinType
-            )
-        }
-        // ===== SEND FLOW SCREENS =====
-
-        composable(
-            route = "send/{walletId}/{coinType}",
-            arguments = listOf(
-                navArgument("walletId") { type = NavType.StringType },
-                navArgument("coinType") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            val coinTypeString = backStackEntry.arguments?.getString("coinType")?.uppercase() ?: "BITCOIN"
-            val coinType = try {
-                CoinType.valueOf(coinTypeString)
-            } catch (e: IllegalArgumentException) {
-                CoinType.BITCOIN
-            }
-
-            SendScreen(
-                navController = navController,
-                walletId = walletId,
-                coinType = coinType
-            )
-        }
-
-        composable(
-            route = "review/{walletId}/{coinType}?toAddress={toAddress}&amount={amount}&feeLevel={feeLevel}",
-            arguments = listOf(
-                navArgument("walletId") { type = NavType.StringType },
-                navArgument("coinType") { type = NavType.StringType },
-                navArgument("toAddress") { type = NavType.StringType },
-                navArgument("amount") { type = NavType.StringType },
-                navArgument("feeLevel") {
-                    type = NavType.StringType
-                    nullable = true
-                }
-            )
-        ) { backStackEntry ->
-            val walletId = backStackEntry.arguments?.getString("walletId") ?: ""
-            val coinTypeString = backStackEntry.arguments?.getString("coinType")?.uppercase() ?: "BITCOIN"
-            val coinType = try {
-                CoinType.valueOf(coinTypeString)
-            } catch (e: IllegalArgumentException) {
-                CoinType.BITCOIN
-            }
-            val toAddress = backStackEntry.arguments?.getString("toAddress") ?: ""
-            val amount = backStackEntry.arguments?.getString("amount") ?: ""
-            val feeLevel = backStackEntry.arguments?.getString("feeLevel")
-
-            TransactionReviewScreen(
-                navController = navController,
-                walletId = walletId,
-                coinType = coinType,
-                toAddress = toAddress,
-                amount = amount,
-                feeLevel = feeLevel
             )
         }
     }
