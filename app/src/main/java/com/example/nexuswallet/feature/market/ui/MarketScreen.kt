@@ -54,7 +54,8 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MarketScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
+    onNavigateToTokenDetail: (String) -> Unit,
     padding: PaddingValues
 ) {
     val viewModel: MarketViewModel = hiltViewModel()
@@ -146,7 +147,7 @@ fun MarketScreen(
                                 tokens = tokens,
                                 isLoadingMore = isLoadingMore,
                                 onTokenClick = { token ->
-                                    navController.navigate("token/${token.id}")
+                                    onNavigateToTokenDetail(token.id)
                                 },
                                 onLoadMore = { viewModel.loadNextPage() }
                             )
@@ -208,7 +209,7 @@ fun MarketScreen(
                                     tokens = tokens,
                                     isLoadingMore = isLoadingMore,
                                     onTokenClick = { token ->
-                                        navController.navigate("token/${token.id}")
+                                        onNavigateToTokenDetail(token.id)
                                     },
                                     onLoadMore = { viewModel.loadNextPage() }
                                 )
@@ -224,7 +225,7 @@ fun MarketScreen(
                                 tokens = tokens,
                                 isLoadingMore = isLoadingMore,
                                 onTokenClick = { token ->
-                                    navController.navigate("token/${token.id}")
+                                    onNavigateToTokenDetail(token.id)
                                 },
                                 onLoadMore = { viewModel.loadNextPage() }
                             )

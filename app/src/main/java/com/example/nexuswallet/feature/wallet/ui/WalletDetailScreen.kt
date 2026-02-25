@@ -65,6 +65,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
@@ -87,7 +88,11 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletDetailScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
+    onNavigateToCoinDetail: (String, CoinType) -> Unit,
+    onNavigateToReceive: (String, CoinType) -> Unit,
+    onNavigateToSend: (String, CoinType) -> Unit,
+    onNavigateToAllTransactions: (String) -> Unit,
     walletId: String,
     walletViewModel: WalletDetailViewModel = hiltViewModel(),
 ) {
@@ -124,7 +129,7 @@ fun WalletDetailScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = onNavigateUp) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
@@ -166,13 +171,16 @@ fun WalletDetailScreen(
                 balance = uiState.balance,
                 transactions = uiState.transactions,
                 pricePercentages = uiState.pricePercentages,
-                navController = navController,
+                onNavigateToCoinDetail = onNavigateToCoinDetail,
+                onNavigateToReceive = onNavigateToReceive,
+                onNavigateToSend = onNavigateToSend,
+                onNavigateToAllTransactions = onNavigateToAllTransactions,
                 viewModel = walletViewModel,
                 padding = padding
             )
         } ?: run {
             EmptyWalletView(
-                onBack = { navController.navigateUp() }
+                onBack = onNavigateUp
             )
         }
     }
@@ -184,7 +192,10 @@ fun WalletDetailContent(
     balance: WalletBalance?,
     transactions: List<Any>,
     pricePercentages: Map<String, Double>,
-    navController: NavController,
+    onNavigateToCoinDetail: (String, CoinType) -> Unit,
+    onNavigateToReceive: (String, CoinType) -> Unit,
+    onNavigateToSend: (String, CoinType) -> Unit,
+    onNavigateToAllTransactions: (String) -> Unit,
     viewModel: WalletDetailViewModel,
     padding: PaddingValues
 ) {
@@ -210,8 +221,8 @@ fun WalletDetailContent(
         // Quick Actions
         item {
             QuickActionsRow(
-                onReceive = { /* Navigate to receive */ },
-                onSend = { /* Navigate to send */ },
+                onReceive = { onNavigateToReceive(wallet.id, CoinType.BITCOIN) },
+                onSend = { onNavigateToSend(wallet.id, CoinType.BITCOIN) },
                 onSwap = { /* Navigate to swap */ },
                 onMore = { /* Show more options */ }
             )
@@ -223,7 +234,6 @@ fun WalletDetailContent(
         }
 
         wallet.bitcoin?.let { coin ->
-            // Get percentage using the collected state
             val percentage = pricePercentages["bitcoin"]
             item(key = "btc_${pricePercentages.hashCode()}") {
                 CoinDetailCard(
@@ -232,7 +242,7 @@ fun WalletDetailContent(
                     balance = balance?.bitcoin,
                     color = Color(0xFFF7931A),
                     icon = Icons.Outlined.CurrencyBitcoin,
-                    onClick = { navController.navigate("coin/${wallet.id}/BTC") },
+                    onClick = { onNavigateToCoinDetail(wallet.id, CoinType.BITCOIN) },
                     priceChangePercentage = percentage
                 )
             }
@@ -247,7 +257,7 @@ fun WalletDetailContent(
                     balance = balance?.ethereum,
                     color = Color(0xFF627EEA),
                     icon = Icons.Outlined.Diamond,
-                    onClick = { navController.navigate("coin/${wallet.id}/ETH") },
+                    onClick = { onNavigateToCoinDetail(wallet.id, CoinType.ETHEREUM) },
                     priceChangePercentage = percentage
                 )
             }
@@ -262,7 +272,7 @@ fun WalletDetailContent(
                     balance = balance?.solana,
                     color = Color(0xFF00FFA3),
                     icon = Icons.Outlined.FlashOn,
-                    onClick = { navController.navigate("coin/${wallet.id}/SOL") },
+                    onClick = { onNavigateToCoinDetail(wallet.id, CoinType.SOLANA) },
                     priceChangePercentage = percentage
                 )
             }
@@ -277,7 +287,7 @@ fun WalletDetailContent(
                     balance = balance?.usdc,
                     color = Color(0xFF2775CA),
                     icon = Icons.Outlined.AttachMoney,
-                    onClick = { navController.navigate("coin/${wallet.id}/USDC") },
+                    onClick = { onNavigateToCoinDetail(wallet.id, CoinType.USDC) },
                     priceChangePercentage = percentage
                 )
             }
@@ -289,7 +299,7 @@ fun WalletDetailContent(
                 TransactionsContainer(
                     transactions = transactions,
                     wallet = wallet,
-                    onViewAll = { /* Navigate to all transactions */ }
+                    onViewAll = { onNavigateToAllTransactions(wallet.id) }
                 )
             }
         } else {

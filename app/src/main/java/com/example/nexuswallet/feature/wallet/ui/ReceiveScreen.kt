@@ -83,7 +83,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReceiveScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
     walletId: String,
     coinType: CoinType,
     viewModel: ReceiveViewModel = hiltViewModel()
@@ -130,7 +130,7 @@ fun ReceiveScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = onNavigateUp) {
                         Icon(
                             Icons.Default.ArrowBack,
                             "Back",

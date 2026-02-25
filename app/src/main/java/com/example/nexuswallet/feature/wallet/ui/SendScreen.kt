@@ -46,7 +46,8 @@ import java.math.RoundingMode
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SendScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
+    onNavigateToReview: (String, CoinType, String, String, FeeLevel?) -> Unit,
     walletId: String,
     coinType: CoinType,
     ethereumViewModel: EthereumSendViewModel = hiltViewModel(),
@@ -104,7 +105,7 @@ fun SendScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = onNavigateUp) {
                         Icon(
                             Icons.Default.ArrowBack,
                             "Back",
@@ -402,21 +403,45 @@ fun SendScreen(
                     when (coinType) {
                         CoinType.ETHEREUM -> {
                             ethereumViewModel.send { txHash ->
-                                navController.navigate("review/$walletId/ETH?toAddress=${ethereumUiState.value.toAddress}&amount=${ethereumUiState.value.amount}&feeLevel=${ethereumUiState.value.feeLevel.name}")
+                                onNavigateToReview(
+                                    walletId,
+                                    CoinType.ETHEREUM,
+                                    ethereumUiState.value.toAddress,
+                                    ethereumUiState.value.amount,
+                                    ethereumUiState.value.feeLevel
+                                )
                             }
                         }
                         CoinType.USDC -> {
                             usdcViewModel.send { txHash ->
-                                navController.navigate("review/$walletId/USDC?toAddress=${usdcState.value.toAddress}&amount=${usdcState.value.amount}&feeLevel=${usdcState.value.feeLevel.name}")
+                                onNavigateToReview(
+                                    walletId,
+                                    CoinType.USDC,
+                                    usdcState.value.toAddress,
+                                    usdcState.value.amount,
+                                    usdcState.value.feeLevel
+                                )
                             }
                         }
                         CoinType.SOLANA -> {
                             solanaViewModel.send { txHash ->
-                                navController.navigate("review/$walletId/SOL?toAddress=${solanaState.value.toAddress}&amount=${solanaState.value.amount}&feeLevel=${solanaState.value.feeLevel.name}")
+                                onNavigateToReview(
+                                    walletId,
+                                    CoinType.SOLANA,
+                                    solanaState.value.toAddress,
+                                    solanaState.value.amount,
+                                    solanaState.value.feeLevel
+                                )
                             }
                         }
                         CoinType.BITCOIN -> {
-                            navController.navigate("review/$walletId/BTC?toAddress=${bitcoinState.value.toAddress}&amount=${bitcoinState.value.amount}&feeLevel=${bitcoinState.value.feeLevel.name}")
+                            onNavigateToReview(
+                                walletId,
+                                CoinType.BITCOIN,
+                                bitcoinState.value.toAddress,
+                                bitcoinState.value.amount,
+                                bitcoinState.value.feeLevel
+                            )
                         }
                     }
                 },

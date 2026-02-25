@@ -39,8 +39,8 @@ import com.example.nexuswallet.feature.coin.Result
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun WalletDashboardScreen(
-    navController: NavController,
-    navigationViewModel: NavigationViewModel,
+    onNavigateToWalletDetail: (String) -> Unit,
+    onNavigateToCreateWallet: () -> Unit,
     padding: PaddingValues,
     viewModel: WalletDashboardViewModel = hiltViewModel()
 ) {
@@ -70,7 +70,7 @@ fun WalletDashboardScreen(
         is Result.Success -> {
             if (state.data.isEmpty()) {
                 EmptyWalletsScreen(
-                    onCreateWallet = { navController.navigate("createWallet") }
+                    onCreateWallet = onNavigateToCreateWallet
                 )
             } else {
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -87,7 +87,7 @@ fun WalletDashboardScreen(
                         totalPortfolio = totalPortfolio,
                         balances = balances,
                         onWalletClick = { wallet ->
-                            navigationViewModel.navigateToWalletDetail(wallet.id)
+                            onNavigateToWalletDetail(wallet.id)
                         },
                         onDeleteWallet = { walletId ->
                             viewModel.deleteWallet(walletId)

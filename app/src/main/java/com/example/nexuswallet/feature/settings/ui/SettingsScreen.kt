@@ -35,7 +35,8 @@ import androidx.navigation.NavController
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    navController: NavController
+    onNavigateUp: () -> Unit,
+    onNavigateToSecurity: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -60,7 +61,7 @@ fun SettingsScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = onNavigateUp) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
@@ -87,7 +88,7 @@ fun SettingsScreen(
                 title = "Security",
                 description = "PIN, Biometric, Encryption",
                 icon = Icons.Outlined.Security,
-                onClick = { navController.navigate("securitySettings") }
+                onClick = onNavigateToSecurity
             )
 
             Spacer(modifier = Modifier.height(1.dp))

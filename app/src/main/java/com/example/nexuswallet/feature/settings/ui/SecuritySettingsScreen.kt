@@ -36,7 +36,7 @@ import com.example.nexuswallet.feature.coin.Result
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SecuritySettingsScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
     viewModel: SecuritySettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -86,7 +86,7 @@ fun SecuritySettingsScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = onNavigateUp) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",

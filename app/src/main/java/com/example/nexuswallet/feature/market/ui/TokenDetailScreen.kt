@@ -71,7 +71,7 @@ import com.example.nexuswallet.feature.market.data.remote.TokenDetail
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TokenDetailScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
     tokenId: String,
     viewModel: TokenDetailViewModel = hiltViewModel()
 ) {
@@ -111,7 +111,7 @@ fun TokenDetailScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = onNavigateUp) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back"

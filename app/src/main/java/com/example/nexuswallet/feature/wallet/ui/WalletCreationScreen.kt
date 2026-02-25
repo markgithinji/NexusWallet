@@ -53,7 +53,8 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletCreationScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
+    onNavigateToMain: () -> Unit,
     viewModel: WalletCreationViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -69,11 +70,7 @@ fun WalletCreationScreen(
     // Handle navigation when wallet is created
     LaunchedEffect(uiState) {
         if (uiState is WalletCreationUiState.WalletCreated) {
-            navController.navigate("main") {
-                popUpTo("main") {
-                    inclusive = false
-                }
-            }
+            onNavigateToMain()
         }
     }
 
@@ -85,7 +82,7 @@ fun WalletCreationScreen(
                     if (currentStep > 0) {
                         IconButton(onClick = {
                             if (currentStep == 1 && !hasSeenSecurityWarning) {
-                                navController.navigateUp()
+                                onNavigateUp()
                             } else {
                                 viewModel.previousStep()
                             }
@@ -187,7 +184,7 @@ fun WalletCreationScreen(
                                 val wallet = (uiState as WalletCreationUiState.WalletCreated).wallet
                                 WalletSuccessStep(
                                     wallet = wallet,
-                                    onFinish = { }
+                                    onFinish = onNavigateToMain
                                 )
                             }
                             is WalletCreationUiState.Loading -> {
@@ -443,7 +440,7 @@ fun CoinSelectionStep(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // USDC Option (only if Ethereum is selected)
+        // USDC Option
         if (localSelection.includeEthereum) {
             CoinToggleCard(
                 icon = Icons.Default.AttachMoney,

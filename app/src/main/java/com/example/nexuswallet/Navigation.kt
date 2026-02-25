@@ -88,38 +88,82 @@ fun Navigation() {
 
         composable<MainRoute> {
             MainTabScreen(
-                navController = navController,
+                onNavigateToCreateWallet = { navController.navigate(CreateWalletRoute) },
+                onNavigateToSettings = { navController.navigate(SettingsRoute) },
+                onNavigateToMarket = { navController.navigate(MarketRoute) },
+                onNavigateToWalletDetail = { walletId ->
+                    navController.navigate(WalletDetailRoute(walletId))
+                },
+                onNavigateToCoinDetail = { walletId, coinType ->
+                    navController.navigate(CoinDetailRoute(walletId, coinType))
+                },
+                onNavigateToTokenDetail = { tokenId ->
+                    navController.navigate(TokenDetailRoute(tokenId))
+                },
+                onNavigateToReceive = { walletId, coinType ->
+                    navController.navigate(ReceiveRoute(walletId, coinType))
+                },
+                onNavigateToSend = { walletId, coinType ->
+                    navController.navigate(SendRoute(walletId, coinType))
+                },
+                padding = PaddingValues(0.dp),
                 navigationViewModel = navigationViewModel
             )
         }
 
         composable<MarketRoute> {
             MarketScreen(
-                navController = navController,
+                onNavigateUp = { navController.navigateUp() },
+                onNavigateToTokenDetail = { tokenId ->
+                    navController.navigate(TokenDetailRoute(tokenId))
+                },
                 padding = PaddingValues(0.dp)
             )
         }
-
         composable<CreateWalletRoute> {
             val viewModel = hiltViewModel<WalletCreationViewModel>()
             WalletCreationScreen(
-                navController = navController,
+                onNavigateUp = { navController.navigateUp() },
+                onNavigateToMain = {
+                    navController.navigate(MainRoute) {
+                        popUpTo(MainRoute) {
+                            inclusive = false
+                        }
+                    }
+                },
                 viewModel = viewModel
             )
         }
 
         composable<SettingsRoute> {
-            SettingsScreen(navController = navController)
+            SettingsScreen(
+                onNavigateUp = { navController.navigateUp() },
+                onNavigateToSecurity = { navController.navigate(SecuritySettingsRoute) }
+            )
         }
 
         composable<SecuritySettingsRoute> {
-            SecuritySettingsScreen(navController = navController)
+            SecuritySettingsScreen(
+                onNavigateUp = { navController.navigateUp() }
+            )
         }
 
         composable<WalletDetailRoute> { backStackEntry ->
             val args = backStackEntry.toRoute<WalletDetailRoute>()
             WalletDetailScreen(
-                navController = navController,
+                onNavigateUp = { navController.navigateUp() },
+                onNavigateToCoinDetail = { walletId, coinType ->
+                    navController.navigate(CoinDetailRoute(walletId, coinType))
+                },
+                onNavigateToReceive = { walletId, coinType ->
+                    navController.navigate(ReceiveRoute(walletId, coinType))
+                },
+                onNavigateToSend = { walletId, coinType ->
+                    navController.navigate(SendRoute(walletId, coinType))
+                },
+                onNavigateToAllTransactions = { walletId ->
+                    // TODO: Navigate to all transactions screen
+                },
                 walletId = args.walletId
             )
         }
@@ -127,7 +171,16 @@ fun Navigation() {
         composable<CoinDetailRoute> { backStackEntry ->
             val args = backStackEntry.toRoute<CoinDetailRoute>()
             CoinDetailScreen(
-                navController = navController,
+                onNavigateUp = { navController.navigateUp() },
+                onNavigateToReceive = { walletId, coinType ->
+                    navController.navigate(ReceiveRoute(walletId, coinType))
+                },
+                onNavigateToSend = { walletId, coinType ->
+                    navController.navigate(SendRoute(walletId, coinType))
+                },
+                onNavigateToAllTransactions = { walletId, coinType ->
+                    // TODO: Navigate to all transactions screen
+                },
                 walletId = args.walletId,
                 coinType = args.coinType
             )
@@ -136,7 +189,7 @@ fun Navigation() {
         composable<ReceiveRoute> { backStackEntry ->
             val args = backStackEntry.toRoute<ReceiveRoute>()
             ReceiveScreen(
-                navController = navController,
+                onNavigateUp = { navController.navigateUp() },
                 walletId = args.walletId,
                 coinType = args.coinType
             )
@@ -145,7 +198,18 @@ fun Navigation() {
         composable<SendRoute> { backStackEntry ->
             val args = backStackEntry.toRoute<SendRoute>()
             SendScreen(
-                navController = navController,
+                onNavigateUp = { navController.navigateUp() },
+                onNavigateToReview = { walletId, coinType, toAddress, amount, feeLevel ->
+                    navController.navigate(
+                        ReviewRoute(
+                            walletId = walletId,
+                            coinType = coinType,
+                            toAddress = toAddress,
+                            amount = amount,
+                            feeLevel = feeLevel?.name
+                        )
+                    )
+                },
                 walletId = args.walletId,
                 coinType = args.coinType
             )
@@ -154,7 +218,12 @@ fun Navigation() {
         composable<ReviewRoute> { backStackEntry ->
             val args = backStackEntry.toRoute<ReviewRoute>()
             TransactionReviewScreen(
-                navController = navController,
+                onNavigateUp = { navController.navigateUp() },
+                onNavigateToWalletDetail = { walletId ->
+                    navController.navigate(WalletDetailRoute(walletId)) {
+                        popUpTo(WalletDetailRoute(walletId)) { inclusive = true }
+                    }
+                },
                 walletId = args.walletId,
                 coinType = args.coinType,
                 toAddress = args.toAddress,
@@ -166,7 +235,7 @@ fun Navigation() {
         composable<TokenDetailRoute> { backStackEntry ->
             val args = backStackEntry.toRoute<TokenDetailRoute>()
             TokenDetailScreen(
-                navController = navController,
+                onNavigateUp = { navController.navigateUp() },
                 tokenId = args.tokenId
             )
         }
@@ -174,7 +243,7 @@ fun Navigation() {
         composable<BackupRoute> { backStackEntry ->
             val args = backStackEntry.toRoute<BackupRoute>()
             BackupScreen(
-                navController = navController,
+                onNavigateUp = { navController.navigateUp() },
                 walletId = args.walletId
             )
         }
@@ -191,7 +260,6 @@ fun Navigation() {
                             }
                         }
                         "send" -> {
-                            // TODO: pass coin type here
                             navController.navigate(SendRoute(args.walletId, CoinType.BITCOIN)) {
                                 popUpTo<AuthenticateRoute> { inclusive = true }
                             }

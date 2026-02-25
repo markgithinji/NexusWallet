@@ -61,7 +61,8 @@ import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionReviewScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
+    onNavigateToWalletDetail: (String) -> Unit,
     walletId: String,
     coinType: CoinType,
     toAddress: String,
@@ -126,7 +127,7 @@ fun TransactionReviewScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = onNavigateUp) {
                         Icon(Icons.Default.ArrowBack, "Back", tint = Color.Black)
                     }
                 },
@@ -149,9 +150,7 @@ fun TransactionReviewScreen(
                     ) {
                         Button(
                             onClick = {
-                                navController.navigate("walletDetail/$walletId") {
-                                    popUpTo("walletDetail/$walletId") { inclusive = true }
-                                }
+                                onNavigateToWalletDetail(walletId)
                             },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
@@ -304,7 +303,7 @@ fun TransactionReviewScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // From Address (show wallet address from state)
+            // From Address
             when (coinType) {
                 CoinType.ETHEREUM -> {
                     ethereumState.value.fromAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
@@ -355,7 +354,7 @@ fun TransactionReviewScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Fee Preview (now using coin-specific fee displays)
+            // Fee Preview
             when (coinType) {
                 CoinType.ETHEREUM -> {
                     ethereumState.value.feeEstimate?.let { fee ->

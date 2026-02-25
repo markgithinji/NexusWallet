@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
@@ -27,7 +28,15 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTabScreen(
-    navController: NavController,
+    onNavigateToCreateWallet: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToMarket: () -> Unit,
+    onNavigateToWalletDetail: (String) -> Unit,
+    onNavigateToCoinDetail: (String, CoinType) -> Unit,
+    onNavigateToTokenDetail: (String) -> Unit,
+    onNavigateToReceive: (String, CoinType) -> Unit,
+    onNavigateToSend: (String, CoinType) -> Unit,
+    padding: PaddingValues,
     navigationViewModel: NavigationViewModel
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -67,7 +76,7 @@ fun MainTabScreen(
                 actions = {
                     if (selectedTab == 0) {
                         IconButton(
-                            onClick = { navController.navigate("createWallet") }
+                            onClick = onNavigateToCreateWallet
                         ) {
                             Icon(
                                 Icons.Outlined.Add,
@@ -134,7 +143,10 @@ fun MainTabScreen(
                     // Market Tab
                     NavigationBarItem(
                         selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
+                        onClick = {
+                            selectedTab = 1
+                            onNavigateToMarket()
+                        },
                         icon = {
                             Icon(
                                 imageVector = if (selectedTab == 1)
@@ -164,7 +176,10 @@ fun MainTabScreen(
                     // Settings Tab
                     NavigationBarItem(
                         selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
+                        onClick = {
+                            selectedTab = 2
+                            onNavigateToSettings()
+                        },
                         icon = {
                             Icon(
                                 imageVector = if (selectedTab == 2)
@@ -196,7 +211,7 @@ fun MainTabScreen(
         floatingActionButton = {
             if (selectedTab == 0) {
                 FloatingActionButton(
-                    onClick = { navController.navigate("createWallet") },
+                    onClick = onNavigateToCreateWallet,
                     shape = RoundedCornerShape(16.dp),
                     containerColor = Color(0xFF3B82F6),
                     elevation = FloatingActionButtonDefaults.elevation(0.dp)
@@ -210,19 +225,27 @@ fun MainTabScreen(
             }
         },
         containerColor = Color(0xFFF5F5F7)
-    ) { padding ->
+    ) { scaffoldPadding ->
         when (selectedTab) {
             0 -> WalletDashboardScreen(
-                navController = navController,
-                padding = padding,
-                navigationViewModel = navigationViewModel
+                onNavigateToWalletDetail = onNavigateToWalletDetail,
+                onNavigateToCreateWallet = onNavigateToCreateWallet,
+                padding = PaddingValues(
+                    top = scaffoldPadding.calculateTopPadding(),
+                    bottom = scaffoldPadding.calculateBottomPadding()
+                )
             )
             1 -> MarketScreen(
-                navController = navController,
-                padding = padding
+                onNavigateUp = { /* Handle market screen back navigation */ },
+                onNavigateToTokenDetail = onNavigateToTokenDetail,
+                padding = PaddingValues(
+                    top = scaffoldPadding.calculateTopPadding(),
+                    bottom = scaffoldPadding.calculateBottomPadding()
+                )
             )
             2 -> SettingsScreen(
-                navController = navController,
+                onNavigateUp = { /* Handle settings screen back navigation */ },
+                onNavigateToSecurity = onNavigateToSettings
             )
         }
     }

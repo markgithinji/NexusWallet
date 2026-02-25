@@ -40,7 +40,10 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoinDetailScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
+    onNavigateToReceive: (String, CoinType) -> Unit,
+    onNavigateToSend: (String, CoinType) -> Unit,
+    onNavigateToAllTransactions: (String, CoinType) -> Unit,
     walletId: String,
     coinType: CoinType,
     viewModel: CoinDetailViewModel = hiltViewModel()
@@ -103,7 +106,7 @@ fun CoinDetailScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = onNavigateUp) {
                         Icon(
                             Icons.Default.ArrowBack,
                             "Back",
@@ -169,10 +172,10 @@ fun CoinDetailScreen(
                 CoinActionsCard(
                     coinType = coinType,
                     onReceive = {
-                        navController.navigate("receive/${state.walletId}?coinType=${coinType.name}")
+                        onNavigateToReceive(state.walletId, coinType)
                     },
                     onSend = {
-                        navController.navigate("send/${state.walletId}/${coinType.name}")
+                        onNavigateToSend(state.walletId, coinType)
                     }
                 )
             }
@@ -190,7 +193,7 @@ fun CoinDetailScreen(
                     transactions = state.transactions,
                     coinType = coinType,
                     onViewAll = {
-                        navController.navigate("transactions/${state.walletId}?coinType=${coinType.name}")
+                        onNavigateToAllTransactions(state.walletId, coinType)
                     }
                 )
             }

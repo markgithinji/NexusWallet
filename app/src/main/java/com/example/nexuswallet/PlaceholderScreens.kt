@@ -50,13 +50,16 @@ fun SendScreen(navController: NavController, walletId: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BackupScreen(navController: NavController, walletId: String) {
+fun BackupScreen(
+    onNavigateUp: () -> Unit,
+    walletId: String
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Backup") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = onNavigateUp) {
                         Icon(Icons.Default.ArrowBack, "Back")
                     }
                 }
