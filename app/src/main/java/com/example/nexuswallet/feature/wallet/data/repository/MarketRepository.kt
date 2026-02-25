@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.wallet.data.repository
 
 import android.util.Log
 import com.example.nexuswallet.BuildConfig
+import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.market.data.model.NewsArticle
 import com.example.nexuswallet.feature.market.data.model.toChartData
 import com.example.nexuswallet.feature.market.data.model.toNewsArticle
@@ -15,6 +16,8 @@ import com.example.nexuswallet.feature.market.data.remote.PricePoint
 import com.example.nexuswallet.feature.market.data.remote.TokenDetail
 import com.example.nexuswallet.feature.market.data.remote.VolumePoint
 import javax.inject.Inject
+import com.example.nexuswallet.feature.coin.Result
+import retrofit2.HttpException
 import javax.inject.Singleton
 
 @Singleton
@@ -30,66 +33,69 @@ class MarketRepository @Inject constructor(
      * Get latest price percentages for coins
      */
     suspend fun getLatestPricePercentages(): Map<String, Double> {
-        return try {
-            Log.d("MarketRepo", "========== FETCHING PERCENTAGES ==========")
-            Log.d("MarketRepo", "Calling CoinGecko API...")
+        Log.d("MarketRepo", "========== FETCHING PERCENTAGES ==========")
 
-            val response = coinGeckoApi.getMarkets(
+        val result = SafeApiCall.make {
+            coinGeckoApi.getMarkets(
                 vsCurrency = "usd",
                 order = "market_cap_desc",
                 perPage = 100,
                 page = 1,
                 sparkline = false
             )
+        }
 
-            Log.d("MarketRepo", "API Response received")
-            Log.d("MarketRepo", "Total coins in response: ${response.size}")
+        return when (result) {
+            is Result.Success -> {
+                val response = result.data
+                Log.d("MarketRepo", "API Response received: ${response.size} coins")
 
-            if (response.isEmpty()) {
-                Log.e("MarketRepo", "Response is empty!")
-                return emptyMap()
+                if (response.isEmpty()) {
+                    Log.e("MarketRepo", "Response is empty!")
+                    emptyMap()
+                } else {
+                    // Log first 5 coins for debugging
+                    response.take(5).forEachIndexed { index, coin ->
+                        Log.d("MarketRepo", "  [$index] ID: ${coin.id}, Symbol: ${coin.symbol}, 24h%: ${coin.priceChangePercentage24h}")
+                    }
+
+                    // Check for Bitcoin specifically
+                    response.find { it.id == "bitcoin" }?.let {
+                        Log.d("MarketRepo", "Bitcoin found! 24h%: ${it.priceChangePercentage24h}")
+                    }
+
+                    val percentages = response.associate { coin ->
+                        coin.id to (coin.priceChangePercentage24h ?: 0.0)
+                    }
+
+                    Log.d("MarketRepo", "Created percentages map with ${percentages.size} entries")
+                    percentages
+                }
             }
-
-            // Log first 5 coins to see structure
-            Log.d("MarketRepo", "First 5 coins from API:")
-            response.take(5).forEachIndexed { index, coin ->
-                Log.d("MarketRepo", "  [$index] ID: ${coin.id}, Symbol: ${coin.symbol}, 24h%: ${coin.priceChangePercentage24h}")
+            is Result.Error -> {
+                Log.e("MarketRepo", "Error fetching percentages: ${result.message}")
+                emptyMap()
             }
-
-            // Specifically check for Bitcoin
-            val bitcoin = response.find { it.id == "bitcoin" }
-            if (bitcoin != null) {
-                Log.d("MarketRepo", "Bitcoin found! 24h%: ${bitcoin.priceChangePercentage24h}")
-            } else {
-                Log.e("MarketRepo", "Bitcoin not found in response!")
-            }
-
-            val percentages = response.associate { coin ->
-                coin.id to (coin.priceChangePercentage24h ?: 0.0)
-            }
-
-            Log.d("MarketRepo", "Created percentages map with ${percentages.size} entries")
-            Log.d("MarketRepo", "Map keys (first 10): ${percentages.keys.take(10).joinToString()}")
-            Log.d("MarketRepo", "========== FETCH COMPLETE ==========")
-
-            percentages
-        } catch (e: Exception) {
-            Log.e("MarketRepo", "Error fetching percentages: ${e.message}")
-            e.printStackTrace()
-            emptyMap()
+            Result.Loading -> emptyMap() // Won't happen here
         }
     }
 
     suspend fun getTokenDetails(tokenId: String): TokenDetail? {
-        return try {
-            Log.d("MarketRepo", "Fetching details for tokenId: '$tokenId'")
-            val response = coinGeckoApi.getCoinDetails(id = tokenId)
+        Log.d("MarketRepo", "Fetching details for tokenId: '$tokenId'")
 
-            response.toTokenDetail()
+        val result = SafeApiCall.make {
+            coinGeckoApi.getCoinDetails(id = tokenId)
+        }
 
-        } catch (e: Exception) {
-            Log.e("MarketRepo", "Error fetching token details: ${e.message}")
-            null
+        return when (result) {
+            is Result.Success -> {
+                result.data.toTokenDetail()
+            }
+            is Result.Error -> {
+                Log.e("MarketRepo", "Error fetching token details: ${result.message}")
+                null
+            }
+            Result.Loading -> null
         }
     }
 
@@ -97,19 +103,24 @@ class MarketRepository @Inject constructor(
         tokenId: String,
         duration: ChartDuration
     ): ChartData? {
-        return try {
-            Log.d("MarketRepo", "Fetching chart for $tokenId, duration: ${duration.days} days")
+        Log.d("MarketRepo", "Fetching chart for $tokenId, duration: ${duration.days} days")
 
-            val response = coinGeckoApi.getMarketChart(
+        val result = SafeApiCall.make {
+            coinGeckoApi.getMarketChart(
                 id = tokenId,
                 days = duration.days
             )
+        }
 
-            response.toChartData()
-
-        } catch (e: Exception) {
-            Log.e("MarketRepo", "Error fetching chart: ${e.message}")
-            null
+        return when (result) {
+            is Result.Success -> {
+                result.data.toChartData()
+            }
+            is Result.Error -> {
+                Log.e("MarketRepo", "Error fetching chart: ${result.message}")
+                null
+            }
+            Result.Loading -> null
         }
     }
 
@@ -121,46 +132,53 @@ class MarketRepository @Inject constructor(
             return emptyList()
         }
 
-        return try {
-            Log.d("MarketRepo", "Fetching news for: $coinName (Request #$requestCount)")
+        Log.d("MarketRepo", "Fetching news for: $coinName (Request #$requestCount)")
 
-            // Map coin names to their currency codes
-            val currencyCode = when (coinName.lowercase()) {
-                "bitcoin" -> "BTC"
-                "ethereum" -> "ETH"
-                "solana" -> "SOL"
-                "cardano" -> "ADA"
-                "binance coin" -> "BNB"
-                "ripple", "xrp" -> "XRP"
-                "dogecoin" -> "DOGE"
-                "polkadot" -> "DOT"
-                "polygon" -> "MATIC"
-                "avalanche" -> "AVAX"
-                else -> null // Don't filter if no currency code
-            }
+        // Map coin names to their currency codes
+        val currencyCode = when (coinName.lowercase()) {
+            "bitcoin" -> "BTC"
+            "ethereum" -> "ETH"
+            "solana" -> "SOL"
+            "cardano" -> "ADA"
+            "binance coin" -> "BNB"
+            "ripple", "xrp" -> "XRP"
+            "dogecoin" -> "DOGE"
+            "polkadot" -> "DOT"
+            "polygon" -> "MATIC"
+            "avalanche" -> "AVAX"
+            else -> null
+        }
 
-            val response = cryptoPanicApi.getNews(
+        val result = SafeApiCall.make {
+            cryptoPanicApi.getNews(
                 authToken = BuildConfig.CRYPTOPANIC_API_KEY,
                 public = true,
                 currencies = currencyCode,
                 kind = "news",
                 regions = "en"
             )
+        }
 
-            val articles = response.results
-                .map { it.toNewsArticle() }
-                .take(5)
+        return when (result) {
+            is Result.Success -> {
+                val articles = result.data.results
+                    .map { it.toNewsArticle() }
+                    .take(5)
 
-            Log.d("MarketRepo", "Got ${articles.size} articles")
-            articles
+                Log.d("MarketRepo", "Got ${articles.size} articles")
+                articles
+            }
+            is Result.Error -> {
+                Log.e("MarketRepo", "Error fetching news: ${result.message}")
 
-        } catch (e: retrofit2.HttpException) {
-            Log.e("MarketRepo", "HTTP ${e.code()}: ${e.message()}")
-            handleHttpError(e.code())
-            emptyList()
-        } catch (e: Exception) {
-            Log.e("MarketRepo", "Error fetching news: ${e.message}")
-            emptyList()
+                // Check for specific HTTP errors
+                if (result.throwable is HttpException) {
+                    handleHttpError(result.throwable.code())
+                }
+
+                emptyList()
+            }
+            Result.Loading -> emptyList()
         }
     }
 
