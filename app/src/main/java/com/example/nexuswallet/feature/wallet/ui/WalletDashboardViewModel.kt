@@ -27,7 +27,7 @@ class WalletDashboardViewModel @Inject constructor(
     private val walletRepository: WalletRepository
 ) : ViewModel() {
 
-    // Unified UI State using Result class
+    // State
     private val _uiState = MutableStateFlow<Result<List<Wallet>>>(Result.Loading)
     val uiState: StateFlow<Result<List<Wallet>>> = _uiState.asStateFlow()
 
@@ -63,7 +63,6 @@ class WalletDashboardViewModel @Inject constructor(
                     } else {
                         _uiState.value = Result.Success(walletsList)
                         loadBalances(walletsList)
-                        calculateTotalPortfolio(walletsList)
                     }
                 }
         }
@@ -80,8 +79,10 @@ class WalletDashboardViewModel @Inject constructor(
                     }
                 }
                 _balances.value = balancesMap
+
+                calculateTotalPortfolio(wallets)
+
             } catch (e: Exception) {
-                // Don't update UI state for balance errors, just log
                 Log.e("WalletVM", "Failed to load balances: ${e.message}")
             }
         }
@@ -94,6 +95,7 @@ class WalletDashboardViewModel @Inject constructor(
                 BigDecimal(balance?.totalUsdValue ?: 0.0)
             }
             _totalPortfolioValue.value = total
+            Log.d("WalletVM", "Total portfolio calculated: $total")
         }
     }
 
@@ -120,13 +122,13 @@ class WalletDashboardViewModel @Inject constructor(
             _isOperationLoading.value = true
             _operationError.value = null
             try {
-                // Force reload balances for current wallets
                 val currentWallets = when (val state = _uiState.value) {
                     is Result.Success -> state.data
                     else -> emptyList()
                 }
-                loadBalances(currentWallets)
-                calculateTotalPortfolio(currentWallets)
+                if (currentWallets.isNotEmpty()) {
+                    loadBalances(currentWallets)
+                }
             } catch (e: Exception) {
                 _operationError.value = "Failed to refresh: ${e.message}"
             } finally {
@@ -161,7 +163,6 @@ class WalletDashboardViewModel @Inject constructor(
     }
 }
 
-// Extension property
 val WalletBalance.totalUsdValue: Double
     get() = (bitcoin?.usdValue ?: 0.0) +
             (ethereum?.usdValue ?: 0.0) +
