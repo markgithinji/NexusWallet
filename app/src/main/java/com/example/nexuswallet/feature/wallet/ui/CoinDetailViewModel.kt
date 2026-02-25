@@ -11,14 +11,18 @@ import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.coin.bitcoin.SyncBitcoinTransactionsUseCase
+import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.SyncEthereumTransactionsUseCase
+import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
 import com.example.nexuswallet.feature.coin.solana.SolanaTransactionRepository
 import com.example.nexuswallet.feature.coin.solana.SyncSolanaTransactionsUseCase
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
 import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.SyncUSDTransactionsUseCase
+import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransaction
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +31,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.math.RoundingMode
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.collections.emptyList
 
 @HiltViewModel
@@ -43,6 +51,17 @@ class CoinDetailViewModel @Inject constructor(
     private val syncUSDTransactionsUseCase: SyncUSDTransactionsUseCase
 ) : ViewModel() {
 
+    data class TransactionDisplayInfo(
+        val id: String,
+        val isIncoming: Boolean,
+        val amount: String,
+        val formattedAmount: String,
+        val status: TransactionStatus,
+        val timestamp: Long,
+        val formattedTime: String,
+        val hash: String?
+    )
+
     data class CoinDetailState(
         val walletId: String = "",
         val address: String = "",
@@ -52,7 +71,7 @@ class CoinDetailViewModel @Inject constructor(
         val network: String = "",
         val coinType: CoinType? = null,
         val ethGasBalance: BigDecimal? = null,
-        val transactions: List<Any> = emptyList(),
+        val transactions: List<TransactionDisplayInfo> = emptyList(),
         val isLoading: Boolean = false,
         val error: String? = null
     )
@@ -206,36 +225,148 @@ class CoinDetailViewModel @Inject constructor(
                 CoinType.BITCOIN -> {
                     bitcoinTransactionRepository.getTransactions(walletId).collect { txs ->
                         Log.d("CoinDetailVM", "BTC Transactions loaded: ${txs.size}")
-                        txs.take(3).forEachIndexed { i, tx ->
-                            Log.d("CoinDetailVM", "  BTC Tx $i: amount=${tx.amountBtc}, incoming=${(tx as? BitcoinTransaction)?.isIncoming}")
+                        val displayTransactions = txs.map { tx ->
+                            tx.toTransactionDisplayInfo(coinType)
                         }
-                        _state.update { it.copy(transactions = txs, isLoading = false) }
+                        _state.update {
+                            it.copy(
+                                transactions = displayTransactions,
+                                isLoading = false
+                            )
+                        }
                     }
                 }
                 CoinType.ETHEREUM -> {
                     ethereumTransactionRepository.getTransactions(walletId).collect { txs ->
                         Log.d("CoinDetailVM", "ETH Transactions loaded: ${txs.size}")
-                        txs.take(3).forEachIndexed { i, tx ->
-                            Log.d("CoinDetailVM", "  ETH Tx $i: amount=${tx.amountEth}, incoming=${tx.isIncoming}")
+                        val displayTransactions = txs.map { tx ->
+                            tx.toTransactionDisplayInfo(coinType)
                         }
-                        _state.update { it.copy(transactions = txs, isLoading = false) }
+                        _state.update {
+                            it.copy(
+                                transactions = displayTransactions,
+                                isLoading = false
+                            )
+                        }
                     }
                 }
                 CoinType.SOLANA -> {
                     solanaTransactionRepository.getTransactions(walletId).collect { txs ->
                         Log.d("CoinDetailVM", "SOL Transactions loaded: ${txs.size}")
-                        txs.take(3).forEachIndexed { i, tx ->
-                            Log.d("CoinDetailVM", "  SOL Tx $i: amount=${tx.amountSol}, incoming=${tx.isIncoming}")
+                        val displayTransactions = txs.map { tx ->
+                            tx.toTransactionDisplayInfo(coinType)
                         }
-                        _state.update { it.copy(transactions = txs, isLoading = false) }
+                        _state.update {
+                            it.copy(
+                                transactions = displayTransactions,
+                                isLoading = false
+                            )
+                        }
                     }
                 }
                 CoinType.USDC -> {
                     usdcTransactionRepository.getTransactions(walletId).collect { txs ->
                         Log.d("CoinDetailVM", "USDC Transactions loaded: ${txs.size}")
-                        _state.update { it.copy(transactions = txs, isLoading = false) }
+                        val displayTransactions = txs.map { tx ->
+                            tx.toTransactionDisplayInfo(coinType)
+                        }
+                        _state.update {
+                            it.copy(
+                                transactions = displayTransactions,
+                                isLoading = false
+                            )
+                        }
                     }
                 }
+            }
+        }
+    }
+
+    private fun formatTransactionAmount(amount: String): String {
+        return try {
+            val amountDecimal = amount.toBigDecimal()
+            when {
+                amountDecimal < BigDecimal("0.000001") ->
+                    amountDecimal.setScale(8, RoundingMode.HALF_UP)
+                        .stripTrailingZeros().toPlainString()
+                amountDecimal < BigDecimal("0.001") ->
+                    amountDecimal.setScale(6, RoundingMode.HALF_UP)
+                        .stripTrailingZeros().toPlainString()
+                amountDecimal < BigDecimal("1") ->
+                    amountDecimal.setScale(4, RoundingMode.HALF_UP)
+                        .stripTrailingZeros().toPlainString()
+                else ->
+                    amountDecimal.setScale(2, RoundingMode.HALF_UP)
+                        .stripTrailingZeros().toPlainString()
+            }
+        } catch (e: Exception) {
+            amount
+        }
+    }
+
+    private fun BitcoinTransaction.toTransactionDisplayInfo(coinType: CoinType): TransactionDisplayInfo {
+        return TransactionDisplayInfo(
+            id = id,
+            isIncoming = isIncoming,
+            amount = amountBtc,
+            formattedAmount = formatTransactionAmount(amountBtc),
+            status = status,
+            timestamp = timestamp,
+            formattedTime = formatTimestamp(timestamp),
+            hash = txHash
+        )
+    }
+
+    private fun EthereumTransaction.toTransactionDisplayInfo(coinType: CoinType): TransactionDisplayInfo {
+        return TransactionDisplayInfo(
+            id = id,
+            isIncoming = isIncoming,
+            amount = amountEth,
+            formattedAmount = formatTransactionAmount(amountEth),
+            status = status,
+            timestamp = timestamp,
+            formattedTime = formatTimestamp(timestamp),
+            hash = txHash
+        )
+    }
+
+    private fun SolanaTransaction.toTransactionDisplayInfo(coinType: CoinType): TransactionDisplayInfo {
+        return TransactionDisplayInfo(
+            id = id,
+            isIncoming = isIncoming,
+            amount = amountSol,
+            formattedAmount = formatTransactionAmount(amountSol),
+            status = status,
+            timestamp = timestamp,
+            formattedTime = formatTimestamp(timestamp),
+            hash = signature
+        )
+    }
+
+    private fun USDCTransaction.toTransactionDisplayInfo(coinType: CoinType): TransactionDisplayInfo {
+        return TransactionDisplayInfo(
+            id = id,
+            isIncoming = isIncoming,
+            amount = amountDecimal,
+            formattedAmount = formatTransactionAmount(amountDecimal),
+            status = status,
+            timestamp = timestamp,
+            formattedTime = formatTimestamp(timestamp),
+            hash = txHash
+        )
+    }
+
+    private fun formatTimestamp(timestamp: Long): String {
+        val now = System.currentTimeMillis()
+        val diff = now - timestamp
+
+        return when {
+            diff < 60_000 -> "Just now"
+            diff < 3_600_000 -> "${diff / 60_000} min ago"
+            diff < 86_400_000 -> "${diff / 3_600_000} hr ago"
+            else -> {
+                val date = Date(timestamp)
+                SimpleDateFormat("MMM d", Locale.getDefault()).format(date)
             }
         }
     }

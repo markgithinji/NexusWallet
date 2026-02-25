@@ -188,7 +188,6 @@ fun CoinDetailScreen(
                 TransactionsContainer(
                     transactions = state.transactions,
                     coinType = coinType,
-                    walletAddress = state.address,
                     onViewAll = {
                         navController.navigate("transactions/${state.walletId}?coinType=${coinType.name}")
                     }
@@ -425,9 +424,8 @@ fun EthGasBalanceCard(ethBalance: BigDecimal?) {
 
 @Composable
 fun TransactionsContainer(
-    transactions: List<Any>,
+    transactions: List<CoinDetailViewModel.TransactionDisplayInfo>,
     coinType: CoinType,
-    walletAddress: String,
     onViewAll: () -> Unit
 ) {
     if (transactions.isEmpty()) {
@@ -495,8 +493,7 @@ fun TransactionsContainer(
                 transactions.take(3).forEachIndexed { index, transaction ->
                     CoinTransactionItem(
                         transaction = transaction,
-                        coinType = coinType,
-                        walletAddress = walletAddress
+                        coinType = coinType
                     )
 
                     if (index < 2) {
@@ -513,9 +510,8 @@ fun TransactionsContainer(
 
 @Composable
 fun CoinTransactionItem(
-    transaction: Any,
-    coinType: CoinType,
-    walletAddress: String
+    transaction: CoinDetailViewModel.TransactionDisplayInfo,
+    coinType: CoinType
 ) {
     val (symbol, displayName) = when (coinType) {
         CoinType.BITCOIN -> Pair("BTC", "Bitcoin")
@@ -524,60 +520,7 @@ fun CoinTransactionItem(
         CoinType.USDC -> Pair("USDC", "USD Coin")
     }
 
-    val transactionInfo = when (transaction) {
-        is BitcoinTransaction -> {
-            TransactionInfo(
-                isIncoming = transaction.isIncoming,
-                amount = transaction.amountBtc,
-                status = transaction.status,
-                timestamp = transaction.timestamp,
-                hash = transaction.txHash
-            )
-        }
-        is EthereumTransaction -> {
-            TransactionInfo(
-                isIncoming = transaction.isIncoming,
-                amount = transaction.amountEth,
-                status = transaction.status,
-                timestamp = transaction.timestamp,
-                hash = transaction.txHash
-            )
-        }
-        is SolanaTransaction -> {
-            TransactionInfo(
-                isIncoming = transaction.isIncoming,
-                amount = transaction.amountSol,
-                status = transaction.status,
-                timestamp = transaction.timestamp,
-                hash = transaction.signature
-            )
-        }
-        is USDCTransaction -> {
-            TransactionInfo(
-                isIncoming = transaction.isIncoming,
-                amount = transaction.amountDecimal,
-                status = transaction.status,
-                timestamp = transaction.timestamp,
-                hash = transaction.txHash
-            )
-        }
-        else -> return
-    }
-
-    // Format amount to remove unnecessary zeros
-    val formattedAmount = try {
-        val amountDecimal = transactionInfo.amount.toBigDecimal()
-        when {
-            amountDecimal < BigDecimal("0.000001") -> amountDecimal.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
-            amountDecimal < BigDecimal("0.001") -> amountDecimal.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
-            amountDecimal < BigDecimal("1") -> amountDecimal.setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
-            else -> amountDecimal.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
-        }
-    } catch (e: Exception) {
-        transactionInfo.amount
-    }
-
-    val (statusColor, statusBgColor) = when (transactionInfo.status) {
+    val (statusColor, statusBgColor) = when (transaction.status) {
         TransactionStatus.SUCCESS -> Pair(Color(0xFF10B981), Color(0xFF10B981).copy(alpha = 0.1f))
         TransactionStatus.PENDING -> Pair(Color(0xFFF59E0B), Color(0xFFF59E0B).copy(alpha = 0.1f))
         TransactionStatus.FAILED -> Pair(Color(0xFFEF4444), Color(0xFFEF4444).copy(alpha = 0.1f))
@@ -596,8 +539,11 @@ fun CoinTransactionItem(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = if (transactionInfo.isIncoming) Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward,
-                contentDescription = if (transactionInfo.isIncoming) "Received" else "Sent",
+                imageVector = if (transaction.isIncoming)
+                    Icons.Outlined.ArrowDownward
+                else
+                    Icons.Outlined.ArrowUpward,
+                contentDescription = if (transaction.isIncoming) "Received" else "Sent",
                 tint = statusColor,
                 modifier = Modifier.size(20.dp)
             )
@@ -610,14 +556,14 @@ fun CoinTransactionItem(
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text = if (transactionInfo.isIncoming) "Received $displayName" else "Sent $displayName",
+                text = if (transaction.isIncoming) "Received $displayName" else "Sent $displayName",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = Color.Black,
                 maxLines = 1
             )
             Text(
-                text = formatTimestamp(transactionInfo.timestamp),
+                text = transaction.formattedTime,
                 style = MaterialTheme.typography.labelSmall,
                 color = Color(0xFF6B7280),
                 maxLines = 1
@@ -630,10 +576,10 @@ fun CoinTransactionItem(
             modifier = Modifier.widthIn(min = 80.dp, max = 120.dp)
         ) {
             Text(
-                text = "${if (transactionInfo.isIncoming) "+" else "-"}$formattedAmount $symbol",
+                text = "${if (transaction.isIncoming) "+" else "-"}${transaction.formattedAmount} $symbol",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = if (transactionInfo.isIncoming) Color(0xFF10B981) else Color.Black,
+                color = if (transaction.isIncoming) Color(0xFF10B981) else Color.Black,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -644,7 +590,7 @@ fun CoinTransactionItem(
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = transactionInfo.status.name,
+                    text = transaction.status.name,
                     style = MaterialTheme.typography.labelSmall,
                     color = statusColor,
                     maxLines = 1
@@ -653,11 +599,3 @@ fun CoinTransactionItem(
         }
     }
 }
-
-data class TransactionInfo(
-    val isIncoming: Boolean,
-    val amount: String,
-    val status: TransactionStatus,
-    val timestamp: Long,
-    val hash: String?
-)
