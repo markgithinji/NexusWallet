@@ -21,6 +21,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WelcomeScreen(
@@ -46,18 +50,19 @@ fun WelcomeScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
                 navigationIcon = {},
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    scrolledContainerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
-        containerColor = Color(0xFFF5F5F7)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -96,7 +101,9 @@ fun WelcomeScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 Column(
@@ -109,7 +116,7 @@ fun WelcomeScreen(
                         text = "Secure Crypto Wallet",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center
                     )
 
@@ -118,7 +125,7 @@ fun WelcomeScreen(
                     Text(
                         text = "Store, manage, and exchange cryptocurrencies securely with industry-standard encryption",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -130,7 +137,9 @@ fun WelcomeScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 Column(
@@ -143,47 +152,47 @@ fun WelcomeScreen(
                         text = "Features",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
 
                     FeatureRow(
                         icon = Icons.Outlined.Shield,
                         text = "BIP39 Secure Recovery Phrase",
-                        iconColor = Color(0xFF3B82F6)
+                        iconColor = MaterialTheme.colorScheme.primary
                     )
 
                     Divider(
-                        color = Color(0xFFE5E7EB),
+                        color = MaterialTheme.colorScheme.outline,
                         thickness = 1.dp
                     )
 
                     FeatureRow(
                         icon = Icons.Outlined.Fingerprint,
                         text = "Biometric Authentication",
-                        iconColor = Color(0xFF3B82F6)
+                        iconColor = MaterialTheme.colorScheme.primary
                     )
 
                     Divider(
-                        color = Color(0xFFE5E7EB),
+                        color = MaterialTheme.colorScheme.outline,
                         thickness = 1.dp
                     )
 
                     FeatureRow(
                         icon = Icons.Outlined.Lock,
                         text = "Android KeyStore Encryption",
-                        iconColor = Color(0xFF3B82F6)
+                        iconColor = MaterialTheme.colorScheme.primary
                     )
 
                     Divider(
-                        color = Color(0xFFE5E7EB),
+                        color = MaterialTheme.colorScheme.outline,
                         thickness = 1.dp
                     )
 
                     FeatureRow(
                         icon = Icons.Outlined.AccountBalance,
                         text = "Multi-Chain Support",
-                        iconColor = Color(0xFF3B82F6)
+                        iconColor = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -194,7 +203,9 @@ fun WelcomeScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 Column(
@@ -208,14 +219,14 @@ fun WelcomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF3B82F6)
+                            containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
                         Text(
                             text = "Create New Wallet",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     }
 
@@ -224,14 +235,15 @@ fun WelcomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFF3B82F6)
+                            contentColor = MaterialTheme.colorScheme.primary
                         ),
-                        border = BorderStroke(1.dp, Color(0xFFE5E7EB))
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         Text(
                             text = "Import Existing Wallet",
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
 
@@ -242,7 +254,7 @@ fun WelcomeScreen(
                         Text(
                             text = "Skip for Now",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = Color(0xFF6B7280)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -280,7 +292,7 @@ fun FeatureRow(
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF374151),
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
     }
