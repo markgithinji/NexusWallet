@@ -64,7 +64,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavController
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
@@ -78,6 +77,12 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.ui.theme.bitcoinLight
+import com.example.nexuswallet.ui.theme.ethereumLight
+import com.example.nexuswallet.ui.theme.solanaLight
+import com.example.nexuswallet.ui.theme.success
+import com.example.nexuswallet.ui.theme.usdcLight
+import com.example.nexuswallet.ui.theme.warning
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
@@ -125,7 +130,8 @@ fun WalletDetailScreen(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 navigationIcon = {
@@ -133,7 +139,7 @@ fun WalletDetailScreen(
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.Black
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
@@ -152,18 +158,18 @@ fun WalletDetailScreen(
                             Icon(
                                 imageVector = Icons.Default.Refresh,
                                 contentDescription = "Refresh",
-                                tint = Color.Black
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    scrolledContainerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
-        containerColor = Color(0xFFF5F5F7)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         uiState.wallet?.let { currentWallet ->
             WalletDetailContent(
@@ -240,7 +246,7 @@ fun WalletDetailContent(
                     coinType = "BTC",
                     coin = coin,
                     balance = balance?.bitcoin,
-                    color = Color(0xFFF7931A),
+                    color = bitcoinLight,
                     icon = Icons.Outlined.CurrencyBitcoin,
                     onClick = { onNavigateToCoinDetail(wallet.id, CoinType.BITCOIN) },
                     priceChangePercentage = percentage
@@ -255,7 +261,7 @@ fun WalletDetailContent(
                     coinType = "ETH",
                     coin = coin,
                     balance = balance?.ethereum,
-                    color = Color(0xFF627EEA),
+                    color = ethereumLight,
                     icon = Icons.Outlined.Diamond,
                     onClick = { onNavigateToCoinDetail(wallet.id, CoinType.ETHEREUM) },
                     priceChangePercentage = percentage
@@ -270,7 +276,7 @@ fun WalletDetailContent(
                     coinType = "SOL",
                     coin = coin,
                     balance = balance?.solana,
-                    color = Color(0xFF00FFA3),
+                    color = solanaLight,
                     icon = Icons.Outlined.FlashOn,
                     onClick = { onNavigateToCoinDetail(wallet.id, CoinType.SOLANA) },
                     priceChangePercentage = percentage
@@ -285,7 +291,7 @@ fun WalletDetailContent(
                     coinType = "USDC",
                     coin = coin,
                     balance = balance?.usdc,
-                    color = Color(0xFF2775CA),
+                    color = usdcLight,
                     icon = Icons.Outlined.AttachMoney,
                     onClick = { onNavigateToCoinDetail(wallet.id, CoinType.USDC) },
                     priceChangePercentage = percentage
@@ -322,7 +328,7 @@ fun WalletHeaderCard(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -356,12 +362,12 @@ fun WalletHeaderCard(
                         text = wallet.name,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Multi-currency wallet",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -370,7 +376,7 @@ fun WalletHeaderCard(
 
             // Divider
             Divider(
-                color = Color(0xFFE5E7EB),
+                color = MaterialTheme.colorScheme.outline,
                 thickness = 1.dp
             )
 
@@ -380,14 +386,14 @@ fun WalletHeaderCard(
             Text(
                 text = "Total Balance",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF6B7280)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text(
                 text = totalBalance,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -408,13 +414,13 @@ fun WalletHeaderCard(
                     imageVector = Icons.Outlined.AccountBalanceWallet,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
-                    tint = Color(0xFF6B7280)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = "$assetCount assets",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -433,7 +439,7 @@ fun TransactionsContainer(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -452,7 +458,7 @@ fun TransactionsContainer(
                     text = "Recent Transactions",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 TextButton(
@@ -462,13 +468,13 @@ fun TransactionsContainer(
                     Text(
                         text = "See All",
                         style = MaterialTheme.typography.labelLarge,
-                        color = Color(0xFF3B82F6)
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Icon(
                         imageVector = Icons.Outlined.ArrowForward,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
-                        tint = Color(0xFF3B82F6)
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -487,7 +493,7 @@ fun TransactionsContainer(
 
                     if (index < 2) {
                         Divider(
-                            color = Color(0xFFE5E7EB),
+                            color = MaterialTheme.colorScheme.outline,
                             thickness = 1.dp
                         )
                     }
@@ -511,19 +517,19 @@ fun StatItem(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(18.dp),
-            tint = Color(0xFF6B7280)
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Column {
             Text(
                 text = value,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF6B7280)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -546,25 +552,25 @@ fun QuickActionsRow(
             icon = Icons.Outlined.ArrowDownward,
             label = "Receive",
             onClick = onReceive,
-            color = Color(0xFF3B82F6)
+            color = MaterialTheme.colorScheme.primary
         )
         QuickActionItem(
             icon = Icons.Outlined.ArrowUpward,
             label = "Send",
             onClick = onSend,
-            color = Color(0xFF10B981)
+            color = MaterialTheme.colorScheme.success
         )
         QuickActionItem(
             icon = Icons.Outlined.SwapHoriz,
             label = "Swap",
             onClick = onSwap,
-            color = Color(0xFF8B5CF6)
+            color = MaterialTheme.colorScheme.tertiary
         )
         QuickActionItem(
             icon = Icons.Outlined.MoreHoriz,
             label = "More",
             onClick = onMore,
-            color = Color(0xFF6B7280)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -598,7 +604,7 @@ fun QuickActionItem(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = Color(0xFF374151)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -620,7 +626,7 @@ fun SectionHeader(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.Black
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         if (actionText != null && onActionClick != null) {
@@ -631,13 +637,13 @@ fun SectionHeader(
                 Text(
                     text = actionText,
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color(0xFF3B82F6)
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Icon(
                     imageVector = Icons.Outlined.ArrowForward,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
-                    tint = Color(0xFF3B82F6)
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -692,7 +698,7 @@ fun CoinDetailCard(
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -728,12 +734,12 @@ fun CoinDetailCard(
                     text = coinType,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "$formattedBalance $coinType",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -747,16 +753,16 @@ fun CoinDetailCard(
                     text = formattedUsd,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1
                 )
 
                 // Show percentage if available
                 if (priceChangePercentage != null) {
                     val changeColor = if (priceChangePercentage >= 0)
-                        Color(0xFF10B981)
+                        MaterialTheme.colorScheme.success
                     else
-                        Color(0xFFEF4444)
+                        MaterialTheme.colorScheme.error
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -778,7 +784,6 @@ fun CoinDetailCard(
                         )
                     }
                 }
-                // If no percentage, show nothing
             }
         }
     }
@@ -855,21 +860,29 @@ fun TransactionItem(
             } else it
         }.toPlainString()
     } catch (e: Exception) {
-        amount // Fallback to original if parsing fails
+        amount
     }
 
     val (statusColor, statusBgColor) = when (status) {
-        TransactionStatus.SUCCESS -> Pair(Color(0xFF10B981), Color(0xFF10B981).copy(alpha = 0.1f))
-        TransactionStatus.PENDING -> Pair(Color(0xFFF59E0B), Color(0xFFF59E0B).copy(alpha = 0.1f))
-        TransactionStatus.FAILED -> Pair(Color(0xFFEF4444), Color(0xFFEF4444).copy(alpha = 0.1f))
+        TransactionStatus.SUCCESS -> Pair(
+            MaterialTheme.colorScheme.success,
+            MaterialTheme.colorScheme.success.copy(alpha = 0.1f)
+        )
+        TransactionStatus.PENDING -> Pair(
+            MaterialTheme.colorScheme.warning,
+            MaterialTheme.colorScheme.warning.copy(alpha = 0.1f)
+        )
+        TransactionStatus.FAILED -> Pair(
+            MaterialTheme.colorScheme.error,
+            MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+        )
     }
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -879,7 +892,7 @@ fun TransactionItem(
                 .padding(vertical = 12.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Status icon - fixed width
+            // Status icon
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -897,7 +910,7 @@ fun TransactionItem(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Transaction details - takes remaining space
+            // Transaction details
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -905,18 +918,18 @@ fun TransactionItem(
                     text = if (isIncoming) "Received" else "Sent",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1
                 )
                 Text(
                     text = formatTimestamp(timestamp),
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1
                 )
             }
 
-            // Amount and status - fixed width with max width constraint
+            // Amount and status
             Column(
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.widthIn(min = 80.dp, max = 120.dp)
@@ -925,7 +938,7 @@ fun TransactionItem(
                     text = "${if (isIncoming) "+" else "-"}$formattedAmount $symbol",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isIncoming) Color(0xFF10B981) else Color.Black,
+                    color = if (isIncoming) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -984,7 +997,7 @@ fun EmptyTransactionsView() {
             imageVector = Icons.Outlined.Receipt,
             contentDescription = "No Transactions",
             modifier = Modifier.size(48.dp),
-            tint = Color(0xFF6B7280)
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -993,13 +1006,13 @@ fun EmptyTransactionsView() {
             text = "No Transactions Yet",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            color = Color.Black
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Text(
             text = "Your transactions will appear here",
             style = MaterialTheme.typography.bodySmall,
-            color = Color(0xFF6B7280)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -1016,7 +1029,7 @@ fun EmptyWalletView(onBack: () -> Unit) {
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(0.dp),
             modifier = Modifier.fillMaxWidth()
@@ -1029,7 +1042,7 @@ fun EmptyWalletView(onBack: () -> Unit) {
                     imageVector = Icons.Outlined.Error,
                     contentDescription = "Wallet Not Found",
                     modifier = Modifier.size(56.dp),
-                    tint = Color(0xFFEF4444)
+                    tint = MaterialTheme.colorScheme.error
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1038,7 +1051,7 @@ fun EmptyWalletView(onBack: () -> Unit) {
                     text = "Wallet Not Found",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -1046,7 +1059,7 @@ fun EmptyWalletView(onBack: () -> Unit) {
                 Text(
                     text = "The wallet you're looking for doesn't exist or has been deleted",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
 
@@ -1056,10 +1069,14 @@ fun EmptyWalletView(onBack: () -> Unit) {
                     onClick = onBack,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF3B82F6)
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text("Back to Wallets")
+                    Text(
+                        "Back to Wallets",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
                 }
             }
         }
