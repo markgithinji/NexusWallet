@@ -1,23 +1,37 @@
 package com.example.nexuswallet.feature.authentication.domain
 
-import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.logging.Logger
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.example.nexuswallet.feature.coin.Result
 
 @Singleton
-class VerifyPinUseCase @Inject constructor(
-    private val securityPreferencesRepository: SecurityPreferencesRepository
-) {
-    suspend operator fun invoke(pin: String): Result<Boolean> {
-        return try {
-            val storedHash =
-                securityPreferencesRepository.getPinHash() ?: return Result.Success(false)
-            val isValid = verifyPinHash(pin, storedHash)
-            Result.Success(isValid)
-        } catch (e: Exception) {
-            Result.Error("Failed to verify PIN: ${e.message}", e)
+class VerifyPinUseCaseImpl @Inject constructor(
+    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val logger: Logger
+) : VerifyPinUseCase {
+
+    private val tag = "VerifyPin"
+
+    override suspend fun invoke(pin: String): Result<Boolean> {
+        val startTime = System.currentTimeMillis()
+
+        val storedHash = securityPreferencesRepository.getPinHash()
+        if (storedHash == null) {
+            logger.d(tag, "No PIN set")
+            return Result.Success(false)
+        }
+
+        val isValid = verifyPinHash(pin, storedHash)
+        val duration = System.currentTimeMillis() - startTime
+
+        if (isValid) {
+            logger.d(tag, "PIN verified | duration=${duration}ms")
+            return Result.Success(true)
+        } else {
+            logger.w(tag, "PIN verification failed | duration=${duration}ms")
+            return Result.Success(false)
         }
     }
 
@@ -37,16 +51,17 @@ class VerifyPinUseCase @Inject constructor(
 }
 
 @Singleton
-class RecordAuthenticationUseCase @Inject constructor(
-    private val securityPreferencesRepository: SecurityPreferencesRepository
-) {
-    suspend operator fun invoke(): Result<Unit> {
-        return try {
-            // Store last authentication time in DataStore
-            securityPreferencesRepository.saveLastAuthenticationTime(System.currentTimeMillis())
-            Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error("Failed to record authentication: ${e.message}", e)
-        }
+class RecordAuthenticationUseCaseImpl @Inject constructor(
+    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val logger: Logger
+) : RecordAuthenticationUseCase {
+
+    private val tag = "RecordAuth"
+
+    override suspend fun invoke(): Result<Unit> {
+        val timestamp = System.currentTimeMillis()
+        securityPreferencesRepository.saveLastAuthenticationTime(timestamp)
+        logger.d(tag, "Authentication recorded | timestamp=$timestamp")
+        return Result.Success(Unit)
     }
 }
