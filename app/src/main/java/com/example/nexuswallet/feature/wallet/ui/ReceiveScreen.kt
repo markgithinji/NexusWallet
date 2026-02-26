@@ -3,12 +3,10 @@ package com.example.nexuswallet.feature.wallet.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -37,7 +34,6 @@ import androidx.compose.material.icons.outlined.FlashOn
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material.icons.outlined.Science
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
@@ -66,7 +62,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -75,8 +70,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavController
 import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.ui.theme.bitcoinLight
+import com.example.nexuswallet.ui.theme.ethereumLight
+import com.example.nexuswallet.ui.theme.solanaLight
+import com.example.nexuswallet.ui.theme.success
+import com.example.nexuswallet.ui.theme.usdcLight
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 
@@ -125,7 +124,7 @@ fun ReceiveScreen(
                             text = "Receive ${uiState.coinType.name.lowercase().replaceFirstChar { it.uppercase() }}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
@@ -134,18 +133,18 @@ fun ReceiveScreen(
                         Icon(
                             Icons.Default.ArrowBack,
                             "Back",
-                            tint = Color.Black
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    scrolledContainerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = Color(0xFFF5F5F7)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         if (uiState.isLoading) {
             LoadingView(modifier = Modifier.padding(paddingValues))
@@ -223,7 +222,7 @@ private fun QrCodeSection(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -269,7 +268,7 @@ private fun QrCodeSection(
             Text(
                 text = "Scan to receive",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF6B7280)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -282,18 +281,18 @@ private fun AddressCard(
     onCopy: () -> Unit,
     copiedToClipboard: Boolean
 ) {
-    val displayName = when (coinType) {
-        CoinType.BITCOIN -> "BTC"
-        CoinType.ETHEREUM -> "ETH"
-        CoinType.SOLANA -> "SOL"
-        CoinType.USDC -> "USDC"
+    val (coinColor, _, displayName) = when (coinType) {
+        CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "BTC")
+        CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "ETH")
+        CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "SOL")
+        CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -310,13 +309,13 @@ private fun AddressCard(
                     Icons.Outlined.AccountBalanceWallet,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
-                    tint = Color(0xFF6B7280)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Your $displayName Address",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B7280)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -326,7 +325,7 @@ private fun AddressCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFFF9FAFB), RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -334,7 +333,7 @@ private fun AddressCard(
                     text = address,
                     style = MaterialTheme.typography.bodyMedium,
                     fontFamily = FontFamily.Monospace,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -350,7 +349,7 @@ private fun AddressCard(
                         else
                             Icons.Outlined.ContentCopy,
                         contentDescription = "Copy Address",
-                        tint = if (copiedToClipboard) Color(0xFF10B981) else Color(0xFF6B7280)
+                        tint = if (copiedToClipboard) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -371,7 +370,7 @@ private fun SecurityTips(coinType: CoinType) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -384,7 +383,7 @@ private fun SecurityTips(coinType: CoinType) {
                 text = "Security Tips",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
@@ -424,12 +423,12 @@ private fun SecurityTip(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(16.dp),
-            tint = Color(0xFF6B7280)
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall,
-            color = Color(0xFF374151),
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
     }
@@ -442,7 +441,7 @@ private fun LoadingView(modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator(
-            color = Color(0xFF3B82F6)
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }
@@ -463,7 +462,7 @@ private fun ErrorView(
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(0.dp),
             modifier = Modifier.fillMaxWidth()
@@ -476,7 +475,7 @@ private fun ErrorView(
                     Icons.Outlined.Error,
                     contentDescription = "Error",
                     modifier = Modifier.size(48.dp),
-                    tint = Color(0xFFEF4444)
+                    tint = MaterialTheme.colorScheme.error
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -485,7 +484,7 @@ private fun ErrorView(
                     text = "Something went wrong",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -493,7 +492,7 @@ private fun ErrorView(
                 Text(
                     text = error ?: "Unknown error occurred",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
 
@@ -503,10 +502,14 @@ private fun ErrorView(
                     onClick = onRetry,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF3B82F6)
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text("Try Again")
+                    Text(
+                        "Try Again",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
                 }
             }
         }
@@ -515,10 +518,10 @@ private fun ErrorView(
 
 private fun getCoinTypeConfig(coinType: CoinType): Pair<Color, ImageVector> {
     return when (coinType) {
-        CoinType.BITCOIN -> Pair(Color(0xFFF7931A), Icons.Outlined.CurrencyBitcoin)
-        CoinType.ETHEREUM -> Pair(Color(0xFF627EEA), Icons.Outlined.Diamond)
-        CoinType.SOLANA -> Pair(Color(0xFF00FFA3), Icons.Outlined.FlashOn)
-        CoinType.USDC -> Pair(Color(0xFF2775CA), Icons.Outlined.AttachMoney)
+        CoinType.BITCOIN -> Pair(bitcoinLight, Icons.Outlined.CurrencyBitcoin)
+        CoinType.ETHEREUM -> Pair(ethereumLight, Icons.Outlined.Diamond)
+        CoinType.SOLANA -> Pair(solanaLight, Icons.Outlined.FlashOn)
+        CoinType.USDC -> Pair(usdcLight, Icons.Outlined.AttachMoney)
     }
 }
 
@@ -534,9 +537,9 @@ private fun generateQrCode(content: String): Bitmap? {
         for (y in 0 until height) {
             for (x in 0 until width) {
                 pixels[y * width + x] = if (bitMatrix.get(x, y)) {
-                    Color.Black.toArgb()
+                    android.graphics.Color.BLACK
                 } else {
-                    Color.White.toArgb()
+                    android.graphics.Color.WHITE
                 }
             }
         }
