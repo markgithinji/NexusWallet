@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.authentication.data.repository
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
 import kotlinx.coroutines.withContext
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -18,21 +19,79 @@ import kotlinx.coroutines.CoroutineDispatcher
  */
 
 @Singleton
-class KeyStoreRepository @Inject constructor(
+class KeyStoreRepositoryImpl @Inject constructor(
     private val keyStore: KeyStore,
     private val ioDispatcher: CoroutineDispatcher
-) {
+) : KeyStoreRepository {
+
+    override suspend fun encrypt(plaintext: ByteArray): Pair<ByteArray, ByteArray> =
+        withContext(ioDispatcher) {
+            try {
+                val cipher = Cipher.getInstance(TRANSFORMATION)
+                cipher.init(Cipher.ENCRYPT_MODE, getSecretKey())
+
+                val iv = cipher.iv
+                val encrypted = cipher.doFinal(plaintext)
+
+                Pair(encrypted, iv)
+            } catch (e: Exception) {
+                throw EncryptionException("Failed to encrypt data", e)
+            }
+        }
+
+    override suspend fun decrypt(encryptedData: ByteArray, iv: ByteArray): ByteArray =
+        withContext(ioDispatcher) {
+            try {
+                val cipher = Cipher.getInstance(TRANSFORMATION)
+                val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
+                cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
+
+                cipher.doFinal(encryptedData)
+            } catch (e: Exception) {
+                throw EncryptionException("Failed to decrypt data", e)
+            }
+        }
+
+    override suspend fun encryptString(plaintext: String): Pair<String, String> =
+        withContext(ioDispatcher) {
+            val (encryptedBytes, iv) = encrypt(plaintext.toByteArray(Charsets.UTF_8))
+            Pair(encryptedBytes.toHex(), iv.toHex())
+        }
+
+    override suspend fun decryptString(encryptedHex: String, ivHex: String): String =
+        withContext(ioDispatcher) {
+            val encryptedBytes = hexToBytes(encryptedHex)
+            val iv = hexToBytes(ivHex)
+            val decryptedBytes = decrypt(encryptedBytes, iv)
+            String(decryptedBytes, Charsets.UTF_8)
+        }
+
+    override fun isKeyStoreAvailable(): Boolean {
+        return try {
+            getSecretKey()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override fun clearKey() {
+        try {
+            keyStore.deleteEntry(KEY_ALIAS)
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
+
     /**
      * Get or create the secret key from Android KeyStore
      */
     private fun getSecretKey(): SecretKey {
-        // Try to get existing key
         val existingKey = keyStore.getKey(KEY_ALIAS, null) as? SecretKey
         if (existingKey != null) {
             return existingKey
         }
 
-        // Create new key if doesn't exist
         val keyGenerator = KeyGenerator.getInstance(
             KeyProperties.KEY_ALGORITHM_AES,
             ANDROID_KEYSTORE
@@ -52,89 +111,6 @@ class KeyStoreRepository @Inject constructor(
         return keyGenerator.generateKey()
     }
 
-    /**
-     * Encrypt data using Android KeyStore
-     * @param plaintext The data to encrypt
-     * @return Pair of encrypted bytes and IV
-     */
-    suspend fun encrypt(plaintext: ByteArray): Pair<ByteArray, ByteArray> =
-        withContext(ioDispatcher) {
-            try {
-                val cipher = Cipher.getInstance(TRANSFORMATION)
-                cipher.init(Cipher.ENCRYPT_MODE, getSecretKey())
-
-                val iv = cipher.iv
-                val encrypted = cipher.doFinal(plaintext)
-
-                Pair(encrypted, iv)
-            } catch (e: Exception) {
-                throw EncryptionException("Failed to encrypt data", e)
-            }
-        }
-
-    /**
-     * Decrypt data using Android KeyStore
-     * @param encryptedData The encrypted data
-     * @param iv Initialization vector
-     * @return Decrypted plaintext
-     */
-    suspend fun decrypt(encryptedData: ByteArray, iv: ByteArray): ByteArray =
-        withContext(ioDispatcher) {
-            try {
-                val cipher = Cipher.getInstance(TRANSFORMATION)
-                val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
-                cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
-
-                cipher.doFinal(encryptedData)
-            } catch (e: Exception) {
-                throw EncryptionException("Failed to decrypt data", e)
-            }
-        }
-
-    /**
-     * Encrypt string data
-     */
-    suspend fun encryptString(plaintext: String): Pair<String, String> =
-        withContext(ioDispatcher) {
-            val (encryptedBytes, iv) = encrypt(plaintext.toByteArray(Charsets.UTF_8))
-            Pair(encryptedBytes.toHex(), iv.toHex())
-        }
-
-    /**
-     * Decrypt string data
-     */
-    suspend fun decryptString(encryptedHex: String, ivHex: String): String =
-        withContext(ioDispatcher) {
-            val encryptedBytes = hexToBytes(encryptedHex)
-            val iv = hexToBytes(ivHex)
-            val decryptedBytes = decrypt(encryptedBytes, iv)
-            String(decryptedBytes, Charsets.UTF_8)
-        }
-
-    /**
-     * Check if KeyStore is available and ready
-     */
-    fun isKeyStoreAvailable(): Boolean {
-        return try {
-            getSecretKey() // This will attempt to get/create key
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    /**
-     * Clear the key from KeyStore
-     */
-    fun clearKey() {
-        try {
-            keyStore.deleteEntry(KEY_ALIAS)
-        } catch (e: Exception) {
-            // Ignore
-        }
-    }
-
-    // Utility functions
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 
     private fun hexToBytes(hex: String): ByteArray {
