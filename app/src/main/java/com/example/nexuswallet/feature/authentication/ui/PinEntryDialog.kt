@@ -1,21 +1,41 @@
 package com.example.nexuswallet.feature.authentication.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Pin
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -54,7 +74,7 @@ fun PinEntryDialog(
                 .padding(16.dp),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(0.dp)
         ) {
@@ -87,7 +107,7 @@ fun PinEntryDialog(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
                 )
 
@@ -97,7 +117,7 @@ fun PinEntryDialog(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
 
@@ -140,15 +160,15 @@ fun PinEntryDialog(
                         Text(
                             text = "Enter $maxLength-digit PIN",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF9CA3AF)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
                     },
                     singleLine = true,
                     isError = error,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color(0xFFE5E7EB),
-                        errorBorderColor = Color(0xFFEF4444),
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        errorBorderColor = MaterialTheme.colorScheme.error,
                         focusedLabelColor = MaterialTheme.colorScheme.primary,
                         cursorColor = MaterialTheme.colorScheme.primary
                     )
@@ -166,11 +186,11 @@ fun PinEntryDialog(
                             imageVector = Icons.Outlined.Error,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
-                            tint = Color(0xFFEF4444)
+                            tint = MaterialTheme.colorScheme.error
                         )
                         Text(
                             text = "Incorrect PIN. Please try again.",
-                            color = Color(0xFFEF4444),
+                            color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.labelSmall
                         )
                     }
@@ -190,7 +210,7 @@ fun PinEntryDialog(
                     Text(
                         text = "Cancel",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF6B7280)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -202,7 +222,10 @@ fun PinEntryDialog(
 fun PinDot(
     filled: Boolean
 ) {
-    val color = if (filled) Color(0xFF3B82F6) else Color(0xFFE5E7EB)
+    val color = if (filled)
+        MaterialTheme.colorScheme.primary
+    else
+        MaterialTheme.colorScheme.outline
 
     Box(
         modifier = Modifier
