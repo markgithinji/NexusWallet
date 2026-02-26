@@ -33,6 +33,11 @@ import com.example.nexuswallet.feature.authentication.ui.PinSetupDialog
 import kotlinx.coroutines.launch
 import com.example.nexuswallet.feature.coin.Result
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwitchDefaults
+import com.example.nexuswallet.ui.theme.success
+import com.example.nexuswallet.ui.theme.warning
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SecuritySettingsScreen(
@@ -81,7 +86,8 @@ fun SecuritySettingsScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
@@ -90,17 +96,17 @@ fun SecuritySettingsScreen(
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.Black
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    scrolledContainerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
-        containerColor = Color(0xFFF5F5F7)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(
             modifier = Modifier.fillMaxSize()
@@ -113,7 +119,9 @@ fun SecuritySettingsScreen(
                             .padding(padding),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = Color(0xFF3B82F6))
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
 
@@ -130,12 +138,13 @@ fun SecuritySettingsScreen(
                             imageVector = Icons.Outlined.Error,
                             contentDescription = "Error",
                             modifier = Modifier.size(48.dp),
-                            tint = Color(0xFFEF4444)
+                            tint = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = state.message,
                             style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -143,10 +152,14 @@ fun SecuritySettingsScreen(
                             onClick = { viewModel.retry() },
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF3B82F6)
+                                containerColor = MaterialTheme.colorScheme.primary
                             )
                         ) {
-                            Text("Retry", color = Color.White)
+                            Text(
+                                "Retry",
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                style = MaterialTheme.typography.labelLarge
+                            )
                         }
                     }
                 }
@@ -180,14 +193,14 @@ fun SecuritySettingsScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF3B82F6)
+                                        containerColor = MaterialTheme.colorScheme.primary
                                     )
                                 ) {
                                     Text(
                                         text = "Change PIN",
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color.White
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 }
 
@@ -198,15 +211,15 @@ fun SecuritySettingsScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFFFEF2F2)
+                                        containerColor = MaterialTheme.colorScheme.errorContainer
                                     ),
-                                    border = BorderStroke(1.dp, Color(0xFFFEE2E2))
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
                                 ) {
                                     Text(
                                         text = "Remove PIN",
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color(0xFFEF4444)
+                                        color = MaterialTheme.colorScheme.error
                                     )
                                 }
                             } else {
@@ -215,14 +228,14 @@ fun SecuritySettingsScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF3B82F6)
+                                        containerColor = MaterialTheme.colorScheme.primary
                                     )
                                 ) {
                                     Text(
                                         text = "Setup PIN",
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color.White
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 }
                             }
@@ -246,7 +259,10 @@ fun SecuritySettingsScreen(
                                         text = if (securityState.isBiometricEnabled) "Enabled" else "Disabled",
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Medium,
-                                        color = if (securityState.isBiometricEnabled) Color(0xFF10B981) else Color(0xFF6B7280)
+                                        color = if (securityState.isBiometricEnabled)
+                                            MaterialTheme.colorScheme.success
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
 
@@ -254,10 +270,10 @@ fun SecuritySettingsScreen(
                                     checked = securityState.isBiometricEnabled,
                                     onCheckedChange = { viewModel.setBiometricEnabled(it) },
                                     colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
-                                        checkedTrackColor = Color(0xFF3B82F6),
-                                        uncheckedThumbColor = Color.White,
-                                        uncheckedTrackColor = Color(0xFFE5E7EB)
+                                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurface,
+                                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                                     )
                                 )
                             }
@@ -278,14 +294,14 @@ fun SecuritySettingsScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF3B82F6)
+                                        containerColor = MaterialTheme.colorScheme.primary
                                     )
                                 ) {
                                     Text(
                                         text = "Create Encrypted Backup",
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color.White
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 }
 
@@ -294,14 +310,14 @@ fun SecuritySettingsScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF3B82F6)
+                                        containerColor = MaterialTheme.colorScheme.primary
                                     )
                                 ) {
                                     Text(
                                         text = "Restore from Backup",
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color.White
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 }
 
@@ -310,15 +326,15 @@ fun SecuritySettingsScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFFFEF2F2)
+                                        containerColor = MaterialTheme.colorScheme.errorContainer
                                     ),
-                                    border = BorderStroke(1.dp, Color(0xFFFEE2E2))
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
                                 ) {
                                     Text(
                                         text = "Delete Backup",
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color(0xFFEF4444)
+                                        color = MaterialTheme.colorScheme.error
                                     )
                                 }
                             }
@@ -336,15 +352,15 @@ fun SecuritySettingsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFFEF2F2)
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
                                 ),
-                                border = BorderStroke(1.dp, Color(0xFFFEE2E2))
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
                             ) {
                                 Text(
                                     text = "Clear All Secure Data",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium,
-                                    color = Color(0xFFEF4444)
+                                    color = MaterialTheme.colorScheme.error
                                 )
                             }
                         }
@@ -365,7 +381,9 @@ fun SecuritySettingsScreen(
                     ) {
                         Card(
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
                             elevation = CardDefaults.cardElevation(0.dp)
                         ) {
                             Column(
@@ -373,7 +391,7 @@ fun SecuritySettingsScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 CircularProgressIndicator(
-                                    color = Color(0xFF3B82F6),
+                                    color = MaterialTheme.colorScheme.primary,
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
@@ -385,7 +403,7 @@ fun SecuritySettingsScreen(
                                         else -> "Processing..."
                                     },
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Color(0xFF6B7280)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -416,7 +434,9 @@ fun SecurityStatusCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
@@ -445,7 +465,7 @@ fun SecurityStatusCard(
                     text = "Security Status",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -460,16 +480,16 @@ fun SecurityStatusCard(
                 Text(
                     text = "Security Score",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B7280)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = "$securityScore/100",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = when {
-                        securityScore >= 80 -> Color(0xFF10B981)
-                        securityScore >= 50 -> Color(0xFFF59E0B)
-                        else -> Color(0xFFEF4444)
+                        securityScore >= 80 -> MaterialTheme.colorScheme.success
+                        securityScore >= 50 -> MaterialTheme.colorScheme.warning
+                        else -> MaterialTheme.colorScheme.error
                     }
                 )
             }
@@ -482,7 +502,7 @@ fun SecurityStatusCard(
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFFE5E7EB))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Box(
                     modifier = Modifier
@@ -490,9 +510,9 @@ fun SecurityStatusCard(
                         .fillMaxHeight()
                         .background(
                             color = when {
-                                securityScore >= 80 -> Color(0xFF10B981)
-                                securityScore >= 50 -> Color(0xFFF59E0B)
-                                else -> Color(0xFFEF4444)
+                                securityScore >= 80 -> MaterialTheme.colorScheme.success
+                                securityScore >= 50 -> MaterialTheme.colorScheme.warning
+                                else -> MaterialTheme.colorScheme.error
                             }
                         )
                         .clip(RoundedCornerShape(4.dp))
@@ -533,7 +553,9 @@ fun SecuritySection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
@@ -543,7 +565,7 @@ fun SecuritySection(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -551,7 +573,7 @@ fun SecuritySection(
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF6B7280)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -570,7 +592,7 @@ fun SecurityFeatureStatus(feature: String, enabled: Boolean) {
         Icon(
             imageVector = if (enabled) Icons.Outlined.CheckCircle else Icons.Outlined.Cancel,
             contentDescription = null,
-            tint = if (enabled) Color(0xFF10B981) else Color(0xFF9CA3AF),
+            tint = if (enabled) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp)
         )
 
@@ -579,14 +601,14 @@ fun SecurityFeatureStatus(feature: String, enabled: Boolean) {
         Text(
             text = feature,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Black,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
 
         Text(
             text = if (enabled) "Active" else "Inactive",
             style = MaterialTheme.typography.labelSmall,
-            color = if (enabled) Color(0xFF10B981) else Color(0xFF9CA3AF)
+            color = if (enabled) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
