@@ -51,6 +51,12 @@ import coil.compose.AsyncImagePainter
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.market.domain.Token
 import kotlinx.coroutines.delay
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ButtonDefaults
+import com.example.nexuswallet.ui.theme.success
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MarketScreen(
@@ -68,7 +74,7 @@ fun MarketScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F7))
+            .background(MaterialTheme.colorScheme.background)
             .padding(padding)
     ) {
         Column(
@@ -86,7 +92,7 @@ fun MarketScreen(
                     text = "Market",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Row(
@@ -103,9 +109,9 @@ fun MarketScreen(
                             text = if (isWebSocketConnected) "Live" else "Offline",
                             style = MaterialTheme.typography.labelSmall,
                             color = if (isWebSocketConnected)
-                                Color(0xFF10B981)
+                                MaterialTheme.colorScheme.success
                             else
-                                Color(0xFFEF4444)
+                                MaterialTheme.colorScheme.error
                         )
                     }
 
@@ -113,7 +119,7 @@ fun MarketScreen(
                     Card(
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.surface
                         ),
                         elevation = CardDefaults.cardElevation(0.dp)
                     ) {
@@ -121,7 +127,7 @@ fun MarketScreen(
                             text = "${tokens.size} coins",
                             style = MaterialTheme.typography.labelSmall,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            color = Color(0xFF374151)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -169,7 +175,7 @@ fun MarketScreen(
                                         .padding(horizontal = 16.dp, vertical = 8.dp),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = CardDefaults.cardColors(
-                                        containerColor = Color(0xFFFEF2F2)
+                                        containerColor = MaterialTheme.colorScheme.errorContainer
                                     )
                                 ) {
                                     Row(
@@ -182,13 +188,13 @@ fun MarketScreen(
                                         Icon(
                                             Icons.Outlined.Error,
                                             contentDescription = null,
-                                            tint = Color(0xFFEF4444),
+                                            tint = MaterialTheme.colorScheme.error,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Text(
                                             text = "Connection issues. Showing cached data.",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = Color(0xFFEF4444),
+                                            color = MaterialTheme.colorScheme.error,
                                             modifier = Modifier.weight(1f)
                                         )
                                         IconButton(
@@ -198,7 +204,7 @@ fun MarketScreen(
                                             Icon(
                                                 Icons.Outlined.Refresh,
                                                 contentDescription = "Retry",
-                                                tint = Color(0xFFEF4444),
+                                                tint = MaterialTheme.colorScheme.error,
                                                 modifier = Modifier.size(14.dp)
                                             )
                                         }
@@ -249,7 +255,7 @@ fun MarketSearchBar(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -265,7 +271,7 @@ fun MarketSearchBar(
                 modifier = Modifier
                     .padding(start = 12.dp)
                     .size(20.dp),
-                tint = Color(0xFF6B7280)
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             BasicTextField(
@@ -275,7 +281,7 @@ fun MarketSearchBar(
                     .weight(1f)
                     .padding(vertical = 12.dp, horizontal = 8.dp),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 ),
                 decorationBox = { innerTextField ->
                     Box(
@@ -285,7 +291,7 @@ fun MarketSearchBar(
                             Text(
                                 text = "Search by name or symbol...",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF9CA3AF)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                             )
                         }
                         innerTextField()
@@ -301,7 +307,7 @@ fun MarketSearchBar(
                     Icon(
                         imageVector = Icons.Outlined.Close,
                         contentDescription = "Clear search",
-                        tint = Color(0xFF6B7280),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -339,7 +345,7 @@ fun MarketList(
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(32.dp),
-                        color = Color(0xFF3B82F6),
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 3.dp
                     )
                 }
@@ -372,7 +378,7 @@ fun TokenItem(
             .clickable { onClick(token) },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -387,7 +393,7 @@ fun TokenItem(
                 modifier = Modifier
                     .size(24.dp)
                     .background(
-                        color = Color(0xFF3B82F6).copy(alpha = 0.1f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -396,7 +402,7 @@ fun TokenItem(
                     text = token.marketCapRank?.toString() ?: "—",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF3B82F6),
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 10.sp
                 )
             }
@@ -438,14 +444,14 @@ fun TokenItem(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFF3F4F6)),
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.AccountBalanceWallet,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
-                            tint = Color(0xFF6B7280)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -461,14 +467,14 @@ fun TokenItem(
                     text = token.name,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = token.symbol.uppercase(),
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color(0xFF6B7280)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -480,14 +486,14 @@ fun TokenItem(
                     text = "$${animatedPrice.formatTwoDecimals()}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 val priceChange = token.priceChangePercentage24h ?: 0.0
                 val changeColor = if (priceChange >= 0)
-                    Color(0xFF10B981)
+                    MaterialTheme.colorScheme.success
                 else
-                    Color(0xFFEF4444)
+                    MaterialTheme.colorScheme.error
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -516,9 +522,9 @@ fun TokenItem(
 @Composable
 fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
     val shimmerColors = listOf(
-        Color(0xFFE0E0E0),
-        Color(0xFFF5F5F5),
-        Color(0xFFE0E0E0)
+        MaterialTheme.colorScheme.surfaceVariant,
+        MaterialTheme.colorScheme.surface,
+        MaterialTheme.colorScheme.surfaceVariant
     )
 
     val transition = rememberInfiniteTransition(label = "shimmer_simple")
@@ -533,7 +539,7 @@ fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
 
     Box(
         modifier = modifier
-            .background(Color(0xFFE0E0E0))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .drawBehind {
                 val brush = Brush.linearGradient(
                     colors = shimmerColors,
@@ -570,7 +576,10 @@ fun LiveIndicator(isConnected: Boolean) {
                 scaleY = 1f + pulse * 0.3f
             }
             .background(
-                color = if (isConnected) Color(0xFF10B981) else Color(0xFFEF4444)
+                color = if (isConnected)
+                    MaterialTheme.colorScheme.success
+                else
+                    MaterialTheme.colorScheme.error
             )
     )
 }
@@ -586,7 +595,7 @@ fun EmptySearchResult() {
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(0.dp),
             modifier = Modifier.fillMaxWidth()
@@ -599,7 +608,7 @@ fun EmptySearchResult() {
                     imageVector = Icons.Outlined.Search,
                     contentDescription = "No results",
                     modifier = Modifier.size(48.dp),
-                    tint = Color(0xFF6B7280)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -608,7 +617,7 @@ fun EmptySearchResult() {
                     text = "No matching coins",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -616,7 +625,7 @@ fun EmptySearchResult() {
                 Text(
                     text = "Try adjusting your search",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
             }
@@ -633,7 +642,7 @@ fun LoadingView() {
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(0.dp),
             modifier = Modifier.padding(32.dp)
@@ -643,7 +652,7 @@ fun LoadingView() {
                 modifier = Modifier.padding(32.dp)
             ) {
                 CircularProgressIndicator(
-                    color = Color(0xFF3B82F6),
+                    color = MaterialTheme.colorScheme.primary,
                     strokeWidth = 3.dp
                 )
 
@@ -652,7 +661,7 @@ fun LoadingView() {
                 Text(
                     text = "Loading market data...",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B7280)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -668,7 +677,7 @@ fun ErrorView(message: String, onRetry: () -> Unit) {
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(0.dp),
             modifier = Modifier
@@ -683,7 +692,7 @@ fun ErrorView(message: String, onRetry: () -> Unit) {
                     imageVector = Icons.Outlined.Error,
                     contentDescription = "Error",
                     modifier = Modifier.size(48.dp),
-                    tint = Color(0xFFEF4444)
+                    tint = MaterialTheme.colorScheme.error
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -692,7 +701,7 @@ fun ErrorView(message: String, onRetry: () -> Unit) {
                     text = "Connection Error",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -700,7 +709,7 @@ fun ErrorView(message: String, onRetry: () -> Unit) {
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
 
@@ -710,10 +719,14 @@ fun ErrorView(message: String, onRetry: () -> Unit) {
                     onClick = onRetry,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF3B82F6)
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text("Try Again")
+                    Text(
+                        "Try Again",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
                 }
             }
         }
