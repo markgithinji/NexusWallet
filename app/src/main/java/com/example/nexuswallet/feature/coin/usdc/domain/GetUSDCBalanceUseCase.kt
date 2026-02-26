@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.coin.usdc.domain
 
-import android.util.Log
 import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.Result
@@ -9,6 +8,7 @@ import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepositor
 import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalance
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
@@ -20,27 +20,31 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SyncUSDTransactionsUseCase @Inject constructor(
+class SyncUSDTransactionsUseCaseImpl @Inject constructor(
     private val usdcBlockchainRepository: USDCBlockchainRepository,
     private val usdcTransactionRepository: USDCTransactionRepository,
-    private val walletRepository: WalletRepository
-) {
-    suspend operator fun invoke(walletId: String): Result<Unit> = withContext(Dispatchers.IO) {
-        Log.d("SyncUSDCUC", "=== Syncing USDC transactions for wallet: $walletId ===")
+    private val walletRepository: WalletRepository,
+    private val logger: Logger
+) : SyncUSDTransactionsUseCase {
+
+    private val tag = "SyncUSDCUC"
+
+    override suspend fun invoke(walletId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        logger.d(tag, "=== Syncing USDC transactions for wallet: $walletId ===")
 
         val wallet = walletRepository.getWallet(walletId)
         if (wallet == null) {
-            Log.e("SyncUSDCUC", "Wallet not found: $walletId")
+            logger.e(tag, "Wallet not found: $walletId")
             return@withContext Result.Error("Wallet not found")
         }
 
         val usdcCoin = wallet.usdc
         if (usdcCoin == null) {
-            Log.e("SyncUSDCUC", "USDC not enabled for wallet: ${wallet.name}")
+            logger.e(tag, "USDC not enabled for wallet: ${wallet.name}")
             return@withContext Result.Error("USDC not enabled")
         }
 
-        Log.d("SyncUSDCUC", "Wallet: ${wallet.name}, Address: ${usdcCoin.address}")
+        logger.d(tag, "Wallet: ${wallet.name}, Address: ${usdcCoin.address}")
 
         // Fetch USDC transactions
         val transactionsResult = usdcBlockchainRepository.getUSDCTransactionHistory(
@@ -52,39 +56,42 @@ class SyncUSDTransactionsUseCase @Inject constructor(
         return@withContext when (transactionsResult) {
             is Result.Success -> {
                 val transactions = transactionsResult.data
-                Log.d("SyncUSDCUC", "Received ${transactions.size} USDC transactions from Etherscan")
+                logger.d(tag, "Received ${transactions.size} USDC transactions from Etherscan")
 
                 if (transactions.isEmpty()) {
-                    Log.d("SyncUSDCUC", "No transactions found")
+                    logger.d(tag, "No transactions found")
                     return@withContext Result.Success(Unit)
                 }
 
                 // Delete existing transactions for this wallet
                 usdcTransactionRepository.deleteAllForWallet(walletId)
-                Log.d("SyncUSDCUC", "Deleted existing transactions")
+                logger.d(tag, "Deleted existing transactions")
 
                 // Save new transactions
                 var savedCount = 0
                 transactions.forEachIndexed { index, transaction ->
-                    Log.d("SyncUSDCUC", "Transaction #$index: ${transaction.txHash?.take(8) ?: "unknown"}...")
-                    Log.d("SyncUSDCUC", "  isIncoming: ${transaction.isIncoming}")
-                    Log.d("SyncUSDCUC", "  amount: ${transaction.amountDecimal} USDC")
-                    Log.d("SyncUSDCUC", "  fee: ${transaction.feeEth} ETH")
-                    Log.d("SyncUSDCUC", "  gasPrice: ${transaction.gasPriceGwei} Gwei")
-                    Log.d("SyncUSDCUC", "  from: ${transaction.fromAddress.take(8)}...")
-                    Log.d("SyncUSDCUC", "  to: ${transaction.toAddress.take(8)}...")
+                    logger.d(
+                        tag,
+                        "Transaction #$index: ${transaction.txHash?.take(8) ?: "unknown"}..."
+                    )
+                    logger.d(tag, "  isIncoming: ${transaction.isIncoming}")
+                    logger.d(tag, "  amount: ${transaction.amountDecimal} USDC")
+                    logger.d(tag, "  fee: ${transaction.feeEth} ETH")
+                    logger.d(tag, "  gasPrice: ${transaction.gasPriceGwei} Gwei")
+                    logger.d(tag, "  from: ${transaction.fromAddress.take(8)}...")
+                    logger.d(tag, "  to: ${transaction.toAddress.take(8)}...")
 
                     usdcTransactionRepository.saveTransaction(transaction)
                     savedCount++
                 }
 
-                Log.d("SyncUSDCUC", "Successfully saved $savedCount USDC transactions")
-                Log.d("SyncUSDCUC", "=== Sync completed successfully for wallet $walletId ===")
+                logger.d(tag, "Successfully saved $savedCount USDC transactions")
+                logger.d(tag, "=== Sync completed successfully for wallet $walletId ===")
                 Result.Success(Unit)
             }
 
             is Result.Error -> {
-                Log.e("SyncUSDCUC", "Failed to fetch transactions: ${transactionsResult.message}")
+                logger.e(tag, "Failed to fetch transactions: ${transactionsResult.message}")
                 Result.Error(transactionsResult.message, transactionsResult.throwable)
             }
 
@@ -94,23 +101,27 @@ class SyncUSDTransactionsUseCase @Inject constructor(
 }
 
 @Singleton
-class GetUSDCWalletUseCase @Inject constructor(
-    private val walletRepository: WalletRepository
-) {
-    suspend operator fun invoke(walletId: String): Result<USDCWalletInfo> {
+class GetUSDCWalletUseCaseImpl @Inject constructor(
+    private val walletRepository: WalletRepository,
+    private val logger: Logger
+) : GetUSDCWalletUseCase {
+
+    private val tag = "GetUSDCWalletUC"
+
+    override suspend fun invoke(walletId: String): Result<USDCWalletInfo> {
         val wallet = walletRepository.getWallet(walletId)
         if (wallet == null) {
-            Log.e("GetUSDCWalletUC", "Wallet not found: $walletId")
+            logger.e(tag, "Wallet not found: $walletId")
             return Result.Error("Wallet not found")
         }
 
         val usdcCoin = wallet.usdc
         if (usdcCoin == null) {
-            Log.e("GetUSDCWalletUC", "USDC not enabled for wallet: ${wallet.name}")
+            logger.e(tag, "USDC not enabled for wallet: ${wallet.name}")
             return Result.Error("USDC not enabled for this wallet")
         }
 
-        Log.d("GetUSDCWalletUC", "Loaded wallet: ${wallet.name}, address: ${usdcCoin.address.take(8)}...")
+        logger.d(tag, "Loaded wallet: ${wallet.name}, address: ${usdcCoin.address.take(8)}...")
 
         return Result.Success(
             USDCWalletInfo(
@@ -125,20 +136,24 @@ class GetUSDCWalletUseCase @Inject constructor(
 }
 
 @Singleton
-class SendUSDCUseCase @Inject constructor(
+class SendUSDCUseCaseImpl @Inject constructor(
     private val walletRepository: WalletRepository,
     private val usdcBlockchainRepository: USDCBlockchainRepository,
     private val usdcTransactionRepository: USDCTransactionRepository,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
-    private val keyStoreRepository: KeyStoreRepository
-) {
-    suspend operator fun invoke(
+    private val keyStoreRepository: KeyStoreRepository,
+    private val logger: Logger
+) : SendUSDCUseCase {
+
+    private val tag = "SendUSDCUC"
+
+    override suspend fun invoke(
         walletId: String,
         toAddress: String,
         amount: BigDecimal,
-        feeLevel: FeeLevel = FeeLevel.NORMAL
+        feeLevel: FeeLevel
     ): Result<SendUSDCResult> = withContext(Dispatchers.IO) {
-        Log.d("SendUSDCUC", "Sending $amount USDC to $toAddress")
+        logger.d(tag, "Sending $amount USDC to $toAddress")
 
         val wallet = walletRepository.getWallet(walletId)
             ?: return@withContext Result.Error("Wallet not found")
@@ -165,7 +180,7 @@ class SendUSDCUseCase @Inject constructor(
             walletId = walletId,
             keyType = "ETH_PRIVATE_KEY" // USDC uses Ethereum private key
         ) ?: run {
-            Log.e("SendUSDCUC", "No private key found for wallet: $walletId")
+            logger.e(tag, "No private key found for wallet: $walletId")
             return@withContext Result.Error("Private key not found for wallet")
         }
 
@@ -175,7 +190,7 @@ class SendUSDCUseCase @Inject constructor(
         val privateKey = try {
             keyStoreRepository.decryptString(encryptedHex, iv.toHex())
         } catch (e: Exception) {
-            Log.e("SendUSDCUC", "Failed to decrypt private key: ${e.message}")
+            logger.e(tag, "Failed to decrypt private key: ${e.message}")
             return@withContext Result.Error("Failed to decrypt private key: ${e.message}")
         }
 
@@ -225,7 +240,8 @@ class SendUSDCUseCase @Inject constructor(
         usdcTransactionRepository.saveTransaction(transaction)
 
         // Broadcast transaction
-        val broadcastResult = usdcBlockchainRepository.broadcastUSDCTransaction(signedHex, usdcCoin.network)
+        val broadcastResult =
+            usdcBlockchainRepository.broadcastUSDCTransaction(signedHex, usdcCoin.network)
         if (broadcastResult is Result.Error) {
             return@withContext Result.Error(broadcastResult.message, broadcastResult.throwable)
         }
@@ -233,7 +249,10 @@ class SendUSDCUseCase @Inject constructor(
 
         // Update transaction status
         val updatedTransaction = if (broadcastData.success) {
-            transaction.copy(status = TransactionStatus.SUCCESS, txHash = broadcastData.hash ?: txHash)
+            transaction.copy(
+                status = TransactionStatus.SUCCESS,
+                txHash = broadcastData.hash ?: txHash
+            )
         } else {
             transaction.copy(status = TransactionStatus.FAILED)
         }
@@ -247,9 +266,9 @@ class SendUSDCUseCase @Inject constructor(
         )
 
         if (result.success) {
-            Log.d("SendUSDCUC", "Send successful: tx ${result.txHash.take(8)}...")
+            logger.d(tag, "Send successful: tx ${result.txHash.take(8)}...")
         } else {
-            Log.e("SendUSDCUC", "Send failed: ${result.error}")
+            logger.e(tag, "Send failed: ${result.error}")
         }
 
         Result.Success(result)
@@ -260,38 +279,46 @@ class SendUSDCUseCase @Inject constructor(
 }
 
 @Singleton
-class GetUSDCBalanceUseCase @Inject constructor(
+class GetUSDCBalanceUseCaseImpl @Inject constructor(
     private val walletRepository: WalletRepository,
-    private val usdcBlockchainRepository: USDCBlockchainRepository
-) {
-    suspend operator fun invoke(walletId: String): Result<USDCBalance> {
+    private val usdcBlockchainRepository: USDCBlockchainRepository,
+    private val logger: Logger
+) : GetUSDCBalanceUseCase {
+
+    private val tag = "GetUSDCBalanceUC"
+
+    override suspend fun invoke(walletId: String): Result<USDCBalance> {
         val wallet = walletRepository.getWallet(walletId)
             ?: return Result.Error("Wallet not found").also {
-                Log.e("GetUSDCBalanceUC", "Wallet not found: $walletId")
+                logger.e(tag, "Wallet not found: $walletId")
             }
 
         val usdcCoin = wallet.usdc
             ?: return Result.Error("USDC not enabled for this wallet").also {
-                Log.e("GetUSDCBalanceUC", "USDC not enabled for wallet: ${wallet.name}")
+                logger.e(tag, "USDC not enabled for wallet: ${wallet.name}")
             }
 
         val result = usdcBlockchainRepository.getUSDCBalance(usdcCoin.address, usdcCoin.network)
         if (result is Result.Success) {
-            Log.d("GetUSDCBalanceUC", "Balance: ${result.data.amountDecimal} USDC")
+            logger.d(tag, "Balance: ${result.data.amountDecimal} USDC")
         }
         return result
     }
 }
 
 @Singleton
-class GetETHBalanceForGasUseCase @Inject constructor(
+class GetETHBalanceForGasUseCaseImpl @Inject constructor(
     private val walletRepository: WalletRepository,
-    private val ethereumBlockchainRepository: EthereumBlockchainRepository
-) {
-    suspend operator fun invoke(walletId: String): Result<BigDecimal> {
+    private val ethereumBlockchainRepository: EthereumBlockchainRepository,
+    private val logger: Logger
+) : GetETHBalanceForGasUseCase {
+
+    private val tag = "GetETHGasUC"
+
+    override suspend fun invoke(walletId: String): Result<BigDecimal> {
         val wallet = walletRepository.getWallet(walletId)
             ?: return Result.Error("Wallet not found").also {
-                Log.e("GetETHGasUC", "Wallet not found: $walletId")
+                logger.e(tag, "Wallet not found: $walletId")
             }
 
         // Check for Ethereum coin first
@@ -302,7 +329,7 @@ class GetETHBalanceForGasUseCase @Inject constructor(
                 network = ethereumCoin.network
             )
             if (result is Result.Success) {
-                Log.d("GetETHGasUC", "ETH balance: ${result.data} ETH")
+                logger.d(tag, "ETH balance: ${result.data} ETH")
             }
             return result
         }
@@ -315,54 +342,51 @@ class GetETHBalanceForGasUseCase @Inject constructor(
                 network = usdcCoin.network
             )
             if (result is Result.Success) {
-                Log.d("GetETHGasUC", "ETH balance (from USDC address): ${result.data} ETH")
+                logger.d(tag, "ETH balance (from USDC address): ${result.data} ETH")
             }
             return result
         }
 
-        Log.d("GetETHGasUC", "No ETH or USDC coin found, returning 0")
+        logger.d(tag, "No ETH or USDC coin found, returning 0")
         return Result.Success(BigDecimal.ZERO)
     }
 }
 
 @Singleton
-class GetUSDCFeeEstimateUseCase @Inject constructor(
-    private val usdcBlockchainRepository: USDCBlockchainRepository
-) {
-    suspend operator fun invoke(
-        feeLevel: FeeLevel = FeeLevel.NORMAL,
-        network: EthereumNetwork = EthereumNetwork.Sepolia
+class GetUSDCFeeEstimateUseCaseImpl @Inject constructor(
+    private val usdcBlockchainRepository: USDCBlockchainRepository,
+    private val logger: Logger
+) : GetUSDCFeeEstimateUseCase {
+
+    private val tag = "GetUSDCFeeUC"
+
+    override suspend fun invoke(
+        feeLevel: FeeLevel,
+        network: EthereumNetwork
     ): Result<USDCFeeEstimate> {
         val result = usdcBlockchainRepository.getFeeEstimate(feeLevel, network)
         if (result is Result.Error) {
-            Log.e("GetUSDCFeeUC", "Failed to get fee estimate: ${result.message}")
+            logger.e(tag, "Failed to get fee estimate: ${result.message}")
         }
         return result
     }
 }
 
 @Singleton
-class ValidateUSDCFormUseCase @Inject constructor() {
+class ValidateUSDCFormUseCaseImpl @Inject constructor(
+    private val logger: Logger
+) : ValidateUSDCFormUseCase {
 
-    data class ValidationResult(
-        val isValid: Boolean,
-        val isValidAddress: Boolean,
-        val hasSufficientBalance: Boolean,
-        val hasSufficientGas: Boolean,
-        val addressError: String? = null,
-        val amountError: String? = null,
-        val balanceError: String? = null,
-        val gasError: String? = null
-    )
+    private val tag = "ValidateUSDCFormUC"
 
-    operator fun invoke(
+    override fun invoke(
         toAddress: String,
         amountValue: BigDecimal,
         usdcBalanceDecimal: BigDecimal,
         ethBalanceDecimal: BigDecimal,
         feeEstimate: USDCFeeEstimate?,
-        requireGas: Boolean = true
-    ): ValidationResult {
+        requireGas: Boolean
+    ): ValidateUSDCFormUseCase.ValidationResult {
 
         // Validate address format (Ethereum address)
         val isValidAddress = validateAddress(toAddress)
@@ -397,7 +421,14 @@ class ValidateUSDCFormUseCase @Inject constructor() {
                 hasSufficientBalance &&
                 (if (requireGas) hasSufficientGas else true)
 
-        return ValidationResult(
+        if (!isValid) {
+            logger.d(
+                tag,
+                "Validation failed - addressValid: $isValidAddress, amountValid: $isAmountValid, sufficientBalance: $hasSufficientBalance, sufficientGas: $hasSufficientGas"
+            )
+        }
+
+        return ValidateUSDCFormUseCase.ValidationResult(
             isValid = isValid,
             isValidAddress = isValidAddress,
             hasSufficientBalance = hasSufficientBalance,
