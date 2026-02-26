@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.TrendingDown
 import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,20 +53,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.market.data.model.NewsArticle
 import com.example.nexuswallet.feature.market.data.remote.ChartData
 import com.example.nexuswallet.feature.market.data.remote.ChartDuration
 import com.example.nexuswallet.feature.market.data.remote.TokenDetail
+import com.example.nexuswallet.ui.theme.bitcoinLight
+import com.example.nexuswallet.ui.theme.ethereumLight
+import com.example.nexuswallet.ui.theme.solanaLight
+import com.example.nexuswallet.ui.theme.success
+import java.time.Duration
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,16 +103,17 @@ fun TokenDetailScreen(
                             },
                             contentDescription = null,
                             tint = when (tokenId) {
-                                "bitcoin" -> Color(0xFFF7931A)
-                                "ethereum" -> Color(0xFF627EEA)
-                                "solana" -> Color(0xFF00FFA3)
+                                "bitcoin" -> bitcoinLight
+                                "ethereum" -> ethereumLight
+                                "solana" -> solanaLight
                                 else -> MaterialTheme.colorScheme.primary
                             }
                         )
                         Text(
                             text = tokenId.replaceFirstChar { it.uppercase() },
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
@@ -114,7 +121,8 @@ fun TokenDetailScreen(
                     IconButton(onClick = onNavigateUp) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
@@ -122,17 +130,18 @@ fun TokenDetailScreen(
                     IconButton(onClick = { viewModel.refresh() }) {
                         Icon(
                             imageVector = Icons.Outlined.Refresh,
-                            contentDescription = "Refresh"
+                            contentDescription = "Refresh",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    scrolledContainerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
-        containerColor = Color(0xFFF5F5F7)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         when (val state = uiState) {
             is Result.Loading -> {
@@ -142,7 +151,9 @@ fun TokenDetailScreen(
                         .padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = Color(0xFF3B82F6))
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
 
@@ -159,20 +170,28 @@ fun TokenDetailScreen(
                         imageVector = Icons.Outlined.Error,
                         contentDescription = "Error",
                         modifier = Modifier.size(48.dp),
-                        tint = Color(0xFFEF4444)
+                        tint = MaterialTheme.colorScheme.error
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = state.message,
                         style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = { viewModel.refresh() },
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
                     ) {
-                        Text("Try Again")
+                        Text(
+                            "Try Again",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.labelLarge
+                        )
                     }
                 }
             }
@@ -245,7 +264,9 @@ fun PriceChart(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
@@ -263,7 +284,7 @@ fun PriceChart(
                     text = "Price Chart",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 // Duration chips
@@ -277,13 +298,18 @@ fun PriceChart(
                             label = {
                                 Text(
                                     text = duration.label,
-                                    style = MaterialTheme.typography.labelSmall
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (selectedDuration == duration)
+                                        MaterialTheme.colorScheme.onPrimary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFF3B82F6),
-                                selectedLabelColor = Color.White,
-                                containerColor = Color(0xFFF3F4F6)
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         )
                     }
@@ -302,7 +328,7 @@ fun PriceChart(
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(32.dp),
-                        color = Color(0xFF3B82F6),
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 2.dp
                     )
                 }
@@ -330,12 +356,13 @@ fun PriceChart(
                         Text(
                             text = "Open",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF6B7280)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             text = "$${firstPrice.formatPrice()}",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -345,7 +372,7 @@ fun PriceChart(
                         Text(
                             text = "Change",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF6B7280)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -358,14 +385,18 @@ fun PriceChart(
                                     Icons.Outlined.TrendingDown,
                                 contentDescription = null,
                                 modifier = Modifier.size(14.dp),
-                                tint = if (priceChange >= 0) Color(0xFF10B981) else Color(0xFFEF4444)
+                                tint = if (priceChange >= 0)
+                                    MaterialTheme.colorScheme.success
+                                else
+                                    MaterialTheme.colorScheme.error
                             )
                             Text(
                                 text = "${if (priceChange >= 0) "+" else ""}${priceChangePercent.formatTwoDecimals()}%",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = if (priceChange >= 0) Color(0xFF10B981) else Color(
-                                    0xFFEF4444
-                                )
+                                color = if (priceChange >= 0)
+                                    MaterialTheme.colorScheme.success
+                                else
+                                    MaterialTheme.colorScheme.error
                             )
                         }
                     }
@@ -376,12 +407,13 @@ fun PriceChart(
                         Text(
                             text = "Close",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF6B7280)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             text = "$${lastPrice.formatPrice()}",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -390,13 +422,13 @@ fun PriceChart(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
-                        .background(Color(0xFFF3F4F6), RoundedCornerShape(8.dp)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "No chart data available",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -409,7 +441,9 @@ fun TokenHeaderCard(token: TokenDetail) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
@@ -435,12 +469,12 @@ fun TokenHeaderCard(token: TokenDetail) {
                     text = token.name,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "${token.symbol.uppercase()} • Rank #${token.marketCapRank}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B7280)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -452,7 +486,9 @@ fun PriceCard(token: TokenDetail) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
@@ -461,7 +497,7 @@ fun PriceCard(token: TokenDetail) {
             Text(
                 text = "Current Price",
                 style = MaterialTheme.typography.labelLarge,
-                color = Color(0xFF6B7280)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -470,7 +506,7 @@ fun PriceCard(token: TokenDetail) {
                 text = "$${token.currentPrice.formatPrice()}",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -491,24 +527,24 @@ fun PriceCard(token: TokenDetail) {
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         tint = if (token.priceChangePercentage24h >= 0)
-                            Color(0xFF10B981)
+                            MaterialTheme.colorScheme.success
                         else
-                            Color(0xFFEF4444)
+                            MaterialTheme.colorScheme.error
                     )
                     Text(
                         text = "${if (token.priceChangePercentage24h >= 0) "+" else ""}${token.priceChangePercentage24h.formatTwoDecimals()}%",
                         style = MaterialTheme.typography.titleMedium,
                         color = if (token.priceChangePercentage24h >= 0)
-                            Color(0xFF10B981)
+                            MaterialTheme.colorScheme.success
                         else
-                            Color(0xFFEF4444)
+                            MaterialTheme.colorScheme.error
                     )
                 }
 
                 Text(
                     text = "• 24h",
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color(0xFF6B7280)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -517,7 +553,7 @@ fun PriceCard(token: TokenDetail) {
                 Text(
                     text = "L: $${token.low24h.formatPrice()} H: $${token.high24h.formatPrice()}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF6B7280)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -529,7 +565,9 @@ fun MarketStatsCard(token: TokenDetail) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
@@ -539,7 +577,7 @@ fun MarketStatsCard(token: TokenDetail) {
                 text = "Market Stats",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -589,7 +627,9 @@ fun SupplyCard(token: TokenDetail) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
@@ -599,7 +639,7 @@ fun SupplyCard(token: TokenDetail) {
                 text = "Supply Information",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -659,13 +699,13 @@ fun SupplyProgressBar(percentage: Float, label: String) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF6B7280)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = "${percentage.toInt()}%",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
 
@@ -676,13 +716,13 @@ fun SupplyProgressBar(percentage: Float, label: String) {
                 .fillMaxWidth()
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp))
-                .background(Color(0xFFE5E7EB))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(percentage / 100f)
                     .fillMaxHeight()
-                    .background(Color(0xFF3B82F6))
+                    .background(MaterialTheme.colorScheme.primary)
                     .clip(RoundedCornerShape(3.dp))
             )
         }
@@ -694,7 +734,9 @@ fun AllTimeCard(token: TokenDetail) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
@@ -704,7 +746,7 @@ fun AllTimeCard(token: TokenDetail) {
                 text = "All Time High / Low",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -717,20 +759,21 @@ fun AllTimeCard(token: TokenDetail) {
                     Text(
                         text = "All Time High",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF6B7280)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = "$${token.ath.formatPrice()}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "${if (token.athChangePercentage >= 0) "+" else ""}${token.athChangePercentage.formatTwoDecimals()}%",
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (token.athChangePercentage >= 0) Color(0xFF10B981) else Color(
-                            0xFFEF4444
-                        )
+                        color = if (token.athChangePercentage >= 0)
+                            MaterialTheme.colorScheme.success
+                        else
+                            MaterialTheme.colorScheme.error
                     )
                 }
 
@@ -738,20 +781,21 @@ fun AllTimeCard(token: TokenDetail) {
                     Text(
                         text = "All Time Low",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF6B7280)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = "$${token.atl.formatPrice()}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "${if (token.atlChangePercentage >= 0) "+" else ""}${token.atlChangePercentage.formatTwoDecimals()}%",
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (token.atlChangePercentage >= 0) Color(0xFF10B981) else Color(
-                            0xFFEF4444
-                        )
+                        color = if (token.atlChangePercentage >= 0)
+                            MaterialTheme.colorScheme.success
+                        else
+                            MaterialTheme.colorScheme.error
                     )
                 }
             }
@@ -765,13 +809,13 @@ fun AllTimeCard(token: TokenDetail) {
                 Text(
                     text = "ATH: ${token.athDate}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = "ATL: ${token.atlDate}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.End
                 )
@@ -785,7 +829,9 @@ fun AboutCard(token: TokenDetail) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
@@ -795,7 +841,7 @@ fun AboutCard(token: TokenDetail) {
                 text = "About ${token.name}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -803,7 +849,7 @@ fun AboutCard(token: TokenDetail) {
             Text(
                 text = token.description ?: "No description available.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF374151)
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -826,7 +872,7 @@ fun StatRowWithChange(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF6B7280)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Column(
@@ -836,13 +882,13 @@ fun StatRowWithChange(
                 text = value,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
             if (change.isNotEmpty()) {
                 Text(
                     text = change,
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF6B7280)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -859,7 +905,9 @@ fun NewsCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
@@ -876,14 +924,14 @@ fun NewsCard(
                     imageVector = Icons.Outlined.Article,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = Color(0xFF3B82F6)
+                    tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Latest News (24h delay)",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -898,7 +946,7 @@ fun NewsCard(
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(32.dp),
-                        color = Color(0xFF3B82F6),
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 2.dp
                     )
                 }
@@ -912,7 +960,7 @@ fun NewsCard(
                     Text(
                         text = "No news available",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF6B7280)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -922,7 +970,7 @@ fun NewsCard(
                     if (index < articles.size - 1 && index < 2) {
                         Divider(
                             modifier = Modifier.padding(vertical = 8.dp),
-                            color = Color(0xFFE5E7EB),
+                            color = MaterialTheme.colorScheme.outline,
                             thickness = 1.dp
                         )
                     }
@@ -933,7 +981,7 @@ fun NewsCard(
                 Text(
                     text = "⚠️ Free plan: 24h delay, no links",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp)
                 )
             }
@@ -953,7 +1001,9 @@ fun NewsItem(
                 // TODO: Handle news item click
             },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FAFB)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
@@ -966,14 +1016,14 @@ fun NewsItem(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFE5E7EB)),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Article,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = Color(0xFF6B7280)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -987,7 +1037,7 @@ fun NewsItem(
                     text = article.title,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -997,7 +1047,7 @@ fun NewsItem(
                     Text(
                         text = article.summary.take(100) + "...",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1013,17 +1063,34 @@ fun NewsItem(
                     Text(
                         text = article.source,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF3B82F6),
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium
                     )
 
                     Text(
                         text = formatRelativeTime(article.publishedAt),
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF6B7280)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
+        }
+    }
+}
+
+// Helper function to format relative time
+@RequiresApi(Build.VERSION_CODES.O)
+fun formatRelativeTime(timestamp: Long): String {
+    val now = Instant.now()
+    val articleTime = Instant.ofEpochSecond(timestamp)
+    val duration = Duration.between(articleTime, now)
+
+    return when {
+        duration.toHours() < 24 -> "${duration.toHours()}h ago"
+        duration.toDays() < 30 -> "${duration.toDays()}d ago"
+        else -> {
+            val date = LocalDateTime.ofInstant(articleTime, ZoneId.systemDefault())
+            java.time.format.DateTimeFormatter.ofPattern("MMM d").format(date)
         }
     }
 }
