@@ -13,15 +13,13 @@ interface GetBitcoinWalletUseCase {
 }
 
 interface SendBitcoinUseCase {
-    data class Params(
-        val walletId: String,
-        val toAddress: String,
-        val amount: BigDecimal,
-        val feeLevel: FeeLevel = FeeLevel.NORMAL,
-        val note: String? = null
-    )
-
-    suspend operator fun invoke(params: Params): Result<SendBitcoinResult>
+    suspend operator fun invoke(
+        walletId: String,
+        toAddress: String,
+        amount: BigDecimal,
+        feeLevel: FeeLevel = FeeLevel.NORMAL,
+        note: String? = null
+    ): Result<SendBitcoinResult>
 }
 
 interface GetBitcoinFeeEstimateUseCase {

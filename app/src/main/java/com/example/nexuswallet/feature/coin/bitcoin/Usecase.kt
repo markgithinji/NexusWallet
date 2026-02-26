@@ -142,34 +142,40 @@ class SendBitcoinUseCaseImpl @Inject constructor(
 
     private val tag = "SendBitcoinUC"
 
-    override suspend fun invoke(params: SendBitcoinUseCase.Params): Result<SendBitcoinResult> = withContext(Dispatchers.IO) {
-        logger.d(tag, "Sending ${params.amount.toPlainString()} BTC to ${params.toAddress.take(8)}... | walletId=${params.walletId}")
+    override suspend fun invoke(
+        walletId: String,
+        toAddress: String,
+        amount: BigDecimal,
+        feeLevel: FeeLevel,
+        note: String?
+    ): Result<SendBitcoinResult> = withContext(Dispatchers.IO) {
+        logger.d(tag, "Sending ${amount.toPlainString()} BTC to ${toAddress.take(8)}... | walletId=$walletId")
 
         // Get wallet
-        val wallet = walletRepository.getWallet(params.walletId)
+        val wallet = walletRepository.getWallet(walletId)
         val bitcoinCoin = wallet?.bitcoin
 
         if (wallet == null || bitcoinCoin == null) {
-            logger.e(tag, "Invalid wallet state for walletId=${params.walletId}")
+            logger.e(tag, "Invalid wallet state for walletId=$walletId")
             return@withContext Result.Error("Invalid wallet state")
         }
 
         // Get fee estimate
         return@withContext when (val feeResult = bitcoinBlockchainRepository.getFeeEstimate(
-            params.feeLevel,
+            feeLevel,
             DEFAULT_INPUT_COUNT,
             DEFAULT_OUTPUT_COUNT
         )) {
             is Result.Success -> {
                 val feeEstimate = feeResult.data
                 processTransaction(
-                    walletId = params.walletId,
+                    walletId = walletId,
                     bitcoinCoin = bitcoinCoin,
-                    toAddress = params.toAddress,
-                    amount = params.amount,
+                    toAddress = toAddress,
+                    amount = amount,
                     feeEstimate = feeEstimate,
-                    feeLevel = params.feeLevel,
-                    note = params.note
+                    feeLevel = feeLevel,
+                    note = note
                 )
             }
 
@@ -335,6 +341,8 @@ class SendBitcoinUseCaseImpl @Inject constructor(
         }
     }
 
+    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
+
     companion object {
         private const val BTC_PRIVATE_KEY_TYPE = "BTC_PRIVATE_KEY"
         private const val DEFAULT_INPUT_COUNT = 1
@@ -442,14 +450,20 @@ class ValidateBitcoinTransactionUseCaseImpl @Inject constructor(
         // Validate wallet exists
         if (wallet == null) {
             logger.w(tag, "Wallet not found: $walletId")
-            return ValidateBitcoinTransactionUseCase.ValidationResult(false, addressError = "Wallet not found")
+            return ValidateBitcoinTransactionUseCase.ValidationResult(
+                isValid = false,
+                addressError = "Wallet not found"
+            )
         }
 
         // Validate Bitcoin is enabled
         val bitcoinCoin = wallet.bitcoin
         if (bitcoinCoin == null) {
             logger.w(tag, "Bitcoin not enabled for wallet: ${wallet.name}")
-            return ValidateBitcoinTransactionUseCase.ValidationResult(false, addressError = "Bitcoin not enabled for this wallet")
+            return ValidateBitcoinTransactionUseCase.ValidationResult(
+                isValid = false,
+                addressError = "Bitcoin not enabled for this wallet"
+            )
         }
 
         // Validate address is not empty
