@@ -48,7 +48,7 @@ object SolanaModule {
         @Named("solanaMainnet") mainnetConnection: Connection,
         solanaRpcService: SolanaRpcService
     ): SolanaBlockchainRepository {
-        return SolanaBlockchainRepository(
+        return SolanaBlockchainRepositoryImpl(
             devnetConnection = devnetConnection,
             mainnetConnection = mainnetConnection,
             solanaRpcService = solanaRpcService

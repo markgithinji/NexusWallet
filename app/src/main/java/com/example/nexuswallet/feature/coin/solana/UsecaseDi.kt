@@ -1,7 +1,8 @@
 package com.example.nexuswallet.feature.coin.solana
 
-import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
-import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
+import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
@@ -16,26 +17,98 @@ object SolanaUseCaseModule {
 
     @Provides
     @Singleton
+    fun provideSyncSolanaTransactionsUseCase(
+        solanaBlockchainRepository: SolanaBlockchainRepository,
+        solanaTransactionRepository: SolanaTransactionRepository,
+        walletRepository: WalletRepository,
+        logger: Logger
+    ): SyncSolanaTransactionsUseCase {
+        return SyncSolanaTransactionsUseCaseImpl(
+            solanaBlockchainRepository,
+            solanaTransactionRepository,
+            walletRepository,
+            logger
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetSolanaWalletUseCase(
+        walletRepository: WalletRepository,
+        logger: Logger
+    ): GetSolanaWalletUseCase {
+        return GetSolanaWalletUseCaseImpl(
+            walletRepository,
+            logger
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideSendSolanaUseCase(
+        walletRepository: WalletRepository,
+        solanaBlockchainRepository: SolanaBlockchainRepository,
+        solanaTransactionRepository: SolanaTransactionRepository,
+        securityPreferencesRepository: SecurityPreferencesRepository,
+        keyStoreRepository: KeyStoreRepository,
+        logger: Logger
+    ): SendSolanaUseCase {
+        return SendSolanaUseCaseImpl(
+            walletRepository,
+            solanaBlockchainRepository,
+            solanaTransactionRepository,
+            securityPreferencesRepository,
+            keyStoreRepository,
+            logger
+        )
+    }
+
+    @Provides
+    @Singleton
     fun provideGetSolanaBalanceUseCase(
-        solanaBlockchainRepository: SolanaBlockchainRepository
+        solanaBlockchainRepository: SolanaBlockchainRepository,
+        logger: Logger
     ): GetSolanaBalanceUseCase {
-        return GetSolanaBalanceUseCase(solanaBlockchainRepository)
+        return GetSolanaBalanceUseCaseImpl(
+            solanaBlockchainRepository,
+            logger
+        )
     }
 
     @Provides
     @Singleton
     fun provideGetSolanaFeeEstimateUseCase(
-        solanaBlockchainRepository: SolanaBlockchainRepository
+        solanaBlockchainRepository: SolanaBlockchainRepository,
+        logger: Logger
     ): GetSolanaFeeEstimateUseCase {
-        return GetSolanaFeeEstimateUseCase(solanaBlockchainRepository)
+        return GetSolanaFeeEstimateUseCaseImpl(
+            solanaBlockchainRepository,
+            logger
+        )
     }
 
     @Provides
     @Singleton
     fun provideValidateSolanaAddressUseCase(
-        solanaBlockchainRepository: SolanaBlockchainRepository
+        solanaBlockchainRepository: SolanaBlockchainRepository,
+        logger: Logger
     ): ValidateSolanaAddressUseCase {
-        return ValidateSolanaAddressUseCase(solanaBlockchainRepository)
+        return ValidateSolanaAddressUseCaseImpl(
+            solanaBlockchainRepository,
+            logger
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideValidateSolanaSendUseCase(
+        validateSolanaAddressUseCase: ValidateSolanaAddressUseCase,
+        logger: Logger
+    ): ValidateSolanaSendUseCase {
+        return ValidateSolanaSendUseCaseImpl(
+            validateSolanaAddressUseCase,
+            logger
+        )
     }
 
     @Provides
@@ -50,45 +123,5 @@ object SolanaUseCaseModule {
         solanaTransactionDao: SolanaTransactionDao
     ): SolanaTransactionRepository {
         return SolanaTransactionRepository(solanaTransactionDao)
-    }
-
-    @Provides
-    @Singleton
-    fun provideSendSolanaUseCase(
-        walletRepository: WalletRepository,
-        solanaBlockchainRepository: SolanaBlockchainRepository,
-        solanaTransactionRepository: SolanaTransactionRepository,
-        securityPreferencesRepository: SecurityPreferencesRepository,
-        keyStoreRepository: KeyStoreRepository,
-    ): SendSolanaUseCase {
-        return SendSolanaUseCase(
-            walletRepository,
-            solanaBlockchainRepository,
-            solanaTransactionRepository,
-            securityPreferencesRepository,
-            keyStoreRepository
-        )
-    }
-
-    @Provides
-    @Singleton
-    fun provideGetSolanaWalletUseCase(
-        walletRepository: WalletRepository
-    ): GetSolanaWalletUseCase {
-        return GetSolanaWalletUseCase(walletRepository)
-    }
-
-    @Provides
-    @Singleton
-    fun provideSyncSolanaTransactionsUseCase(
-        solanaBlockchainRepository: SolanaBlockchainRepository,
-        solanaTransactionRepository: SolanaTransactionRepository,
-        walletRepository: WalletRepository
-    ): SyncSolanaTransactionsUseCase {
-        return SyncSolanaTransactionsUseCase(
-            solanaBlockchainRepository,
-            solanaTransactionRepository,
-            walletRepository
-        )
     }
 }
