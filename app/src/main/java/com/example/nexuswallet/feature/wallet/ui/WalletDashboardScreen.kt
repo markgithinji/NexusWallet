@@ -2,7 +2,6 @@ package com.example.nexuswallet.feature.wallet.ui
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,14 +26,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavController
-import com.example.nexuswallet.NavigationViewModel
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
+import com.example.nexuswallet.ui.theme.bitcoinLight
+import com.example.nexuswallet.ui.theme.ethereumLight
+import com.example.nexuswallet.ui.theme.solanaLight
+import com.example.nexuswallet.ui.theme.success
+import com.example.nexuswallet.ui.theme.usdcLight
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.*
-import com.example.nexuswallet.feature.coin.Result
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -78,7 +80,7 @@ fun WalletDashboardScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color(0xFFF0F0F2))
+                            .background(MaterialTheme.colorScheme.background)
                     )
 
                     // Main content
@@ -156,7 +158,7 @@ fun DashboardContent(
                     text = "Your Wallets",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             }
@@ -216,7 +218,8 @@ fun DashboardTopBar(
                 Text(
                     text = "Dashboard",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         },
@@ -225,7 +228,7 @@ fun DashboardTopBar(
                 Icon(
                     imageVector = Icons.Outlined.Menu,
                     contentDescription = "Menu",
-                    tint = Color.Black
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
@@ -241,7 +244,7 @@ fun DashboardTopBar(
                     Icon(
                         imageVector = Icons.Outlined.Refresh,
                         contentDescription = "Refresh",
-                        tint = Color.Black,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -249,8 +252,8 @@ fun DashboardTopBar(
         },
         scrollBehavior = scrollBehavior,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.White,
-            scrolledContainerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface
         )
     )
 }
@@ -280,7 +283,7 @@ fun AnimatedPortfolioHeader(
             .shadow(elevation = 0.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Column(
@@ -296,18 +299,21 @@ fun AnimatedPortfolioHeader(
                 Text(
                     text = "Total Portfolio",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B7280)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Box(
                     modifier = Modifier
-                        .background(Color(0xFFF3F4F6), RoundedCornerShape(20.dp))
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant,
+                            RoundedCornerShape(20.dp)
+                        )
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = "Today",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF374151)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -318,7 +324,7 @@ fun AnimatedPortfolioHeader(
                 text = NumberFormat.getCurrencyInstance(Locale.US).format(animatedValue.value),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = if (isTablet) 36.sp else 28.sp
             )
 
@@ -337,13 +343,13 @@ fun AnimatedPortfolioHeader(
                         imageVector = Icons.Outlined.AccountBalanceWallet,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
-                        tint = Color(0xFF6B7280)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = walletCount.toString(),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -356,13 +362,13 @@ fun AnimatedPortfolioHeader(
                         imageVector = Icons.Outlined.TrendingUp,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
-                        tint = Color(0xFF10B981)
+                        tint = MaterialTheme.colorScheme.success
                     )
                     Text(
                         text = "+2.4%",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF10B981)
+                        color = MaterialTheme.colorScheme.success
                     )
                 }
 
@@ -375,13 +381,13 @@ fun AnimatedPortfolioHeader(
                         imageVector = Icons.Outlined.Shield,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
-                        tint = Color(0xFF6B7280)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = "Secure",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -419,7 +425,7 @@ fun WalletCard(
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Column(
@@ -460,7 +466,7 @@ fun WalletCard(
                         text = wallet.name,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -475,7 +481,7 @@ fun WalletCard(
                             text = NumberFormat.getCurrencyInstance(Locale.US).format(totalBalance),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -485,16 +491,16 @@ fun WalletCard(
                         modifier = Modifier.padding(top = 4.dp)
                     ) {
                         wallet.bitcoin?.let {
-                            CoinBadge(text = "BTC", color = Color(0xFFF7931A))
+                            CoinBadge(text = "BTC", color = bitcoinLight)
                         }
                         wallet.ethereum?.let {
-                            CoinBadge(text = "ETH", color = Color(0xFF627EEA))
+                            CoinBadge(text = "ETH", color = ethereumLight)
                         }
                         wallet.solana?.let {
-                            CoinBadge(text = "SOL", color = Color(0xFF00FFA3))
+                            CoinBadge(text = "SOL", color = solanaLight)
                         }
                         wallet.usdc?.let {
-                            CoinBadge(text = "USDC", color = Color(0xFF2775CA))
+                            CoinBadge(text = "USDC", color = usdcLight)
                         }
                     }
                 }
@@ -507,7 +513,7 @@ fun WalletCard(
                         imageVector = if (isExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                         contentDescription = if (isExpanded) "Collapse" else "Expand",
                         modifier = Modifier.size(18.dp),
-                        tint = Color(0xFF6B7280)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -558,7 +564,7 @@ fun WalletExpandedContent(
     ) {
         Divider(
             modifier = Modifier.padding(bottom = 12.dp),
-            color = Color(0xFFE5E7EB),
+            color = MaterialTheme.colorScheme.outline,
             thickness = 1.dp
         )
 
@@ -573,7 +579,7 @@ fun WalletExpandedContent(
                         symbol = "Bitcoin",
                         amount = "${NumberFormat.getNumberInstance(Locale.US).format(btc.btc.toDoubleOrNull() ?: 0.0)} BTC",
                         usdValue = btc.usdValue,
-                        color = Color(0xFFF7931A)
+                        color = bitcoinLight
                     )
                 }
                 it.ethereum?.let { eth ->
@@ -582,7 +588,7 @@ fun WalletExpandedContent(
                         symbol = "Ethereum",
                         amount = "${NumberFormat.getNumberInstance(Locale.US).format(eth.eth.toDoubleOrNull() ?: 0.0)} ETH",
                         usdValue = eth.usdValue,
-                        color = Color(0xFF627EEA)
+                        color = ethereumLight
                     )
                 }
                 it.solana?.let { sol ->
@@ -591,7 +597,7 @@ fun WalletExpandedContent(
                         symbol = "Solana",
                         amount = "${NumberFormat.getNumberInstance(Locale.US).format(sol.sol.toDoubleOrNull() ?: 0.0)} SOL",
                         usdValue = sol.usdValue,
-                        color = Color(0xFF00FFA3)
+                        color = solanaLight
                     )
                 }
                 it.usdc?.let { usdc ->
@@ -600,7 +606,7 @@ fun WalletExpandedContent(
                         symbol = "USDC",
                         amount = "${NumberFormat.getNumberInstance(Locale.US).format(usdc.amountDecimal.toDoubleOrNull() ?: 0.0)} USDC",
                         usdValue = usdc.usdValue,
-                        color = Color(0xFF2775CA)
+                        color = usdcLight
                     )
                 }
             }
@@ -616,7 +622,7 @@ fun WalletExpandedContent(
             TextButton(
                 onClick = onDelete,
                 colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color(0xFFEF4444)
+                    contentColor = MaterialTheme.colorScheme.error
                 )
             ) {
                 Icon(
@@ -663,12 +669,12 @@ fun CoinBalanceRow(
                     text = symbol,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = amount,
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color(0xFF6B7280)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -678,7 +684,7 @@ fun CoinBalanceRow(
             text = NumberFormat.getCurrencyInstance(Locale.US).format(usdValue),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
-            color = Color.Black
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -698,7 +704,7 @@ fun EmptyWalletsScreen(
             shape = RoundedCornerShape(20.dp),
             elevation = CardDefaults.cardElevation(0.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface
             ),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -710,7 +716,7 @@ fun EmptyWalletsScreen(
                     imageVector = Icons.Outlined.AccountBalanceWallet,
                     contentDescription = "No Wallets",
                     modifier = Modifier.size(56.dp),
-                    tint = Color(0xFF6B7280)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -719,7 +725,7 @@ fun EmptyWalletsScreen(
                     text = "No Wallets Yet",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -727,7 +733,7 @@ fun EmptyWalletsScreen(
                 Text(
                     text = "Create your first wallet to get started",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
 
@@ -737,13 +743,13 @@ fun EmptyWalletsScreen(
                     onClick = onCreateWallet,
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF3B82F6)
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
                     Text(
                         "Create Wallet",
                         style = MaterialTheme.typography.labelLarge,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
@@ -759,7 +765,7 @@ fun LoadingScreen() {
     ) {
         CircularProgressIndicator(
             modifier = Modifier.size(40.dp),
-            color = Color(0xFF3B82F6)
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }
@@ -777,7 +783,7 @@ fun ErrorScreen(message: String, onRetry: () -> Unit) {
             shape = RoundedCornerShape(20.dp),
             elevation = CardDefaults.cardElevation(0.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface
             ),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -789,7 +795,7 @@ fun ErrorScreen(message: String, onRetry: () -> Unit) {
                     imageVector = Icons.Outlined.Error,
                     contentDescription = "Error",
                     modifier = Modifier.size(42.dp),
-                    tint = Color(0xFFEF4444)
+                    tint = MaterialTheme.colorScheme.error
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -798,7 +804,7 @@ fun ErrorScreen(message: String, onRetry: () -> Unit) {
                     text = "Something went wrong",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -806,7 +812,7 @@ fun ErrorScreen(message: String, onRetry: () -> Unit) {
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B7280),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
 
@@ -816,13 +822,13 @@ fun ErrorScreen(message: String, onRetry: () -> Unit) {
                     onClick = onRetry,
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF3B82F6)
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
                     Text(
                         "Try Again",
                         style = MaterialTheme.typography.labelLarge,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
@@ -839,27 +845,27 @@ fun DeleteWalletDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(20.dp),
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Text(
                 text = "Delete Wallet",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
             Text(
                 text = "Are you sure you want to delete \"$walletName\"? This action cannot be undone.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF6B7280)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
                 colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color(0xFFEF4444)
+                    contentColor = MaterialTheme.colorScheme.error
                 )
             ) {
                 Text(
@@ -872,7 +878,7 @@ fun DeleteWalletDialog(
             TextButton(
                 onClick = onDismiss,
                 colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color(0xFF6B7280)
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
                 Text(
