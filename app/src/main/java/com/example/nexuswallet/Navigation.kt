@@ -89,8 +89,6 @@ fun Navigation() {
         composable<MainRoute> {
             MainTabScreen(
                 onNavigateToCreateWallet = { navController.navigate(CreateWalletRoute) },
-                onNavigateToSettings = { navController.navigate(SettingsRoute) },
-                onNavigateToMarket = { navController.navigate(MarketRoute) },
                 onNavigateToWalletDetail = { walletId ->
                     navController.navigate(WalletDetailRoute(walletId))
                 },

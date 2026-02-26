@@ -29,8 +29,6 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
 @Composable
 fun MainTabScreen(
     onNavigateToCreateWallet: () -> Unit,
-    onNavigateToSettings: () -> Unit,
-    onNavigateToMarket: () -> Unit,
     onNavigateToWalletDetail: (String) -> Unit,
     onNavigateToCoinDetail: (String, CoinType) -> Unit,
     onNavigateToTokenDetail: (String) -> Unit,
@@ -81,14 +79,14 @@ fun MainTabScreen(
                             Icon(
                                 Icons.Outlined.Add,
                                 "Create Wallet",
-                                tint = Color.Black
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    scrolledContainerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
@@ -99,7 +97,7 @@ fun MainTabScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface
                 ),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
@@ -132,10 +130,10 @@ fun MainTabScreen(
                         },
                         alwaysShowLabel = true,
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF3B82F6),
-                            selectedTextColor = Color(0xFF3B82F6),
-                            unselectedIconColor = Color(0xFF6B7280),
-                            unselectedTextColor = Color(0xFF6B7280),
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             indicatorColor = Color.Transparent
                         )
                     )
@@ -143,10 +141,7 @@ fun MainTabScreen(
                     // Market Tab
                     NavigationBarItem(
                         selected = selectedTab == 1,
-                        onClick = {
-                            selectedTab = 1
-                            onNavigateToMarket()
-                        },
+                        onClick = { selectedTab = 1 },
                         icon = {
                             Icon(
                                 imageVector = if (selectedTab == 1)
@@ -165,10 +160,10 @@ fun MainTabScreen(
                         },
                         alwaysShowLabel = true,
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF3B82F6),
-                            selectedTextColor = Color(0xFF3B82F6),
-                            unselectedIconColor = Color(0xFF6B7280),
-                            unselectedTextColor = Color(0xFF6B7280),
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             indicatorColor = Color.Transparent
                         )
                     )
@@ -176,10 +171,7 @@ fun MainTabScreen(
                     // Settings Tab
                     NavigationBarItem(
                         selected = selectedTab == 2,
-                        onClick = {
-                            selectedTab = 2
-                            onNavigateToSettings()
-                        },
+                        onClick = { selectedTab = 2 },
                         icon = {
                             Icon(
                                 imageVector = if (selectedTab == 2)
@@ -198,10 +190,10 @@ fun MainTabScreen(
                         },
                         alwaysShowLabel = true,
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF3B82F6),
-                            selectedTextColor = Color(0xFF3B82F6),
-                            unselectedIconColor = Color(0xFF6B7280),
-                            unselectedTextColor = Color(0xFF6B7280),
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             indicatorColor = Color.Transparent
                         )
                     )
@@ -213,18 +205,18 @@ fun MainTabScreen(
                 FloatingActionButton(
                     onClick = onNavigateToCreateWallet,
                     shape = RoundedCornerShape(16.dp),
-                    containerColor = Color(0xFF3B82F6),
+                    containerColor = MaterialTheme.colorScheme.primary,
                     elevation = FloatingActionButtonDefaults.elevation(0.dp)
                 ) {
                     Icon(
                         Icons.Default.Add,
                         "Create New Wallet",
-                        tint = Color.White
+                        tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
         },
-        containerColor = Color(0xFFF5F5F7)
+        containerColor = MaterialTheme.colorScheme.background
     ) { scaffoldPadding ->
         when (selectedTab) {
             0 -> WalletDashboardScreen(
@@ -236,7 +228,7 @@ fun MainTabScreen(
                 )
             )
             1 -> MarketScreen(
-                onNavigateUp = { /* Handle market screen back navigation */ },
+                onNavigateUp = { /* Handle market screen back navigation if needed */ },
                 onNavigateToTokenDetail = onNavigateToTokenDetail,
                 padding = PaddingValues(
                     top = scaffoldPadding.calculateTopPadding(),
@@ -245,7 +237,7 @@ fun MainTabScreen(
             )
             2 -> SettingsScreen(
                 onNavigateUp = { /* Handle settings screen back navigation */ },
-                onNavigateToSecurity = onNavigateToSettings
+                onNavigateToSecurity = { /* Navigate to security settings */ }
             )
         }
     }
