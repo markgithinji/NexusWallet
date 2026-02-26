@@ -50,6 +50,13 @@ import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.contentColorFor
+import com.example.nexuswallet.ui.theme.bitcoinLight
+import com.example.nexuswallet.ui.theme.ethereumLight
+import com.example.nexuswallet.ui.theme.solanaLight
+import com.example.nexuswallet.ui.theme.usdcLight
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletCreationScreen(
@@ -77,7 +84,12 @@ fun WalletCreationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Create Wallet") },
+                title = {
+                    Text(
+                        "Create Wallet",
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                },
                 navigationIcon = {
                     if (currentStep > 0) {
                         IconButton(onClick = {
@@ -87,10 +99,17 @@ fun WalletCreationScreen(
                                 viewModel.previousStep()
                             }
                         }) {
-                            Icon(Icons.Default.ArrowBack, "Back")
+                            Icon(
+                                Icons.Default.ArrowBack,
+                                "Back",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         }
     ) { padding ->
@@ -155,9 +174,14 @@ fun WalletCreationScreen(
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        CircularProgressIndicator()
+                                        CircularProgressIndicator(
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
                                         Spacer(modifier = Modifier.height(16.dp))
-                                        Text("Generating secure recovery phrase...")
+                                        Text(
+                                            "Generating secure recovery phrase...",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
                                 }
                             }
@@ -195,9 +219,14 @@ fun WalletCreationScreen(
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        CircularProgressIndicator()
+                                        CircularProgressIndicator(
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
                                         Spacer(modifier = Modifier.height(16.dp))
-                                        Text("Creating wallet...")
+                                        Text(
+                                            "Creating wallet...",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
                                 }
                             }
@@ -237,6 +266,7 @@ fun WalletCreationStepper(
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
@@ -382,7 +412,8 @@ fun CoinSelectionStep(
         Text(
             text = "Select Coins",
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -398,7 +429,7 @@ fun CoinSelectionStep(
         // Bitcoin Option
         CoinToggleCard(
             icon = Icons.Default.CurrencyBitcoin,
-            color = Color(0xFFF7931A),
+            color = bitcoinLight,
             coinName = "Bitcoin",
             coinSymbol = "BTC",
             isSelected = localSelection.includeBitcoin,
@@ -413,7 +444,7 @@ fun CoinSelectionStep(
         // Ethereum Option
         CoinToggleCard(
             icon = Icons.Default.Diamond,
-            color = Color(0xFF627EEA),
+            color = ethereumLight,
             coinName = "Ethereum",
             coinSymbol = "ETH",
             isSelected = localSelection.includeEthereum,
@@ -428,7 +459,7 @@ fun CoinSelectionStep(
         // Solana Option
         CoinToggleCard(
             icon = Icons.Default.FlashOn,
-            color = Color(0xFF00FFA3),
+            color = solanaLight,
             coinName = "Solana",
             coinSymbol = "SOL",
             isSelected = localSelection.includeSolana,
@@ -444,7 +475,7 @@ fun CoinSelectionStep(
         if (localSelection.includeEthereum) {
             CoinToggleCard(
                 icon = Icons.Default.AttachMoney,
-                color = Color(0xFF2775CA),
+                color = usdcLight,
                 coinName = "USDC",
                 coinSymbol = "USDC",
                 isSelected = localSelection.includeUSDC,
@@ -459,7 +490,10 @@ fun CoinSelectionStep(
             // Network selection for Ethereum/USDC
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
@@ -467,7 +501,8 @@ fun CoinSelectionStep(
                     Text(
                         text = "Ethereum Network",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -520,7 +555,10 @@ fun CoinSelectionStep(
         if (localSelection.includeBitcoin) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
@@ -528,7 +566,8 @@ fun CoinSelectionStep(
                     Text(
                         text = "Bitcoin Network",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -584,7 +623,11 @@ fun CoinSelectionStep(
             shape = RoundedCornerShape(12.dp),
             enabled = localSelection.includeBitcoin ||
                     localSelection.includeEthereum ||
-                    localSelection.includeSolana
+                    localSelection.includeSolana,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         ) {
             Text("Continue")
         }
@@ -641,7 +684,8 @@ fun CoinToggleCard(
                 Text(
                     text = coinName,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = coinSymbol,
@@ -687,7 +731,8 @@ fun NetworkChip(
             color = if (isSelected)
                 MaterialTheme.colorScheme.onPrimary
             else
-                MaterialTheme.colorScheme.onSurfaceVariant
+                MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium
         )
     }
 }
@@ -699,10 +744,12 @@ fun SecurityWarningDialog(
 ) {
     AlertDialog(
         onDismissRequest = onCancel,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Text(
                 text = "⚠️ Security Warning",
-                color = MaterialTheme.colorScheme.error
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.titleMedium
             )
         },
         text = {
@@ -710,16 +757,27 @@ fun SecurityWarningDialog(
                 text = "Your recovery phrase is the ONLY way to restore your wallet. " +
                         "If you lose it, you lose access to your funds permanently. " +
                         "Never share it with anyone!",
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         confirmButton = {
-            TextButton(onClick = onAccept) {
+            TextButton(
+                onClick = onAccept,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
                 Text("I Understand")
             }
         },
         dismissButton = {
-            TextButton(onClick = onCancel) {
+            TextButton(
+                onClick = onCancel,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            ) {
                 Text("Cancel")
             }
         }
@@ -748,7 +806,8 @@ fun MnemonicDisplayStep(
                 Text(
                     text = "🔐 Your Recovery Phrase",
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -786,7 +845,8 @@ fun MnemonicDisplayStep(
                         Text(
                             text = "Write down these 12 words IN ORDER on paper. " +
                                     "Never store digitally. This is the ONLY way to restore your wallet.",
-                            color = MaterialTheme.colorScheme.onErrorContainer
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
@@ -829,7 +889,8 @@ fun MnemonicDisplayStep(
                     Text(
                         text = "📝 Safety Checklist:",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -866,12 +927,16 @@ fun MnemonicDisplayStep(
                 ) {
                     Checkbox(
                         checked = hasWrittenDown,
-                        onCheckedChange = { hasWrittenDown = it }
+                        onCheckedChange = { hasWrittenDown = it },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = MaterialTheme.colorScheme.primary
+                        )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "I have written down all 12 words on paper",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -882,12 +947,16 @@ fun MnemonicDisplayStep(
                 ) {
                     Checkbox(
                         checked = hasStoredSafely,
-                        onCheckedChange = { hasStoredSafely = it }
+                        onCheckedChange = { hasStoredSafely = it },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = MaterialTheme.colorScheme.primary
+                        )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "I have stored them in a secure location",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -927,7 +996,10 @@ fun MnemonicDisplayStep(
                 OutlinedButton(
                     onClick = onBack,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
                 ) {
                     Text("Back")
                 }
@@ -936,7 +1008,11 @@ fun MnemonicDisplayStep(
                     onClick = onNext,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    enabled = hasWrittenDown && hasStoredSafely
+                    enabled = hasWrittenDown && hasStoredSafely,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Text("I've Backed It Up")
                 }
@@ -978,7 +1054,8 @@ fun MnemonicDisplayChip(
                 Text(
                     text = word,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }
@@ -999,7 +1076,11 @@ fun SafetyChecklistItem(text: String, checked: Boolean) {
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
-        Text(text = text)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -1020,6 +1101,7 @@ fun MnemonicVerificationStep(
             .fillMaxSize()
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Back button
         Row(
@@ -1027,7 +1109,12 @@ fun MnemonicVerificationStep(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onBack) {
+            TextButton(
+                onClick = onBack,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Back")
@@ -1046,7 +1133,8 @@ fun MnemonicVerificationStep(
         Text(
             text = "Verify Recovery Phrase",
             style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -1121,12 +1209,12 @@ fun MnemonicVerificationStep(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            for (row in 0 until 3) { // 3 rows
+            for (row in 0 until 3) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    for (col in 0 until 4) { // 4 columns
+                    for (col in 0 until 4) {
                         val index = row * 4 + col
                         if (index < shuffledWords.size) {
                             val word = shuffledWords[index]
@@ -1137,7 +1225,6 @@ fun MnemonicVerificationStep(
                                         onClick = { viewModel.addWordToVerification(word) }
                                     )
                                 } else {
-                                    // Empty space for already selected words
                                     Spacer(modifier = Modifier.height(44.dp))
                                 }
                             }
@@ -1171,7 +1258,8 @@ fun MnemonicVerificationStep(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Wrong order. Please try again.",
-                        color = MaterialTheme.colorScheme.onErrorContainer
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
@@ -1182,19 +1270,22 @@ fun MnemonicVerificationStep(
             onClick = {
                 if (viewModel.completeVerificationAndMoveNext()) {
                     verificationError = false
-                    onNext() // This will notify the UI
+                    onNext()
                 } else {
                     verificationError = true
                 }
             },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            enabled = enteredWords.size == mnemonic.size
+            enabled = enteredWords.size == mnemonic.size,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         ) {
             Text("Verify & Continue")
         }
 
-        // Bottom padding
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
@@ -1220,7 +1311,8 @@ fun SimpleSelectedChip(
             Text(
                 text = "$index.",
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
@@ -1228,13 +1320,15 @@ fun SimpleSelectedChip(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Spacer(modifier = Modifier.width(4.dp))
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Remove",
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
             )
         }
     }
@@ -1264,7 +1358,8 @@ fun SimpleWordChip(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -1276,11 +1371,14 @@ fun WalletNameStep(
     onNameChange: (String) -> Unit,
     onCreate: () -> Unit
 ) {
-    Column {
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
         Text(
             text = "Name Your Wallet",
             style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -1297,10 +1395,27 @@ fun WalletNameStep(
             value = walletName,
             onValueChange = onNameChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Wallet Name") },
-            placeholder = { Text("e.g., My Savings Wallet") },
+            label = {
+                Text(
+                    "Wallet Name",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            placeholder = {
+                Text(
+                    "e.g., My Savings Wallet",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+            },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -1317,7 +1432,11 @@ fun WalletNameStep(
             onClick = onCreate,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            enabled = walletName.isNotBlank()
+            enabled = walletName.isNotBlank(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         ) {
             Text("Create Wallet")
         }
@@ -1330,7 +1449,9 @@ fun WalletSuccessStep(
     onFinish: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -1355,7 +1476,8 @@ fun WalletSuccessStep(
             text = "Wallet Created Successfully!",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -1364,7 +1486,10 @@ fun WalletSuccessStep(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         ) {
             Column(
                 modifier = Modifier.padding(16.dp)
@@ -1372,34 +1497,60 @@ fun WalletSuccessStep(
                 Text(
                     text = "Wallet Details",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row {
-                    Text("Name: ", fontWeight = FontWeight.Medium)
-                    Text(wallet.name)
+                    Text(
+                        "Name: ",
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        wallet.name,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Show which coins are enabled
-                Text("Enabled Coins:", fontWeight = FontWeight.Medium)
+                Text(
+                    "Enabled Coins:",
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 wallet.bitcoin?.let {
-                    Text("• Bitcoin (${it.network})", modifier = Modifier.padding(start = 8.dp))
+                    Text(
+                        "• Bitcoin (${it.network})",
+                        modifier = Modifier.padding(start = 8.dp),
+                        color = bitcoinLight
+                    )
                 }
                 wallet.ethereum?.let {
-                    Text("• Ethereum (${it.network})", modifier = Modifier.padding(start = 8.dp))
+                    Text(
+                        "• Ethereum (${it.network})",
+                        modifier = Modifier.padding(start = 8.dp),
+                        color = ethereumLight
+                    )
                 }
                 wallet.solana?.let {
-                    Text("• Solana", modifier = Modifier.padding(start = 8.dp))
+                    Text(
+                        "• Solana",
+                        modifier = Modifier.padding(start = 8.dp),
+                        color = solanaLight
+                    )
                 }
                 wallet.usdc?.let {
-                    Text("• USDC (${it.network})", modifier = Modifier.padding(start = 8.dp))
+                    Text(
+                        "• USDC (${it.network})",
+                        modifier = Modifier.padding(start = 8.dp),
+                        color = usdcLight
+                    )
                 }
 
-                // Show primary address (first available)
                 val primaryAddress = wallet.ethereum?.address
                     ?: wallet.bitcoin?.address
                     ?: wallet.solana?.address
@@ -1408,11 +1559,16 @@ fun WalletSuccessStep(
                 if (primaryAddress != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Row {
-                        Text("Address: ", fontWeight = FontWeight.Medium)
+                        Text(
+                            "Address: ",
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Text(
                             text = primaryAddress.take(12) + "..." + primaryAddress.takeLast(8),
                             style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -1424,7 +1580,11 @@ fun WalletSuccessStep(
         Button(
             onClick = onFinish,
             modifier = Modifier.fillMaxWidth(0.8f),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         ) {
             Text("Go to Dashboard")
         }
