@@ -1,7 +1,6 @@
 package com.example.nexuswallet.feature.coin.usdc
 
 import com.example.nexuswallet.feature.coin.ethereum.EtherscanApiService
-import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.coin.usdc.domain.SyncUSDTransactionsUseCase
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
