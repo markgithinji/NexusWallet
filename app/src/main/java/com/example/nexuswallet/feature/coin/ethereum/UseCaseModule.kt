@@ -1,7 +1,8 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
-import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
-import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
+import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
@@ -16,41 +17,109 @@ object UseCaseModule {
 
     @Provides
     @Singleton
+    fun provideSyncEthereumTransactionsUseCase(
+        ethereumBlockchainRepository: EthereumBlockchainRepository,
+        ethereumTransactionRepository: EthereumTransactionRepository,
+        walletRepository: WalletRepository,
+        logger: Logger
+    ): SyncEthereumTransactionsUseCase {
+        return SyncEthereumTransactionsUseCaseImpl(
+            ethereumBlockchainRepository,
+            ethereumTransactionRepository,
+            walletRepository,
+            logger
+        )
+    }
+
+    @Provides
+    @Singleton
     fun provideGetTransactionUseCase(
-        ethereumTransactionRepository: EthereumTransactionRepository
+        ethereumTransactionRepository: EthereumTransactionRepository,
+        logger: Logger
     ): GetTransactionUseCase {
-        return GetTransactionUseCase(
-           ethereumTransactionRepository
+        return GetTransactionUseCaseImpl(
+            ethereumTransactionRepository,
+            logger
         )
     }
 
     @Provides
     @Singleton
     fun provideGetWalletTransactionsUseCase(
-        ethereumTransactionRepository: EthereumTransactionRepository
+        ethereumTransactionRepository: EthereumTransactionRepository,
+        logger: Logger
     ): GetWalletTransactionsUseCase {
-        return GetWalletTransactionsUseCase(
-            ethereumTransactionRepository
+        return GetWalletTransactionsUseCaseImpl(
+            ethereumTransactionRepository,
+            logger
         )
     }
 
     @Provides
     @Singleton
     fun provideGetPendingTransactionsUseCase(
-        ethereumTransactionRepository: EthereumTransactionRepository
+        ethereumTransactionRepository: EthereumTransactionRepository,
+        logger: Logger
     ): GetPendingTransactionsUseCase {
-        return GetPendingTransactionsUseCase(
-            ethereumTransactionRepository
+        return GetPendingTransactionsUseCaseImpl(
+            ethereumTransactionRepository,
+            logger
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideValidateEthereumSendUseCase(
+        getFeeEstimateUseCase: GetFeeEstimateUseCase,
+        logger: Logger
+    ): ValidateEthereumSendUseCase {
+        return ValidateEthereumSendUseCaseImpl(
+            getFeeEstimateUseCase,
+            logger
         )
     }
 
     @Provides
     @Singleton
     fun provideGetFeeEstimateUseCase(
-        ethereumBlockchainRepository: EthereumBlockchainRepository
+        ethereumBlockchainRepository: EthereumBlockchainRepository,
+        logger: Logger
     ): GetFeeEstimateUseCase {
-        return GetFeeEstimateUseCase(
-            ethereumBlockchainRepository
+        return GetFeeEstimateUseCaseImpl(
+            ethereumBlockchainRepository,
+            logger
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetEthereumWalletUseCase(
+        walletRepository: WalletRepository,
+        logger: Logger
+    ): GetEthereumWalletUseCase {
+        return GetEthereumWalletUseCaseImpl(
+            walletRepository,
+            logger
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideSendEthereumUseCase(
+        walletRepository: WalletRepository,
+        ethereumBlockchainRepository: EthereumBlockchainRepository,
+        ethereumTransactionRepository: EthereumTransactionRepository,
+        securityPreferencesRepository: SecurityPreferencesRepository,
+        keyStoreRepository: KeyStoreRepository,
+        logger: Logger
+    ): SendEthereumUseCase {
+        return SendEthereumUseCaseImpl(
+            walletRepository,
+            ethereumBlockchainRepository,
+            ethereumTransactionRepository,
+            securityPreferencesRepository,
+            keyStoreRepository,
+            logger
         )
     }
 
@@ -66,37 +135,5 @@ object UseCaseModule {
         ethereumTransactionDao: EthereumTransactionDao
     ): EthereumTransactionRepository {
         return EthereumTransactionRepository(ethereumTransactionDao)
-    }
-
-    @Provides
-    @Singleton
-    fun provideSendEthereumUseCase(
-        walletRepository: WalletRepository,
-        ethereumBlockchainRepository: EthereumBlockchainRepository,
-        ethereumTransactionRepository: EthereumTransactionRepository,
-        securityPreferencesRepository: SecurityPreferencesRepository,
-        keyStoreRepository: KeyStoreRepository,
-    ): SendEthereumUseCase {
-        return SendEthereumUseCase(
-            walletRepository,
-            ethereumBlockchainRepository,
-            ethereumTransactionRepository,
-            securityPreferencesRepository,
-            keyStoreRepository
-        )
-    }
-
-    @Provides
-    @Singleton
-    fun provideSyncEthereumTransactionsUseCase(
-        ethereumBlockchainRepository: EthereumBlockchainRepository,
-        ethereumTransactionRepository: EthereumTransactionRepository,
-        walletRepository: WalletRepository
-    ): SyncEthereumTransactionsUseCase {
-        return SyncEthereumTransactionsUseCase(
-            ethereumBlockchainRepository,
-            ethereumTransactionRepository,
-            walletRepository
-        )
     }
 }
