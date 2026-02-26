@@ -17,21 +17,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavController
 import com.example.nexuswallet.feature.coin.CoinType
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
-import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
-import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransaction
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.ui.theme.bitcoinLight
+import com.example.nexuswallet.ui.theme.ethereumLight
+import com.example.nexuswallet.ui.theme.solanaLight
+import com.example.nexuswallet.ui.theme.success
+import com.example.nexuswallet.ui.theme.usdcLight
+import com.example.nexuswallet.ui.theme.warning
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
@@ -85,10 +85,10 @@ fun CoinDetailScreen(
                             contentDescription = null,
                             modifier = Modifier.size(24.dp),
                             tint = when (coinType) {
-                                CoinType.BITCOIN -> Color(0xFFF7931A)
-                                CoinType.ETHEREUM -> Color(0xFF627EEA)
-                                CoinType.SOLANA -> Color(0xFF00FFA3)
-                                CoinType.USDC -> Color(0xFF2775CA)
+                                CoinType.BITCOIN -> bitcoinLight
+                                CoinType.ETHEREUM -> ethereumLight
+                                CoinType.SOLANA -> solanaLight
+                                CoinType.USDC -> usdcLight
                             }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -101,7 +101,7 @@ fun CoinDetailScreen(
                             },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
@@ -110,7 +110,7 @@ fun CoinDetailScreen(
                         Icon(
                             Icons.Default.ArrowBack,
                             "Back",
-                            tint = Color.Black
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
@@ -129,18 +129,18 @@ fun CoinDetailScreen(
                             Icon(
                                 Icons.Outlined.Refresh,
                                 "Refresh",
-                                tint = Color.Black
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    scrolledContainerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
-        containerColor = Color(0xFFF5F5F7)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -212,10 +212,10 @@ fun CoinBalanceCard(
     onCopyAddress: (String) -> Unit
 ) {
     val (coinColor, icon) = when (coinType) {
-        CoinType.BITCOIN -> Pair(Color(0xFFF7931A), Icons.Outlined.CurrencyBitcoin)
-        CoinType.ETHEREUM -> Pair(Color(0xFF627EEA), Icons.Outlined.Diamond)
-        CoinType.SOLANA -> Pair(Color(0xFF00FFA3), Icons.Outlined.FlashOn)
-        CoinType.USDC -> Pair(Color(0xFF2775CA), Icons.Outlined.AttachMoney)
+        CoinType.BITCOIN -> Pair(bitcoinLight, Icons.Outlined.CurrencyBitcoin)
+        CoinType.ETHEREUM -> Pair(ethereumLight, Icons.Outlined.Diamond)
+        CoinType.SOLANA -> Pair(solanaLight, Icons.Outlined.FlashOn)
+        CoinType.USDC -> Pair(usdcLight, Icons.Outlined.AttachMoney)
     }
 
     val displayName = when (coinType) {
@@ -231,7 +231,7 @@ fun CoinBalanceCard(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -270,13 +270,13 @@ fun CoinBalanceCard(
                             text = displayName,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         if (network != "MAINNET" && network != "Mainnet") {
                             Text(
                                 text = network,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF6B7280)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -290,7 +290,7 @@ fun CoinBalanceCard(
                     Text(
                         text = address.take(6) + "..." + address.takeLast(4),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontFamily = FontFamily.Monospace
                     )
 
@@ -301,7 +301,7 @@ fun CoinBalanceCard(
                         Icon(
                             imageVector = Icons.Outlined.ContentCopy,
                             contentDescription = "Copy Address",
-                            tint = Color(0xFF6B7280),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -311,7 +311,7 @@ fun CoinBalanceCard(
             Spacer(modifier = Modifier.height(20.dp))
 
             Divider(
-                color = Color(0xFFE5E7EB),
+                color = MaterialTheme.colorScheme.outline,
                 thickness = 1.dp
             )
 
@@ -320,14 +320,14 @@ fun CoinBalanceCard(
             Text(
                 text = "Balance",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF6B7280)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text(
                 text = NumberFormat.getCurrencyInstance(Locale.US).format(usdValue),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Text(
@@ -351,7 +351,7 @@ fun CoinActionsCard(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -365,14 +365,14 @@ fun CoinActionsCard(
                 icon = Icons.Outlined.ArrowDownward,
                 label = "Receive",
                 onClick = onReceive,
-                color = Color(0xFF10B981)
+                color = MaterialTheme.colorScheme.success
             )
 
             QuickActionItem(
                 icon = Icons.Outlined.ArrowUpward,
                 label = "Send",
                 onClick = onSend,
-                color = Color(0xFF3B82F6)
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
@@ -386,7 +386,7 @@ fun EthGasBalanceCard(ethBalance: BigDecimal?) {
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -398,13 +398,13 @@ fun EthGasBalanceCard(ethBalance: BigDecimal?) {
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF627EEA).copy(alpha = 0.1f)),
+                    .background(ethereumLight.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Outlined.LocalGasStation,
                     contentDescription = "Gas",
-                    tint = Color(0xFF627EEA),
+                    tint = ethereumLight,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -414,12 +414,12 @@ fun EthGasBalanceCard(ethBalance: BigDecimal?) {
                     text = "ETH for Gas",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "${ethBalance?.setScale(6, RoundingMode.HALF_UP)?.stripTrailingZeros()?.toPlainString() ?: "0"} ETH",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B7280)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -439,7 +439,7 @@ fun TransactionsContainer(
                 .padding(horizontal = 16.dp),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(0.dp)
         ) {
@@ -454,7 +454,7 @@ fun TransactionsContainer(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -473,7 +473,7 @@ fun TransactionsContainer(
                     text = "Recent Transactions",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 TextButton(
@@ -483,7 +483,7 @@ fun TransactionsContainer(
                     Text(
                         text = "View All",
                         style = MaterialTheme.typography.labelLarge,
-                        color = Color(0xFF3B82F6)
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -502,7 +502,7 @@ fun TransactionsContainer(
 
                     if (index < 2) {
                         Divider(
-                            color = Color(0xFFE5E7EB),
+                            color = MaterialTheme.colorScheme.outline,
                             thickness = 1.dp
                         )
                     }
@@ -525,9 +525,18 @@ fun CoinTransactionItem(
     }
 
     val (statusColor, statusBgColor) = when (transaction.status) {
-        TransactionStatus.SUCCESS -> Pair(Color(0xFF10B981), Color(0xFF10B981).copy(alpha = 0.1f))
-        TransactionStatus.PENDING -> Pair(Color(0xFFF59E0B), Color(0xFFF59E0B).copy(alpha = 0.1f))
-        TransactionStatus.FAILED -> Pair(Color(0xFFEF4444), Color(0xFFEF4444).copy(alpha = 0.1f))
+        TransactionStatus.SUCCESS -> Pair(
+            MaterialTheme.colorScheme.success,
+            MaterialTheme.colorScheme.success.copy(alpha = 0.1f)
+        )
+        TransactionStatus.PENDING -> Pair(
+            MaterialTheme.colorScheme.warning,
+            MaterialTheme.colorScheme.warning.copy(alpha = 0.1f)
+        )
+        TransactionStatus.FAILED -> Pair(
+            MaterialTheme.colorScheme.error,
+            MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+        )
     }
 
     Row(
@@ -563,13 +572,13 @@ fun CoinTransactionItem(
                 text = if (transaction.isIncoming) "Received $displayName" else "Sent $displayName",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1
             )
             Text(
                 text = transaction.formattedTime,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF6B7280),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1
             )
         }
@@ -583,7 +592,7 @@ fun CoinTransactionItem(
                 text = "${if (transaction.isIncoming) "+" else "-"}${transaction.formattedAmount} $symbol",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = if (transaction.isIncoming) Color(0xFF10B981) else Color.Black,
+                color = if (transaction.isIncoming) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
