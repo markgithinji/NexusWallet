@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.coin.ethereum
 
 import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.coin.ethereum.data.EthereumBlockchainRepositoryImpl
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
@@ -135,5 +136,15 @@ object UseCaseModule {
         ethereumTransactionDao: EthereumTransactionDao
     ): EthereumTransactionRepository {
         return EthereumTransactionRepository(ethereumTransactionDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetEthereumBalanceUseCase(
+        etherscanApiService :EtherscanApiService
+    ): EthereumBlockchainRepository {
+        return EthereumBlockchainRepositoryImpl(
+            etherscanApiService
+        )
     }
 }

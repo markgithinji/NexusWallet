@@ -250,6 +250,17 @@ class USDCSendViewModel @Inject constructor(
         )
 
         _state.update { it.copy(validationResult = validationResult) }
+
+        // Set error message if validation fails
+        if (!validationResult.isValid) {
+            val errorMessage = validationResult.addressError
+                ?: validationResult.amountError
+                ?: validationResult.balanceError
+                ?: validationResult.gasError
+            _state.update { it.copy(error = errorMessage) }
+        } else {
+            _state.update { it.copy(error = null) }
+        }
     }
 
     private fun updateFeeEstimate() {
@@ -259,6 +270,8 @@ class USDCSendViewModel @Inject constructor(
             if (feeResult is Result.Success) {
                 _state.update { it.copy(feeEstimate = feeResult.data) }
                 validateForm()
+            } else if (feeResult is Result.Error) {
+                _state.update { it.copy(error = "Failed to load fee: ${feeResult.message}") }
             }
         }
     }
