@@ -1,9 +1,6 @@
 package com.example.nexuswallet.feature.wallet.di
 
 import android.content.Context
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
@@ -26,8 +23,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import org.web3j.protocol.Web3j
-import org.web3j.protocol.http.HttpService
 import javax.inject.Singleton
 
 @Module
@@ -131,15 +126,6 @@ object DatabaseModule {
         return WalletRepository(
             localDataSource = localDataSource
         )
-    }
-
-    // === Security ===
-    @Provides
-    @Singleton
-    fun provideSecureStorage(
-        dataStore: DataStore<Preferences>
-    ): SecurityPreferencesRepository {
-        return SecurityPreferencesRepository(dataStore)
     }
 
     // === Use Cases ===
