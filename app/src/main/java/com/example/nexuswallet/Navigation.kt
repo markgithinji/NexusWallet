@@ -37,6 +37,8 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDetailViewModel
 import com.example.nexuswallet.feature.coin.usdc.USDCSendScreen
 import com.example.nexuswallet.feature.wallet.ui.CoinDetailScreen
 
+import androidx.compose.material3.MaterialTheme
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun Navigation() {
@@ -62,7 +64,9 @@ fun Navigation() {
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = Color(0xFF3B82F6))
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary
+            )
         }
         return
     }
@@ -118,6 +122,7 @@ fun Navigation() {
                 padding = PaddingValues(0.dp)
             )
         }
+
         composable<CreateWalletRoute> {
             val viewModel = hiltViewModel<WalletCreationViewModel>()
             WalletCreationScreen(

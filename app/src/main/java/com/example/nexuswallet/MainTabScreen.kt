@@ -25,6 +25,9 @@ import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.contentColorFor
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTabScreen(
@@ -67,7 +70,8 @@ fun MainTabScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
@@ -78,7 +82,7 @@ fun MainTabScreen(
                         ) {
                             Icon(
                                 Icons.Outlined.Add,
-                                "Create Wallet",
+                                contentDescription = "Create Wallet",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -125,7 +129,7 @@ fun MainTabScreen(
                         label = {
                             Text(
                                 "Wallets",
-                                fontSize = 12.sp
+                                style = MaterialTheme.typography.labelSmall
                             )
                         },
                         alwaysShowLabel = true,
@@ -155,7 +159,7 @@ fun MainTabScreen(
                         label = {
                             Text(
                                 "Market",
-                                fontSize = 12.sp
+                                style = MaterialTheme.typography.labelSmall
                             )
                         },
                         alwaysShowLabel = true,
@@ -185,7 +189,7 @@ fun MainTabScreen(
                         label = {
                             Text(
                                 "Settings",
-                                fontSize = 12.sp
+                                style = MaterialTheme.typography.labelSmall
                             )
                         },
                         alwaysShowLabel = true,
@@ -210,7 +214,7 @@ fun MainTabScreen(
                 ) {
                     Icon(
                         Icons.Default.Add,
-                        "Create New Wallet",
+                        contentDescription = "Create New Wallet",
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
