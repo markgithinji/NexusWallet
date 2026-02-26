@@ -40,11 +40,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -125,7 +129,8 @@ fun AuthenticationRequiredScreen(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 navigationIcon = {
@@ -133,17 +138,17 @@ fun AuthenticationRequiredScreen(
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.Black
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    scrolledContainerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
-        containerColor = Color(0xFFF5F5F7)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -156,7 +161,9 @@ fun AuthenticationRequiredScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 Column(
@@ -188,7 +195,7 @@ fun AuthenticationRequiredScreen(
                         text = title,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center
                     )
 
@@ -198,7 +205,7 @@ fun AuthenticationRequiredScreen(
                     Text(
                         text = description,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF6B7280),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -212,7 +219,7 @@ fun AuthenticationRequiredScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFFEF2F2) // Light red background
+                        containerColor = MaterialTheme.colorScheme.errorContainer
                     ),
                     elevation = CardDefaults.cardElevation(0.dp)
                 ) {
@@ -226,12 +233,12 @@ fun AuthenticationRequiredScreen(
                         Icon(
                             imageVector = Icons.Default.Error,
                             contentDescription = "Error",
-                            tint = Color(0xFFEF4444),
+                            tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
                             text = message,
-                            color = Color(0xFFEF4444),
+                            color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f)
                         )
@@ -244,7 +251,9 @@ fun AuthenticationRequiredScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 Column(
@@ -256,7 +265,7 @@ fun AuthenticationRequiredScreen(
                         text = "Choose Authentication Method",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
@@ -274,19 +283,21 @@ fun AuthenticationRequiredScreen(
                             .height(56.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF3B82F6)
+                            containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
                         Icon(
                             imageVector = Icons.Default.Fingerprint,
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onPrimary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Use Biometric",
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     }
 
@@ -299,18 +310,18 @@ fun AuthenticationRequiredScreen(
                     ) {
                         Divider(
                             modifier = Modifier.weight(1f),
-                            color = Color(0xFFE5E7EB),
+                            color = MaterialTheme.colorScheme.outline,
                             thickness = 1.dp
                         )
                         Text(
                             text = "OR",
                             modifier = Modifier.padding(horizontal = 16.dp),
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF6B7280)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Divider(
                             modifier = Modifier.weight(1f),
-                            color = Color(0xFFE5E7EB),
+                            color = MaterialTheme.colorScheme.outline,
                             thickness = 1.dp
                         )
                     }
@@ -325,20 +336,22 @@ fun AuthenticationRequiredScreen(
                             .height(56.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFF3B82F6)
+                            contentColor = MaterialTheme.colorScheme.primary
                         ),
-                        border = BorderStroke(1.dp, Color(0xFFE5E7EB))
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Pin,
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Use PIN",
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -354,7 +367,7 @@ fun AuthenticationRequiredScreen(
                 Text(
                     text = "Cancel",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color(0xFF6B7280)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
