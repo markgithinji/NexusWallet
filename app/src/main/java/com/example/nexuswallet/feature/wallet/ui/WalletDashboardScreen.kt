@@ -57,6 +57,7 @@ fun WalletDashboardScreen(
     // Show error snackbar if operation fails
     LaunchedEffect(operationError) {
         operationError?.let {
+            // Handle error (show snackbar, etc.)
             viewModel.clearOperationError()
         }
     }
@@ -88,6 +89,7 @@ fun WalletDashboardScreen(
                         wallets = state.data,
                         totalPortfolio = totalPortfolio,
                         balances = balances,
+                        isOperationLoading = isOperationLoading,
                         onWalletClick = { wallet ->
                             onNavigateToWalletDetail(wallet.id)
                         },
@@ -99,7 +101,7 @@ fun WalletDashboardScreen(
                             viewModel.refresh()
                             isRefreshing = false
                         },
-                        isRefreshing = isRefreshing || isOperationLoading
+                        isRefreshing = isRefreshing
                     )
                 }
             }
@@ -113,6 +115,7 @@ fun DashboardContent(
     wallets: List<Wallet>,
     totalPortfolio: BigDecimal,
     balances: Map<String, WalletBalance>,
+    isOperationLoading: Boolean,
     onWalletClick: (Wallet) -> Unit,
     onDeleteWallet: (String) -> Unit,
     onRefresh: () -> Unit,
@@ -130,7 +133,7 @@ fun DashboardContent(
             DashboardTopBar(
                 scrollBehavior = scrollBehavior,
                 onRefresh = onRefresh,
-                isRefreshing = isRefreshing
+                isRefreshing = isRefreshing || isOperationLoading
             )
         },
         floatingActionButton = {},

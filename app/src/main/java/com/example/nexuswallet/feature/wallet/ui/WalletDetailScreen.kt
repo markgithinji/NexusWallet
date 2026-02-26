@@ -177,11 +177,14 @@ fun WalletDetailScreen(
                 balance = uiState.balance,
                 transactions = uiState.transactions,
                 pricePercentages = uiState.pricePercentages,
+                totalUsdValue = walletViewModel.getTotalUsdValue(),
+                onRefresh = { walletViewModel.refresh() },
                 onNavigateToCoinDetail = onNavigateToCoinDetail,
                 onNavigateToReceive = onNavigateToReceive,
                 onNavigateToSend = onNavigateToSend,
                 onNavigateToAllTransactions = onNavigateToAllTransactions,
-                viewModel = walletViewModel,
+                onSwap = { /* Handle swap action */ },
+                onMore = { /* Handle more actions */ },
                 padding = padding
             )
         } ?: run {
@@ -198,14 +201,16 @@ fun WalletDetailContent(
     balance: WalletBalance?,
     transactions: List<Any>,
     pricePercentages: Map<String, Double>,
+    totalUsdValue: Double,
+    onRefresh: () -> Unit,
     onNavigateToCoinDetail: (String, CoinType) -> Unit,
     onNavigateToReceive: (String, CoinType) -> Unit,
     onNavigateToSend: (String, CoinType) -> Unit,
     onNavigateToAllTransactions: (String) -> Unit,
-    viewModel: WalletDetailViewModel,
+    onSwap: () -> Unit,
+    onMore: () -> Unit,
     padding: PaddingValues
 ) {
-    val totalUsdValue = viewModel.getTotalUsdValue()
     val totalFormatted = NumberFormat.getCurrencyInstance(Locale.US).format(totalUsdValue)
 
     LazyColumn(
@@ -229,8 +234,8 @@ fun WalletDetailContent(
             QuickActionsRow(
                 onReceive = { onNavigateToReceive(wallet.id, CoinType.BITCOIN) },
                 onSend = { onNavigateToSend(wallet.id, CoinType.BITCOIN) },
-                onSwap = { /* Navigate to swap */ },
-                onMore = { /* Show more options */ }
+                onSwap = onSwap,
+                onMore = onMore
             )
         }
 

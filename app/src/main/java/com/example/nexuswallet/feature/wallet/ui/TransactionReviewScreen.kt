@@ -120,6 +120,22 @@ fun TransactionReviewScreen(
         }
     }
 
+    // Extract the from address based on coin type
+    val fromAddress = when (coinType) {
+        CoinType.ETHEREUM -> ethereumState.value.fromAddress
+        CoinType.USDC -> usdcState.value.fromAddress
+        CoinType.SOLANA -> solanaState.value.walletAddress
+        CoinType.BITCOIN -> bitcoinState.value.walletAddress
+    }
+
+    // Extract fee estimate based on coin type
+    val feeEstimate = when (coinType) {
+        CoinType.ETHEREUM -> ethereumState.value.feeEstimate
+        CoinType.USDC -> usdcState.value.feeEstimate
+        CoinType.SOLANA -> solanaState.value.feeEstimate
+        CoinType.BITCOIN -> bitcoinState.value.feeEstimate
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -156,327 +172,164 @@ fun TransactionReviewScreen(
             )
         },
         bottomBar = {
-            if (txHash != null) {
-                // Transaction sent - show done button
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surface,
-                    shadowElevation = 8.dp
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                onNavigateToWalletDetail(walletId)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Text(
-                                "Done",
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    }
-                }
-            } else {
-                // Send button
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surface,
-                    shadowElevation = 8.dp
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        sendError?.let { error ->
-                            Text(
-                                text = error,
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                        }
+            TransactionBottomBar(
+                txHash = txHash,
+                isSending = isSending,
+                sendError = sendError,
+                txStatus = txStatus,
+                onSend = {
+                    isSending = true
+                    sendError = null
 
-                        Button(
-                            onClick = {
-                                isSending = true
-                                sendError = null
-
-                                when (coinType) {
-                                    CoinType.ETHEREUM -> {
-                                        ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(toAddress))
-                                        ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(amount))
-                                        feeLevel?.let {
-                                            ethereumViewModel.onEvent(EthereumSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
-                                        }
-                                        ethereumViewModel.send { hash ->
-                                            txHash = hash
-                                            txStatus = "Transaction sent!"
-                                            isSending = false
-                                        }
-                                    }
-                                    CoinType.USDC -> {
-                                        usdcViewModel.onEvent(USDCSendEvent.ToAddressChanged(toAddress))
-                                        usdcViewModel.onEvent(USDCSendEvent.AmountChanged(amount))
-                                        feeLevel?.let {
-                                            usdcViewModel.onEvent(USDCSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
-                                        }
-                                        usdcViewModel.send { hash ->
-                                            txHash = hash
-                                            txStatus = "Transaction sent!"
-                                            isSending = false
-                                        }
-                                    }
-                                    CoinType.SOLANA -> {
-                                        solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(toAddress))
-                                        solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(amount))
-                                        feeLevel?.let {
-                                            solanaViewModel.onEvent(SolanaSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
-                                        }
-                                        solanaViewModel.send { hash ->
-                                            txHash = hash
-                                            txStatus = "Transaction sent!"
-                                            isSending = false
-                                        }
-                                    }
-                                    CoinType.BITCOIN -> {
-                                        bitcoinViewModel.updateAddress(toAddress)
-                                        bitcoinViewModel.updateAmount(amount)
-                                        feeLevel?.let {
-                                            bitcoinViewModel.updateFeeLevel(FeeLevel.valueOf(it))
-                                        }
-                                        bitcoinViewModel.send { hash ->
-                                            txHash = hash
-                                            txStatus = "Transaction sent!"
-                                            isSending = false
-                                        }
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = !isSending,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        ) {
-                            if (isSending) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    txStatus.ifEmpty { "Sending..." },
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-                            } else {
-                                Text(
-                                    "Confirm & Send",
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    style = MaterialTheme.typography.labelLarge
-                                )
+                    when (coinType) {
+                        CoinType.ETHEREUM -> {
+                            ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(toAddress))
+                            ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(amount))
+                            feeLevel?.let {
+                                ethereumViewModel.onEvent(EthereumSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
+                            }
+                            ethereumViewModel.send { hash ->
+                                txHash = hash
+                                txStatus = "Transaction sent!"
+                                isSending = false
+                            }
+                        }
+                        CoinType.USDC -> {
+                            usdcViewModel.onEvent(USDCSendEvent.ToAddressChanged(toAddress))
+                            usdcViewModel.onEvent(USDCSendEvent.AmountChanged(amount))
+                            feeLevel?.let {
+                                usdcViewModel.onEvent(USDCSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
+                            }
+                            usdcViewModel.send { hash ->
+                                txHash = hash
+                                txStatus = "Transaction sent!"
+                                isSending = false
+                            }
+                        }
+                        CoinType.SOLANA -> {
+                            solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(toAddress))
+                            solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(amount))
+                            feeLevel?.let {
+                                solanaViewModel.onEvent(SolanaSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
+                            }
+                            solanaViewModel.send { hash ->
+                                txHash = hash
+                                txStatus = "Transaction sent!"
+                                isSending = false
+                            }
+                        }
+                        CoinType.BITCOIN -> {
+                            bitcoinViewModel.updateAddress(toAddress)
+                            bitcoinViewModel.updateAmount(amount)
+                            feeLevel?.let {
+                                bitcoinViewModel.updateFeeLevel(FeeLevel.valueOf(it))
+                            }
+                            bitcoinViewModel.send { hash ->
+                                txHash = hash
+                                txStatus = "Transaction sent!"
+                                isSending = false
                             }
                         }
                     }
-                }
-            }
+                },
+                onDone = { onNavigateToWalletDetail(walletId) }
+            )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
+        TransactionReviewContent(
+            coinType = coinType,
+            amount = amount,
+            fromAddress = fromAddress,
+            toAddress = toAddress,
+            feeEstimate = feeEstimate,
+            txHash = txHash,
+            coinColor = coinColor,
+            icon = icon,
+            onCopyAddress = { address ->
+                copyToClipboard(context, address)
+            },
+            onViewOnExplorer = { hash ->
+                val url = getExplorerUrl(coinType, hash)
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                context.startActivity(intent)
+            },
+            modifier = Modifier.padding(padding)
+        )
+    }
+}
+
+@Composable
+fun TransactionBottomBar(
+    txHash: String?,
+    isSending: Boolean,
+    sendError: String?,
+    txStatus: String,
+    onSend: () -> Unit,
+    onDone: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 8.dp
+    ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
+            modifier = Modifier.padding(16.dp)
         ) {
-            // Transaction Summary Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                elevation = CardDefaults.cardElevation(0.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+            if (txHash != null) {
+                Button(
+                    onClick = onDone,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
                 ) {
                     Text(
-                        text = "You are sending",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        "Done",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        style = MaterialTheme.typography.labelLarge
                     )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
+                }
+            } else {
+                sendError?.let { error ->
                     Text(
-                        text = "$amount ${getTokenSymbol(coinType)}",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // From Address
-            when (coinType) {
-                CoinType.ETHEREUM -> {
-                    ethereumState.value.fromAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
-                        AddressCard(
-                            label = "From",
-                            address = fromAddress,
-                            coinType = coinType
-                        )
-                    }
-                }
-                CoinType.USDC -> {
-                    usdcState.value.fromAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
-                        AddressCard(
-                            label = "From",
-                            address = fromAddress,
-                            coinType = coinType
-                        )
-                    }
-                }
-                CoinType.SOLANA -> {
-                    solanaState.value.walletAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
-                        AddressCard(
-                            label = "From",
-                            address = fromAddress,
-                            coinType = coinType
-                        )
-                    }
-                }
-                CoinType.BITCOIN -> {
-                    bitcoinState.value.walletAddress.takeIf { it.isNotEmpty() }?.let { fromAddress ->
-                        AddressCard(
-                            label = "From",
-                            address = fromAddress,
-                            coinType = coinType
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // To Address Card
-            AddressCard(
-                label = "To",
-                address = toAddress,
-                coinType = coinType
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Fee Preview
-            when (coinType) {
-                CoinType.ETHEREUM -> {
-                    ethereumState.value.feeEstimate?.let { fee ->
-                        EthereumFeePreviewCard(feeEstimate = fee)
-                    }
-                }
-                CoinType.BITCOIN -> {
-                    bitcoinState.value.feeEstimate?.let { fee ->
-                        BitcoinFeePreviewCard(feeEstimate = fee)
-                    }
-                }
-                CoinType.USDC -> {
-                    usdcState.value.feeEstimate?.let { fee ->
-                        USDCFeePreviewCard(feeEstimate = fee)
-                    }
-                }
-                CoinType.SOLANA -> {
-                    solanaState.value.feeEstimate?.let { fee ->
-                        SolanaFeePreviewCard(feeEstimate = fee)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Success Message
-            txHash?.let { hash ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.successContainer
-                    ),
-                    elevation = CardDefaults.cardElevation(0.dp)
+                Button(
+                    onClick = onSend,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !isSending,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.CheckCircle,
-                                contentDescription = "Success",
-                                tint = MaterialTheme.colorScheme.success
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Transaction Sent!",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.success
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
+                    if (isSending) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Hash: ${hash.take(8)}...${hash.takeLast(8)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            txStatus.ifEmpty { "Sending..." },
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.labelLarge
                         )
-
-                        Button(
-                            onClick = {
-                                val url = getExplorerUrl(coinType, hash)
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                context.startActivity(intent)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(
-                                Icons.Outlined.OpenInBrowser,
-                                "View",
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                "View on ${getExplorerName(coinType)}",
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
+                    } else {
+                        Text(
+                            "Confirm & Send",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.labelLarge
+                        )
                     }
                 }
             }
@@ -485,19 +338,111 @@ fun TransactionReviewScreen(
 }
 
 @Composable
+fun TransactionReviewContent(
+    coinType: CoinType,
+    amount: String,
+    fromAddress: String?,
+    toAddress: String,
+    feeEstimate: Any?,
+    txHash: String?,
+    coinColor: Color,
+    icon: ImageVector,
+    onCopyAddress: (String) -> Unit,
+    onViewOnExplorer: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        // Transaction Summary Card
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(0.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "You are sending",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "$amount ${getTokenSymbol(coinType)}",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // From Address
+        if (!fromAddress.isNullOrEmpty()) {
+            AddressCard(
+                label = "From",
+                address = fromAddress,
+                coinColor = coinColor,
+                onCopy = { onCopyAddress(fromAddress) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // To Address Card
+        AddressCard(
+            label = "To",
+            address = toAddress,
+            coinColor = coinColor,
+            onCopy = { onCopyAddress(toAddress) }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Fee Preview
+        feeEstimate?.let {
+            when (coinType) {
+                CoinType.ETHEREUM -> EthereumFeePreviewCard(feeEstimate = it as EthereumFeeEstimate)
+                CoinType.BITCOIN -> BitcoinFeePreviewCard(feeEstimate = it as BitcoinFeeEstimate)
+                CoinType.USDC -> USDCFeePreviewCard(feeEstimate = it as USDCFeeEstimate)
+                CoinType.SOLANA -> SolanaFeePreviewCard(feeEstimate = it as SolanaFeeEstimate)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Success Message
+        txHash?.let { hash ->
+            TransactionSuccessCard(
+                hash = hash,
+                coinType = coinType,
+                coinColor = coinColor,
+                onViewOnExplorer = { onViewOnExplorer(hash) }
+            )
+        }
+    }
+}
+
+@Composable
 fun AddressCard(
     label: String,
     address: String,
-    coinType: CoinType
+    coinColor: Color,
+    onCopy: () -> Unit
 ) {
-    val context = LocalContext.current
-    val coinColor = when (coinType) {
-        CoinType.BITCOIN -> bitcoinLight
-        CoinType.ETHEREUM -> ethereumLight
-        CoinType.SOLANA -> solanaLight
-        CoinType.USDC -> usdcLight
-    }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -530,14 +475,7 @@ fun AddressCard(
                     modifier = Modifier.weight(1f)
                 )
 
-                IconButton(
-                    onClick = {
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = ClipData.newPlainText("Address", address)
-                        clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
-                    }
-                ) {
+                IconButton(onClick = onCopy) {
                     Icon(
                         Icons.Outlined.ContentCopy,
                         "Copy",
@@ -545,6 +483,77 @@ fun AddressCard(
                         modifier = Modifier.size(16.dp)
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionSuccessCard(
+    hash: String,
+    coinType: CoinType,
+    coinColor: Color,
+    onViewOnExplorer: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.successContainer
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.CheckCircle,
+                    contentDescription = "Success",
+                    tint = MaterialTheme.colorScheme.success
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Transaction Sent!",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.success
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Hash: ${hash.take(8)}...${hash.takeLast(8)}",
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Button(
+                onClick = onViewOnExplorer,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(
+                    Icons.Outlined.OpenInBrowser,
+                    "View",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    "View on ${getExplorerName(coinType)}",
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = MaterialTheme.typography.labelLarge
+                )
             }
         }
     }
@@ -687,7 +696,14 @@ fun FeePreviewCard(
     }
 }
 
-// Helper functions
+// Helper function to copy to clipboard
+private fun copyToClipboard(context: Context, address: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    val clip = ClipData.newPlainText("Address", address)
+    clipboard.setPrimaryClip(clip)
+    Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
+}
+
 private fun getTokenSymbol(coinType: CoinType): String {
     return when (coinType) {
         CoinType.BITCOIN -> "BTC"

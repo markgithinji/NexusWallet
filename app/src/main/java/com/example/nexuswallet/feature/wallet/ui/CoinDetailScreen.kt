@@ -17,6 +17,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -70,140 +72,175 @@ fun CoinDetailScreen(
         return
     }
 
+    val (coinColor, icon) = getCoinDetailConfig(coinType)
+    val displayName = getCoinDisplayName(coinType)
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = when (coinType) {
-                                CoinType.BITCOIN -> Icons.Outlined.CurrencyBitcoin
-                                CoinType.ETHEREUM -> Icons.Outlined.Diamond
-                                CoinType.SOLANA -> Icons.Outlined.FlashOn
-                                CoinType.USDC -> Icons.Outlined.AttachMoney
-                            },
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = when (coinType) {
-                                CoinType.BITCOIN -> bitcoinLight
-                                CoinType.ETHEREUM -> ethereumLight
-                                CoinType.SOLANA -> solanaLight
-                                CoinType.USDC -> usdcLight
-                            }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = when (coinType) {
-                                CoinType.BITCOIN -> "Bitcoin Wallet"
-                                CoinType.ETHEREUM -> "Ethereum Wallet"
-                                CoinType.SOLANA -> "Solana Wallet"
-                                CoinType.USDC -> "USDC Wallet"
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateUp) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            "Back",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { viewModel.refresh() },
-                        enabled = !state.isLoading
-                    ) {
-                        if (state.isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        } else {
-                            Icon(
-                                Icons.Outlined.Refresh,
-                                "Refresh",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
-                )
+            CoinDetailTopBar(
+                coinType = coinType,
+                coinColor = coinColor,
+                icon = icon,
+                displayName = displayName,
+                isLoading = state.isLoading,
+                onNavigateUp = onNavigateUp,
+                onRefresh = { viewModel.refresh() }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Balance Card
-            item {
-                CoinBalanceCard(
-                    coinType = coinType,
-                    balance = state.balance,
-                    balanceFormatted = state.balanceFormatted,
-                    address = state.address,
-                    network = state.network,
-                    usdValue = state.usdValue,
-                    onCopyAddress = { address ->
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = ClipData.newPlainText("Address", address)
-                        clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
-                    }
+        CoinDetailContent(
+            state = state,
+            coinType = coinType,
+            coinColor = coinColor,
+            icon = icon,
+            displayName = displayName,
+            onCopyAddress = { address ->
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("Address", address)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
+            },
+            onReceive = { onNavigateToReceive(state.walletId, coinType) },
+            onSend = { onNavigateToSend(state.walletId, coinType) },
+            onViewAllTransactions = { onNavigateToAllTransactions(state.walletId, coinType) },
+            modifier = Modifier.padding(padding)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CoinDetailTopBar(
+    coinType: CoinType,
+    coinColor: Color,
+    icon: ImageVector,
+    displayName: String,
+    isLoading: Boolean,
+    onNavigateUp: () -> Unit,
+    onRefresh: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = coinColor
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "$displayName Wallet",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
-
-            // Actions
-            item {
-                CoinActionsCard(
-                    coinType = coinType,
-                    onReceive = {
-                        onNavigateToReceive(state.walletId, coinType)
-                    },
-                    onSend = {
-                        onNavigateToSend(state.walletId, coinType)
-                    }
+        },
+        navigationIcon = {
+            IconButton(onClick = onNavigateUp) {
+                Icon(
+                    Icons.Default.ArrowBack,
+                    "Back",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            // ETH Gas Balance for USDC
-            if (coinType == CoinType.USDC && state.ethGasBalance != null) {
-                item {
-                    EthGasBalanceCard(ethBalance = state.ethGasBalance)
+        },
+        actions = {
+            IconButton(
+                onClick = onRefresh,
+                enabled = !isLoading
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Icon(
+                        Icons.Outlined.Refresh,
+                        "Refresh",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface
+        )
+    )
+}
 
-            // Recent Transactions
+@Composable
+private fun CoinDetailContent(
+    state: CoinDetailViewModel.CoinDetailState,
+    coinType: CoinType,
+    coinColor: Color,
+    icon: ImageVector,
+    displayName: String,
+    onCopyAddress: (String) -> Unit,
+    onReceive: () -> Unit,
+    onSend: () -> Unit,
+    onViewAllTransactions: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Balance Card
+        item {
+            CoinDetailBalanceCard(
+                coinType = coinType,
+                coinColor = coinColor,
+                icon = icon,
+                displayName = displayName,
+                balance = state.balance,
+                balanceFormatted = state.balanceFormatted,
+                address = state.address,
+                network = state.network,
+                usdValue = state.usdValue,
+                onCopyAddress = onCopyAddress
+            )
+        }
+
+        // Actions
+        item {
+            CoinDetailActionsCard(
+                onReceive = onReceive,
+                onSend = onSend
+            )
+        }
+
+        // ETH Gas Balance for USDC
+        if (coinType == CoinType.USDC && state.ethGasBalance != null) {
             item {
-                TransactionsContainer(
-                    transactions = state.transactions,
-                    coinType = coinType,
-                    onViewAll = {
-                        onNavigateToAllTransactions(state.walletId, coinType)
-                    }
-                )
+                CoinDetailEthGasBalanceCard(ethBalance = state.ethGasBalance)
             }
+        }
+
+        // Recent Transactions
+        item {
+            CoinDetailTransactionsContainer(
+                transactions = state.transactions,
+                coinType = coinType,
+                onViewAll = onViewAllTransactions
+            )
         }
     }
 }
 
 @Composable
-fun CoinBalanceCard(
+private fun CoinDetailBalanceCard(
     coinType: CoinType,
+    coinColor: Color,
+    icon: ImageVector,
+    displayName: String,
     balance: String,
     balanceFormatted: String,
     address: String,
@@ -211,20 +248,6 @@ fun CoinBalanceCard(
     usdValue: Double,
     onCopyAddress: (String) -> Unit
 ) {
-    val (coinColor, icon) = when (coinType) {
-        CoinType.BITCOIN -> Pair(bitcoinLight, Icons.Outlined.CurrencyBitcoin)
-        CoinType.ETHEREUM -> Pair(ethereumLight, Icons.Outlined.Diamond)
-        CoinType.SOLANA -> Pair(solanaLight, Icons.Outlined.FlashOn)
-        CoinType.USDC -> Pair(usdcLight, Icons.Outlined.AttachMoney)
-    }
-
-    val displayName = when (coinType) {
-        CoinType.BITCOIN -> "Bitcoin"
-        CoinType.ETHEREUM -> "Ethereum"
-        CoinType.SOLANA -> "Solana"
-        CoinType.USDC -> "USD Coin"
-    }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -340,8 +363,7 @@ fun CoinBalanceCard(
 }
 
 @Composable
-fun CoinActionsCard(
-    coinType: CoinType,
+private fun CoinDetailActionsCard(
     onReceive: () -> Unit,
     onSend: () -> Unit
 ) {
@@ -379,7 +401,7 @@ fun CoinActionsCard(
 }
 
 @Composable
-fun EthGasBalanceCard(ethBalance: BigDecimal?) {
+private fun CoinDetailEthGasBalanceCard(ethBalance: BigDecimal?) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -427,7 +449,7 @@ fun EthGasBalanceCard(ethBalance: BigDecimal?) {
 }
 
 @Composable
-fun TransactionsContainer(
+private fun CoinDetailTransactionsContainer(
     transactions: List<TransactionDisplayInfo>,
     coinType: CoinType,
     onViewAll: () -> Unit
@@ -495,7 +517,7 @@ fun TransactionsContainer(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 transactions.take(3).forEachIndexed { index, transaction ->
-                    CoinTransactionItem(
+                    CoinDetailTransactionItem(
                         transaction = transaction,
                         coinType = coinType
                     )
@@ -513,7 +535,7 @@ fun TransactionsContainer(
 }
 
 @Composable
-fun CoinTransactionItem(
+private fun CoinDetailTransactionItem(
     transaction: TransactionDisplayInfo,
     coinType: CoinType
 ) {
@@ -610,5 +632,24 @@ fun CoinTransactionItem(
                 )
             }
         }
+    }
+}
+
+// Helper functions
+private fun getCoinDetailConfig(coinType: CoinType): Pair<Color, ImageVector> {
+    return when (coinType) {
+        CoinType.BITCOIN -> Pair(bitcoinLight, Icons.Outlined.CurrencyBitcoin)
+        CoinType.ETHEREUM -> Pair(ethereumLight, Icons.Outlined.Diamond)
+        CoinType.SOLANA -> Pair(solanaLight, Icons.Outlined.FlashOn)
+        CoinType.USDC -> Pair(usdcLight, Icons.Outlined.AttachMoney)
+    }
+}
+
+private fun getCoinDisplayName(coinType: CoinType): String {
+    return when (coinType) {
+        CoinType.BITCOIN -> "Bitcoin"
+        CoinType.ETHEREUM -> "Ethereum"
+        CoinType.SOLANA -> "Solana"
+        CoinType.USDC -> "USDC"
     }
 }
