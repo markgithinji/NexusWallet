@@ -1,7 +1,8 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
-import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
-import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
+import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
 import dagger.Provides
@@ -15,24 +16,30 @@ object BitcoinUseCaseModule {
 
     @Provides
     @Singleton
-    fun provideGetBitcoinFeeEstimateUseCase(
-        bitcoinBlockchainRepository: BitcoinBlockchainRepository
-    ): GetBitcoinFeeEstimateUseCase {
-        return GetBitcoinFeeEstimateUseCase(bitcoinBlockchainRepository)
+    fun provideSyncBitcoinTransactionsUseCase(
+        bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+        bitcoinTransactionRepository: BitcoinTransactionRepository,
+        walletRepository: WalletRepository,
+        logger: Logger
+    ): SyncBitcoinTransactionsUseCase {
+        return SyncBitcoinTransactionsUseCaseImpl(
+            bitcoinBlockchainRepository,
+            bitcoinTransactionRepository,
+            walletRepository,
+            logger
+        )
     }
 
     @Provides
     @Singleton
-    fun provideGetBitcoinBalanceUseCase(
-        bitcoinBlockchainRepository: BitcoinBlockchainRepository
-    ): GetBitcoinBalanceUseCase {
-        return GetBitcoinBalanceUseCase(bitcoinBlockchainRepository)
-    }
-
-    @Provides
-    @Singleton
-    fun provideValidateBitcoinAddressUseCase(): ValidateBitcoinAddressUseCase {
-        return ValidateBitcoinAddressUseCase()
+    fun provideGetBitcoinWalletUseCase(
+        walletRepository: WalletRepository,
+        logger: Logger
+    ): GetBitcoinWalletUseCase {
+        return GetBitcoinWalletUseCaseImpl(
+            walletRepository,
+            logger
+        )
     }
 
     @Provides
@@ -41,25 +48,57 @@ object BitcoinUseCaseModule {
         walletRepository: WalletRepository,
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
         bitcoinTransactionRepository: BitcoinTransactionRepository,
-        securityPreferencesRepository: SecurityPreferencesRepository,
         keyStoreRepository: KeyStoreRepository,
+        securityPreferencesRepository: SecurityPreferencesRepository,
+        logger: Logger
     ): SendBitcoinUseCase {
-        return SendBitcoinUseCase(
+        return SendBitcoinUseCaseImpl(
             walletRepository,
             bitcoinBlockchainRepository,
             bitcoinTransactionRepository,
             keyStoreRepository,
-            securityPreferencesRepository
+            securityPreferencesRepository,
+            logger
         )
     }
 
     @Provides
     @Singleton
-    fun provideGetBitcoinWalletUseCase(
-        walletRepository: WalletRepository,
-    ): GetBitcoinWalletUseCase {
-        return GetBitcoinWalletUseCase(
-            walletRepository,
+    fun provideGetBitcoinFeeEstimateUseCase(
+        bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+        logger: Logger
+    ): GetBitcoinFeeEstimateUseCase {
+        return GetBitcoinFeeEstimateUseCaseImpl(
+            bitcoinBlockchainRepository,
+            logger
         )
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetBitcoinBalanceUseCase(
+        bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+        logger: Logger
+    ): GetBitcoinBalanceUseCase {
+        return GetBitcoinBalanceUseCaseImpl(
+            bitcoinBlockchainRepository,
+            logger
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideValidateBitcoinAddressUseCase(
+        logger: Logger
+    ): ValidateBitcoinAddressUseCase {
+        return ValidateBitcoinAddressUseCaseImpl(logger)
+    }
+
+    @Provides
+    @Singleton
+    fun provideValidateBitcoinTransactionUseCase(
+        logger: Logger
+    ): ValidateBitcoinTransactionUseCase {
+        return ValidateBitcoinTransactionUseCaseImpl(logger)
     }
 }

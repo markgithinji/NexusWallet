@@ -1,9 +1,9 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
-import android.util.Log
-import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepository
-import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
+import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
@@ -20,17 +20,18 @@ import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private const val DEFAULT_INPUT_COUNT = 1
-private const val DEFAULT_OUTPUT_COUNT = 2
-
 @Singleton
-class SyncBitcoinTransactionsUseCase @Inject constructor(
+class SyncBitcoinTransactionsUseCaseImpl @Inject constructor(
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
-    private val walletRepository: WalletRepository
-) {
-    suspend operator fun invoke(walletId: String): Result<Unit> = withContext(Dispatchers.IO) {
-        Log.d("SyncBitcoinUC", "Syncing Bitcoin transactions for wallet: $walletId")
+    private val walletRepository: WalletRepository,
+    private val logger: Logger
+) : SyncBitcoinTransactionsUseCase {
+
+    private val tag = "SyncBitcoinUC"
+
+    override suspend fun invoke(walletId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        logger.d(tag, "Syncing Bitcoin transactions for wallet: $walletId")
 
         when (val walletValidation = validateWallet(walletId)) {
             is Result.Error -> return@withContext walletValidation
@@ -56,12 +57,12 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
                             bitcoinTransactionRepository.saveTransaction(domainTx)
                         }
 
-                        Log.d("SyncBitcoinUC", "Sync completed for wallet $walletId")
+                        logger.d(tag, "Sync completed for wallet $walletId | txCount=${transactions.size}")
                         Result.Success(Unit)
                     }
 
                     is Result.Error -> {
-                        Log.e("SyncBitcoinUC", "Failed to sync: ${transactionsResult.message}")
+                        logger.e(tag, "Failed to sync: ${transactionsResult.message}")
                         Result.Error(transactionsResult.message)
                     }
 
@@ -76,41 +77,45 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
     private suspend fun validateWallet(walletId: String): Result<BitcoinCoin> {
         val wallet = walletRepository.getWallet(walletId)
         if (wallet == null) {
-            Log.e("SyncBitcoinUC", "Wallet not found: $walletId")
+            logger.e(tag, "Wallet not found: $walletId")
             return Result.Error("Wallet not found")
         }
 
         return wallet.bitcoin?.let {
-            Log.d("SyncBitcoinUC", "Wallet validated: ${wallet.name}")
+            logger.d(tag, "Wallet validated: ${wallet.name}")
             Result.Success(it)
         } ?: run {
-            Log.e("SyncBitcoinUC", "Bitcoin not enabled for wallet: ${wallet.name}")
+            logger.e(tag, "Bitcoin not enabled for wallet: ${wallet.name}")
             Result.Error("Bitcoin not enabled")
         }
     }
 }
 
 @Singleton
-class GetBitcoinWalletUseCase @Inject constructor(
-    private val walletRepository: WalletRepository
-) {
-    suspend operator fun invoke(walletId: String): Result<BitcoinWalletInfo> {
-        Log.d("GetBitcoinWalletUC", "Looking up Bitcoin wallet: $walletId")
+class GetBitcoinWalletUseCaseImpl @Inject constructor(
+    private val walletRepository: WalletRepository,
+    private val logger: Logger
+) : GetBitcoinWalletUseCase {
+
+    private val tag = "GetBitcoinWalletUC"
+
+    override suspend fun invoke(walletId: String): Result<BitcoinWalletInfo> {
+        logger.d(tag, "Looking up Bitcoin wallet: $walletId")
 
         val wallet = walletRepository.getWallet(walletId)
         if (wallet == null) {
-            Log.e("GetBitcoinWalletUC", "Wallet not found: $walletId")
+            logger.e(tag, "Wallet not found: $walletId")
             return Result.Error("Wallet not found")
         }
 
         val bitcoinCoin = wallet.bitcoin
         if (bitcoinCoin == null) {
-            Log.e("GetBitcoinWalletUC", "Bitcoin not enabled for wallet: ${wallet.name}")
+            logger.e(tag, "Bitcoin not enabled for wallet: ${wallet.name}")
             return Result.Error("Bitcoin not enabled for this wallet")
         }
 
-        Log.d(
-            "GetBitcoinWalletUC",
+        logger.d(
+            tag,
             "Found wallet: ${wallet.name} | Address: ${bitcoinCoin.address.take(8)}... | Network: ${bitcoinCoin.network}"
         )
 
@@ -126,50 +131,53 @@ class GetBitcoinWalletUseCase @Inject constructor(
 }
 
 @Singleton
-class SendBitcoinUseCase @Inject constructor(
+class SendBitcoinUseCaseImpl @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val keyStoreRepository: KeyStoreRepository,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
-) {
-    suspend operator fun invoke(
-        walletId: String,
-        toAddress: String,
-        amount: BigDecimal,
-        feeLevel: FeeLevel = FeeLevel.NORMAL,
-        note: String? = null
-    ): Result<SendBitcoinResult> = withContext(Dispatchers.IO) {
-        Log.d("SendBitcoinUC", "Sending ${amount.toPlainString()} BTC to ${toAddress.take(8)}...")
+    private val logger: Logger
+) : SendBitcoinUseCase {
+
+    private val tag = "SendBitcoinUC"
+
+    override suspend fun invoke(params: SendBitcoinUseCase.Params): Result<SendBitcoinResult> = withContext(Dispatchers.IO) {
+        logger.d(tag, "Sending ${params.amount.toPlainString()} BTC to ${params.toAddress.take(8)}... | walletId=${params.walletId}")
 
         // Get wallet
-        val wallet = walletRepository.getWallet(walletId)
+        val wallet = walletRepository.getWallet(params.walletId)
         val bitcoinCoin = wallet?.bitcoin
 
         if (wallet == null || bitcoinCoin == null) {
+            logger.e(tag, "Invalid wallet state for walletId=${params.walletId}")
             return@withContext Result.Error("Invalid wallet state")
         }
 
         // Get fee estimate
         return@withContext when (val feeResult = bitcoinBlockchainRepository.getFeeEstimate(
-            feeLevel,
+            params.feeLevel,
             DEFAULT_INPUT_COUNT,
             DEFAULT_OUTPUT_COUNT
         )) {
             is Result.Success -> {
                 val feeEstimate = feeResult.data
                 processTransaction(
-                    walletId = walletId,
+                    walletId = params.walletId,
                     bitcoinCoin = bitcoinCoin,
-                    toAddress = toAddress,
-                    amount = amount,
+                    toAddress = params.toAddress,
+                    amount = params.amount,
                     feeEstimate = feeEstimate,
-                    feeLevel = feeLevel,
-                    note = note
+                    feeLevel = params.feeLevel,
+                    note = params.note
                 )
             }
 
-            is Result.Error -> Result.Error("Failed to get fee estimate: ${feeResult.message}")
+            is Result.Error -> {
+                logger.e(tag, "Failed to get fee estimate: ${feeResult.message}")
+                Result.Error("Failed to get fee estimate: ${feeResult.message}")
+            }
+
             else -> Result.Error("Unknown error getting fee estimate")
         }
     }
@@ -208,6 +216,7 @@ class SendBitcoinUseCase @Inject constructor(
         )
 
         bitcoinTransactionRepository.saveTransaction(transaction)
+        logger.d(tag, "Transaction created: ${transaction.id}")
 
         // Sign transaction
         return when (val signResult = signTransaction(transaction, bitcoinCoin)) {
@@ -219,6 +228,7 @@ class SendBitcoinUseCase @Inject constructor(
             is Result.Error -> {
                 val failedTx = transaction.copy(status = TransactionStatus.FAILED)
                 bitcoinTransactionRepository.updateTransaction(failedTx)
+                logger.e(tag, "Failed to sign transaction: ${signResult.message}")
                 Result.Error("Failed to sign transaction: ${signResult.message}")
             }
 
@@ -251,6 +261,7 @@ class SendBitcoinUseCase @Inject constructor(
 
             // Verify key matches address
             if (LegacyAddress.fromKey(networkParams, ecKey).toString() != bitcoinCoin.address) {
+                logger.e(tag, "Private key does not match wallet address")
                 return Result.Error("Private key does not match wallet address")
             }
 
@@ -269,14 +280,19 @@ class SendBitcoinUseCase @Inject constructor(
                         txHash = signedTx.txId.toString(),
                         signedHex = Utils.HEX.encode(signedTx.bitcoinSerialize())
                     ).also { bitcoinTransactionRepository.updateTransaction(it) }
+                    logger.d(tag, "Transaction signed successfully: ${updatedTx.id}")
                     Result.Success(updatedTx)
                 }
 
-                is Result.Error -> Result.Error("Failed to create signed transaction: ${signResult.message}")
+                is Result.Error -> {
+                    logger.e(tag, "Failed to create signed transaction: ${signResult.message}")
+                    Result.Error("Failed to create signed transaction: ${signResult.message}")
+                }
+
                 else -> Result.Error("Unknown signing error")
             }
         } catch (e: Exception) {
-            Log.e("SendBitcoinUC", "Error signing transaction", e)
+            logger.e(tag, "Error signing transaction", e)
             Result.Error("Signing failed: ${e.message}")
         }
     }
@@ -296,6 +312,8 @@ class SendBitcoinUseCase @Inject constructor(
                 )
                 bitcoinTransactionRepository.updateTransaction(updatedTx)
 
+                logger.d(tag, "Transaction broadcast successfully: ${updatedTx.id} | txHash=${broadcastResult.data.take(8)}...")
+
                 Result.Success(
                     SendBitcoinResult(
                         transactionId = transaction.id,
@@ -309,6 +327,7 @@ class SendBitcoinUseCase @Inject constructor(
             is Result.Error -> {
                 val failedTx = transaction.copy(status = TransactionStatus.FAILED)
                 bitcoinTransactionRepository.updateTransaction(failedTx)
+                logger.e(tag, "Failed to broadcast transaction: ${broadcastResult.message}")
                 Result.Error(broadcastResult.message)
             }
 
@@ -324,16 +343,20 @@ class SendBitcoinUseCase @Inject constructor(
 }
 
 @Singleton
-class GetBitcoinFeeEstimateUseCase @Inject constructor(
-    private val bitcoinBlockchainRepository: BitcoinBlockchainRepository
-) {
-    suspend operator fun invoke(
-        feeLevel: FeeLevel = FeeLevel.NORMAL,
-        inputCount: Int = DEFAULT_INPUT_COUNT,
-        outputCount: Int = DEFAULT_OUTPUT_COUNT
+class GetBitcoinFeeEstimateUseCaseImpl @Inject constructor(
+    private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+    private val logger: Logger
+) : GetBitcoinFeeEstimateUseCase {
+
+    private val tag = "GetBitcoinFeeUC"
+
+    override suspend fun invoke(
+        feeLevel: FeeLevel,
+        inputCount: Int,
+        outputCount: Int
     ): Result<BitcoinFeeEstimate> {
-        Log.d(
-            "GetBitcoinFeeUC",
+        logger.d(
+            tag,
             "Getting fee estimate for $feeLevel with $inputCount inputs, $outputCount outputs"
         )
         return bitcoinBlockchainRepository.getFeeEstimate(feeLevel, inputCount, outputCount)
@@ -341,20 +364,27 @@ class GetBitcoinFeeEstimateUseCase @Inject constructor(
 }
 
 @Singleton
-class GetBitcoinBalanceUseCase @Inject constructor(
-    private val bitcoinBlockchainRepository: BitcoinBlockchainRepository
-) {
-    suspend operator fun invoke(address: String, network: BitcoinNetwork): Result<BigDecimal> {
-        Log.d("GetBitcoinBalanceUC", "Fetching balance for ${address.take(8)}... on $network")
+class GetBitcoinBalanceUseCaseImpl @Inject constructor(
+    private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+    private val logger: Logger
+) : GetBitcoinBalanceUseCase {
+
+    private val tag = "GetBitcoinBalanceUC"
+
+    override suspend fun invoke(
+        address: String,
+        network: BitcoinNetwork
+    ): Result<BigDecimal> {
+        logger.d(tag, "Fetching balance for ${address.take(8)}... on $network")
 
         return when (val result = bitcoinBlockchainRepository.getBalance(address, network)) {
             is Result.Success -> {
-                Log.d("GetBitcoinBalanceUC", "Balance: ${result.data} BTC")
+                logger.d(tag, "Balance: ${result.data} BTC")
                 Result.Success(result.data)
             }
 
             is Result.Error -> {
-                Log.e("GetBitcoinBalanceUC", "Failed to get balance: ${result.message}")
+                logger.e(tag, "Failed to get balance: ${result.message}")
                 Result.Error(result.message)
             }
 
@@ -364,35 +394,36 @@ class GetBitcoinBalanceUseCase @Inject constructor(
 }
 
 @Singleton
-class ValidateBitcoinAddressUseCase @Inject constructor() {
-    operator fun invoke(address: String, network: BitcoinNetwork): Boolean {
+class ValidateBitcoinAddressUseCaseImpl @Inject constructor(
+    private val logger: Logger
+) : ValidateBitcoinAddressUseCase {
+
+    private val tag = "ValidateBitcoinUC"
+
+    override fun invoke(address: String, network: BitcoinNetwork): Boolean {
         return try {
             val params = when (network) {
                 BitcoinNetwork.MAINNET -> MainNetParams.get()
                 BitcoinNetwork.TESTNET -> TestNet3Params.get()
             }
             Address.fromString(params, address)
-            Log.d("ValidateBitcoinUC", "Valid $network address: ${address.take(8)}...")
+            logger.d(tag, "Valid $network address: ${address.take(8)}...")
             true
         } catch (e: Exception) {
-            Log.e("ValidateBitcoinUC", "Invalid $network address: ${address.take(8)}...")
+            logger.e(tag, "Invalid $network address: ${address.take(8)}...")
             false
         }
     }
 }
 
 @Singleton
-class ValidateBitcoinTransactionUseCase @Inject constructor() {
+class ValidateBitcoinTransactionUseCaseImpl @Inject constructor(
+    private val logger: Logger
+) : ValidateBitcoinTransactionUseCase {
 
-    data class ValidationResult(
-        val isValid: Boolean,
-        val addressError: String? = null,
-        val amountError: String? = null,
-        val balanceError: String? = null,
-        val selfSendError: String? = null
-    )
+    private val tag = "ValidateBitcoinTxUC"
 
-    operator fun invoke(
+    override fun invoke(
         walletId: String,
         wallet: Wallet?,
         toAddress: String,
@@ -400,7 +431,7 @@ class ValidateBitcoinTransactionUseCase @Inject constructor() {
         network: BitcoinNetwork,
         balance: BigDecimal,
         feeEstimate: BitcoinFeeEstimate?
-    ): ValidationResult {
+    ): ValidateBitcoinTransactionUseCase.ValidationResult {
 
         var addressError: String? = null
         var amountError: String? = null
@@ -410,36 +441,42 @@ class ValidateBitcoinTransactionUseCase @Inject constructor() {
 
         // Validate wallet exists
         if (wallet == null) {
-            return ValidationResult(false, addressError = "Wallet not found")
+            logger.w(tag, "Wallet not found: $walletId")
+            return ValidateBitcoinTransactionUseCase.ValidationResult(false, addressError = "Wallet not found")
         }
 
         // Validate Bitcoin is enabled
         val bitcoinCoin = wallet.bitcoin
         if (bitcoinCoin == null) {
-            return ValidationResult(false, addressError = "Bitcoin not enabled for this wallet")
+            logger.w(tag, "Bitcoin not enabled for wallet: ${wallet.name}")
+            return ValidateBitcoinTransactionUseCase.ValidationResult(false, addressError = "Bitcoin not enabled for this wallet")
         }
 
         // Validate address is not empty
         if (toAddress.isBlank()) {
             addressError = "Please enter a recipient address"
             isValid = false
+            logger.w(tag, "Address is empty")
         }
         // Validate address format
         else if (!isValidBitcoinAddress(toAddress, network)) {
             addressError = "Invalid Bitcoin address for ${network.name.lowercase()}"
             isValid = false
+            logger.w(tag, "Invalid address format: ${toAddress.take(8)}...")
         }
 
         // Validate not sending to self
         if (toAddress.isNotBlank() && toAddress == bitcoinCoin.address) {
             selfSendError = "Cannot send to yourself"
             isValid = false
+            logger.w(tag, "Attempted self-send")
         }
 
         // Validate amount > 0
         if (amount <= BigDecimal.ZERO) {
             amountError = "Amount must be greater than zero"
             isValid = false
+            logger.w(tag, "Invalid amount: $amount")
         }
 
         // Calculate total required including fees
@@ -457,9 +494,10 @@ class ValidateBitcoinTransactionUseCase @Inject constructor() {
                 totalRequired.setScale(8)
             } BTC (including fees)"
             isValid = false
+            logger.w(tag, "Insufficient balance: have $balance BTC, need $totalRequired BTC")
         }
 
-        return ValidationResult(
+        return ValidateBitcoinTransactionUseCase.ValidationResult(
             isValid = isValid,
             addressError = addressError,
             amountError = amountError,
@@ -467,7 +505,6 @@ class ValidateBitcoinTransactionUseCase @Inject constructor() {
             selfSendError = selfSendError
         )
     }
-
 
     private fun isValidBitcoinAddress(address: String, network: BitcoinNetwork): Boolean {
         return try {
