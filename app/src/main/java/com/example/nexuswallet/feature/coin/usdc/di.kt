@@ -16,11 +16,12 @@ import com.example.nexuswallet.feature.coin.usdc.domain.SendUSDCUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.SendUSDCUseCaseImpl
 import com.example.nexuswallet.feature.coin.usdc.domain.SyncUSDTransactionsUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.SyncUSDTransactionsUseCaseImpl
+import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransactionRepository
 import com.example.nexuswallet.feature.coin.usdc.domain.ValidateUSDCFormUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.ValidateUSDCFormUseCaseImpl
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -56,7 +57,7 @@ class USDCModule {
     fun provideUSDCTransactionRepository(
         usdcTransactionDao: USDCTransactionDao
     ): USDCTransactionRepository {
-        return USDCTransactionRepository(usdcTransactionDao)
+        return USDCTransactionRepositoryImpl(usdcTransactionDao)
     }
 
     @Provides
