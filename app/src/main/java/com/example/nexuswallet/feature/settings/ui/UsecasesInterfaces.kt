@@ -1,4 +1,5 @@
 package com.example.nexuswallet.feature.settings.ui
+import com.example.nexuswallet.feature.coin.Result
 
 interface ClearAllSecurityDataUseCase {
     suspend operator fun invoke(): Result<Unit>
