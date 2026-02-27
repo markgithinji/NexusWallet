@@ -1,30 +1,22 @@
 package com.example.nexuswallet.feature.wallet.ui
 
 import android.util.Log
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.coin.bitcoin.SyncBitcoinTransactionsUseCase
-import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
-import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionRepository
+import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.SyncEthereumTransactionsUseCase
-import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
-import com.example.nexuswallet.feature.coin.solana.SolanaTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.data.EthereumTransactionRepository
 import com.example.nexuswallet.feature.coin.solana.SyncSolanaTransactionsUseCase
-import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
+import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
 import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.SyncUSDTransactionsUseCase
-import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransaction
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TransactionDisplayInfo
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,11 +25,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
-import java.math.RoundingMode
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import kotlin.collections.emptyList
 
 @HiltViewModel
 class CoinDetailViewModel @Inject constructor(

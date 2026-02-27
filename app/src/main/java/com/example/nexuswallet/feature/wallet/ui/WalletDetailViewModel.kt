@@ -3,15 +3,13 @@ package com.example.nexuswallet.feature.wallet.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.market.data.repository.MarketRepository
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.GetAllTransactionsUseCase
+import com.example.nexuswallet.feature.market.domain.MarketRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
-import com.example.nexuswallet.feature.wallet.domain.SyncWalletBalancesUseCase
+import com.example.nexuswallet.feature.wallet.domain.GetAllTransactionsUseCase
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,6 +18,9 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SyncWalletBalancesUseCase
+
 
 data class WalletDetailUiState(
     val wallet: Wallet? = null,
@@ -59,8 +60,16 @@ class WalletDetailViewModel @Inject constructor(
                 // 2. Load wallet balance from repository
                 val loadedBalance = walletRepository.getWalletBalance(walletId)
 
-                // 3. Load market percentages
-                val percentages = marketRepository.getLatestPricePercentages()
+                // 3. Load market percentages (handle Result)
+                when (val percentagesResult = marketRepository.getLatestPricePercentages()) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(pricePercentages = percentagesResult.data) }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(pricePercentages = emptyMap()) }
+                    }
+                    Result.Loading -> {}
+                }
 
                 // 4. Load initial transactions
                 val initialTransactions = getAllTransactionsUseCase(walletId)
@@ -70,7 +79,6 @@ class WalletDetailViewModel @Inject constructor(
                     it.copy(
                         wallet = loadedWallet,
                         balance = loadedBalance,
-                        pricePercentages = percentages,
                         transactions = initialTransactions,
                         isLoading = false
                     )
@@ -81,9 +89,16 @@ class WalletDetailViewModel @Inject constructor(
 
                 // 6. Sync balances in background (also separate)
                 viewModelScope.launch {
-                    syncWalletBalancesUseCase(loadedWallet)
-                    val updatedBalance = walletRepository.getWalletBalance(walletId)
-                    _uiState.update { it.copy(balance = updatedBalance) }
+                    when (val syncResult = syncWalletBalancesUseCase(loadedWallet)) {
+                        is Result.Success -> {
+                            val updatedBalance = walletRepository.getWalletBalance(walletId)
+                            _uiState.update { it.copy(balance = updatedBalance) }
+                        }
+                        is Result.Error -> {
+                            // Handle silently
+                        }
+                        Result.Loading -> {}
+                    }
                 }
 
             } catch (e: Exception) {
@@ -102,17 +117,12 @@ class WalletDetailViewModel @Inject constructor(
             getAllTransactionsUseCase.observeTransactions(walletId)
                 .flowOn(Dispatchers.IO)
                 .catch { e ->
-                    Log.e("WalletDetailVM", "Error observing transactions", e)
+                    // Handle silently
                 }
                 .collect { updatedTransactions ->
                     _uiState.update { it.copy(transactions = updatedTransactions) }
                 }
         }
-    }
-
-    private suspend fun loadMarketPercentages() {
-        val percentages = marketRepository.getLatestPricePercentages()
-        _uiState.update { it.copy(pricePercentages = percentages) }
     }
 
     fun getWalletName(): String = _uiState.value.wallet?.name ?: "Wallet Details"

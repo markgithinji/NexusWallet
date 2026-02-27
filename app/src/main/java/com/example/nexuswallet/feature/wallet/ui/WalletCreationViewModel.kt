@@ -1,22 +1,21 @@
 package com.example.nexuswallet.feature.wallet.ui
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.CreateWalletUseCase
+import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
+import com.example.nexuswallet.feature.coin.solana.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.GenerateMnemonicUseCase
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.ValidateMnemonicUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
+import com.example.nexuswallet.feature.wallet.domain.CreateWalletUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 
 @HiltViewModel
 class WalletCreationViewModel @Inject constructor(
@@ -44,7 +43,8 @@ class WalletCreationViewModel @Inject constructor(
         var includeSolana: Boolean = true,
         var includeUSDC: Boolean = false,
         var ethereumNetwork: EthereumNetwork = EthereumNetwork.Sepolia,
-        var bitcoinNetwork: BitcoinNetwork = BitcoinNetwork.TESTNET
+        var bitcoinNetwork: BitcoinNetwork = BitcoinNetwork.TESTNET,
+        var solanaNetwork: SolanaNetwork = SolanaNetwork.DEVNET
     )
 
     private val _coinSelection = MutableStateFlow(CoinSelection())
@@ -83,7 +83,8 @@ class WalletCreationViewModel @Inject constructor(
         includeSolana: Boolean? = null,
         includeUSDC: Boolean? = null,
         ethereumNetwork: EthereumNetwork? = null,
-        bitcoinNetwork: BitcoinNetwork? = null
+        bitcoinNetwork: BitcoinNetwork? = null,
+        solanaNetwork: SolanaNetwork? = null
     ) {
         _coinSelection.update { current ->
             current.copy(
@@ -92,7 +93,8 @@ class WalletCreationViewModel @Inject constructor(
                 includeSolana = includeSolana ?: current.includeSolana,
                 includeUSDC = includeUSDC ?: current.includeUSDC,
                 ethereumNetwork = ethereumNetwork ?: current.ethereumNetwork,
-                bitcoinNetwork = bitcoinNetwork ?: current.bitcoinNetwork
+                bitcoinNetwork = bitcoinNetwork ?: current.bitcoinNetwork,
+                solanaNetwork = solanaNetwork ?: current.solanaNetwork
             )
         }
     }
@@ -154,6 +156,11 @@ class WalletCreationViewModel @Inject constructor(
             _uiState.value = WalletCreationUiState.Loading
             try {
                 val mnemonicList = _mnemonic.value
+                if (mnemonicList.isEmpty()) {
+                    _uiState.value = WalletCreationUiState.Error("No mnemonic generated")
+                    return@launch
+                }
+
                 val name = if (_walletName.value.isBlank()) "My Wallet" else _walletName.value
                 val selection = _coinSelection.value
 
@@ -165,7 +172,8 @@ class WalletCreationViewModel @Inject constructor(
                     includeSolana = selection.includeSolana,
                     includeUSDC = selection.includeUSDC,
                     ethereumNetwork = selection.ethereumNetwork,
-                    bitcoinNetwork = selection.bitcoinNetwork
+                    bitcoinNetwork = selection.bitcoinNetwork,
+                    solanaNetwork = selection.solanaNetwork
                 )
 
                 when (result) {
