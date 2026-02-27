@@ -1,21 +1,21 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinTransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class BitcoinTransactionRepository @Inject constructor(
+class BitcoinTransactionRepositoryImpl @Inject constructor(
     private val bitcoinTransactionDao: BitcoinTransactionDao
-) {
+) : BitcoinTransactionRepository {
 
-    suspend fun deleteAllForWallet(walletId: String) {
+    override suspend fun deleteAllForWallet(walletId: String) {
         bitcoinTransactionDao.deleteByWalletId(walletId)
     }
 
-    suspend fun saveTransaction(transaction: BitcoinTransaction) {
+    override suspend fun saveTransaction(transaction: BitcoinTransaction) {
         // Check if transaction already exists
         val existing = getTransaction(transaction.id)
         if (existing != null) {
@@ -26,16 +26,16 @@ class BitcoinTransactionRepository @Inject constructor(
         }
     }
 
-    suspend fun updateTransaction(transaction: BitcoinTransaction) {
+    override suspend fun updateTransaction(transaction: BitcoinTransaction) {
         val entity = transaction.toEntity()
         bitcoinTransactionDao.update(entity)
     }
 
-    suspend fun getTransaction(id: String): BitcoinTransaction? {
+    override suspend fun getTransaction(id: String): BitcoinTransaction? {
         return bitcoinTransactionDao.getById(id)?.toDomain()
     }
 
-    fun getTransactions(walletId: String): Flow<List<BitcoinTransaction>> {
+    override fun getTransactions(walletId: String): Flow<List<BitcoinTransaction>> {
         return bitcoinTransactionDao.getByWalletId(walletId)
             .map { entities ->
                 entities.map { it.toDomain() }
@@ -44,7 +44,7 @@ class BitcoinTransactionRepository @Inject constructor(
             }
     }
 
-    suspend fun getPendingTransactions(): List<BitcoinTransaction> {
+    override suspend fun getPendingTransactions(): List<BitcoinTransaction> {
         return bitcoinTransactionDao.getPendingTransactions()
             .map { it.toDomain() }
             .distinctBy { it.id }

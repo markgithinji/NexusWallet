@@ -2,8 +2,9 @@ package com.example.nexuswallet.feature.coin.bitcoin
 
 import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

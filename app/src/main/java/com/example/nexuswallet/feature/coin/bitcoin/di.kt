@@ -1,14 +1,15 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
 import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinBlockchainRepositoryImpl
+import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -30,14 +31,14 @@ object BitcoinModule {
     fun provideBitcoinTransactionRepository(
         bitcoinTransactionDao: BitcoinTransactionDao
     ): BitcoinTransactionRepository {
-        return BitcoinTransactionRepository(bitcoinTransactionDao)
+        return BitcoinTransactionRepositoryImpl(bitcoinTransactionDao)
     }
 
     @Provides
     @Singleton
     fun provideBitcoinBlockchainRepository(
-        mainnetApi: BitcoinApi,
-        testnetApi: BitcoinApi,
+        @Named("bitcoinMainnet") mainnetApi: BitcoinApi,
+        @Named("bitcoinTestnet") testnetApi: BitcoinApi,
         ioDispatcher: CoroutineDispatcher,
     ): BitcoinBlockchainRepository {
         return BitcoinBlockchainRepositoryImpl(mainnetApi, testnetApi, ioDispatcher)

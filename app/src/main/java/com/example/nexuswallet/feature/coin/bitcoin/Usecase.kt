@@ -3,11 +3,12 @@ package com.example.nexuswallet.feature.coin.bitcoin
 import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bitcoinj.core.Address
@@ -57,7 +58,10 @@ class SyncBitcoinTransactionsUseCaseImpl @Inject constructor(
                             bitcoinTransactionRepository.saveTransaction(domainTx)
                         }
 
-                        logger.d(tag, "Sync completed for wallet $walletId | txCount=${transactions.size}")
+                        logger.d(
+                            tag,
+                            "Sync completed for wallet $walletId | txCount=${transactions.size}"
+                        )
                         Result.Success(Unit)
                     }
 
@@ -149,7 +153,10 @@ class SendBitcoinUseCaseImpl @Inject constructor(
         feeLevel: FeeLevel,
         note: String?
     ): Result<SendBitcoinResult> = withContext(Dispatchers.IO) {
-        logger.d(tag, "Sending ${amount.toPlainString()} BTC to ${toAddress.take(8)}... | walletId=$walletId")
+        logger.d(
+            tag,
+            "Sending ${amount.toPlainString()} BTC to ${toAddress.take(8)}... | walletId=$walletId"
+        )
 
         // Get wallet
         val wallet = walletRepository.getWallet(walletId)
@@ -318,7 +325,12 @@ class SendBitcoinUseCaseImpl @Inject constructor(
                 )
                 bitcoinTransactionRepository.updateTransaction(updatedTx)
 
-                logger.d(tag, "Transaction broadcast successfully: ${updatedTx.id} | txHash=${broadcastResult.data.take(8)}...")
+                logger.d(
+                    tag,
+                    "Transaction broadcast successfully: ${updatedTx.id} | txHash=${
+                        broadcastResult.data.take(8)
+                    }..."
+                )
 
                 Result.Success(
                     SendBitcoinResult(
