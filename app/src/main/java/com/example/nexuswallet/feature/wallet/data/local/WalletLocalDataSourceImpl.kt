@@ -13,12 +13,15 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.mapToWalletBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.toDomain
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.toEntity
+import com.example.nexuswallet.feature.wallet.domain.WalletLocalDataSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
+import javax.inject.Singleton
 
-class WalletLocalDataSource @Inject constructor(
+@Singleton
+class WalletLocalDataSourceImpl @Inject constructor(
     private val walletDao: WalletDao,
     private val bitcoinCoinDao: BitcoinCoinDao,
     private val ethereumCoinDao: EthereumCoinDao,
@@ -28,11 +31,12 @@ class WalletLocalDataSource @Inject constructor(
     private val ethereumBalanceDao: EthereumBalanceDao,
     private val solanaBalanceDao: SolanaBalanceDao,
     private val usdcBalanceDao: USDCBalanceDao
-) {
+) : WalletLocalDataSource {
+
     private val json = Json { ignoreUnknownKeys = true }
 
     // === Wallet Operations ===
-    suspend fun saveWallet(wallet: Wallet) {
+    override suspend fun saveWallet(wallet: Wallet) {
         // Save main wallet entity
         walletDao.insert(wallet.toEntity())
 
@@ -54,7 +58,7 @@ class WalletLocalDataSource @Inject constructor(
         }
     }
 
-    suspend fun loadWallet(walletId: String): Wallet? {
+    override suspend fun loadWallet(walletId: String): Wallet? {
         val walletEntity = walletDao.get(walletId) ?: return null
 
         return walletEntity.toDomain(
@@ -65,7 +69,7 @@ class WalletLocalDataSource @Inject constructor(
         )
     }
 
-    fun loadAllWallets(): Flow<List<Wallet>> {
+    override fun loadAllWallets(): Flow<List<Wallet>> {
         return walletDao.getAll().map { entities ->
             entities.map { entity ->
                 // For each wallet entity, load its complete data with all coins
@@ -79,14 +83,14 @@ class WalletLocalDataSource @Inject constructor(
         }
     }
 
-    suspend fun deleteWallet(walletId: String) {
+    override suspend fun deleteWallet(walletId: String) {
         walletDao.delete(walletId)
         // Coins and balances are deleted automatically via CASCADE foreign keys
         // No need to manually delete from coin/balance tables
     }
 
     // === Balance Operations ===
-    suspend fun saveWalletBalance(balance: WalletBalance) {
+    override suspend fun saveWalletBalance(balance: WalletBalance) {
         // Save individual balances
         balance.bitcoin?.let {
             bitcoinBalanceDao.insert(it.toEntity(balance.walletId))
@@ -105,7 +109,7 @@ class WalletLocalDataSource @Inject constructor(
         }
     }
 
-    suspend fun loadWalletBalance(walletId: String): WalletBalance? {
+    override suspend fun loadWalletBalance(walletId: String): WalletBalance? {
         return mapToWalletBalance(
             walletId = walletId,
             bitcoinBalance = bitcoinBalanceDao.getByWalletId(walletId),
