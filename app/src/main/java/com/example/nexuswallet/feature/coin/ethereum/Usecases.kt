@@ -5,9 +5,10 @@ import com.example.nexuswallet.feature.authentication.domain.SecurityPreferences
 import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.ethereum.data.EthereumTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -48,13 +49,17 @@ class SyncEthereumTransactionsUseCaseImpl @Inject constructor(
             return@withContext Result.Error("Ethereum not enabled")
         }
 
-        logger.d(tag, "Wallet: ${wallet.name}, Address: ${ethereumCoin.address}, Network: ${ethereumCoin.network.displayName}")
+        logger.d(
+            tag,
+            "Wallet: ${wallet.name}, Address: ${ethereumCoin.address}, Network: ${ethereumCoin.network.displayName}"
+        )
 
-        return@withContext when (val transactionsResult = ethereumBlockchainRepository.getEthereumTransactions(
-            address = ethereumCoin.address,
-            network = ethereumCoin.network,
-            walletId = walletId
-        )) {
+        return@withContext when (val transactionsResult =
+            ethereumBlockchainRepository.getEthereumTransactions(
+                address = ethereumCoin.address,
+                network = ethereumCoin.network,
+                walletId = walletId
+            )) {
             is Result.Success -> {
                 val transactions = transactionsResult.data
                 logger.d(tag, "Received ${transactions.size} transactions from Etherscan")
@@ -199,9 +204,17 @@ class ValidateEthereumSendUseCaseImpl @Inject constructor(
 
                 val totalRequired = amountValue + BigDecimal(feeEstimate.totalFeeEth)
                 if (totalRequired > balance) {
-                    balanceError = "Insufficient balance (need ${totalRequired.setScale(4, RoundingMode.HALF_UP)} ETH including fees)"
+                    balanceError = "Insufficient balance (need ${
+                        totalRequired.setScale(
+                            4,
+                            RoundingMode.HALF_UP
+                        )
+                    } ETH including fees)"
                     isValid = false
-                    logger.d(tag, "Insufficient balance: required $totalRequired, available $balance")
+                    logger.d(
+                        tag,
+                        "Insufficient balance: required $totalRequired, available $balance"
+                    )
                 }
             }
         }
@@ -263,7 +276,10 @@ class GetEthereumWalletUseCaseImpl @Inject constructor(
             return Result.Error("Ethereum not enabled for this wallet")
         }
 
-        logger.d(tag, "Found wallet: ${wallet.name}, Address: ${ethereumCoin.address.take(8)}..., Network: ${ethereumCoin.network.displayName}")
+        logger.d(
+            tag,
+            "Found wallet: ${wallet.name}, Address: ${ethereumCoin.address.take(8)}..., Network: ${ethereumCoin.network.displayName}"
+        )
 
         return Result.Success(
             EthereumWalletInfo(
@@ -311,7 +327,8 @@ class SendEthereumUseCaseImpl @Inject constructor(
 
         // 1. Create transaction with network context
         logger.d(tag, "Step 1: Creating transaction...")
-        val transactionResult = createTransaction(walletId, toAddress, amount, feeLevel, note, ethereumCoin.network)
+        val transactionResult =
+            createTransaction(walletId, toAddress, amount, feeLevel, note, ethereumCoin.network)
         if (transactionResult is Result.Error) return@withContext transactionResult
         val transaction = (transactionResult as Result.Success).data
 
@@ -329,7 +346,10 @@ class SendEthereumUseCaseImpl @Inject constructor(
         logger.d(tag, "Step 3: Broadcasting transaction...")
         val broadcastResult = broadcastTransaction(signedTransaction, ethereumCoin.network)
 
-        logger.d(tag, "Broadcast result: success=${broadcastResult.success}, hash=${broadcastResult.hash}")
+        logger.d(
+            tag,
+            "Broadcast result: success=${broadcastResult.success}, hash=${broadcastResult.hash}"
+        )
 
         val sendResult = SendEthereumResult(
             transactionId = transaction.id,
@@ -362,7 +382,10 @@ class SendEthereumUseCaseImpl @Inject constructor(
                 return Result.Error("Ethereum not enabled")
             }
 
-        logger.d(tag, "Creating transaction for address: ${ethereumCoin.address.take(8)}... on ${network.displayName}")
+        logger.d(
+            tag,
+            "Creating transaction for address: ${ethereumCoin.address.take(8)}... on ${network.displayName}"
+        )
 
         val feeResult = ethereumBlockchainRepository.getFeeEstimate(feeLevel, network)
         if (feeResult is Result.Error) {

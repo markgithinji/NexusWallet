@@ -3,9 +3,10 @@ package com.example.nexuswallet.feature.coin.ethereum
 import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.ethereum.data.EthereumBlockchainRepositoryImpl
+import com.example.nexuswallet.feature.coin.ethereum.data.EthereumTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -135,7 +136,7 @@ object UseCaseModule {
     fun provideEthereumTransactionRepository(
         ethereumTransactionDao: EthereumTransactionDao
     ): EthereumTransactionRepository {
-        return EthereumTransactionRepository(ethereumTransactionDao)
+        return EthereumTransactionRepositoryImpl(ethereumTransactionDao)
     }
 
     @Provides
