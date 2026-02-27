@@ -1,47 +1,24 @@
 package com.example.nexuswallet.feature.wallet.data.walletsrefactor
 
-import android.util.Log
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.CoinType
-import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.coin.bitcoin.SyncBitcoinTransactionsUseCase
 import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
-import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionRepository
-import com.example.nexuswallet.feature.coin.ethereum.SyncEthereumTransactionsUseCase
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
-import com.example.nexuswallet.feature.coin.solana.SolanaTransactionRepository
-import com.example.nexuswallet.feature.coin.solana.SyncSolanaTransactionsUseCase
-import com.example.nexuswallet.feature.coin.usdc.USDCTransactionRepository
-import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
-import com.example.nexuswallet.feature.coin.usdc.domain.SyncUSDTransactionsUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransaction
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Singleton
-import kotlin.collections.emptyList
 
 @Singleton
-class FormatTransactionDisplayUseCase @Inject constructor() {
+class FormatTransactionDisplayUseCaseImpl @Inject constructor() : FormatTransactionDisplayUseCase {
 
-    operator fun invoke(
+    override operator fun invoke(
         transaction: Any,
         coinType: CoinType
     ): TransactionDisplayInfo {
@@ -54,7 +31,7 @@ class FormatTransactionDisplayUseCase @Inject constructor() {
         }
     }
 
-    fun formatTransactionList(
+    override fun formatTransactionList(
         transactions: List<Any>,
         coinType: CoinType
     ): List<TransactionDisplayInfo> {
@@ -132,12 +109,15 @@ class FormatTransactionDisplayUseCase @Inject constructor() {
                 amountDecimal < BigDecimal("0.000001") ->
                     amountDecimal.setScale(8, RoundingMode.HALF_UP)
                         .stripTrailingZeros().toPlainString()
+
                 amountDecimal < BigDecimal("0.001") ->
                     amountDecimal.setScale(6, RoundingMode.HALF_UP)
                         .stripTrailingZeros().toPlainString()
+
                 amountDecimal < BigDecimal("1") ->
                     amountDecimal.setScale(4, RoundingMode.HALF_UP)
                         .stripTrailingZeros().toPlainString()
+
                 else ->
                     amountDecimal.setScale(2, RoundingMode.HALF_UP)
                         .stripTrailingZeros().toPlainString()
