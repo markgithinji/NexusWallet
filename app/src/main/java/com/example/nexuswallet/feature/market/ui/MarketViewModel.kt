@@ -5,9 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.market.data.remote.TokenPriceUpdate
-import com.example.nexuswallet.feature.market.data.repository.CoinGeckoRepository
-import com.example.nexuswallet.feature.market.data.repository.WebSocketRepository
+import com.example.nexuswallet.feature.market.domain.CoinGeckoRepository
 import com.example.nexuswallet.feature.market.domain.Token
+import com.example.nexuswallet.feature.market.domain.WebSocketRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

@@ -1,22 +1,20 @@
 package com.example.nexuswallet.feature.market.ui
 
-import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.market.data.model.NewsArticle
 import com.example.nexuswallet.feature.market.data.remote.ChartData
 import com.example.nexuswallet.feature.market.data.remote.ChartDuration
 import com.example.nexuswallet.feature.market.data.remote.TokenDetail
-import com.example.nexuswallet.feature.market.domain.Token
-import com.example.nexuswallet.feature.market.data.repository.MarketRepository
+import com.example.nexuswallet.feature.market.domain.MarketRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.example.nexuswallet.feature.coin.Result
 
 @HiltViewModel
 class TokenDetailViewModel @Inject constructor(
@@ -40,66 +38,92 @@ class TokenDetailViewModel @Inject constructor(
         "avalanche-2" to "Avalanche"
     )
 
-    // Using Result for UI state
+    // Token details state
     private val _uiState = MutableStateFlow<Result<TokenDetail>>(Result.Loading)
     val uiState: StateFlow<Result<TokenDetail>> = _uiState.asStateFlow()
 
-    private val _chartData = MutableStateFlow<ChartData?>(null)
-    val chartData: StateFlow<ChartData?> = _chartData.asStateFlow()
+    // Chart data state
+    private val _chartState = MutableStateFlow<Result<ChartData>>(Result.Loading)
+    val chartState: StateFlow<Result<ChartData>> = _chartState.asStateFlow()
 
-    private val _selectedDuration = MutableStateFlow<ChartDuration>(ChartDuration.ONE_WEEK)
+    private val _selectedDuration = MutableStateFlow(ChartDuration.ONE_WEEK)
     val selectedDuration: StateFlow<ChartDuration> = _selectedDuration.asStateFlow()
 
-    private val _isLoadingChart = MutableStateFlow(false)
-    val isLoadingChart: StateFlow<Boolean> = _isLoadingChart.asStateFlow()
+    // News state
+    private val _newsState = MutableStateFlow<Result<List<NewsArticle>>>(Result.Loading)
+    val newsState: StateFlow<Result<List<NewsArticle>>> = _newsState.asStateFlow()
 
-    // News
-    private val _newsArticles = MutableStateFlow<List<NewsArticle>>(emptyList())
-    val newsArticles: StateFlow<List<NewsArticle>> = _newsArticles.asStateFlow()
-
-    private val _isLoadingNews = MutableStateFlow(false)
-    val isLoadingNews: StateFlow<Boolean> = _isLoadingNews.asStateFlow()
+    // Track if we've already loaded news to avoid duplicate calls
+    private var hasLoadedNews = false
 
     init {
         loadTokenDetails()
         loadChartData(_selectedDuration.value)
-        loadNews()
     }
 
     private fun loadTokenDetails() {
         viewModelScope.launch {
             _uiState.value = Result.Loading
 
-            val token = marketRepository.getTokenDetails(tokenId)
-            if (token != null) {
-                _uiState.value = Result.Success(token)
-            } else {
-                _uiState.value = Result.Error("Token not found")
+            when (val result = marketRepository.getTokenDetails(tokenId)) {
+                is Result.Success -> {
+                    _uiState.value = Result.Success(result.data)
+                    // Load news only after we have token details and haven't loaded yet
+                    if (!hasLoadedNews) {
+                        loadNews()
+                    }
+                }
+
+                is Result.Error -> {
+                    _uiState.value = Result.Error(result.message, result.throwable)
+                }
+
+                Result.Loading -> {} // Already handled
             }
         }
     }
 
     fun loadChartData(duration: ChartDuration) {
         viewModelScope.launch {
-            _isLoadingChart.value = true
+            _chartState.value = Result.Loading
             _selectedDuration.value = duration
 
-            val chart = marketRepository.getMarketChart(tokenId, duration)
-            _chartData.value = chart
-            _isLoadingChart.value = false
+            when (val result = marketRepository.getMarketChart(tokenId, duration)) {
+                is Result.Success -> {
+                    _chartState.value = Result.Success(result.data)
+                }
+
+                is Result.Error -> {
+                    _chartState.value = Result.Error(result.message, result.throwable)
+                }
+
+                Result.Loading -> {} // Already handled
+            }
         }
     }
 
     fun loadNews() {
         viewModelScope.launch {
-            _isLoadingNews.value = true
+            _newsState.value = Result.Loading
 
-            // Get display name for news search
-            val searchQuery = tokenDisplayNames[tokenId] ?: tokenId.replaceFirstChar { it.uppercase() }
+            // Get display name for news search from the loaded token details if available
+            val searchQuery = when (val currentState = _uiState.value) {
+                is Result.Success -> currentState.data.name
+                else -> tokenDisplayNames[tokenId] ?: tokenId.replaceFirstChar { it.uppercase() }
+            }
 
-            val news = marketRepository.getCoinNews(searchQuery)
-            _newsArticles.value = news
-            _isLoadingNews.value = false
+            when (val result = marketRepository.getCoinNews(searchQuery)) {
+                is Result.Success -> {
+                    _newsState.value = Result.Success(result.data)
+                    hasLoadedNews = true
+                }
+
+                is Result.Error -> {
+                    _newsState.value = Result.Error(result.message, result.throwable)
+                }
+
+                Result.Loading -> {} // Already handled
+            }
         }
     }
 
@@ -109,9 +133,29 @@ class TokenDetailViewModel @Inject constructor(
         }
     }
 
+    fun retryLoading() {
+        when {
+            _uiState.value is Result.Error -> loadTokenDetails()
+            _chartState.value is Result.Error -> loadChartData(_selectedDuration.value)
+            _newsState.value is Result.Error -> loadNews()
+        }
+    }
+
     fun refresh() {
+        hasLoadedNews = false // Reset to allow news to load again
         loadTokenDetails()
         loadChartData(_selectedDuration.value)
-        loadNews()
+    }
+
+    fun clearErrors() {
+        if (_uiState.value is Result.Error) {
+            _uiState.value = Result.Loading
+        }
+        if (_chartState.value is Result.Error) {
+            _chartState.value = Result.Loading
+        }
+        if (_newsState.value is Result.Error) {
+            _newsState.value = Result.Loading
+        }
     }
 }

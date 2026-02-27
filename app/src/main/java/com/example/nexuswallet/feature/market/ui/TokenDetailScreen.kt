@@ -45,6 +45,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -82,63 +83,16 @@ fun TokenDetailScreen(
     viewModel: TokenDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val chartData by viewModel.chartData.collectAsState()
+    val chartState by viewModel.chartState.collectAsState()
+    val newsState by viewModel.newsState.collectAsState()
     val selectedDuration by viewModel.selectedDuration.collectAsState()
-    val isLoadingChart by viewModel.isLoadingChart.collectAsState()
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = when (tokenId) {
-                                "bitcoin" -> Icons.Outlined.CurrencyBitcoin
-                                "ethereum" -> Icons.Outlined.Diamond
-                                "solana" -> Icons.Outlined.FlashOn
-                                else -> Icons.Outlined.AccountBalanceWallet
-                            },
-                            contentDescription = null,
-                            tint = when (tokenId) {
-                                "bitcoin" -> bitcoinLight
-                                "ethereum" -> ethereumLight
-                                "solana" -> solanaLight
-                                else -> MaterialTheme.colorScheme.primary
-                            }
-                        )
-                        Text(
-                            text = tokenId.replaceFirstChar { it.uppercase() },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateUp) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.refresh() }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Refresh,
-                            contentDescription = "Refresh",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
-                )
+            TokenDetailTopBar(
+                tokenId = tokenId,
+                onNavigateUp = onNavigateUp,
+                onRefresh = { viewModel.refresh() }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -158,42 +112,11 @@ fun TokenDetailScreen(
             }
 
             is Result.Error -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Error,
-                        contentDescription = "Error",
-                        modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = state.message,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = { viewModel.refresh() },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Text(
-                            "Try Again",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
-                }
+                ErrorScreen(
+                    message = state.message,
+                    onRetry = { viewModel.retryLoading() },
+                    modifier = Modifier.padding(padding)
+                )
             }
 
             is Result.Success -> {
@@ -219,9 +142,8 @@ fun TokenDetailScreen(
                     // Chart Card with duration selector
                     item {
                         PriceChart(
-                            chartData = chartData,
+                            chartState = chartState,
                             selectedDuration = selectedDuration,
-                            isLoading = isLoadingChart,
                             onDurationSelected = { viewModel.selectDuration(it) }
                         )
                     }
@@ -241,10 +163,11 @@ fun TokenDetailScreen(
                         AllTimeCard(token = token)
                     }
 
+                    // News Section
                     item {
-                        NewsCard(
-                            articles = viewModel.newsArticles.collectAsState().value,
-                            isLoading = viewModel.isLoadingNews.collectAsState().value
+                        NewsSection(
+                            newsState = newsState,
+                            onRetry = { viewModel.loadNews() }
                         )
                     }
                 }
@@ -253,11 +176,114 @@ fun TokenDetailScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TokenDetailTopBar(
+    tokenId: String,
+    onNavigateUp: () -> Unit,
+    onRefresh: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = when (tokenId) {
+                        "bitcoin" -> Icons.Outlined.CurrencyBitcoin
+                        "ethereum" -> Icons.Outlined.Diamond
+                        "solana" -> Icons.Outlined.FlashOn
+                        else -> Icons.Outlined.AccountBalanceWallet
+                    },
+                    contentDescription = null,
+                    tint = when (tokenId) {
+                        "bitcoin" -> bitcoinLight
+                        "ethereum" -> ethereumLight
+                        "solana" -> solanaLight
+                        else -> MaterialTheme.colorScheme.primary
+                    }
+                )
+                Text(
+                    text = tokenId.replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = onNavigateUp) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = "Refresh",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface
+        )
+    )
+}
+
+@Composable
+private fun ErrorScreen(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Error,
+            contentDescription = "Error",
+            modifier = Modifier.size(48.dp),
+            tint = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onRetry,
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
+        ) {
+            Text(
+                "Try Again",
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+    }
+}
+
 @Composable
 fun PriceChart(
-    chartData: ChartData?,
+    chartState: Result<ChartData>,
     selectedDuration: ChartDuration,
-    isLoading: Boolean,
     onDurationSelected: (ChartDuration) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -291,7 +317,7 @@ fun PriceChart(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    ChartDuration.values().forEach { duration ->
+                    ChartDuration.entries.forEach { duration ->
                         FilterChip(
                             selected = selectedDuration == duration,
                             onClick = { onDurationSelected(duration) },
@@ -318,120 +344,310 @@ fun PriceChart(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Chart area
-            if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(32.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 2.dp
-                    )
-                }
-            } else if (chartData != null && chartData.prices.isNotEmpty()) {
-                PriceLineChart(
-                    pricePoints = chartData.prices,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Price stats
-                val firstPrice = chartData.prices.first().price
-                val lastPrice = chartData.prices.last().price
-                val priceChange = lastPrice - firstPrice
-                val priceChangePercent = (priceChange / firstPrice) * 100
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = "Open",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "$${firstPrice.formatPrice()}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
+            // Chart area based on state
+            when (chartState) {
+                is Result.Loading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(32.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 2.dp
                         )
                     }
+                }
 
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+                is Result.Error -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                RoundedCornerShape(8.dp)
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "Change",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
-                                imageVector = if (priceChange >= 0)
-                                    Icons.Outlined.TrendingUp
-                                else
-                                    Icons.Outlined.TrendingDown,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = if (priceChange >= 0)
-                                    MaterialTheme.colorScheme.success
-                                else
-                                    MaterialTheme.colorScheme.error
+                                imageVector = Icons.Outlined.Error,
+                                contentDescription = "Error",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(24.dp)
                             )
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "${if (priceChange >= 0) "+" else ""}${priceChangePercent.formatTwoDecimals()}%",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (priceChange >= 0)
-                                    MaterialTheme.colorScheme.success
-                                else
-                                    MaterialTheme.colorScheme.error
+                                text = "Failed to load chart",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
+                }
 
-                    Column(
-                        horizontalAlignment = Alignment.End
-                    ) {
-                        Text(
-                            text = "Close",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                is Result.Success -> {
+                    val chartData = chartState.data
+                    if (chartData.prices.isNotEmpty()) {
+                        PriceLineChart(
+                            pricePoints = chartData.prices,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
                         )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Price stats
+                        val firstPrice = chartData.prices.first().price
+                        val lastPrice = chartData.prices.last().price
+                        val priceChange = lastPrice - firstPrice
+                        val priceChangePercent = (priceChange / firstPrice) * 100
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Open",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "$${firstPrice.formatPrice()}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "Change",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (priceChange >= 0)
+                                            Icons.Outlined.TrendingUp
+                                        else
+                                            Icons.Outlined.TrendingDown,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = if (priceChange >= 0)
+                                            MaterialTheme.colorScheme.success
+                                        else
+                                            MaterialTheme.colorScheme.error
+                                    )
+                                    Text(
+                                        text = "${if (priceChange >= 0) "+" else ""}${priceChangePercent.formatTwoDecimals()}%",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (priceChange >= 0)
+                                            MaterialTheme.colorScheme.success
+                                        else
+                                            MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+
+                            Column(
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Text(
+                                    text = "Close",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "$${lastPrice.formatPrice()}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    RoundedCornerShape(8.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No chart data available",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+private fun NewsSection(
+    newsState: Result<List<NewsArticle>>,
+    onRetry: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Article,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Latest News (24h delay)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            when (newsState) {
+                is Result.Loading -> {
+                    repeat(3) { index ->
+                        ShimmerNewsItem()
+                        if (index < 2) Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+
+                is Result.Error -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Failed to load news",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextButton(onClick = onRetry) {
+                                Text("Try Again")
+                            }
+                        }
+                    }
+                }
+
+                is Result.Success -> {
+                    val articles = newsState.data
+                    if (articles.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No news available",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        articles.take(3).forEachIndexed { index, article ->
+                            NewsItem(article = article)
+
+                            if (index < articles.size - 1 && index < 2) {
+                                Divider(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.outline,
+                                    thickness = 1.dp
+                                )
+                            }
+                        }
+
+                        // Note about free plan limitations
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "$${lastPrice.formatPrice()}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            text = "⚠️ Free plan: 24h delay, no links",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 4.dp)
                         )
                     }
                 }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No chart data available",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
+        }
+    }
+}
+
+@Composable
+private fun ShimmerNewsItem() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(16.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.5f)
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            )
         }
     }
 }
@@ -1074,23 +1290,6 @@ fun NewsItem(
                     )
                 }
             }
-        }
-    }
-}
-
-// Helper function to format relative time
-@RequiresApi(Build.VERSION_CODES.O)
-fun formatRelativeTime(timestamp: Long): String {
-    val now = Instant.now()
-    val articleTime = Instant.ofEpochSecond(timestamp)
-    val duration = Duration.between(articleTime, now)
-
-    return when {
-        duration.toHours() < 24 -> "${duration.toHours()}h ago"
-        duration.toDays() < 30 -> "${duration.toDays()}d ago"
-        else -> {
-            val date = LocalDateTime.ofInstant(articleTime, ZoneId.systemDefault())
-            java.time.format.DateTimeFormatter.ofPattern("MMM d").format(date)
         }
     }
 }
