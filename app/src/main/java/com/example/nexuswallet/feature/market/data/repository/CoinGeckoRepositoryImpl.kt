@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.market.data.repository
 
-import android.util.Log
 import com.example.nexuswallet.feature.market.data.model.toToken
 import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
 import com.example.nexuswallet.feature.market.domain.Token
@@ -8,19 +7,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
+import com.example.nexuswallet.feature.market.domain.CoinGeckoRepository
 
 @Singleton
-class CoinGeckoRepository @Inject constructor(
+class CoinGeckoRepositoryImpl @Inject constructor(
     private val coinGeckoApi: CoinGeckoApi
-) {
-    /**
-     * Get top cryptocurrencies with pagination support
-     * @param perPage Number of results per page (max 250)
-     * @param page Page number to fetch
-     */
-    suspend fun getTopCryptocurrencies(
-        perPage: Int = 100,
-        page: Int = 1
+) : CoinGeckoRepository {
+
+    override suspend fun getTopCryptocurrencies(
+        perPage: Int,
+        page: Int
     ): Result<List<Token>> {
         val result = SafeApiCall.make {
             coinGeckoApi.getMarkets(
