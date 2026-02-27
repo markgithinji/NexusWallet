@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.coin
 
-// domain/utils/SafeApiCall.kt
 import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 import java.io.IOException
