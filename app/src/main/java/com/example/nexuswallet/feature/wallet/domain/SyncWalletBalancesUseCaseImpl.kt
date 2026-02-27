@@ -1,37 +1,45 @@
 package com.example.nexuswallet.feature.wallet.domain
 
-import android.util.Log
 import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
-import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SyncWalletBalancesUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
-import com.example.nexuswallet.feature.coin.Result
+import javax.inject.Singleton
 
-class SyncWalletBalancesUseCase @Inject constructor(
+@Singleton
+class SyncWalletBalancesUseCaseImpl @Inject constructor(
     private val localDataSource: WalletLocalDataSource,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val ethereumBlockchainRepository: EthereumBlockchainRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
-    private val usdcBlockchainRepository: USDCBlockchainRepository
-) {
+    private val usdcBlockchainRepository: USDCBlockchainRepository,
+    private val logger: Logger
+) : SyncWalletBalancesUseCase {
 
-    suspend operator fun invoke(wallet: Wallet) {
-        Log.d("SyncBalancesUC", "Syncing balances for wallet: ${wallet.name}")
+    private val tag = "SyncBalancesUC"
+
+    override suspend operator fun invoke(wallet: Wallet): Result<Unit> {
+        logger.d(tag, "Syncing balances for wallet: ${wallet.name}")
+
         syncWalletBalances(wallet)
+        logger.d(tag, "Successfully synced all balances for wallet: ${wallet.name}")
+        return Result.Success(Unit)
     }
 
     private suspend fun syncWalletBalances(wallet: Wallet) {
@@ -70,12 +78,13 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 )
 
                 localDataSource.saveWalletBalance(updatedBalance)
-                Log.d("SyncBalancesUC", "Bitcoin balance updated: ${btcBalance} BTC")
+                logger.d(tag, "Bitcoin balance updated: ${btcBalance} BTC")
             }
 
             is Result.Error -> {
-                Log.e("SyncBalancesUC", "Failed to sync Bitcoin: ${balanceResult.message}")
+                logger.e(tag, "Failed to sync Bitcoin: ${balanceResult.message}")
             }
+
             else -> {}
         }
     }
@@ -109,18 +118,22 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 )
 
                 localDataSource.saveWalletBalance(updatedBalance)
-                Log.d("SyncBalancesUC", "Ethereum balance updated: ${ethBalance} ETH")
+                logger.d(tag, "Ethereum balance updated: ${ethBalance} ETH")
             }
 
             is Result.Error -> {
-                Log.e("SyncBalancesUC", "Failed to sync Ethereum: ${balanceResult.message}")
+                logger.e(tag, "Failed to sync Ethereum: ${balanceResult.message}")
             }
+
             else -> {}
         }
     }
 
     private suspend fun syncSolanaBalance(walletId: String, coin: SolanaCoin) {
-        val balanceResult = solanaBlockchainRepository.getBalance(coin.address)
+        val balanceResult = solanaBlockchainRepository.getBalance(
+            address = coin.address,
+            network = coin.network
+        )
 
         when (balanceResult) {
             is Result.Success -> {
@@ -145,12 +158,13 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 )
 
                 localDataSource.saveWalletBalance(updatedBalance)
-                Log.d("SyncBalancesUC", "Solana balance updated: ${solBalance} SOL")
+                logger.d(tag, "Solana balance updated: ${solBalance} SOL")
             }
 
             is Result.Error -> {
-                Log.e("SyncBalancesUC", "Failed to sync Solana: ${balanceResult.message}")
+                logger.e(tag, "Failed to sync Solana: ${balanceResult.message}")
             }
+
             else -> {}
         }
     }
@@ -174,12 +188,13 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 )
 
                 localDataSource.saveWalletBalance(updatedBalance)
-                Log.d("SyncBalancesUC", "USDC balance updated: ${usdcBalance.amountDecimal} USDC")
+                logger.d(tag, "USDC balance updated: ${usdcBalance.amountDecimal} USDC")
             }
 
             is Result.Error -> {
-                Log.e("SyncBalancesUC", "Failed to sync USDC: ${result.message}")
+                logger.e(tag, "Failed to sync USDC: ${result.message}")
             }
+
             else -> {}
         }
     }
@@ -188,7 +203,7 @@ class SyncWalletBalancesUseCase @Inject constructor(
         val price = when (symbol) {
             CoinType.BITCOIN.name -> 45000.0
             CoinType.ETHEREUM.name -> 3000.0
-            CoinType.SOLANA.name-> 30.0
+            CoinType.SOLANA.name -> 30.0
             else -> 1.0
         }
         return amount.toDouble() * price
