@@ -5,19 +5,23 @@ import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
-import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSource
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSourceImpl
+import com.example.nexuswallet.feature.wallet.data.repository.WalletRepositoryImpl
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoinDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumCoinDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoinDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SyncWalletBalancesUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCCoinDao
-import com.example.nexuswallet.feature.wallet.domain.SyncWalletBalancesUseCase
+import com.example.nexuswallet.feature.wallet.domain.SyncWalletBalancesUseCaseImpl
+import com.example.nexuswallet.feature.wallet.domain.WalletLocalDataSource
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -105,7 +109,7 @@ object DatabaseModule {
         solanaBalanceDao: SolanaBalanceDao,
         usdcBalanceDao: USDCBalanceDao,
     ): WalletLocalDataSource {
-        return WalletLocalDataSource(
+        return WalletLocalDataSourceImpl(
             walletDao = walletDao,
             bitcoinCoinDao = bitcoinCoinDao,
             ethereumCoinDao = ethereumCoinDao,
@@ -123,7 +127,7 @@ object DatabaseModule {
     fun provideWalletRepository(
         localDataSource: WalletLocalDataSource
     ): WalletRepository {
-        return WalletRepository(
+        return WalletRepositoryImpl(
             localDataSource = localDataSource
         )
     }
@@ -136,14 +140,16 @@ object DatabaseModule {
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
         ethereumBlockchainRepository: EthereumBlockchainRepository,
         solanaBlockchainRepository: SolanaBlockchainRepository,
-        usdcBlockchainRepository: USDCBlockchainRepository
+        usdcBlockchainRepository: USDCBlockchainRepository,
+        logger: Logger
     ): SyncWalletBalancesUseCase {
-        return SyncWalletBalancesUseCase(
+        return SyncWalletBalancesUseCaseImpl(
             localDataSource = localDataSource,
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
             ethereumBlockchainRepository = ethereumBlockchainRepository,
             solanaBlockchainRepository = solanaBlockchainRepository,
-            usdcBlockchainRepository = usdcBlockchainRepository
+            usdcBlockchainRepository = usdcBlockchainRepository,
+            logger
         )
     }
 }

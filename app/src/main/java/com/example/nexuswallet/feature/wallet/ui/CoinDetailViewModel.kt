@@ -14,8 +14,8 @@ import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepos
 import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.SyncUSDTransactionsUseCase
 import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransactionRepository
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TransactionDisplayInfo
+import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject

@@ -3,9 +3,10 @@ package com.example.nexuswallet
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.authentication.domain.AuthAction
-import com.example.nexuswallet.feature.wallet.data.repository.WalletRepository
+import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.wallet.data.securityrefactor.IsSessionValidUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,9 +16,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.collections.isNotEmpty
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.IsSessionValidUseCase
 
 @HiltViewModel
 class NavigationViewModel @Inject constructor(
