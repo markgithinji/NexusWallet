@@ -1,10 +1,13 @@
 package com.example.nexuswallet.feature.market.data.repository
 
 import com.example.nexuswallet.BuildConfig
-import com.example.nexuswallet.feature.market.data.remote.BinanceWebSocket
+import com.example.nexuswallet.feature.market.data.remote.BinanceWebSocketImpl
 import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
 import com.example.nexuswallet.feature.market.data.remote.CryptoPanicApi
-import com.example.nexuswallet.feature.market.data.repository.MarketRepository
+import com.example.nexuswallet.feature.market.domain.BinanceWebSocket
+import com.example.nexuswallet.feature.market.domain.CoinGeckoRepository
+import com.example.nexuswallet.feature.market.domain.MarketRepository
+import com.example.nexuswallet.feature.market.domain.WebSocketRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,7 +34,7 @@ object MarketModule {
         json: Json,
         ioDispatcher: CoroutineDispatcher
     ): BinanceWebSocket {
-        return BinanceWebSocket(
+        return BinanceWebSocketImpl(
             okHttpClient,
             json,
             ioDispatcher
@@ -81,12 +84,19 @@ object MarketModule {
 
     @Provides
     @Singleton
+    fun provideCoinGeckoRepository(
+        coinGeckoApi: CoinGeckoApi
+    ): CoinGeckoRepository {
+        return CoinGeckoRepositoryImpl(coinGeckoApi)
+    }
+
+    @Provides
+    @Singleton
     fun provideWebSocketRepository(
         binanceWebSocket: BinanceWebSocket
     ): WebSocketRepository {
-        return WebSocketRepository(binanceWebSocket)
+        return WebSocketRepositoryImpl(binanceWebSocket)
     }
-
 
     @Provides
     @Singleton
@@ -94,8 +104,9 @@ object MarketModule {
         coinGeckoApi: CoinGeckoApi,
         cryptoPanicApi: CryptoPanicApi
     ): MarketRepository {
-        return MarketRepository(
+        return MarketRepositoryImpl(
             coinGeckoApi,
-            cryptoPanicApi)
+            cryptoPanicApi
+        )
     }
 }
