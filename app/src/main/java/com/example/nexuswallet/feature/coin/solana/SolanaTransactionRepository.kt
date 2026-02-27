@@ -1,48 +1,50 @@
 package com.example.nexuswallet.feature.coin.solana
 
+import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
-@Singleton
-class SolanaTransactionRepository @Inject constructor(
-    private val solanaTransactionDao: SolanaTransactionDao
-) {
 
-    suspend fun saveTransaction(transaction: SolanaTransaction) {
+@Singleton
+class SolanaTransactionRepositoryImpl @Inject constructor(
+    private val solanaTransactionDao: SolanaTransactionDao
+) : SolanaTransactionRepository {
+
+    override suspend fun saveTransaction(transaction: SolanaTransaction) {
         val entity = transaction.toEntity()
         solanaTransactionDao.insert(entity)
     }
 
-    suspend fun updateTransaction(transaction: SolanaTransaction) {
+    override suspend fun updateTransaction(transaction: SolanaTransaction) {
         val entity = transaction.toEntity()
         solanaTransactionDao.update(entity)
     }
 
-    suspend fun getTransaction(id: String): SolanaTransaction? {
+    override suspend fun getTransaction(id: String): SolanaTransaction? {
         return solanaTransactionDao.getById(id)?.toDomain()
     }
 
-    fun getTransactions(walletId: String): Flow<List<SolanaTransaction>> {
+    override fun getTransactions(walletId: String): Flow<List<SolanaTransaction>> {
         return solanaTransactionDao.getByWalletId(walletId)
             .map { entities -> entities.map { it.toDomain() } }
     }
 
-    suspend fun getPendingTransactions(): List<SolanaTransaction> {
+    override suspend fun getPendingTransactions(): List<SolanaTransaction> {
         return solanaTransactionDao.getPendingTransactions()
             .map { it.toDomain() }
     }
 
-    suspend fun deleteTransaction(id: String) {
+    override suspend fun deleteTransaction(id: String) {
         solanaTransactionDao.deleteById(id)
     }
 
-    suspend fun deleteAllForWallet(walletId: String) {
+    override suspend fun deleteAllForWallet(walletId: String) {
         solanaTransactionDao.deleteByWalletId(walletId)
     }
 
-    suspend fun updateSignedTransaction(
+    override suspend fun updateSignedTransaction(
         transactionId: String,
         signedData: String,
         signature: String
@@ -56,10 +58,10 @@ class SolanaTransactionRepository @Inject constructor(
         updateTransaction(updated)
     }
 
-    suspend fun updateTransactionStatus(
+    override suspend fun updateTransactionStatus(
         transactionId: String,
         success: Boolean,
-        signature: String? = null
+        signature: String?
     ) {
         val transaction = getTransaction(transactionId) ?: return
         val updated = transaction.copy(
