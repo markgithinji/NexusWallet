@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.market.data.remote
 
-import android.util.Log
+import com.example.nexuswallet.feature.market.domain.BinanceWebSocket
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -26,11 +26,12 @@ import javax.inject.Singleton
 import kotlin.math.min
 
 @Singleton
-class BinanceWebSocket @Inject constructor(
+class BinanceWebSocketImpl @Inject constructor(
     private val okHttpClient: OkHttpClient,
     private val json: Json,
     ioDispatcher: CoroutineDispatcher
-) {
+) : BinanceWebSocket {
+
     // Create scope with injected dispatcher
     private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
     private var connectionMonitorJob: Job? = null
@@ -105,18 +106,17 @@ class BinanceWebSocket @Inject constructor(
     private val batchConnectionStates = MutableStateFlow(List(symbolBatches.size) { false })
 
     // Flow for updates
-    private val priceUpdate = MutableSharedFlow<Map<String, TokenPriceUpdate>>(
+    private val _priceUpdate = MutableSharedFlow<Map<String, TokenPriceUpdate>>(
         replay = 1,
         extraBufferCapacity = 50
     )
-    val fullUpdates: SharedFlow<Map<String, TokenPriceUpdate>> = priceUpdate
+    override val fullUpdates: SharedFlow<Map<String, TokenPriceUpdate>> = _priceUpdate
 
     // Connection state
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
-    val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
+    override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
-    fun connect() {
-        Log.d(TAG, "Attempting to connect ${symbolBatches.size} batches...")
+    override fun connect() {
         _connectionState.value = ConnectionState.CONNECTING
         webSockets.clear()
 
@@ -136,10 +136,8 @@ class BinanceWebSocket @Inject constructor(
 
             val webSocket = okHttpClient.newWebSocket(request, createBatchListener(batchIndex))
             webSockets.add(webSocket)
-
-            Log.d(TAG, "Batch $batchIndex connecting with ${batch.size} symbols")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to connect batch $batchIndex: ${e.message}")
+            // Failed to connect batch
         }
     }
 
@@ -147,7 +145,6 @@ class BinanceWebSocket @Inject constructor(
         private var reconnectAttempts = 0
 
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            Log.d(TAG, "Batch $batchIndex connected successfully")
             updateBatchState(batchIndex, true)
             reconnectAttempts = 0
         }
@@ -159,12 +156,8 @@ class BinanceWebSocket @Inject constructor(
                 val symbol = jsonObject["s"]?.jsonPrimitive?.content ?: return
                 val price = jsonObject["c"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: return
                 val priceChange = jsonObject["p"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
-                val priceChangePercent = jsonObject["P"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
-
-                // Log periodically
-                if (System.currentTimeMillis() % LOG_INTERVAL_MS < 100) {
-                    Log.d(TAG, "Batch $batchIndex - $symbol: $$price (${priceChangePercent}%)")
-                }
+                val priceChangePercent =
+                    jsonObject["P"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
 
                 val tokenId = symbolMapping[symbol]
                 if (tokenId != null) {
@@ -176,16 +169,15 @@ class BinanceWebSocket @Inject constructor(
                     )
 
                     scope.launch {
-                        priceUpdate.emit(mapOf(tokenId to update))
+                        _priceUpdate.emit(mapOf(tokenId to update))
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error parsing message in batch $batchIndex: ${e.message}")
+                // Error parsing message
             }
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            Log.e(TAG, "Batch $batchIndex failed: ${t.message}")
             updateBatchState(batchIndex, false)
 
             // Exponential backoff reconnection
@@ -195,7 +187,6 @@ class BinanceWebSocket @Inject constructor(
 
                 scope.launch {
                     delay(delayMs)
-                    Log.d(TAG, "Attempting to reconnect batch $batchIndex (attempt $reconnectAttempts)")
                     connectBatch(symbolBatches[batchIndex], batchIndex)
                 }
             } else {
@@ -204,7 +195,6 @@ class BinanceWebSocket @Inject constructor(
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            Log.d(TAG, "Batch $batchIndex closed: $reason")
             updateBatchState(batchIndex, false)
         }
     }
@@ -229,18 +219,17 @@ class BinanceWebSocket @Inject constructor(
                 val connectedCount = states.count { it }
                 val totalCount = states.size
                 if (connectedCount > 0) {
-                    Log.d(TAG, "Connection status: $connectedCount/$totalCount batches connected")
+                    // Connection status tracking
                 }
             }
         }
     }
 
-    fun disconnect() {
+    override fun disconnect() {
         connectionMonitorJob?.cancel()
         webSockets.forEach { it.close(1000, "User disconnected") }
         webSockets.clear()
         _connectionState.value = ConnectionState.DISCONNECTED
-        Log.d(TAG, "All connections closed")
         scope.cancel()
     }
 
@@ -253,12 +242,10 @@ class BinanceWebSocket @Inject constructor(
     }
 
     companion object {
-        private const val TAG = "BinanceWS"
         private const val BINANCE_WS_URL = "wss://stream.binance.com:9443/ws/"
         private const val SYMBOLS_PER_BATCH = 20
         private const val MAX_RECONNECT_ATTEMPTS = 5
         private const val BASE_RECONNECT_DELAY_MS = 3000L
         private const val MAX_RECONNECT_DELAY_MS = 30000L
-        private const val LOG_INTERVAL_MS = 10000L
     }
 }
