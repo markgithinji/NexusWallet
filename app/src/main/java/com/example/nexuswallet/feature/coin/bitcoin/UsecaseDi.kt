@@ -98,8 +98,9 @@ object BitcoinUseCaseModule {
     @Provides
     @Singleton
     fun provideValidateBitcoinTransactionUseCase(
-        logger: Logger
+        logger: Logger,
+        validateBitcoinAddressUseCase: ValidateBitcoinAddressUseCase
     ): ValidateBitcoinTransactionUseCase {
-        return ValidateBitcoinTransactionUseCaseImpl(logger)
+        return ValidateBitcoinTransactionUseCaseImpl(validateBitcoinAddressUseCase,logger)
     }
 }

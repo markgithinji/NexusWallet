@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,7 +16,6 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
-
 @HiltViewModel
 class BitcoinSendViewModel @Inject constructor(
     private val getBitcoinWalletUseCase: GetBitcoinWalletUseCase,
@@ -26,21 +26,73 @@ class BitcoinSendViewModel @Inject constructor(
     private val walletRepository: WalletRepository
 ) : ViewModel() {
 
+    data class BtcSendUiState(
+        val walletId: String = "",
+        val walletName: String = "",
+        val walletAddress: String = "",
+        val network: BitcoinNetwork = BitcoinNetwork.Testnet,
+        val availableNetworks: List<BitcoinNetwork> = emptyList(),
+        val balance: BigDecimal = BigDecimal.ZERO,
+        val balanceFormatted: String = "0 BTC",
+        val toAddress: String = "",
+        val amount: String = "",
+        val amountValue: BigDecimal = BigDecimal.ZERO,
+        val feeLevel: FeeLevel = FeeLevel.NORMAL,
+        val feeEstimate: BitcoinFeeEstimate? = null,
+        val validationResult: ValidateBitcoinTransactionUseCase.ValidationResult = ValidateBitcoinTransactionUseCase.ValidationResult(
+            isValid = false
+        ),
+        val isValid: Boolean = false,
+        val isLoading: Boolean = false,
+        val error: String? = null,
+        val info: String? = null,
+        val step: String = ""
+    )
+
     private val _state = MutableStateFlow(BtcSendUiState())
     val state: StateFlow<BtcSendUiState> = _state.asStateFlow()
 
     private var wallet: Wallet? = null
-    private var bitcoinCoin: BitcoinCoin? = null
+    private var bitcoinCoins: Map<BitcoinNetwork, BitcoinCoin> = emptyMap()
 
-    fun init(walletId: String) {
+    fun init(walletId: String, network: BitcoinNetwork? = null) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
 
             // Load full wallet from repository
             wallet = walletRepository.getWallet(walletId)
-            bitcoinCoin = wallet?.bitcoin
 
-            when (val result = getBitcoinWalletUseCase(walletId)) {
+            if (wallet == null) {
+                _state.update { it.copy(error = "Wallet not found", isLoading = false) }
+                return@launch
+            }
+
+            // Get all Bitcoin coins for this wallet
+            bitcoinCoins = wallet!!.bitcoinCoins.associateBy { it.network }
+
+            if (bitcoinCoins.isEmpty()) {
+                _state.update { it.copy(error = "Bitcoin not enabled for this wallet", isLoading = false) }
+                return@launch
+            }
+
+            val availableNetworks = bitcoinCoins.keys.toList()
+
+            // Determine which network to use
+            val targetNetwork = network ?: availableNetworks.firstOrNull() ?: BitcoinNetwork.Testnet
+            val bitcoinCoin = bitcoinCoins[targetNetwork]
+
+            if (bitcoinCoin == null) {
+                _state.update {
+                    it.copy(
+                        error = "Bitcoin not enabled for network $targetNetwork",
+                        isLoading = false,
+                        availableNetworks = availableNetworks
+                    )
+                }
+                return@launch
+            }
+
+            when (val result = getBitcoinWalletUseCase(walletId, targetNetwork)) {
                 is Result.Success -> {
                     val walletInfo = result.data
                     _state.update {
@@ -49,6 +101,7 @@ class BitcoinSendViewModel @Inject constructor(
                             walletName = walletInfo.walletName,
                             walletAddress = walletInfo.walletAddress,
                             network = walletInfo.network,
+                            availableNetworks = availableNetworks,
                             isLoading = false
                         )
                     }
@@ -62,13 +115,75 @@ class BitcoinSendViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             error = result.message,
-                            isLoading = false
+                            isLoading = false,
+                            availableNetworks = availableNetworks
                         )
                     }
                 }
 
                 Result.Loading -> {}
             }
+        }
+    }
+
+    // Helper method to set transaction data from review screen
+    fun setTransactionData(
+        toAddress: String,
+        amount: String,
+        feeLevel: FeeLevel
+    ) {
+        val amountValue = try {
+            amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
+        } catch (e: Exception) {
+            BigDecimal.ZERO
+        }
+
+        _state.update {
+            it.copy(
+                toAddress = toAddress,
+                amount = amount,
+                amountValue = amountValue,
+                feeLevel = feeLevel
+            )
+        }
+
+        viewModelScope.launch {
+            // Reload fee estimate with new fee level
+            when (val feeResult = getBitcoinFeeEstimateUseCase(feeLevel)) {
+                is Result.Success -> {
+                    _state.update { it.copy(feeEstimate = feeResult.data) }
+                    validateInputs()
+                }
+                is Result.Error -> {
+                    _state.update { it.copy(error = "Failed to load fee: ${feeResult.message}") }
+                }
+                Result.Loading -> {}
+            }
+        }
+    }
+
+    fun switchNetwork(network: BitcoinNetwork) {
+        val bitcoinCoin = bitcoinCoins[network]
+        if (bitcoinCoin == null) {
+            _state.update { it.copy(error = "Bitcoin not available on $network") }
+            return
+        }
+
+        _state.update {
+            it.copy(
+                network = network,
+                walletAddress = bitcoinCoin.address,
+                toAddress = "",
+                amount = "",
+                amountValue = BigDecimal.ZERO,
+                feeEstimate = null,
+                error = null
+            )
+        }
+
+        viewModelScope.launch {
+            loadBalance(bitcoinCoin.address, network)
+            updateFeeLevel(FeeLevel.NORMAL)
         }
     }
 
@@ -142,6 +257,7 @@ class BitcoinSendViewModel @Inject constructor(
     private fun validateInputs() {
         val state = _state.value
         val currentWallet = wallet
+        val bitcoinCoin = bitcoinCoins[state.network]
 
         val validationResult = validateBitcoinTransactionUseCase(
             walletId = state.walletId,
@@ -153,7 +269,12 @@ class BitcoinSendViewModel @Inject constructor(
             feeEstimate = state.feeEstimate
         )
 
-        _state.update { it.copy(validationResult = validationResult) }
+        _state.update {
+            it.copy(
+                validationResult = validationResult,
+                isValid = validationResult.isValid
+            )
+        }
 
         // Update error field for backward compatibility
         val firstError = validationResult.addressError
@@ -173,9 +294,9 @@ class BitcoinSendViewModel @Inject constructor(
             val state = _state.value
             val walletId = state.walletId
             val currentWallet = wallet
-            val currentBitcoinCoin = bitcoinCoin
+            val bitcoinCoin = bitcoinCoins[state.network]
 
-            if (walletId.isEmpty() || currentWallet == null || currentBitcoinCoin == null) {
+            if (walletId.isEmpty() || currentWallet == null || bitcoinCoin == null) {
                 _state.update { it.copy(error = "Wallet not properly loaded") }
                 return@launch
             }
@@ -191,6 +312,7 @@ class BitcoinSendViewModel @Inject constructor(
                 toAddress = state.toAddress,
                 amount = state.amountValue,
                 feeLevel = state.feeLevel,
+                network = state.network,
                 note = null
             )
 

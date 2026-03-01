@@ -1,12 +1,13 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import java.math.BigDecimal
 
 data class BtcSendUiState(
     val walletId: String = "",
     val walletName: String = "",
     val walletAddress: String = "",
-    val network: BitcoinNetwork = BitcoinNetwork.TESTNET,
+    val network: BitcoinNetwork = BitcoinNetwork.Testnet,
     val balance: BigDecimal = BigDecimal.ZERO,
     val balanceFormatted: String = "0 BTC",
     val toAddress: String = "",
