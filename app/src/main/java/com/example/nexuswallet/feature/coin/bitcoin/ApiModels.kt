@@ -61,7 +61,7 @@ data class EsploraVinResponse(
     val scriptsig: String?,
     val scriptsig_asm: String?,
     val sequence: Long,
-    val witness: List<String>?,
+    val witness: List<String>?= null,
     val prevout: EsploraVoutResponse?
 )
 
