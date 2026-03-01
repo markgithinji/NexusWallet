@@ -6,6 +6,7 @@ import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
@@ -20,7 +21,6 @@ import org.bitcoinj.params.TestNet3Params
 import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
-
 @Singleton
 class SyncBitcoinTransactionsUseCaseImpl @Inject constructor(
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
@@ -31,67 +31,74 @@ class SyncBitcoinTransactionsUseCaseImpl @Inject constructor(
 
     private val tag = "SyncBitcoinUC"
 
-    override suspend fun invoke(walletId: String): Result<Unit> = withContext(Dispatchers.IO) {
-        logger.d(tag, "Syncing Bitcoin transactions for wallet: $walletId")
+    override suspend fun invoke(walletId: String, network: String?): Result<Unit> = withContext(Dispatchers.IO) {
+        logger.d(tag, "Syncing Bitcoin transactions for wallet: $walletId, network: $network")
 
-        when (val walletValidation = validateWallet(walletId)) {
-            is Result.Error -> return@withContext walletValidation
-            is Result.Success -> {
-                val bitcoinCoin = walletValidation.data
+        val wallet = walletRepository.getWallet(walletId) ?: run {
+            logger.e(tag, "Wallet not found: $walletId")
+            return@withContext Result.Error("Wallet not found")
+        }
 
-                return@withContext when (val transactionsResult =
-                    bitcoinBlockchainRepository.getAddressTransactions(
-                        address = bitcoinCoin.address,
-                        network = bitcoinCoin.network
-                    )) {
-                    is Result.Success -> {
-                        val transactions = transactionsResult.data
-
-                        // Clear and save
-                        bitcoinTransactionRepository.deleteAllForWallet(walletId)
-                        transactions.forEach { tx ->
-                            val domainTx = tx.toDomain(
-                                walletId = walletId,
-                                isIncoming = tx.isIncoming,
-                                network = bitcoinCoin.network
-                            )
-                            bitcoinTransactionRepository.saveTransaction(domainTx)
-                        }
-
-                        logger.d(
-                            tag,
-                            "Sync completed for wallet $walletId | txCount=${transactions.size}"
-                        )
-                        Result.Success(Unit)
-                    }
-
-                    is Result.Error -> {
-                        logger.e(tag, "Failed to sync: ${transactionsResult.message}")
-                        Result.Error(transactionsResult.message)
-                    }
-
-                    else -> Result.Error("Unknown error during sync")
+        // Filter Bitcoin coins by network if specified
+        val bitcoinCoins = if (network != null) {
+            wallet.bitcoinCoins.filter { coin ->
+                when (network.lowercase()) {
+                    "mainnet" -> coin.network == BitcoinNetwork.Mainnet
+                    "testnet" -> coin.network == BitcoinNetwork.Testnet
+                    else -> false
                 }
             }
-
-            else -> Result.Error("Unknown validation error")
-        }
-    }
-
-    private suspend fun validateWallet(walletId: String): Result<BitcoinCoin> {
-        val wallet = walletRepository.getWallet(walletId)
-        if (wallet == null) {
-            logger.e(tag, "Wallet not found: $walletId")
-            return Result.Error("Wallet not found")
+        } else {
+            wallet.bitcoinCoins
         }
 
-        return wallet.bitcoin?.let {
-            logger.d(tag, "Wallet validated: ${wallet.name}")
-            Result.Success(it)
-        } ?: run {
-            logger.e(tag, "Bitcoin not enabled for wallet: ${wallet.name}")
-            Result.Error("Bitcoin not enabled")
+        if (bitcoinCoins.isEmpty()) {
+            val msg = if (network != null) "Bitcoin $network not enabled" else "Bitcoin not enabled"
+            logger.e(tag, "$msg for wallet: ${wallet.name}")
+            return@withContext Result.Error(msg)
         }
+
+        var totalTransactions = 0
+
+        // Sync transactions for each Bitcoin coin
+        bitcoinCoins.forEach { bitcoinCoin ->
+            logger.d(tag, "Syncing for ${bitcoinCoin.network}")
+
+            when (val result = bitcoinBlockchainRepository.getAddressTransactions(
+                address = bitcoinCoin.address,
+                network = bitcoinCoin.network
+            )) {
+                is Result.Success -> {
+                    val transactions = result.data
+
+                    // Delete only this network's transactions
+                    val networkParam = when (bitcoinCoin.network) {
+                        BitcoinNetwork.Mainnet -> "mainnet"
+                        BitcoinNetwork.Testnet -> "testnet"
+                    }
+                    bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, networkParam)
+
+                    transactions.forEach { tx ->
+                        val domainTx = tx.toDomain(
+                            walletId = walletId,
+                            isIncoming = tx.isIncoming,
+                            network = bitcoinCoin.network
+                        )
+                        bitcoinTransactionRepository.saveTransaction(domainTx)
+                        totalTransactions++
+                    }
+
+                    logger.d(tag, "Synced ${transactions.size} transactions for ${bitcoinCoin.network}")
+                }
+                is Result.Error -> {
+                    logger.e(tag, "Failed to sync ${bitcoinCoin.network}: ${result.message}")
+                }
+                else -> {}
+            }
+        }
+
+        logger.d(tag, "Sync completed | total txCount=$totalTransactions")
+        Result.Success(Unit)
     }
 }
 
@@ -103,19 +110,29 @@ class GetBitcoinWalletUseCaseImpl @Inject constructor(
 
     private val tag = "GetBitcoinWalletUC"
 
-    override suspend fun invoke(walletId: String): Result<BitcoinWalletInfo> {
+    override suspend fun invoke(
+        walletId: String,
+        network: BitcoinNetwork?
+    ): Result<BitcoinWalletInfo> {
         logger.d(tag, "Looking up Bitcoin wallet: $walletId")
 
-        val wallet = walletRepository.getWallet(walletId)
-        if (wallet == null) {
+        val wallet = walletRepository.getWallet(walletId) ?: run {
             logger.e(tag, "Wallet not found: $walletId")
             return Result.Error("Wallet not found")
         }
 
-        val bitcoinCoin = wallet.bitcoin
+        // If network specified, get that specific Bitcoin coin
+        val bitcoinCoin = if (network != null) {
+            wallet.bitcoinCoins.find { it.network == network }
+        } else {
+            // Otherwise get the first one (usually Mainnet)
+            wallet.bitcoinCoins.firstOrNull()
+        }
+
         if (bitcoinCoin == null) {
-            logger.e(tag, "Bitcoin not enabled for wallet: ${wallet.name}")
-            return Result.Error("Bitcoin not enabled for this wallet")
+            val networkMsg = network?.let { " for $it" } ?: ""
+            logger.e(tag, "Bitcoin not enabled$networkMsg for wallet: ${wallet.name}")
+            return Result.Error("Bitcoin not enabled${networkMsg} for this wallet")
         }
 
         logger.d(
@@ -151,20 +168,25 @@ class SendBitcoinUseCaseImpl @Inject constructor(
         toAddress: String,
         amount: BigDecimal,
         feeLevel: FeeLevel,
+        network: BitcoinNetwork,
         note: String?
     ): Result<SendBitcoinResult> = withContext(Dispatchers.IO) {
         logger.d(
             tag,
-            "Sending ${amount.toPlainString()} BTC to ${toAddress.take(8)}... | walletId=$walletId"
+            "Sending ${amount.toPlainString()} BTC to ${toAddress.take(8)}... | walletId=$walletId | network=$network"
         )
 
         // Get wallet
-        val wallet = walletRepository.getWallet(walletId)
-        val bitcoinCoin = wallet?.bitcoin
+        val wallet = walletRepository.getWallet(walletId) ?: run {
+            logger.e(tag, "Wallet not found: $walletId")
+            return@withContext Result.Error("Wallet not found")
+        }
 
-        if (wallet == null || bitcoinCoin == null) {
-            logger.e(tag, "Invalid wallet state for walletId=$walletId")
-            return@withContext Result.Error("Invalid wallet state")
+        // Get the specific Bitcoin coin for this network
+        val bitcoinCoin = wallet.bitcoinCoins.find { it.network == network }
+        if (bitcoinCoin == null) {
+            logger.e(tag, "Bitcoin not enabled for network $network in wallet: $walletId")
+            return@withContext Result.Error("Bitcoin not enabled for $network")
         }
 
         // Get fee estimate
@@ -253,11 +275,27 @@ class SendBitcoinUseCaseImpl @Inject constructor(
         transaction: BitcoinTransaction,
         bitcoinCoin: BitcoinCoin
     ): Result<BitcoinTransaction> {
-        // Get private key
+        // Get private key (network-specific)
+        val keyType = when (bitcoinCoin.network) {
+            BitcoinNetwork.Mainnet -> "BTC_MAINNET_PRIVATE_KEY"
+            BitcoinNetwork.Testnet -> "BTC_TESTNET_PRIVATE_KEY"
+        }
+
         val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
             walletId = transaction.walletId,
-            keyType = BTC_PRIVATE_KEY_TYPE
-        ) ?: return Result.Error("No private key found")
+            keyType = keyType
+        ) ?: run {
+            // Fallback to generic key
+            securityPreferencesRepository.getEncryptedPrivateKey(
+                walletId = transaction.walletId,
+                keyType = BTC_PRIVATE_KEY_TYPE
+            )
+        }
+
+        if (encryptedData == null) {
+            logger.e(tag, "No private key found for wallet: ${transaction.walletId}")
+            return Result.Error("No private key found")
+        }
 
         return try {
             val privateKeyWIF = keyStoreRepository.decryptString(
@@ -266,8 +304,8 @@ class SendBitcoinUseCaseImpl @Inject constructor(
             )
 
             val networkParams = when (bitcoinCoin.network) {
-                BitcoinNetwork.MAINNET -> MainNetParams.get()
-                BitcoinNetwork.TESTNET -> TestNet3Params.get()
+                BitcoinNetwork.Mainnet -> MainNetParams.get()
+                BitcoinNetwork.Testnet -> TestNet3Params.get()
             }
 
             val ecKey = DumpedPrivateKey.fromBase58(networkParams, privateKeyWIF).key
@@ -423,8 +461,8 @@ class ValidateBitcoinAddressUseCaseImpl @Inject constructor(
     override fun invoke(address: String, network: BitcoinNetwork): Boolean {
         return try {
             val params = when (network) {
-                BitcoinNetwork.MAINNET -> MainNetParams.get()
-                BitcoinNetwork.TESTNET -> TestNet3Params.get()
+                BitcoinNetwork.Mainnet -> MainNetParams.get()
+                BitcoinNetwork.Testnet -> TestNet3Params.get()
             }
             Address.fromString(params, address)
             logger.d(tag, "Valid $network address: ${address.take(8)}...")
@@ -438,6 +476,7 @@ class ValidateBitcoinAddressUseCaseImpl @Inject constructor(
 
 @Singleton
 class ValidateBitcoinTransactionUseCaseImpl @Inject constructor(
+    private val validateBitcoinAddressUseCase: ValidateBitcoinAddressUseCase,
     private val logger: Logger
 ) : ValidateBitcoinTransactionUseCase {
 
@@ -468,13 +507,13 @@ class ValidateBitcoinTransactionUseCaseImpl @Inject constructor(
             )
         }
 
-        // Validate Bitcoin is enabled
-        val bitcoinCoin = wallet.bitcoin
+        // Validate Bitcoin is enabled for this network
+        val bitcoinCoin = wallet.bitcoinCoins.find { it.network == network }
         if (bitcoinCoin == null) {
-            logger.w(tag, "Bitcoin not enabled for wallet: ${wallet.name}")
+            logger.w(tag, "Bitcoin not enabled for $network in wallet: ${wallet.name}")
             return ValidateBitcoinTransactionUseCase.ValidationResult(
                 isValid = false,
-                addressError = "Bitcoin not enabled for this wallet"
+                addressError = "Bitcoin not enabled for $network"
             )
         }
 
@@ -485,7 +524,7 @@ class ValidateBitcoinTransactionUseCaseImpl @Inject constructor(
             logger.w(tag, "Address is empty")
         }
         // Validate address format
-        else if (!isValidBitcoinAddress(toAddress, network)) {
+        else if (!validateBitcoinAddressUseCase(toAddress, network)) {
             addressError = "Invalid Bitcoin address for ${network.name.lowercase()}"
             isValid = false
             logger.w(tag, "Invalid address format: ${toAddress.take(8)}...")
@@ -530,18 +569,5 @@ class ValidateBitcoinTransactionUseCaseImpl @Inject constructor(
             balanceError = balanceError,
             selfSendError = selfSendError
         )
-    }
-
-    private fun isValidBitcoinAddress(address: String, network: BitcoinNetwork): Boolean {
-        return try {
-            val params = when (network) {
-                BitcoinNetwork.MAINNET -> MainNetParams.get()
-                BitcoinNetwork.TESTNET -> TestNet3Params.get()
-            }
-            Address.fromString(params, address)
-            true
-        } catch (e: Exception) {
-            false
-        }
     }
 }
