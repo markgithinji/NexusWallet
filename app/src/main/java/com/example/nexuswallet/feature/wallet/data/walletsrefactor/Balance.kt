@@ -1,18 +1,28 @@
 package com.example.nexuswallet.feature.wallet.data.walletsrefactor
 
+import com.example.nexuswallet.feature.wallet.ui.SPLBalance
 import kotlinx.serialization.Serializable
-import java.math.BigDecimal
-import java.math.BigInteger
+
+@Serializable
+enum class TokenType {
+    NATIVE,     // Native ETH
+    ERC20,      // Generic ERC20 token
+    USDC,       // USD Coin (special handling for 1:1 USD peg)
+    USDT        // Tether
+}
+
+// ============ MAIN WALLET BALANCE ============
 
 @Serializable
 data class WalletBalance(
     val walletId: String,
     val lastUpdated: Long,
-    val bitcoin: BitcoinBalance? = null,
-    val ethereum: EthereumBalance? = null,
-    val solana: SolanaBalance? = null,
-    val usdc: USDCBalance? = null
+    val bitcoinBalances: Map<String, BitcoinBalance> = emptyMap(),
+    val solanaBalances: Map<String, SolanaBalance> = emptyMap(),
+    val evmBalances: List<EVMBalance> = emptyList(),
+    val splBalances: List<SPLBalance> = emptyList()
 )
+// ============ BITCOIN BALANCE ============
 
 @Serializable
 data class BitcoinBalance(
@@ -22,13 +32,7 @@ data class BitcoinBalance(
     val usdValue: Double
 )
 
-@Serializable
-data class EthereumBalance(
-    val address: String,
-    val wei: String,
-    val eth: String,
-    val usdValue: Double
-)
+// ============ SOLANA BALANCE ============
 
 @Serializable
 data class SolanaBalance(
@@ -38,10 +42,20 @@ data class SolanaBalance(
     val usdValue: Double
 )
 
+// ============ EVM BALANCE ============
+
 @Serializable
-data class USDCBalance(
+data class EVMBalance(
+    val externalTokenId: String,
     val address: String,
-    val amount: String, // USDC units (6 decimals)
-    val amountDecimal: String, // Human readable USDC
+    val balanceWei: String,
+    val balanceDecimal: String,
+    val usdValue: Double,
+)
+@Serializable
+data class SPLBalance(
+    val mintAddress: String,
+    val address: String,
+    val balanceDecimal: String,
     val usdValue: Double
 )
