@@ -5,11 +5,13 @@ import org.bitcoinj.core.ECKey
 import org.bitcoinj.core.Transaction
 import java.math.BigDecimal
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
+
 
 interface BitcoinBlockchainRepository {
     suspend fun getBalance(
         address: String,
-        network: BitcoinNetwork = BitcoinNetwork.MAINNET
+        network: BitcoinNetwork
     ): Result<BigDecimal>
 
     suspend fun getFeeEstimate(
@@ -20,7 +22,7 @@ interface BitcoinBlockchainRepository {
 
     suspend fun broadcastTransaction(
         signedHex: String,
-        network: BitcoinNetwork = BitcoinNetwork.MAINNET
+        network: BitcoinNetwork
     ): Result<String>
 
 
@@ -32,7 +34,7 @@ interface BitcoinBlockchainRepository {
 
     suspend fun getAddressTransactions(
         address: String,
-        network: BitcoinNetwork = BitcoinNetwork.MAINNET
+        network: BitcoinNetwork
     ): Result<List<BitcoinTransactionDto>>
 
 

@@ -5,11 +5,11 @@ import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinApi
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionDto
 import com.example.nexuswallet.feature.coin.bitcoin.EsploraTransactionResponse
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.bitcoin.UTXO
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -42,8 +42,8 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
 
     private fun getApiForNetwork(network: BitcoinNetwork): BitcoinApi {
         return when (network) {
-            BitcoinNetwork.MAINNET -> mainnetApi
-            BitcoinNetwork.TESTNET -> testnetApi
+            BitcoinNetwork.Mainnet -> mainnetApi
+            BitcoinNetwork.Testnet -> testnetApi
         }
     }
 
@@ -81,7 +81,7 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
         outputCount: Int
     ): Result<BitcoinFeeEstimate> = withContext(ioDispatcher) {
         SafeApiCall.make {
-            val api = getApiForNetwork(BitcoinNetwork.MAINNET)
+            val api = getApiForNetwork(BitcoinNetwork.Mainnet)
             val estimates = api.getFeeEstimates()
 
             // Get fee rate based on confirmation target
@@ -213,8 +213,8 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
     ): Result<Transaction> = withContext(ioDispatcher) {
         try {
             val networkParams = when (network) {
-                BitcoinNetwork.MAINNET -> MainNetParams.get()
-                BitcoinNetwork.TESTNET -> TestNet3Params.get()
+                BitcoinNetwork.Mainnet -> MainNetParams.get()
+                BitcoinNetwork.Testnet -> TestNet3Params.get()
             }
 
             val tx = Transaction(networkParams)
@@ -298,8 +298,8 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
             }
 
             val networkParams = when (network) {
-                BitcoinNetwork.MAINNET -> MainNetParams.get()
-                BitcoinNetwork.TESTNET -> TestNet3Params.get()
+                BitcoinNetwork.Mainnet -> MainNetParams.get()
+                BitcoinNetwork.Testnet -> TestNet3Params.get()
             }
 
             val result = mutableListOf<UTXO>()
