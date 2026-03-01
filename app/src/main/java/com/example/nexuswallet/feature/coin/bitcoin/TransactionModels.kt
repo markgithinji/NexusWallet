@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import org.bitcoinj.core.Coin
 import org.bitcoinj.core.TransactionOutPoint
@@ -14,12 +15,6 @@ data class UTXO(
 enum class FeeLevel {
     SLOW, NORMAL, FAST
 }
-
-enum class BitcoinNetwork(val displayName: String) {
-    MAINNET("Mainnet"),
-    TESTNET("Testnet")
-}
-
 
 data class BitcoinFeeEstimate(
     val feePerByte: Double,           // Satoshis per byte
