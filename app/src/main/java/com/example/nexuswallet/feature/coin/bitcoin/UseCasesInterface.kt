@@ -21,12 +21,9 @@ interface GetBitcoinWalletUseCase {
 
 interface SendBitcoinUseCase {
     suspend operator fun invoke(
+        preparedTransaction: PreparedBitcoinTransaction,
         walletId: String,
-        toAddress: String,
-        amount: BigDecimal,
-        feeLevel: FeeLevel,
-        network: BitcoinNetwork,
-        note: String? = null
+        network: BitcoinNetwork
     ): Result<SendBitcoinResult>
 }
 
