@@ -29,28 +29,30 @@ data class WalletDetailRoute(
 @Serializable
 data class CoinDetailRoute(
     val walletId: String,
-    val coinType: CoinType
+    val coinType: CoinType,
+    val network: String = ""
 )
-
 @Serializable
 data class ReceiveRoute(
     val walletId: String,
-    val coinType: CoinType = CoinType.BITCOIN
+    val coinType: CoinType = CoinType.BITCOIN,
+    val network: String = ""
 )
 
 @Serializable
 data class SendRoute(
     val walletId: String,
-    val coinType: CoinType
+    val coinType: CoinType,
+    val network: String = ""
 )
-
 @Serializable
 data class ReviewRoute(
     val walletId: String,
     val coinType: CoinType,
     val toAddress: String,
     val amount: String,
-    val feeLevel: String? = null
+    val feeLevel: String? = null,
+    val network: String = ""
 )
 
 @Serializable
