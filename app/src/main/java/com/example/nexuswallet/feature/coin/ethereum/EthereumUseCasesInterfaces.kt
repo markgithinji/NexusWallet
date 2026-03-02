@@ -2,61 +2,72 @@ package com.example.nexuswallet.feature.coin.ethereum
 
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import kotlinx.coroutines.flow.Flow
 import java.math.BigDecimal
 
+
 interface SyncEthereumTransactionsUseCase {
-    suspend operator fun invoke(walletId: String): Result<Unit>
+    suspend operator fun invoke(
+        walletId: String,
+        tokenExternalId: String? = null
+    ): Result<Unit>
 }
 
 interface GetTransactionUseCase {
-    suspend operator fun invoke(transactionId: String): Result<EthereumTransaction>
+    suspend operator fun invoke(transactionId: String): Result<EVMTransaction>
 }
 
 interface GetWalletTransactionsUseCase {
-    fun invoke(walletId: String): Flow<Result<List<EthereumTransaction>>>
+    operator fun invoke(walletId: String): Flow<Result<List<EVMTransaction>>>
 }
 
 interface GetPendingTransactionsUseCase {
-    suspend operator fun invoke(): Result<List<EthereumTransaction>>
+    suspend operator fun invoke(): Result<List<EVMTransaction>>
 }
 
-interface ValidateEthereumSendUseCase {
+interface ValidateEVMSendUseCase {
+    suspend operator fun invoke(
+        toAddress: String,
+        amountValue: BigDecimal,
+        fromAddress: String,
+        tokenBalance: BigDecimal,
+        ethBalance: BigDecimal,
+        feeLevel: FeeLevel,
+        token: EVMToken
+    ): ValidateEVMSendUseCase.ValidationResult
+
     data class ValidationResult(
         val isValid: Boolean,
         val addressError: String? = null,
         val amountError: String? = null,
         val balanceError: String? = null,
         val selfSendError: String? = null,
-        val feeEstimate: EthereumFeeEstimate? = null
+        val gasError: String? = null,
+        val feeEstimate: EVMFeeEstimate? = null
     )
-
-    suspend operator fun invoke(
-        toAddress: String,
-        amountValue: BigDecimal,
-        fromAddress: String,
-        balance: BigDecimal,
-        feeLevel: FeeLevel
-    ): ValidationResult
 }
 
 interface GetFeeEstimateUseCase {
     suspend operator fun invoke(
-        feeLevel: FeeLevel = FeeLevel.NORMAL,
-        network: EthereumNetwork = EthereumNetwork.Mainnet
-    ): Result<EthereumFeeEstimate>
+        feeLevel: FeeLevel,
+        network: EthereumNetwork,
+        isToken: Boolean
+    ): Result<EVMFeeEstimate>
 }
 
 interface GetEthereumWalletUseCase {
     suspend operator fun invoke(walletId: String): Result<EthereumWalletInfo>
 }
 
-interface SendEthereumUseCase {
+interface SendEVMAssetUseCase {
     suspend operator fun invoke(
         walletId: String,
         toAddress: String,
         amount: BigDecimal,
-        feeLevel: FeeLevel = FeeLevel.NORMAL,
+        feeLevel: FeeLevel,
+        token: EVMToken,
         note: String? = null
     ): Result<SendEthereumResult>
 }
