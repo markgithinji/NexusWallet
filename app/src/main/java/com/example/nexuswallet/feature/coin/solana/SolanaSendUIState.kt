@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.coin.solana
 
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import java.math.BigDecimal
 
 
@@ -8,7 +9,7 @@ data class SolanaSendUIState(
     val walletId: String = "",
     val walletName: String = "",
     val walletAddress: String = "",
-    val network: SolanaNetwork = SolanaNetwork.DEVNET,
+    val network: SolanaNetwork = SolanaNetwork.Devnet,
     val balance: BigDecimal = BigDecimal.ZERO,
     val balanceFormatted: String = "0 SOL",
     val toAddress: String = "",
