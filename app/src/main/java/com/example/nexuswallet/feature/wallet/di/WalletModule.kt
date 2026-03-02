@@ -2,9 +2,8 @@ package com.example.nexuswallet.feature.wallet.di
 
 import android.content.Context
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
-import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
@@ -12,13 +11,12 @@ import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSourceIm
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepositoryImpl
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoinDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumBalanceDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumCoinDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMBalanceDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMTokenDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLTokenDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoinDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SyncWalletBalancesUseCase
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalanceDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCCoinDao
 import com.example.nexuswallet.feature.wallet.domain.SyncWalletBalancesUseCaseImpl
 import com.example.nexuswallet.feature.wallet.domain.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
@@ -54,20 +52,20 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideEthereumCoinDao(database: WalletDatabase): EthereumCoinDao {
-        return database.ethereumCoinDao()
-    }
-
-    @Provides
-    @Singleton
     fun provideSolanaCoinDao(database: WalletDatabase): SolanaCoinDao {
         return database.solanaCoinDao()
     }
 
     @Provides
     @Singleton
-    fun provideUSDCCoinDao(database: WalletDatabase): USDCCoinDao {
-        return database.usdcCoinDao()
+    fun provideSPLTokenDao(database: WalletDatabase): SPLTokenDao {
+        return database.splTokenDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideEVMTokenDao(database: WalletDatabase): EVMTokenDao {
+        return database.evmTokenDao()
     }
 
     // === Balance DAOs ===
@@ -79,20 +77,14 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideEthereumBalanceDao(database: WalletDatabase): EthereumBalanceDao {
-        return database.ethereumBalanceDao()
-    }
-
-    @Provides
-    @Singleton
     fun provideSolanaBalanceDao(database: WalletDatabase): SolanaBalanceDao {
         return database.solanaBalanceDao()
     }
 
     @Provides
     @Singleton
-    fun provideUSDCBalanceDao(database: WalletDatabase): USDCBalanceDao {
-        return database.usdcBalanceDao()
+    fun provideEVMBalanceDao(database: WalletDatabase): EVMBalanceDao {
+        return database.evmBalanceDao()
     }
 
     // === Data Sources ===
@@ -101,24 +93,22 @@ object DatabaseModule {
     fun provideWalletLocalDataSource(
         walletDao: WalletDao,
         bitcoinCoinDao: BitcoinCoinDao,
-        ethereumCoinDao: EthereumCoinDao,
         solanaCoinDao: SolanaCoinDao,
-        usdcCoinDao: USDCCoinDao,
+        splTokenDao: SPLTokenDao,
+        evmTokenDao: EVMTokenDao,
         bitcoinBalanceDao: BitcoinBalanceDao,
-        ethereumBalanceDao: EthereumBalanceDao,
         solanaBalanceDao: SolanaBalanceDao,
-        usdcBalanceDao: USDCBalanceDao,
+        evmBalanceDao: EVMBalanceDao,
     ): WalletLocalDataSource {
         return WalletLocalDataSourceImpl(
             walletDao = walletDao,
             bitcoinCoinDao = bitcoinCoinDao,
-            ethereumCoinDao = ethereumCoinDao,
             solanaCoinDao = solanaCoinDao,
-            usdcCoinDao = usdcCoinDao,
+            splTokenDao = splTokenDao,
+            evmTokenDao = evmTokenDao,
             bitcoinBalanceDao = bitcoinBalanceDao,
-            ethereumBalanceDao = ethereumBalanceDao,
             solanaBalanceDao = solanaBalanceDao,
-            usdcBalanceDao = usdcBalanceDao
+            evmBalanceDao = evmBalanceDao
         )
     }
 
@@ -138,18 +128,16 @@ object DatabaseModule {
     fun provideSyncWalletBalancesUseCase(
         localDataSource: WalletLocalDataSource,
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-        ethereumBlockchainRepository: EthereumBlockchainRepository,
+        evmBlockchainRepository: EVMBlockchainRepository,
         solanaBlockchainRepository: SolanaBlockchainRepository,
-        usdcBlockchainRepository: USDCBlockchainRepository,
         logger: Logger
     ): SyncWalletBalancesUseCase {
         return SyncWalletBalancesUseCaseImpl(
             localDataSource = localDataSource,
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
-            ethereumBlockchainRepository = ethereumBlockchainRepository,
+            evmBlockchainRepository = evmBlockchainRepository,
             solanaBlockchainRepository = solanaBlockchainRepository,
-            usdcBlockchainRepository = usdcBlockchainRepository,
-            logger
+            logger = logger
         )
     }
 }

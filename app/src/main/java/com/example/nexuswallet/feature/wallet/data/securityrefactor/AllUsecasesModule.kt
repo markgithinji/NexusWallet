@@ -5,9 +5,8 @@ import com.example.nexuswallet.feature.authentication.domain.RecordAuthenticatio
 import com.example.nexuswallet.feature.authentication.domain.RecordAuthenticationUseCaseImpl
 import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.EthereumTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
 import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
-import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.settings.ui.ClearAllSecurityDataUseCase
 import com.example.nexuswallet.feature.settings.ui.ClearAllSecurityDataUseCaseImpl
@@ -59,16 +58,14 @@ object AllUsecasesModule {
     @Singleton
     fun provideGetMnemonicUseCase(
         bitcoinTransactionRepository: BitcoinTransactionRepository,
-        ethereumTransactionRepository: EthereumTransactionRepository,
+        evmTransactionRepository: EVMTransactionRepository,
         solanaTransactionRepository: SolanaTransactionRepository,
-        usdcTransactionRepository: USDCTransactionRepository,
         logger: Logger
     ): GetAllTransactionsUseCase {
         return GetAllTransactionsUseCaseImpl(
             bitcoinTransactionRepository,
-            ethereumTransactionRepository,
+            evmTransactionRepository,
             solanaTransactionRepository,
-            usdcTransactionRepository,
             logger
         )
     }
