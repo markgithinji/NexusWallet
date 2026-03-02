@@ -1,42 +1,96 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
-import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class EthereumTransaction(
-    val id: String,
-    val walletId: String,
-    val coinType: CoinType = CoinType.ETHEREUM,
-    val fromAddress: String,
-    val toAddress: String,
-    val status: TransactionStatus,
-    val timestamp: Long,
-    val note: String?,
-    val feeLevel: FeeLevel,
+sealed class EVMTransaction {
+    abstract val id: String
+    abstract val walletId: String
+    abstract val fromAddress: String
+    abstract val toAddress: String
+    abstract val status: TransactionStatus
+    abstract val timestamp: Long
+    abstract val note: String?
+    abstract val feeLevel: FeeLevel
+    abstract val gasPriceWei: String
+    abstract val gasPriceGwei: String
+    abstract val gasLimit: Long
+    abstract val feeWei: String
+    abstract val feeEth: String
+    abstract val nonce: Int
+    abstract val chainId: Long
+    abstract val signedHex: String?
+    abstract val txHash: String?
+    abstract val network: String
+    abstract val isIncoming: Boolean
+    abstract val tokenExternalId: String?
+}
+
+@Serializable
+data class NativeETHTransaction(
+    override val id: String,
+    override val walletId: String,
+    override val fromAddress: String,
+    override val toAddress: String,
+    override val status: TransactionStatus,
+    override val timestamp: Long,
+    override val note: String?,
+    override val feeLevel: FeeLevel,
     val amountWei: String,
     val amountEth: String,
-    val gasPriceWei: String,
-    val gasPriceGwei: String,
-    val gasLimit: Long,
-    val feeWei: String,
-    val feeEth: String,
-    val nonce: Int,
-    val chainId: Long,
-    val signedHex: String?,
-    val txHash: String?,
-    val network: String,
-    val data: String,
-    val isIncoming: Boolean = false
-)
+    override val gasPriceWei: String,
+    override val gasPriceGwei: String,
+    override val gasLimit: Long,
+    override val feeWei: String,
+    override val feeEth: String,
+    override val nonce: Int,
+    override val chainId: Long,
+    override val signedHex: String?,
+    override val txHash: String?,
+    override val network: String,
+    override val isIncoming: Boolean = false,
+    val data: String = "",
+    override val tokenExternalId: String? = null
+) : EVMTransaction()
 
-data class EthereumFeeEstimate(
+@Serializable
+data class TokenTransaction(
+    override val id: String,
+    override val walletId: String,
+    override val fromAddress: String,
+    override val toAddress: String,
+    override val status: TransactionStatus,
+    override val timestamp: Long,
+    override val note: String?,
+    override val feeLevel: FeeLevel,
+    val amountWei: String,
+    val amountDecimal: String,
+    override val gasPriceWei: String,
+    override val gasPriceGwei: String,
+    override val gasLimit: Long,
+    override val feeWei: String,
+    override val feeEth: String,
+    override val nonce: Int,
+    override val chainId: Long,
+    override val signedHex: String?,
+    override val txHash: String?,
+    override val network: String,
+    override val isIncoming: Boolean = false,
+    val tokenContract: String,
+    val tokenSymbol: String,
+    val tokenDecimals: Int,
+    val data: String,
+    override val tokenExternalId: String
+) : EVMTransaction()
+
+@Serializable
+data class EVMFeeEstimate(
     val gasPriceGwei: String,           // Gas price in Gwei
     val gasPriceWei: String,             // Gas price in Wei
-    val gasLimit: Long,                   // Gas limit (usually 21000 for simple transfers)
+    val gasLimit: Long,                   // Gas limit (21000 for ETH, higher for tokens)
     val totalFeeWei: String,              // Total fee in Wei
     val totalFeeEth: String,               // Total fee in ETH (human readable)
     val estimatedTime: Int,                // Estimated time in seconds
@@ -45,6 +99,7 @@ data class EthereumFeeEstimate(
     val isEIP1559: Boolean = false         // Whether this is an EIP-1559 fee estimate
 )
 
+@Serializable
 data class EthereumWalletInfo(
     val walletId: String,
     val walletName: String,
@@ -52,6 +107,7 @@ data class EthereumWalletInfo(
     val network: EthereumNetwork
 )
 
+@Serializable
 data class SendEthereumResult(
     val transactionId: String,
     val txHash: String,
@@ -63,29 +119,3 @@ data class CachedConfirmationTime(
     val seconds: Int,
     val timestamp: Long
 )
-@Serializable
-sealed class EthereumNetwork {
-    abstract val chainId: String
-    abstract val usdcContractAddress: String
-    abstract val isTestnet: Boolean
-    abstract val displayName: String
-
-    @Serializable
-    @SerialName("Mainnet")
-    data object Mainnet : EthereumNetwork() {
-        override val chainId = "1"
-        override val usdcContractAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-        override val isTestnet = false
-        override val displayName = "Mainnet"
-    }
-
-    @Serializable
-    @SerialName("Sepolia")
-    data object Sepolia : EthereumNetwork() {
-        override val chainId = "11155111"
-        override val usdcContractAddress = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
-        override val isTestnet = true
-        override val displayName = "Sepolia"
-    }
-}
-

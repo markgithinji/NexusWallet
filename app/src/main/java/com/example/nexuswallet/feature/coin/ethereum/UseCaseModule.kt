@@ -2,8 +2,10 @@ package com.example.nexuswallet.feature.coin.ethereum
 
 import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.EthereumBlockchainRepositoryImpl
-import com.example.nexuswallet.feature.coin.ethereum.data.EthereumTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepositoryImpl
+import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
+import com.example.nexuswallet.feature.coin.usdc.Web3jFactory
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
@@ -20,76 +22,76 @@ object UseCaseModule {
     @Provides
     @Singleton
     fun provideSyncEthereumTransactionsUseCase(
-        ethereumBlockchainRepository: EthereumBlockchainRepository,
-        ethereumTransactionRepository: EthereumTransactionRepository,
+        evmBlockchainRepository: EVMBlockchainRepository,
+        evmTransactionRepository: EVMTransactionRepository,
         walletRepository: WalletRepository,
         logger: Logger
     ): SyncEthereumTransactionsUseCase {
         return SyncEthereumTransactionsUseCaseImpl(
-            ethereumBlockchainRepository,
-            ethereumTransactionRepository,
-            walletRepository,
-            logger
+            evmBlockchainRepository = evmBlockchainRepository,
+            evmTransactionRepository = evmTransactionRepository,
+            walletRepository = walletRepository,
+            logger = logger
         )
     }
 
     @Provides
     @Singleton
     fun provideGetTransactionUseCase(
-        ethereumTransactionRepository: EthereumTransactionRepository,
+        evmTransactionRepository: EVMTransactionRepository,
         logger: Logger
     ): GetTransactionUseCase {
         return GetTransactionUseCaseImpl(
-            ethereumTransactionRepository,
-            logger
+            evmTransactionRepository = evmTransactionRepository,
+            logger = logger
         )
     }
 
     @Provides
     @Singleton
     fun provideGetWalletTransactionsUseCase(
-        ethereumTransactionRepository: EthereumTransactionRepository,
+        evmTransactionRepository: EVMTransactionRepository,
         logger: Logger
     ): GetWalletTransactionsUseCase {
         return GetWalletTransactionsUseCaseImpl(
-            ethereumTransactionRepository,
-            logger
+            evmTransactionRepository = evmTransactionRepository,
+            logger = logger
         )
     }
 
     @Provides
     @Singleton
     fun provideGetPendingTransactionsUseCase(
-        ethereumTransactionRepository: EthereumTransactionRepository,
+        evmTransactionRepository: EVMTransactionRepository,
         logger: Logger
     ): GetPendingTransactionsUseCase {
         return GetPendingTransactionsUseCaseImpl(
-            ethereumTransactionRepository,
-            logger
+            evmTransactionRepository = evmTransactionRepository,
+            logger = logger
         )
     }
 
     @Provides
     @Singleton
-    fun provideValidateEthereumSendUseCase(
+    fun provideValidateEVMSendUseCase(
         getFeeEstimateUseCase: GetFeeEstimateUseCase,
         logger: Logger
-    ): ValidateEthereumSendUseCase {
-        return ValidateEthereumSendUseCaseImpl(
-            getFeeEstimateUseCase,
-            logger
+    ): ValidateEVMSendUseCase {
+        return ValidateEVMSendUseCaseImpl(
+            getFeeEstimateUseCase = getFeeEstimateUseCase,
+            logger = logger
         )
     }
 
     @Provides
     @Singleton
     fun provideGetFeeEstimateUseCase(
-        ethereumBlockchainRepository: EthereumBlockchainRepository,
+        evmBlockchainRepository: EVMBlockchainRepository,
         logger: Logger
     ): GetFeeEstimateUseCase {
         return GetFeeEstimateUseCaseImpl(
-            ethereumBlockchainRepository,
-            logger
+            evmBlockchainRepository = evmBlockchainRepository,
+            logger = logger
         )
     }
 
@@ -100,52 +102,54 @@ object UseCaseModule {
         logger: Logger
     ): GetEthereumWalletUseCase {
         return GetEthereumWalletUseCaseImpl(
-            walletRepository,
-            logger
+            walletRepository = walletRepository,
+            logger = logger
         )
     }
 
     @Provides
     @Singleton
-    fun provideSendEthereumUseCase(
+    fun provideSendEVMAssetUseCase(
         walletRepository: WalletRepository,
-        ethereumBlockchainRepository: EthereumBlockchainRepository,
-        ethereumTransactionRepository: EthereumTransactionRepository,
+        evmBlockchainRepository: EVMBlockchainRepository,
+        evmTransactionRepository: EVMTransactionRepository,
         securityPreferencesRepository: SecurityPreferencesRepository,
         keyStoreRepository: KeyStoreRepository,
         logger: Logger
-    ): SendEthereumUseCase {
-        return SendEthereumUseCaseImpl(
-            walletRepository,
-            ethereumBlockchainRepository,
-            ethereumTransactionRepository,
-            securityPreferencesRepository,
-            keyStoreRepository,
-            logger
+    ): SendEVMAssetUseCase {
+        return SendEVMAssetUseCaseImpl(
+            walletRepository = walletRepository,
+            evmBlockchainRepository = evmBlockchainRepository,
+            evmTransactionRepository = evmTransactionRepository,
+            securityPreferencesRepository = securityPreferencesRepository,
+            keyStoreRepository = keyStoreRepository,
+            logger = logger
         )
     }
 
     @Provides
     @Singleton
-    fun provideEthereumTransactionDao(database: WalletDatabase): EthereumTransactionDao {
-        return database.ethereumTransactionDao()
+    fun provideEVMTransactionDao(database: WalletDatabase): EVMTransactionDao {
+        return database.evmTransactionDao()
     }
 
     @Provides
     @Singleton
-    fun provideEthereumTransactionRepository(
-        ethereumTransactionDao: EthereumTransactionDao
-    ): EthereumTransactionRepository {
-        return EthereumTransactionRepositoryImpl(ethereumTransactionDao)
+    fun provideEVMTransactionRepository(
+        evmTransactionDao: EVMTransactionDao
+    ): EVMTransactionRepository {
+        return EVMTransactionRepositoryImpl(evmTransactionDao)
     }
 
     @Provides
     @Singleton
-    fun provideGetEthereumBalanceUseCase(
-        etherscanApiService :EtherscanApiService
-    ): EthereumBlockchainRepository {
-        return EthereumBlockchainRepositoryImpl(
-            etherscanApiService
+    fun provideEVMBlockchainRepository(
+        etherscanApiService: EtherscanApiService,
+        web3jFactory: Web3jFactory
+    ): EVMBlockchainRepository {
+        return EVMBlockchainRepositoryImpl(
+            etherscanApi = etherscanApiService,
+            web3jFactory = web3jFactory
         )
     }
 }

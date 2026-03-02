@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -26,7 +27,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TransactionDisplayInfo
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
@@ -43,18 +49,19 @@ import java.util.*
 @Composable
 fun CoinDetailScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToReceive: (String, CoinType) -> Unit,
-    onNavigateToSend: (String, CoinType) -> Unit,
-    onNavigateToAllTransactions: (String, CoinType) -> Unit,
+    onNavigateToReceive: (String, CoinType, String) -> Unit,
+    onNavigateToSend: (String, CoinType, String) -> Unit,
+    onNavigateToAllTransactions: (String, CoinType, String) -> Unit,
     walletId: String,
     coinType: CoinType,
+    network: String = "",
     viewModel: CoinDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        viewModel.loadCoinDetails(walletId, coinType)
+        viewModel.loadCoinDetails(walletId, coinType, network)
     }
 
     // Show loading only on initial load
@@ -67,7 +74,7 @@ fun CoinDetailScreen(
     state.error?.let { errorMessage ->
         ErrorScreen(
             message = errorMessage,
-            onRetry = { viewModel.loadCoinDetails(walletId, coinType) }
+            onRetry = { viewModel.loadCoinDetails(walletId, coinType, network) }
         )
         return
     }
@@ -78,7 +85,6 @@ fun CoinDetailScreen(
     Scaffold(
         topBar = {
             CoinDetailTopBar(
-                coinType = coinType,
                 coinColor = coinColor,
                 icon = icon,
                 displayName = displayName,
@@ -95,24 +101,94 @@ fun CoinDetailScreen(
             coinColor = coinColor,
             icon = icon,
             displayName = displayName,
+            network = network,
             onCopyAddress = { address ->
                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("Address", address)
                 clipboard.setPrimaryClip(clip)
                 Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
             },
-            onReceive = { onNavigateToReceive(state.walletId, coinType) },
-            onSend = { onNavigateToSend(state.walletId, coinType) },
-            onViewAllTransactions = { onNavigateToAllTransactions(state.walletId, coinType) },
+            onReceive = { onNavigateToReceive(state.walletId, coinType, network) },
+            onSend = { onNavigateToSend(state.walletId, coinType, network) },
+            onViewAllTransactions = { onNavigateToAllTransactions(state.walletId, coinType, network) },
             modifier = Modifier.padding(padding)
         )
     }
 }
 
+@Composable
+private fun CoinDetailContent(
+    state: CoinDetailViewModel.CoinDetailState,
+    coinType: CoinType,
+    coinColor: Color,
+    icon: ImageVector,
+    displayName: String,
+    network: String,
+    onCopyAddress: (String) -> Unit,
+    onReceive: () -> Unit,
+    onSend: () -> Unit,
+    onViewAllTransactions: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Balance Card
+        item {
+            CoinDetailBalanceCard(
+                coinType = coinType,
+                coinColor = coinColor,
+                icon = icon,
+                displayName = displayName,
+                balance = state.balance,
+                balanceFormatted = state.balanceFormatted,
+                address = state.address,
+                network = network,
+                usdValue = state.usdValue,
+                onCopyAddress = onCopyAddress
+            )
+        }
+
+        // Actions
+        item {
+            CoinDetailActionsCard(
+                onReceive = onReceive,
+                onSend = onSend
+            )
+        }
+
+        // ETH Gas Balance for USDC
+        if (coinType == CoinType.USDC && state.ethGasBalance != null) {
+            item {
+                CoinDetailEthGasBalanceCard(ethBalance = state.ethGasBalance)
+            }
+        }
+
+        // SPL Tokens for Solana
+        if (coinType == CoinType.SOLANA && state.splTokens.isNotEmpty()) {
+            item {
+                CoinDetailSPLTokensCard(
+                    splTokens = state.splTokens,
+                    onTokenClick = { /* Navigate to token detail */ }
+                )
+            }
+        }
+
+        // Recent Transactions
+        item {
+            CoinDetailTransactionsContainer(
+                transactions = state.transactions,
+                coinType = coinType,
+                onViewAll = onViewAllTransactions
+            )
+        }
+    }
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CoinDetailTopBar(
-    coinType: CoinType,
     coinColor: Color,
     icon: ImageVector,
     displayName: String,
@@ -185,6 +261,7 @@ private fun CoinDetailContent(
     onReceive: () -> Unit,
     onSend: () -> Unit,
     onViewAllTransactions: () -> Unit,
+    onNavigateToSend: (String, CoinType) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -203,7 +280,7 @@ private fun CoinDetailContent(
                 balance = state.balance,
                 balanceFormatted = state.balanceFormatted,
                 address = state.address,
-                network = state.network,
+                network = state.networkDisplayName.ifEmpty { state.network },
                 usdValue = state.usdValue,
                 onCopyAddress = onCopyAddress
             )
@@ -224,6 +301,31 @@ private fun CoinDetailContent(
             }
         }
 
+        // SPL Tokens for Solana
+        if (coinType == CoinType.SOLANA && state.splTokens.isNotEmpty()) {
+            item {
+                CoinDetailSPLTokensCard(
+                    splTokens = state.splTokens,
+                    onTokenClick = { /* Navigate to token detail */ }
+                )
+            }
+        }
+
+        // Other EVM Tokens (for ETH view)
+        if (coinType == CoinType.ETHEREUM && state.evmTokens.size > 1) {
+            item {
+                CoinDetailOtherTokensCard(
+                    tokens = state.evmTokens.filter { it !is NativeETH },
+                    onTokenClick = { token ->
+                        when (token) {
+                            is USDCToken -> onNavigateToSend(state.walletId, CoinType.USDC)
+                            else -> { /* Handle other tokens */ }
+                        }
+                    }
+                )
+            }
+        }
+
         // Recent Transactions
         item {
             CoinDetailTransactionsContainer(
@@ -231,6 +333,179 @@ private fun CoinDetailContent(
                 coinType = coinType,
                 onViewAll = onViewAllTransactions
             )
+        }
+    }
+}
+
+@Composable
+private fun CoinDetailSPLTokensCard(
+    splTokens: List<SPLToken>,
+    onTokenClick: (SPLToken) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "SPL Tokens",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            splTokens.take(3).forEach { token ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onTokenClick(token) }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(solanaLight.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Token,
+                            contentDescription = null,
+                            tint = solanaLight,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = token.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = token.symbol,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = "View",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (splTokens.indexOf(token) < splTokens.size - 1 && splTokens.indexOf(token) < 2) {
+                    Divider(
+                        color = MaterialTheme.colorScheme.outline,
+                        thickness = 1.dp
+                    )
+                }
+            }
+
+            if (splTokens.size > 3) {
+                TextButton(
+                    onClick = { /* View all */ },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("View All ${splTokens.size} Tokens")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CoinDetailOtherTokensCard(
+    tokens: List<EVMToken>,
+    onTokenClick: (EVMToken) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Tokens",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            tokens.take(3).forEach { token ->
+                val tokenColor = when (token) {
+                    is USDCToken -> usdcLight
+                    is USDTToken -> usdtLight
+                    else -> MaterialTheme.colorScheme.primary
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onTokenClick(token) }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(tokenColor.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Token,
+                            contentDescription = null,
+                            tint = tokenColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = token.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = token.symbol,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = "View",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (tokens.indexOf(token) < tokens.size - 1 && tokens.indexOf(token) < 2) {
+                    Divider(
+                        color = MaterialTheme.colorScheme.outline,
+                        thickness = 1.dp
+                    )
+                }
+            }
         }
     }
 }

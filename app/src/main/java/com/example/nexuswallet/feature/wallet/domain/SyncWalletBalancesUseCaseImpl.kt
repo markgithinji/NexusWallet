@@ -1,20 +1,24 @@
 package com.example.nexuswallet.feature.wallet.domain
 
-import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.EthereumBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
-import com.example.nexuswallet.feature.coin.usdc.USDCBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumBalance
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumCoin
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.ERC20Token
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMBalance
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SyncWalletBalancesUseCase
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCCoin
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TokenType
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
 import java.math.BigDecimal
@@ -26,9 +30,8 @@ import javax.inject.Singleton
 class SyncWalletBalancesUseCaseImpl @Inject constructor(
     private val localDataSource: WalletLocalDataSource,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-    private val ethereumBlockchainRepository: EthereumBlockchainRepository,
+    private val evmBlockchainRepository: EVMBlockchainRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
-    private val usdcBlockchainRepository: USDCBlockchainRepository,
     private val logger: Logger
 ) : SyncWalletBalancesUseCase {
 
@@ -43,10 +46,20 @@ class SyncWalletBalancesUseCaseImpl @Inject constructor(
     }
 
     private suspend fun syncWalletBalances(wallet: Wallet) {
-        wallet.bitcoin?.let { syncBitcoinBalance(wallet.id, it) }
-        wallet.ethereum?.let { syncEthereumBalance(wallet.id, it) }
-        wallet.solana?.let { syncSolanaBalance(wallet.id, it) }
-        wallet.usdc?.let { syncUSDCBalance(wallet.id, it) }
+        // Sync Bitcoin balances
+        wallet.bitcoinCoins.forEach { coin ->
+            syncBitcoinBalance(wallet.id, coin)
+        }
+
+        // Sync Solana balances (including SPL tokens)
+        wallet.solanaCoins.forEach { coin ->
+            syncSolanaBalance(wallet.id, coin)
+        }
+
+        // Sync EVM balances (Native ETH + all tokens)
+        if (wallet.evmTokens.isNotEmpty()) {
+            syncEVMBalances(wallet.id, wallet.evmTokens)
+        }
     }
 
     private suspend fun syncBitcoinBalance(walletId: String, coin: BitcoinCoin) {
@@ -60,152 +73,272 @@ class SyncWalletBalancesUseCaseImpl @Inject constructor(
                 val btcBalance = balanceResult.data
                 val satoshiBalance =
                     (btcBalance * BigDecimal("100000000")).toBigInteger().toString()
-                val usdValue = calculateUsdValue(btcBalance, CoinType.BITCOIN.name)
+                val usdValue = calculateUsdValue(btcBalance, "BTC")
 
-                val currentBalance = localDataSource.loadWalletBalance(walletId) ?: WalletBalance(
-                    walletId,
-                    System.currentTimeMillis()
+                val currentBalance = localDataSource.loadWalletBalance(walletId)
+                    ?: WalletBalance(
+                        walletId = walletId,
+                        lastUpdated = System.currentTimeMillis()
+                    )
+
+                val networkKey = when (coin.network) {
+                    BitcoinNetwork.Mainnet -> "mainnet"
+                    BitcoinNetwork.Testnet -> "testnet"
+                }
+
+                val updatedBitcoinBalances = currentBalance.bitcoinBalances.toMutableMap()
+                updatedBitcoinBalances[networkKey] = BitcoinBalance(
+                    address = coin.address,
+                    satoshis = satoshiBalance,
+                    btc = btcBalance.setScale(8, RoundingMode.HALF_UP).toPlainString(),
+                    usdValue = usdValue
                 )
 
                 val updatedBalance = currentBalance.copy(
-                    bitcoin = BitcoinBalance(
-                        address = coin.address,
-                        satoshis = satoshiBalance,
-                        btc = btcBalance.setScale(8, RoundingMode.HALF_UP).toPlainString(),
-                        usdValue = usdValue
-                    ),
+                    bitcoinBalances = updatedBitcoinBalances,
                     lastUpdated = System.currentTimeMillis()
                 )
 
                 localDataSource.saveWalletBalance(updatedBalance)
-                logger.d(tag, "Bitcoin balance updated: ${btcBalance} BTC")
+                logger.d(tag, "Bitcoin ${coin.network} balance updated: ${btcBalance} BTC")
             }
-
             is Result.Error -> {
                 logger.e(tag, "Failed to sync Bitcoin: ${balanceResult.message}")
             }
-
-            else -> {}
-        }
-    }
-
-    private suspend fun syncEthereumBalance(walletId: String, coin: EthereumCoin) {
-        val balanceResult = ethereumBlockchainRepository.getEthereumBalance(
-            address = coin.address,
-            network = coin.network
-        )
-
-        when (balanceResult) {
-            is Result.Success -> {
-                val ethBalance = balanceResult.data
-                val weiBalance =
-                    (ethBalance * BigDecimal("1000000000000000000")).toBigInteger().toString()
-                val usdValue = calculateUsdValue(ethBalance, CoinType.ETHEREUM.name)
-
-                val currentBalance = localDataSource.loadWalletBalance(walletId) ?: WalletBalance(
-                    walletId,
-                    System.currentTimeMillis()
-                )
-
-                val updatedBalance = currentBalance.copy(
-                    ethereum = EthereumBalance(
-                        address = coin.address,
-                        wei = weiBalance,
-                        eth = ethBalance.setScale(6, RoundingMode.HALF_UP).toPlainString(),
-                        usdValue = usdValue
-                    ),
-                    lastUpdated = System.currentTimeMillis()
-                )
-
-                localDataSource.saveWalletBalance(updatedBalance)
-                logger.d(tag, "Ethereum balance updated: ${ethBalance} ETH")
-            }
-
-            is Result.Error -> {
-                logger.e(tag, "Failed to sync Ethereum: ${balanceResult.message}")
-            }
-
             else -> {}
         }
     }
 
     private suspend fun syncSolanaBalance(walletId: String, coin: SolanaCoin) {
-        val balanceResult = solanaBlockchainRepository.getBalance(
+        val solBalanceResult = solanaBlockchainRepository.getBalance(
             address = coin.address,
             network = coin.network
         )
 
-        when (balanceResult) {
+        when (solBalanceResult) {
             is Result.Success -> {
-                val solBalance = balanceResult.data
+                val solBalance = solBalanceResult.data
                 val lamportsBalance =
                     (solBalance * BigDecimal("1000000000")).toBigInteger().toString()
-                val usdValue = calculateUsdValue(solBalance, CoinType.SOLANA.name)
+                val usdValue = calculateUsdValue(solBalance, "SOL")
 
-                val currentBalance = localDataSource.loadWalletBalance(walletId) ?: WalletBalance(
-                    walletId,
-                    System.currentTimeMillis()
+                val currentBalance = localDataSource.loadWalletBalance(walletId)
+                    ?: WalletBalance(
+                        walletId = walletId,
+                        lastUpdated = System.currentTimeMillis()
+                    )
+
+                val networkKey = when (coin.network) {
+                    SolanaNetwork.Mainnet -> "mainnet"
+                    SolanaNetwork.Devnet -> "devnet"
+                }
+
+                val updatedSolanaBalances = currentBalance.solanaBalances.toMutableMap()
+                updatedSolanaBalances[networkKey] = SolanaBalance(
+                    address = coin.address,
+                    lamports = lamportsBalance,
+                    sol = solBalance.setScale(9, RoundingMode.HALF_UP).toPlainString(),
+                    usdValue = usdValue
                 )
 
-                val updatedBalance = currentBalance.copy(
-                    solana = SolanaBalance(
-                        address = coin.address,
-                        lamports = lamportsBalance,
-                        sol = solBalance.setScale(9, RoundingMode.HALF_UP).toPlainString(),
-                        usdValue = usdValue
-                    ),
-                    lastUpdated = System.currentTimeMillis()
+                val updatedBalance = WalletBalance(
+                    walletId = walletId,
+                    lastUpdated = System.currentTimeMillis(),
+                    bitcoinBalances = currentBalance.bitcoinBalances,
+                    solanaBalances = updatedSolanaBalances,
+                    evmBalances = currentBalance.evmBalances,
+                    splBalances = currentBalance.splBalances
                 )
 
                 localDataSource.saveWalletBalance(updatedBalance)
-                logger.d(tag, "Solana balance updated: ${solBalance} SOL")
+                logger.d(tag, "Solana ${coin.network} balance updated: ${solBalance} SOL")
             }
-
             is Result.Error -> {
-                logger.e(tag, "Failed to sync Solana: ${balanceResult.message}")
+                logger.e(tag, "Failed to sync Solana: ${solBalanceResult.message}")
             }
-
             else -> {}
         }
     }
 
-    private suspend fun syncUSDCBalance(walletId: String, coin: USDCCoin) {
-        val result = usdcBlockchainRepository.getUSDCBalance(
-            address = coin.address,
-            network = coin.network
-        )
+    private suspend fun syncSPLTokenBalances(walletId: String, coin: SolanaCoin) {
+        coin.splTokens.forEach { token ->
+            val balanceResult = solanaBlockchainRepository.getTokenBalance(
+                address = coin.address,
+                mintAddress = token.mintAddress,
+                network = coin.network
+            )
 
-        when (result) {
-            is Result.Success -> {
-                val usdcBalance = result.data
+            when (balanceResult) {
+                is Result.Success -> {
+                    val tokenBalance = balanceResult.data
+                    val usdValue = calculateTokenUsdValue(tokenBalance, token.symbol)
 
-                val currentBalance = localDataSource.loadWalletBalance(walletId)
-                    ?: WalletBalance(walletId, System.currentTimeMillis())
+                    // TODO: add SPL balances to WalletBalance class
+                    // This is a placeholder for now
+                    logger.d(tag, "SPL token ${token.symbol} balance: $tokenBalance, USD: $usdValue")
+                }
 
-                val updatedBalance = currentBalance.copy(
-                    usdc = usdcBalance,
-                    lastUpdated = System.currentTimeMillis()
+                is Result.Error -> {
+                    logger.e(tag, "Failed to sync SPL token ${token.symbol}: ${balanceResult.message}")
+                }
+
+                else -> {}
+            }
+        }
+    }
+
+    private suspend fun syncEVMBalances(walletId: String, tokens: List<EVMToken>) {
+        // Get all EVM balances
+        val evmBalances = mutableListOf<EVMBalance>()
+
+        tokens.forEach { token ->
+            val balanceResult = when (token) {
+                is NativeETH -> evmBlockchainRepository.getNativeBalance(
+                    address = token.address,
+                    network = token.network
                 )
-
-                localDataSource.saveWalletBalance(updatedBalance)
-                logger.d(tag, "USDC balance updated: ${usdcBalance.amountDecimal} USDC")
+                is USDCToken, is USDTToken, is ERC20Token -> evmBlockchainRepository.getTokenBalance(
+                    address = token.address,
+                    tokenContract = token.contractAddress,
+                    tokenDecimals = token.decimals,
+                    network = token.network
+                )
             }
 
-            is Result.Error -> {
-                logger.e(tag, "Failed to sync USDC: ${result.message}")
-            }
+            when (balanceResult) {
+                is Result.Success -> {
+                    val balance = balanceResult.data
+                    val balanceWei = when (token) {
+                        is NativeETH -> (balance * BigDecimal("1000000000000000000")).toBigInteger().toString()
+                        else -> (balance * BigDecimal.TEN.pow(token.decimals)).toBigInteger().toString()
+                    }
 
-            else -> {}
+                    val usdValue = calculateTokenUsdValue(balance, token.symbol)
+
+                    evmBalances.add(
+                        EVMBalance(
+                            externalTokenId = token.externalId,
+                            address = token.address,
+                            balanceWei = balanceWei,
+                            balanceDecimal = balance.toPlainString(),
+                            usdValue = usdValue
+                        )
+                    )
+
+                    logger.d(tag, "${token.symbol} balance updated: $balance (externalId: ${token.externalId})")
+                }
+
+                is Result.Error -> {
+                    logger.e(tag, "Failed to sync ${token.symbol} (${token.externalId}): ${balanceResult.message}")
+                }
+
+                else -> {}
+            }
+        }
+
+        // Save all EVM balances
+        if (evmBalances.isNotEmpty()) {
+            val currentBalance = localDataSource.loadWalletBalance(walletId)
+                ?: WalletBalance(walletId, System.currentTimeMillis())
+
+            val updatedBalance = currentBalance.copy(
+                evmBalances = evmBalances,
+                lastUpdated = System.currentTimeMillis()
+            )
+
+            localDataSource.saveWalletBalance(updatedBalance)
+            logger.d(tag, "Saved ${evmBalances.size} EVM balances for wallet $walletId")
         }
     }
 
     private fun calculateUsdValue(amount: BigDecimal, symbol: String): Double {
         val price = when (symbol) {
-            CoinType.BITCOIN.name -> 45000.0
-            CoinType.ETHEREUM.name -> 3000.0
-            CoinType.SOLANA.name -> 30.0
+            "BTC" -> 45000.0
+            "ETH" -> 3000.0
+            "SOL" -> 30.0
             else -> 1.0
         }
         return amount.toDouble() * price
+    }
+
+    private fun calculateTokenUsdValue(amount: BigDecimal, symbol: String): Double {
+        return when (symbol) {
+            "USDC", "USDT" -> amount.toDouble()  // Stablecoins are 1:1
+            else -> amount.toDouble() * getTokenPrice(symbol)
+        }
+    }
+
+    private fun getTokenPrice(symbol: String): Double {
+        // TODO: fetch from price API
+        return when (symbol) {
+            "ETH" -> 3000.0
+            "SOL" -> 30.0
+            else -> 1.0
+        }
+    }
+
+    // method to sync a single token by its externalId
+    suspend fun syncTokenBalance(walletId: String, token: EVMToken): Result<EVMBalance?> {
+        return try {
+            val balanceResult = when (token) {
+                is NativeETH -> evmBlockchainRepository.getNativeBalance(
+                    address = token.address,
+                    network = token.network
+                )
+                is USDCToken, is USDTToken, is ERC20Token -> evmBlockchainRepository.getTokenBalance(
+                    address = token.address,
+                    tokenContract = token.contractAddress,
+                    tokenDecimals = token.decimals,
+                    network = token.network
+                )
+            }
+
+            when (balanceResult) {
+                is Result.Success -> {
+                    val balance = balanceResult.data
+                    val balanceWei = when (token) {
+                        is NativeETH -> (balance * BigDecimal("1000000000000000000")).toBigInteger().toString()
+                        else -> (balance * BigDecimal.TEN.pow(token.decimals)).toBigInteger().toString()
+                    }
+
+                    val usdValue = calculateTokenUsdValue(balance, token.symbol)
+
+                    val evmBalance = EVMBalance(
+                        externalTokenId = token.externalId,
+                        address = token.address,
+                        balanceWei = balanceWei,
+                        balanceDecimal = balance.toPlainString(),
+                        usdValue = usdValue
+                    )
+
+                    // Update just this token's balance
+                    val currentBalance = localDataSource.loadWalletBalance(walletId)
+                    val updatedEvmBalances = currentBalance?.evmBalances?.toMutableList() ?: mutableListOf()
+
+                    // Remove old balance for this token if exists
+                    updatedEvmBalances.removeAll { it.externalTokenId == token.externalId }
+                    updatedEvmBalances.add(evmBalance)
+
+                    val updatedBalance = (currentBalance ?: WalletBalance(walletId, System.currentTimeMillis()))
+                        .copy(
+                            evmBalances = updatedEvmBalances,
+                            lastUpdated = System.currentTimeMillis()
+                        )
+
+                    localDataSource.saveWalletBalance(updatedBalance)
+                    logger.d(tag, "Updated ${token.symbol} balance: $balance")
+
+                    Result.Success(evmBalance)
+                }
+                is Result.Error -> {
+                    logger.e(tag, "Failed to sync ${token.symbol}: ${balanceResult.message}")
+                    Result.Error(balanceResult.message)
+                }
+                else -> Result.Error("Unknown error")
+            }
+        } catch (e: Exception) {
+            logger.e(tag, "Error syncing token balance", e)
+            Result.Error(e.message ?: "Unknown error")
+        }
     }
 }

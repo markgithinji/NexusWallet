@@ -97,17 +97,17 @@ fun SolanaSendScreen(
 //                isError = state.toAddress.isNotBlank() && state.error?.contains("address") == true
 //            )
 
-            // Amount
-            OutlinedTextField(
-                value = state.amount,
-                onValueChange = viewModel::updateAmount,
-                label = { Text("Amount") },
-                placeholder = { Text("0.0") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                suffix = { Text("SOL") },
-                isError = state.amount.isNotBlank() && state.error?.contains("amount") == true
-            )
+//            // Amount
+//            OutlinedTextField(
+//                value = state.amount,
+//                onValueChange = viewModel::updateAmount,
+//                label = { Text("Amount") },
+//                placeholder = { Text("0.0") },
+//                modifier = Modifier.fillMaxWidth(),
+//                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+//                suffix = { Text("SOL") },
+//                isError = state.amount.isNotBlank() && state.error?.contains("amount") == true
+//            )
 
             // Error Message
             state.error?.let { error ->

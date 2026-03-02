@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.wallet.ui
 
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,18 +27,21 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendViewModel
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.coin.ethereum.EthereumFeeEstimate
+import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendEvent
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendViewModel
 import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
 import com.example.nexuswallet.feature.coin.solana.SolanaSendEvent
 import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
-import com.example.nexuswallet.feature.coin.usdc.USDCSendEvent
-import com.example.nexuswallet.feature.coin.usdc.USDCSendViewModel
-import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.info
@@ -48,52 +52,100 @@ import com.example.nexuswallet.ui.theme.usdcLight
 import com.example.nexuswallet.ui.theme.warning
 import java.math.BigDecimal
 import java.math.RoundingMode
-
+import java.util.*
+import androidx.compose.foundation.lazy.items
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendEvent
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SendScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToReview: (String, CoinType, String, String, FeeLevel?) -> Unit,
+    onNavigateToReview: (String, CoinType, String, String, FeeLevel?, Any?) -> Unit,
     walletId: String,
     coinType: CoinType,
+    network: String = "",
     ethereumViewModel: EthereumSendViewModel = hiltViewModel(),
-    usdcViewModel: USDCSendViewModel = hiltViewModel(),
     solanaViewModel: SolanaSendViewModel = hiltViewModel(),
     bitcoinViewModel: BitcoinSendViewModel = hiltViewModel()
 ) {
     var showMaxDialog by remember { mutableStateOf(false) }
+    var showNetworkSelector by remember { mutableStateOf(false) }
+    var showTokenSelector by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    val ethereumUiState = ethereumViewModel.uiState.collectAsState()
-    val usdcState = usdcViewModel.state.collectAsState()
+    val ethereumState = ethereumViewModel.uiState.collectAsState()
     val solanaState = solanaViewModel.state.collectAsState()
     val bitcoinState = bitcoinViewModel.state.collectAsState()
 
-    // Initialize ViewModels
+    val networkObject = when (coinType) {
+        CoinType.ETHEREUM, CoinType.USDC -> {
+            when (network.lowercase()) {
+                "mainnet" -> EthereumNetwork.Mainnet
+                "sepolia" -> EthereumNetwork.Sepolia
+                else -> null
+            }
+        }
+        CoinType.SOLANA -> {
+            when (network.lowercase()) {
+                "mainnet" -> SolanaNetwork.Mainnet
+                "devnet" -> SolanaNetwork.Devnet
+                else -> null
+            }
+        }
+        CoinType.BITCOIN -> {
+            when (network.lowercase()) {
+                "mainnet" -> BitcoinNetwork.Mainnet
+                "testnet" -> BitcoinNetwork.Testnet
+                else -> null
+            }
+        }
+    }
+
+    // Initialize ViewModels with network parameter
     LaunchedEffect(Unit) {
         when (coinType) {
-            CoinType.ETHEREUM -> ethereumViewModel.initialize(walletId)
-            CoinType.USDC -> usdcViewModel.init(walletId)
-            CoinType.SOLANA -> solanaViewModel.init(walletId)
-            CoinType.BITCOIN -> bitcoinViewModel.init(walletId)
+            CoinType.ETHEREUM, CoinType.USDC -> {
+                ethereumViewModel.initialize(walletId, networkObject as? EthereumNetwork)
+            }
+            CoinType.SOLANA -> {
+                solanaViewModel.init(walletId, networkObject as? SolanaNetwork)
+            }
+            CoinType.BITCOIN -> {
+                bitcoinViewModel.handleEvent(
+                    BitcoinSendEvent.Initialize(walletId, networkObject as? BitcoinNetwork)
+                )
+            }
         }
     }
 
     // Determine loading state
     val isLoading = when (coinType) {
-        CoinType.ETHEREUM -> ethereumUiState.value.isLoading
-        CoinType.USDC -> usdcState.value.isLoading
+        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.isLoading
         CoinType.SOLANA -> solanaState.value.isLoading
         CoinType.BITCOIN -> bitcoinState.value.isLoading
     }
 
-    // Get coin display config using your coin-specific colors
+    // Get coin display config
     val (coinColor, icon, displayName) = when (coinType) {
         CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
         CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
         CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
         CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
     }
+
+    // Get current network display name
+    val currentNetworkName = when (coinType) {
+        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.network.displayName
+        CoinType.SOLANA -> when (solanaState.value.network) {
+            SolanaNetwork.Mainnet -> "Mainnet"
+            SolanaNetwork.Devnet -> "Devnet"
+        }
+        CoinType.BITCOIN -> bitcoinState.value.network.name
+    }
+
+    // Get selected token for EVM
+    val selectedToken = if (coinType == CoinType.ETHEREUM || coinType == CoinType.USDC) {
+        ethereumState.value.selectedToken
+    } else null
 
     Scaffold(
         topBar = {
@@ -146,6 +198,48 @@ fun SendScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            // Network and Token Selector Dialogs
+            if (showNetworkSelector) {
+                NetworkSelectorDialog(
+                    availableNetworks = when (coinType) {
+                        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.availableNetworks
+                        CoinType.SOLANA -> solanaState.value.availableNetworks
+                        CoinType.BITCOIN -> bitcoinState.value.availableNetworks
+                        else -> emptyList()
+                    },
+                    currentNetwork = currentNetworkName,
+                    onNetworkSelected = { selectedNetwork ->
+                        when (coinType) {
+                            CoinType.ETHEREUM, CoinType.USDC -> {
+                                ethereumViewModel.switchNetwork(selectedNetwork as EthereumNetwork)
+                            }
+                            CoinType.SOLANA -> {
+                                solanaViewModel.switchNetwork(selectedNetwork as SolanaNetwork)
+                            }
+                            CoinType.BITCOIN -> {
+                                bitcoinViewModel.handleEvent(
+                                    BitcoinSendEvent.SwitchNetwork(selectedNetwork as BitcoinNetwork)
+                                )
+                            }
+                        }
+                        showNetworkSelector = false
+                    },
+                    onDismiss = { showNetworkSelector = false }
+                )
+            }
+
+            if (showTokenSelector && (coinType == CoinType.ETHEREUM || coinType == CoinType.USDC)) {
+                TokenSelectorDialog(
+                    availableTokens = ethereumState.value.availableTokens,
+                    selectedToken = selectedToken,
+                    onTokenSelected = { token ->
+                        ethereumViewModel.selectToken(token)
+                        showTokenSelector = false
+                    },
+                    onDismiss = { showTokenSelector = false }
+                )
+            }
+
             // Scrollable content
             LazyColumn(
                 modifier = Modifier
@@ -154,27 +248,53 @@ fun SendScreen(
                 contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Network Selector (if multiple networks available)
+                if (when (coinType) {
+                        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.availableNetworks.size > 1
+                        CoinType.SOLANA -> solanaState.value.availableNetworks.size > 1
+                        CoinType.BITCOIN -> bitcoinState.value.availableNetworks.size > 1
+                        else -> false
+                    }
+                ) {
+                    item {
+                        NetworkSelectorCard(
+                            currentNetwork = currentNetworkName,
+                            onClick = { showNetworkSelector = true }
+                        )
+                    }
+                }
+
+                // Token Selector (for EVM coins with multiple tokens)
+                if ((coinType == CoinType.ETHEREUM || coinType == CoinType.USDC) &&
+                    ethereumState.value.availableTokens.size > 1
+                ) {
+                    item {
+                        TokenSelectorCard(
+                            selectedToken = selectedToken,
+                            onClick = { showTokenSelector = true }
+                        )
+                    }
+                }
+
                 // Balance Card
                 item {
                     when (coinType) {
-                        CoinType.ETHEREUM -> {
+                        CoinType.ETHEREUM, CoinType.USDC -> {
+                            val token = selectedToken
+                            val balance = if (token is NativeETH) {
+                                ethereumState.value.ethBalance
+                            } else {
+                                ethereumState.value.tokenBalance
+                            }
                             SendBalanceCard(
-                                balance = ethereumUiState.value.balance,
-                                balanceFormatted = "${ethereumUiState.value.balance.setScale(6, RoundingMode.HALF_UP)} ETH",
+                                balance = balance,
+                                balanceFormatted = "${balance.setScale(if (token?.decimals == 6) 2 else 6, RoundingMode.HALF_UP)} ${token?.symbol ?: "ETH"}",
                                 coinType = coinType,
-                                address = ethereumUiState.value.fromAddress,
-                                network = ethereumUiState.value.network
-                            )
-                        }
-                        CoinType.USDC -> {
-                            SendBalanceCard(
-                                balance = usdcState.value.usdcBalanceDecimal,
-                                balanceFormatted = "${usdcState.value.usdcBalanceDecimal.setScale(2, RoundingMode.HALF_UP)} USDC",
-                                coinType = coinType,
-                                address = usdcState.value.fromAddress,
-                                secondaryBalance = usdcState.value.ethBalanceDecimal,
-                                secondaryBalanceFormatted = "${usdcState.value.ethBalanceDecimal.setScale(4, RoundingMode.HALF_UP)} ETH",
-                                network = usdcState.value.network.displayName
+                                address = ethereumState.value.fromAddress,
+                                token = token,
+                                network = ethereumState.value.network.displayName,
+                                secondaryBalance = if (token !is NativeETH) ethereumState.value.ethBalance else null,
+                                secondaryBalanceFormatted = if (token !is NativeETH) "${ethereumState.value.ethBalance.setScale(4, RoundingMode.HALF_UP)} ETH" else null
                             )
                         }
                         CoinType.SOLANA -> {
@@ -182,7 +302,11 @@ fun SendScreen(
                                 balance = solanaState.value.balance,
                                 balanceFormatted = solanaState.value.balanceFormatted,
                                 coinType = coinType,
-                                address = solanaState.value.walletAddress
+                                address = solanaState.value.walletAddress,
+                                network = when (solanaState.value.network) {
+                                    SolanaNetwork.Mainnet -> "Mainnet"
+                                    SolanaNetwork.Devnet -> "Devnet"
+                                }
                             )
                         }
                         CoinType.BITCOIN -> {
@@ -199,22 +323,12 @@ fun SendScreen(
 
                 // Error/Info Messages
                 when (coinType) {
-                    CoinType.ETHEREUM -> {
-                        ethereumUiState.value.error?.let { error ->
+                    CoinType.ETHEREUM, CoinType.USDC -> {
+                        ethereumState.value.error?.let { error ->
                             item {
                                 ErrorMessage(
                                     error = error,
-                                    onDismiss = { ethereumViewModel.onEvent(EthereumSendEvent.ClearError) }
-                                )
-                            }
-                        }
-                    }
-                    CoinType.USDC -> {
-                        usdcState.value.error?.let { error ->
-                            item {
-                                ErrorMessage(
-                                    error = error,
-                                    onDismiss = { usdcViewModel.onEvent(USDCSendEvent.ClearError) }
+                                    onDismiss = { ethereumViewModel.clearError() }
                                 )
                             }
                         }
@@ -229,36 +343,33 @@ fun SendScreen(
                             }
                         }
                     }
-                    // SOLANA errors are shown inline via validation
-                    else -> {}
+                    CoinType.SOLANA -> {
+                        solanaState.value.error?.let { error ->
+                            item {
+                                ErrorMessage(
+                                    error = error,
+                                    onDismiss = { solanaViewModel.clearError() }
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // Address Input
                 item {
                     when (coinType) {
-                        CoinType.ETHEREUM -> {
+                        CoinType.ETHEREUM, CoinType.USDC -> {
                             SendAddressInput(
-                                toAddress = ethereumUiState.value.toAddress,
+                                toAddress = ethereumState.value.toAddress,
                                 onAddressChange = { ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(it)) },
                                 coinType = coinType,
-                                isValid = ethereumUiState.value.validationResult.isValid &&
-                                        ethereumUiState.value.validationResult.addressError == null,
-                                errorMessage = ethereumUiState.value.validationResult.addressError
-                                    ?: ethereumUiState.value.validationResult.selfSendError,
+                                token = selectedToken,
+                                isValid = ethereumState.value.validationResult.isValid &&
+                                        ethereumState.value.validationResult.addressError == null,
+                                errorMessage = ethereumState.value.validationResult.addressError
+                                    ?: ethereumState.value.validationResult.selfSendError,
                                 onPaste = { pastedText ->
                                     ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(pastedText))
-                                }
-                            )
-                        }
-                        CoinType.USDC -> {
-                            SendAddressInput(
-                                toAddress = usdcState.value.toAddress,
-                                onAddressChange = { usdcViewModel.onEvent(USDCSendEvent.ToAddressChanged(it)) },
-                                coinType = coinType,
-                                isValid = usdcState.value.validationResult.isValidAddress,
-                                errorMessage = usdcState.value.validationResult.addressError,
-                                onPaste = { pastedText ->
-                                    usdcViewModel.onEvent(USDCSendEvent.ToAddressChanged(pastedText))
                                 }
                             )
                         }
@@ -279,7 +390,9 @@ fun SendScreen(
                         CoinType.BITCOIN -> {
                             SendAddressInput(
                                 toAddress = bitcoinState.value.toAddress,
-                                onAddressChange = { bitcoinViewModel.updateAddress(it) },
+                                onAddressChange = {
+                                    bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAddress(it))
+                                },
                                 coinType = coinType,
                                 isValid = bitcoinState.value.validationResult.isValid &&
                                         bitcoinState.value.validationResult.addressError == null,
@@ -287,7 +400,7 @@ fun SendScreen(
                                     ?: bitcoinState.value.validationResult.selfSendError,
                                 network = bitcoinState.value.network,
                                 onPaste = { pastedText ->
-                                    bitcoinViewModel.updateAddress(pastedText)
+                                    bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAddress(pastedText))
                                 }
                             )
                         }
@@ -297,27 +410,19 @@ fun SendScreen(
                 // Amount Input
                 item {
                     when (coinType) {
-                        CoinType.ETHEREUM -> {
+                        CoinType.ETHEREUM, CoinType.USDC -> {
+                            val token = selectedToken
                             SendAmountInput(
-                                amount = ethereumUiState.value.amount,
+                                amount = ethereumState.value.amount,
                                 onAmountChange = { ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(it)) },
-                                balance = ethereumUiState.value.balance,
+                                balance = if (token is NativeETH) ethereumState.value.ethBalance else ethereumState.value.tokenBalance,
                                 coinType = coinType,
+                                token = token,
+                                tokenSymbol = token?.symbol,
                                 onMaxClick = { showMaxDialog = true },
-                                errorMessage = ethereumUiState.value.validationResult.amountError
-                                    ?: ethereumUiState.value.validationResult.balanceError
-                            )
-                        }
-                        CoinType.USDC -> {
-                            SendAmountInput(
-                                amount = usdcState.value.amount,
-                                onAmountChange = { usdcViewModel.onEvent(USDCSendEvent.AmountChanged(it)) },
-                                balance = usdcState.value.usdcBalanceDecimal,
-                                coinType = coinType,
-                                tokenSymbol = "USDC",
-                                onMaxClick = { showMaxDialog = true },
-                                errorMessage = usdcState.value.validationResult.amountError
-                                    ?: usdcState.value.validationResult.balanceError
+                                errorMessage = ethereumState.value.validationResult.amountError
+                                    ?: ethereumState.value.validationResult.balanceError
+                                    ?: ethereumState.value.validationResult.gasError
                             )
                         }
                         CoinType.SOLANA -> {
@@ -334,7 +439,9 @@ fun SendScreen(
                         CoinType.BITCOIN -> {
                             SendAmountInput(
                                 amount = bitcoinState.value.amount,
-                                onAmountChange = { bitcoinViewModel.updateAmount(it) },
+                                onAmountChange = {
+                                    bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAmount(it))
+                                },
                                 balance = bitcoinState.value.balance,
                                 coinType = coinType,
                                 onMaxClick = { showMaxDialog = true },
@@ -348,20 +455,13 @@ fun SendScreen(
                 // Fee Selection
                 item {
                     when (coinType) {
-                        CoinType.ETHEREUM -> {
+                        CoinType.ETHEREUM, CoinType.USDC -> {
                             SendFeeSelection(
-                                feeLevel = ethereumUiState.value.feeLevel,
+                                feeLevel = ethereumState.value.feeLevel,
                                 onFeeLevelChange = { ethereumViewModel.onEvent(EthereumSendEvent.FeeLevelChanged(it)) },
-                                feeEstimate = ethereumUiState.value.feeEstimate,
-                                coinType = coinType
-                            )
-                        }
-                        CoinType.USDC -> {
-                            SendFeeSelection(
-                                feeLevel = usdcState.value.feeLevel,
-                                onFeeLevelChange = { usdcViewModel.onEvent(USDCSendEvent.FeeLevelChanged(it)) },
-                                feeEstimate = usdcState.value.feeEstimate,
-                                coinType = coinType
+                                feeEstimate = ethereumState.value.feeEstimate,
+                                coinType = coinType,
+                                token = selectedToken
                             )
                         }
                         CoinType.SOLANA -> {
@@ -375,7 +475,9 @@ fun SendScreen(
                         CoinType.BITCOIN -> {
                             SendFeeSelection(
                                 feeLevel = bitcoinState.value.feeLevel,
-                                onFeeLevelChange = { bitcoinViewModel.updateFeeLevel(it) },
+                                onFeeLevelChange = {
+                                    bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateFeeLevel(it))
+                                },
                                 feeEstimate = bitcoinState.value.feeEstimate,
                                 coinType = coinType
                             )
@@ -389,55 +491,42 @@ fun SendScreen(
                 }
             }
 
-            // Bottom Bar
             SendBottomBar(
                 isValid = when (coinType) {
-                    CoinType.ETHEREUM -> ethereumUiState.value.validationResult.isValid
-                    CoinType.USDC -> usdcState.value.validationResult.isValid
+                    CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.isValid
                     CoinType.SOLANA -> solanaState.value.validationResult.isValid
                     CoinType.BITCOIN -> bitcoinState.value.validationResult.isValid
                 },
                 isLoading = isLoading,
                 error = when (coinType) {
-                    CoinType.ETHEREUM -> ethereumUiState.value.error
-                    CoinType.USDC -> usdcState.value.error
+                    CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.error
                     CoinType.SOLANA -> solanaState.value.error
                     CoinType.BITCOIN -> bitcoinState.value.error
                 },
                 onSend = {
                     when (coinType) {
-                        CoinType.ETHEREUM -> {
-                            ethereumViewModel.send { txHash ->
+                        CoinType.ETHEREUM, CoinType.USDC -> {
+                            val token = selectedToken
+                            if (token != null) {
                                 onNavigateToReview(
                                     walletId,
-                                    CoinType.ETHEREUM,
-                                    ethereumUiState.value.toAddress,
-                                    ethereumUiState.value.amount,
-                                    ethereumUiState.value.feeLevel
-                                )
-                            }
-                        }
-                        CoinType.USDC -> {
-                            usdcViewModel.send { txHash ->
-                                onNavigateToReview(
-                                    walletId,
-                                    CoinType.USDC,
-                                    usdcState.value.toAddress,
-                                    usdcState.value.amount,
-                                    usdcState.value.feeLevel
+                                    coinType,
+                                    ethereumState.value.toAddress,
+                                    ethereumState.value.amount,
+                                    ethereumState.value.feeLevel,
+                                    ethereumState.value.network
                                 )
                             }
                         }
                         CoinType.SOLANA -> {
-                            solanaViewModel.send { txHash ->
-                                onNavigateToReview(
-                                    walletId,
-                                    CoinType.SOLANA,
-                                    solanaState.value.toAddress,
-                                    solanaState.value.amount,
-                                    solanaState.value.feeLevel
-                                )
-                            }
+                            onNavigateToReview(
+                                walletId,
+                                CoinType.SOLANA,
+                                solanaState.value.toAddress,
+                                solanaState.value.amount,
+                                solanaState.value.feeLevel,
+                                solanaState.value.network
+                            )
                         }
                         CoinType.BITCOIN -> {
                             onNavigateToReview(
@@ -445,7 +534,8 @@ fun SendScreen(
                                 CoinType.BITCOIN,
                                 bitcoinState.value.toAddress,
                                 bitcoinState.value.amount,
-                                bitcoinState.value.feeLevel
+                                bitcoinState.value.feeLevel,
+                                bitcoinState.value.network
                             )
                         }
                     }
@@ -458,28 +548,17 @@ fun SendScreen(
     // Max Amount Dialog
     if (showMaxDialog) {
         when (coinType) {
-            CoinType.ETHEREUM -> {
+            CoinType.ETHEREUM, CoinType.USDC -> {
+                val token = selectedToken
                 MaxAmountDialog(
-                    balance = ethereumUiState.value.balance,
-                    feeEstimate = ethereumUiState.value.feeEstimate,
-                    tokenSymbol = "ETH",
+                    balance = if (token is NativeETH) ethereumState.value.ethBalance else ethereumState.value.tokenBalance,
+                    feeEstimate = ethereumState.value.feeEstimate,
+                    tokenSymbol = token?.symbol ?: "ETH",
                     coinType = coinType,
+                    token = token,
                     onDismiss = { showMaxDialog = false },
                     onConfirm = { maxAmount ->
                         ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(maxAmount))
-                        showMaxDialog = false
-                    }
-                )
-            }
-            CoinType.USDC -> {
-                MaxAmountDialog(
-                    balance = usdcState.value.usdcBalanceDecimal,
-                    feeEstimate = usdcState.value.feeEstimate,
-                    tokenSymbol = "USDC",
-                    coinType = coinType,
-                    onDismiss = { showMaxDialog = false },
-                    onConfirm = { maxAmount ->
-                        usdcViewModel.onEvent(USDCSendEvent.AmountChanged(maxAmount))
                         showMaxDialog = false
                     }
                 )
@@ -505,7 +584,7 @@ fun SendScreen(
                     coinType = coinType,
                     onDismiss = { showMaxDialog = false },
                     onConfirm = { maxAmount ->
-                        bitcoinViewModel.updateAmount(maxAmount)
+                        bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAmount(maxAmount))
                         showMaxDialog = false
                     }
                 )
@@ -515,20 +594,353 @@ fun SendScreen(
 }
 
 @Composable
+fun TokenSelectorCard(
+    selectedToken: EVMToken?,
+    onClick: () -> Unit
+) {
+    val (icon, color) = when (selectedToken) {
+        is NativeETH -> Pair(Icons.Outlined.Diamond, ethereumLight)
+        is USDCToken -> Pair(Icons.Outlined.AttachMoney, usdcLight)
+        is USDTToken -> Pair(Icons.Outlined.AttachMoney, usdtLight)
+        else -> Pair(Icons.Outlined.Token, MaterialTheme.colorScheme.primary)
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Token",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = selectedToken?.symbol ?: "Select token",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Icon(
+                imageVector = Icons.Outlined.ChevronRight,
+                contentDescription = "Change token",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun NetworkSelectorCard(
+    currentNetwork: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Lan,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Network",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = currentNetwork,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Icon(
+                imageVector = Icons.Outlined.ChevronRight,
+                contentDescription = "Change network",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun NetworkSelectorDialog(
+    availableNetworks: List<Any>,
+    currentNetwork: String,
+    onNetworkSelected: (Any) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Text(
+                text = "Select Network",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 300.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(availableNetworks) { network ->
+                    val networkName = when (network) {
+                        is BitcoinNetwork -> when (network) {
+                            BitcoinNetwork.Mainnet -> "Bitcoin Mainnet"
+                            BitcoinNetwork.Testnet -> "Bitcoin Testnet"
+                        }
+                        is EthereumNetwork -> network.displayName
+                        is SolanaNetwork -> when (network) {
+                            SolanaNetwork.Mainnet -> "Solana Mainnet"
+                            SolanaNetwork.Devnet -> "Solana Devnet"
+                        }
+                        else -> network.toString()
+                    }
+                    val isSelected = networkName == currentNetwork
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNetworkSelected(network) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected)
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = networkName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CheckCircle,
+                                    contentDescription = "Selected",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun TokenSelectorDialog(
+    availableTokens: List<EVMToken>,
+    selectedToken: EVMToken?,
+    onTokenSelected: (EVMToken) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Text(
+                text = "Select Token",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 300.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(availableTokens) { token ->
+                    val isSelected = token == selectedToken
+                    val (icon, color) = when (token) {
+                        is NativeETH -> Pair(Icons.Outlined.Diamond, ethereumLight)
+                        is USDCToken -> Pair(Icons.Outlined.AttachMoney, usdcLight)
+                        is USDTToken -> Pair(Icons.Outlined.AttachMoney, usdtLight)
+                        else -> Pair(Icons.Outlined.Token, MaterialTheme.colorScheme.primary)
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onTokenSelected(token) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected)
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(color.copy(alpha = 0.1f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = color,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = token.symbol,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = token.name,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (token.network != EthereumNetwork.Mainnet) {
+                                    Text(
+                                        text = token.network.displayName,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CheckCircle,
+                                    contentDescription = "Selected",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
 fun SendBalanceCard(
     balance: BigDecimal,
     balanceFormatted: String,
     coinType: CoinType,
     address: String,
+    token: EVMToken? = null,
     secondaryBalance: BigDecimal? = null,
     secondaryBalanceFormatted: String? = null,
     network: String? = null
 ) {
-    val (coinColor, icon, displayName) = when (coinType) {
-        CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
-        CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
-        CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
-        CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
+    val (coinColor, icon, displayName) = when {
+        token != null -> when (token) {
+            is NativeETH -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+            is USDCToken -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USD Coin")
+            is USDTToken -> Triple(usdtLight, Icons.Outlined.AttachMoney, "Tether USD")
+            else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.Token, token.name)
+        }
+        coinType == CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
+        coinType == CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+        coinType == CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
+        coinType == CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
+        else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.AccountBalanceWallet, "Asset")
     }
 
     Card(
@@ -556,13 +968,15 @@ fun SendBalanceCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
+                    val usdValue = if (token is USDCToken || token is USDTToken) {
+                        // Stablecoins are 1:1 with USD
+                        String.format("%.2f", balance.toDouble())
+                    } else {
+                        String.format("%.2f", balance.toDouble() * getUsdRate(coinType))
+                    }
+
                     Text(
-                        text = "$${
-                            String.format(
-                                "%.2f",
-                                balance.toDouble() * getUsdRate(coinType)
-                            )
-                        }",
+                        text = "$$usdValue",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -631,23 +1045,30 @@ fun SendBalanceCard(
         }
     }
 }
-
 @Composable
 fun SendAddressInput(
     toAddress: String,
     onAddressChange: (String) -> Unit,
     coinType: CoinType,
+    token: EVMToken? = null,
     isValid: Boolean = true,
     errorMessage: String? = null,
     network: BitcoinNetwork? = null,
     onPaste: (String) -> Unit
 ) {
     val context = LocalContext.current
-    val (coinColor, _, _) = when (coinType) {
-        CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
-        CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
-        CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
-        CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
+    val (coinColor, _, _) = when {
+        token != null -> when (token) {
+            is NativeETH -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+            is USDCToken -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USD Coin")
+            is USDTToken -> Triple(usdtLight, Icons.Outlined.AttachMoney, "Tether USD")
+            else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.Token, token.name)
+        }
+        coinType == CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
+        coinType == CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+        coinType == CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
+        coinType == CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
+        else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.AccountBalanceWallet, "Asset")
     }
 
     Card(
@@ -678,14 +1099,16 @@ fun SendAddressInput(
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = {
                     Text(
-                        text = when (coinType) {
-                            CoinType.BITCOIN -> {
-                                val networkHint = if (network == BitcoinNetwork.TESTNET)
+                        text = when {
+                            token != null || coinType == CoinType.ETHEREUM || coinType == CoinType.USDC ->
+                                "Enter Ethereum address (0x...)"
+                            coinType == CoinType.BITCOIN -> {
+                                val networkHint = if (network == BitcoinNetwork.Testnet)
                                     " (testnet)" else ""
                                 "Enter Bitcoin address$networkHint"
                             }
-                            CoinType.ETHEREUM, CoinType.USDC -> "Enter Ethereum address (0x...)"
-                            CoinType.SOLANA -> "Enter Solana address"
+                            coinType == CoinType.SOLANA -> "Enter Solana address"
+                            else -> "Enter address"
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
@@ -791,21 +1214,30 @@ fun SendAmountInput(
     onAmountChange: (String) -> Unit,
     balance: BigDecimal,
     coinType: CoinType,
+    token: EVMToken? = null,
     tokenSymbol: String? = null,
     onMaxClick: () -> Unit,
     errorMessage: String? = null
 ) {
-    val symbol = tokenSymbol ?: when (coinType) {
+    val symbol = tokenSymbol ?: token?.symbol ?: when (coinType) {
         CoinType.BITCOIN -> "BTC"
         CoinType.ETHEREUM -> "ETH"
         CoinType.SOLANA -> "SOL"
         CoinType.USDC -> "USDC"
     }
-    val (coinColor, _, _) = when (coinType) {
-        CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
-        CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
-        CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
-        CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
+
+    val (coinColor, _, _) = when {
+        token != null -> when (token) {
+            is NativeETH -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+            is USDCToken -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USD Coin")
+            is USDTToken -> Triple(usdtLight, Icons.Outlined.AttachMoney, "Tether USD")
+            else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.Token, token.name)
+        }
+        coinType == CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
+        coinType == CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+        coinType == CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
+        coinType == CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
+        else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.AccountBalanceWallet, "Asset")
     }
 
     Card(
@@ -949,7 +1381,11 @@ fun SendAmountInput(
                     BigDecimal.ZERO
                 }
 
-                val usdAmount = amountValue.toDouble() * getUsdRate(coinType)
+                val usdAmount = if (token is USDCToken || token is USDTToken) {
+                    amountValue.toDouble() // Stablecoins are 1:1
+                } else {
+                    amountValue.toDouble() * getUsdRate(coinType)
+                }
 
                 Text(
                     text = "≈ $${String.format("%.2f", usdAmount)} USD",
@@ -969,7 +1405,8 @@ fun SendFeeSelection(
     feeLevel: FeeLevel,
     onFeeLevelChange: (FeeLevel) -> Unit,
     feeEstimate: Any?,
-    coinType: CoinType
+    coinType: CoinType,
+    token: EVMToken? = null
 ) {
     Card(
         modifier = Modifier
@@ -1000,17 +1437,25 @@ fun SendFeeSelection(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            when (coinType) {
-                CoinType.ETHEREUM, CoinType.USDC -> {
-                    (feeEstimate as? EthereumFeeEstimate)?.let { fee ->
+            when {
+                token != null || coinType == CoinType.ETHEREUM || coinType == CoinType.USDC -> {
+                    (feeEstimate as? EVMFeeEstimate)?.let { fee ->
                         FeeDetailsRow(
                             label = "Network Fee",
                             value = "${fee.totalFeeEth} ETH"
                         )
+                        FeeDetailsRow(
+                            label = "Gas Price",
+                            value = "${fee.gasPriceGwei} Gwei"
+                        )
+                        FeeDetailsRow(
+                            label = "Gas Limit",
+                            value = fee.gasLimit.toString()
+                        )
                     }
                 }
 
-                CoinType.BITCOIN -> {
+                coinType == CoinType.BITCOIN -> {
                     (feeEstimate as? BitcoinFeeEstimate)?.let { fee ->
                         FeeDetailsRow(
                             label = "Network Fee",
@@ -1023,7 +1468,7 @@ fun SendFeeSelection(
                     }
                 }
 
-                CoinType.SOLANA -> {
+                coinType == CoinType.SOLANA -> {
                     (feeEstimate as? SolanaFeeEstimate)?.let { fee ->
                         FeeDetailsRow(
                             label = "Network Fee",
@@ -1209,6 +1654,7 @@ fun MaxAmountDialog(
     feeEstimate: Any?,
     tokenSymbol: String,
     coinType: CoinType,
+    token: EVMToken? = null,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
@@ -1217,10 +1663,9 @@ fun MaxAmountDialog(
         is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull()
             ?: BigDecimal("0.00001")
 
-        is EthereumFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull()
+        is EVMFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull()
             ?: BigDecimal("0.001")
 
-        is USDCFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
         is SolanaFeeEstimate -> feeEstimate.feeSol.toBigDecimalOrNull() ?: BigDecimal("0.000005")
         else -> when (coinType) {
             CoinType.BITCOIN -> BigDecimal("0.00001")
@@ -1478,7 +1923,7 @@ fun ErrorMessage(
     }
 }
 
-// Helper function for USD rate (simplified version)
+// Helper function for USD rate
 private fun getUsdRate(coinType: CoinType): Double {
     return when (coinType) {
         CoinType.BITCOIN -> 45000.0

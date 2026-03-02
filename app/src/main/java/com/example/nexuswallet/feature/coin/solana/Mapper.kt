@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.coin.solana
 
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -9,9 +10,6 @@ private const val LAMPORTS_PER_SOL = 1_000_000_000L
 private const val SOL_DECIMALS = 9
 private const val DUST_THRESHOLD = 10_000L
 
-/**
- * Map SolanaTransactionDetailsResponse to domain transaction
- */
 fun SolanaTransactionDetailsResponse.toDomainTransaction(
     walletId: String,
     walletAddress: String,
@@ -84,12 +82,14 @@ fun SolanaTransactionDetailsResponse.toDomainTransaction(
         amountSol = amountSol,
         feeLamports = meta.fee,
         feeSol = feeSol,
-        blockhash = transaction.message.recentBlockhash,
         signature = signature,
         network = network,
         isIncoming = isIncoming,
         slot = slot,
-        blockTime = blockTime
+        blockTime = blockTime,
+        tokenMint = null,  // Native SOL transaction
+        tokenSymbol = null,
+        tokenDecimals = null
     )
 }
 
@@ -103,8 +103,7 @@ fun SolanaTransactionResponse.toDomainTransaction(
     val timestamp = blockTime?.times(1000) ?: System.currentTimeMillis()
 
     val status = when (confirmationStatus?.lowercase()) {
-        "finalized" -> TransactionStatus.SUCCESS
-        "confirmed" -> TransactionStatus.SUCCESS
+        "finalized", "confirmed" -> TransactionStatus.SUCCESS
         "processed" -> TransactionStatus.PENDING
         else -> TransactionStatus.PENDING
     }
@@ -112,8 +111,8 @@ fun SolanaTransactionResponse.toDomainTransaction(
     return SolanaTransaction(
         id = "sol_sig_${signature}_${System.currentTimeMillis()}",
         walletId = walletId,
-        fromAddress = "",  // Will be filled when details are available
-        toAddress = "",    // Will be filled when details are available
+        fromAddress = "",
+        toAddress = "",
         status = status,
         timestamp = timestamp,
         note = null,
@@ -122,12 +121,14 @@ fun SolanaTransactionResponse.toDomainTransaction(
         amountSol = "0",
         feeLamports = 0,
         feeSol = "0",
-        blockhash = "",
         signature = signature,
         network = network,
         isIncoming = false,
         slot = slot,
-        blockTime = blockTime
+        blockTime = blockTime,
+        tokenMint = null,
+        tokenSymbol = null,
+        tokenDecimals = null
     )
 }
 
@@ -154,6 +155,55 @@ fun Pair<SolanaTransactionResponse, SolanaTransactionDetailsResponse?>.toDomainT
     // Otherwise create a minimal transaction from signature info
     return sigInfo.toDomainTransaction(walletId, network)
 }
+//
+///**
+// * Map SPL token transfer to domain transaction
+// */
+//fun SPLTokenTransferResponse.toDomainTransaction(
+//    walletId: String,
+//    walletAddress: String,
+//    network: SolanaNetwork,
+//    tokenInfo: SPLToken
+//): SolanaTransaction {
+//    val isIncoming = destination == walletAddress
+//    val amount = amount.toLongOrNull() ?: 0
+//    val amountDecimal = BigDecimal(amount).divide(
+//        BigDecimal.TEN.pow(tokenInfo.decimals),
+//        tokenInfo.decimals,
+//        RoundingMode.HALF_UP
+//    ).toPlainString()
+//
+//    return SolanaTransaction(
+//        id = "spl_${signature}_${System.currentTimeMillis()}",
+//        walletId = walletId,
+//        fromAddress = source,
+//        toAddress = destination,
+//        status = TransactionStatus.SUCCESS,
+//        timestamp = blockTime?.times(1000) ?: System.currentTimeMillis(),
+//        note = "${tokenInfo.name} Transfer",
+//        feeLevel = FeeLevel.NORMAL,
+//        amountLamports = 0,  // Not applicable for SPL
+//        amountSol = "0",      // Not applicable for SPL
+//        feeLamports = fee ?: 0,
+//        feeSol = fee?.let {
+//            BigDecimal(it).divide(
+//                BigDecimal(LAMPORTS_PER_SOL),
+//                SOL_DECIMALS,
+//                RoundingMode.HALF_UP
+//            ).toPlainString()
+//        } ?: "0",
+//        signature = signature,
+//        network = network,
+//        isIncoming = isIncoming,
+//        slot = slot,
+//        blockTime = blockTime,
+//        tokenMint = mint,
+//        tokenSymbol = tokenInfo.symbol,
+//        tokenDecimals = tokenInfo.decimals
+//    )
+//}
+
+// ===== Entity Mappers =====
 
 fun SolanaTransactionEntity.toDomain(): SolanaTransaction {
     return SolanaTransaction(
@@ -169,13 +219,14 @@ fun SolanaTransactionEntity.toDomain(): SolanaTransaction {
         amountSol = amountSol,
         feeLamports = feeLamports,
         feeSol = feeSol,
-        blockhash = blockhash,
-        signedData = signedData,
         signature = signature,
-        network = network,
+        network = network.toSolanaNetwork(),
         isIncoming = isIncoming,
         slot = slot,
-        blockTime = blockTime
+        blockTime = blockTime,
+        tokenMint = tokenMint,
+        tokenSymbol = tokenSymbol,
+        tokenDecimals = tokenDecimals
     )
 }
 
@@ -193,12 +244,26 @@ fun SolanaTransaction.toEntity(): SolanaTransactionEntity {
         amountSol = amountSol,
         feeLamports = feeLamports,
         feeSol = feeSol,
-        blockhash = blockhash,
-        signedData = signedData,
         signature = signature,
-        network = network,
+        network = network.toStorageString(),
         isIncoming = isIncoming,
         slot = slot,
-        blockTime = blockTime
+        blockTime = blockTime,
+        tokenMint = tokenMint,
+        tokenSymbol = tokenSymbol,
+        tokenDecimals = tokenDecimals
     )
+}
+
+// ===== Network Helpers =====
+
+fun SolanaNetwork.toStorageString(): String = when (this) {
+    SolanaNetwork.Mainnet -> "Mainnet"
+    SolanaNetwork.Devnet -> "Devnet"
+}
+
+fun String.toSolanaNetwork(): SolanaNetwork = when (this) {
+    "Mainnet" -> SolanaNetwork.Mainnet
+    "Devnet" -> SolanaNetwork.Devnet
+    else -> SolanaNetwork.Devnet
 }

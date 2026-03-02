@@ -4,6 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLToken
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,14 +25,19 @@ class SolanaSendViewModel @Inject constructor(
     private val sendSolanaUseCase: SendSolanaUseCase,
     private val getSolanaBalanceUseCase: GetSolanaBalanceUseCase,
     private val getSolanaFeeEstimateUseCase: GetSolanaFeeEstimateUseCase,
-    private val validateSolanaSendUseCase: ValidateSolanaSendUseCase
+    private val validateSolanaSendUseCase: ValidateSolanaSendUseCase,
+    private val walletRepository: WalletRepository
 ) : ViewModel() {
 
     data class SolanaSendUIState(
         val walletId: String = "",
         val walletName: String = "",
         val walletAddress: String = "",
-        val network: SolanaNetwork = SolanaNetwork.DEVNET,
+        val network: SolanaNetwork = SolanaNetwork.Devnet,
+        val availableNetworks: List<SolanaNetwork> = emptyList(),
+        val availableSplTokens: List<SPLToken> = emptyList(),
+        val selectedSplToken: SPLToken? = null,
+        val isNativeSol: Boolean = true,
         val balance: BigDecimal = BigDecimal.ZERO,
         val balanceFormatted: String = "0 SOL",
         val toAddress: String = "",
@@ -40,44 +50,146 @@ class SolanaSendViewModel @Inject constructor(
         ),
         val isLoading: Boolean = false,
         val error: String? = null,
-        val step: String = ""
+        val step: String = "",
+        val isValid: Boolean = false
     )
 
     private val _state = MutableStateFlow(SolanaSendUIState())
     val state: StateFlow<SolanaSendUIState> = _state.asStateFlow()
 
-    fun init(walletId: String) {
+    private var wallet: Wallet? = null
+    private var solanaCoins: Map<SolanaNetwork, SolanaCoin> = emptyMap()
+
+    fun init(walletId: String, network: SolanaNetwork? = null) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
 
-            when (val result = getSolanaWalletUseCase(walletId)) {
+            // Load wallet
+            wallet = walletRepository.getWallet(walletId)
+            if (wallet == null) {
+                _state.update { it.copy(error = "Wallet not found", isLoading = false) }
+                return@launch
+            }
+
+            // Get all Solana coins
+            solanaCoins = wallet!!.solanaCoins.associateBy { it.network }
+            val availableNetworks = solanaCoins.keys.toList()
+
+            if (availableNetworks.isEmpty()) {
+                _state.update { it.copy(error = "Solana not enabled for this wallet", isLoading = false) }
+                return@launch
+            }
+
+            // Determine target network
+            val targetNetwork = network ?: availableNetworks.firstOrNull() ?: SolanaNetwork.Devnet
+            val solanaCoin = solanaCoins[targetNetwork]
+
+            if (solanaCoin == null) {
+                _state.update {
+                    it.copy(
+                        error = "Solana not enabled for network $targetNetwork",
+                        isLoading = false,
+                        availableNetworks = availableNetworks
+                    )
+                }
+                return@launch
+            }
+
+            when (val result = getSolanaWalletUseCase(walletId, targetNetwork)) {
                 is Result.Success -> {
                     val walletInfo = result.data
-                    val network = SolanaNetwork.DEVNET
-
                     _state.update {
                         it.copy(
                             walletId = walletInfo.walletId,
                             walletName = walletInfo.walletName,
                             walletAddress = walletInfo.walletAddress,
-                            network = network
+                            network = targetNetwork,
+                            availableNetworks = availableNetworks,
+                            availableSplTokens = solanaCoin.splTokens,
+                            isNativeSol = true,
+                            isLoading = false
                         )
                     }
-                    loadBalance(walletInfo.walletAddress, network)
-                    loadFeeEstimate(network)
+                    loadBalance(walletInfo.walletAddress, targetNetwork)
+                    loadFeeEstimate(targetNetwork)
                 }
 
                 is Result.Error -> {
                     _state.update {
                         it.copy(
                             error = result.message,
-                            isLoading = false
+                            isLoading = false,
+                            availableNetworks = availableNetworks
                         )
                     }
                 }
 
                 Result.Loading -> {}
             }
+        }
+    }
+
+    // Helper method to set transaction data from review screen
+    fun setTransactionData(
+        toAddress: String,
+        amount: String,
+        feeLevel: FeeLevel
+    ) {
+        _state.update {
+            it.copy(
+                toAddress = toAddress,
+                amount = amount,
+                amountValue = amount.toBigDecimalOrNull() ?: BigDecimal.ZERO,
+                feeLevel = feeLevel
+            )
+        }
+
+        viewModelScope.launch {
+            // Reload fee estimate with new fee level
+            loadFeeEstimate(_state.value.network)
+            validateInputs()
+        }
+    }
+
+    fun switchNetwork(network: SolanaNetwork) {
+        val solanaCoin = solanaCoins[network]
+        if (solanaCoin == null) {
+            _state.update { it.copy(error = "Solana not available on $network") }
+            return
+        }
+
+        _state.update {
+            it.copy(
+                network = network,
+                walletAddress = solanaCoin.address,
+                availableSplTokens = solanaCoin.splTokens,
+                isNativeSol = true,
+                selectedSplToken = null,
+                toAddress = "",
+                amount = "",
+                amountValue = BigDecimal.ZERO,
+                feeEstimate = null,
+                error = null
+            )
+        }
+
+        viewModelScope.launch {
+            loadBalance(solanaCoin.address, network)
+            loadFeeEstimate(network)
+        }
+    }
+
+    fun selectAsset(isNative: Boolean, splToken: SPLToken? = null) {
+        _state.update {
+            it.copy(
+                isNativeSol = isNative,
+                selectedSplToken = splToken,
+                amount = "",
+                amountValue = BigDecimal.ZERO
+            )
+        }
+        viewModelScope.launch {
+            validateInputs()
         }
     }
 
@@ -92,7 +204,7 @@ class SolanaSendViewModel @Inject constructor(
                         isLoading = false
                     )
                 }
-                validateInputs() // Re-validate after balance loads
+                validateInputs()
             }
 
             is Result.Error -> {
@@ -117,7 +229,7 @@ class SolanaSendViewModel @Inject constructor(
             )) {
                 is Result.Success -> {
                     _state.update { it.copy(feeEstimate = feeResult.data) }
-                    validateInputs() // Re-validate after fee loads
+                    validateInputs()
                 }
 
                 is Result.Error -> {
@@ -167,7 +279,7 @@ class SolanaSendViewModel @Inject constructor(
         }
     }
 
-    private fun validateInputs(): Boolean {
+    private suspend fun validateInputs(): Boolean {
         val currentState = _state.value
         val validationResult = validateSolanaSendUseCase(
             toAddress = currentState.toAddress,
@@ -177,7 +289,12 @@ class SolanaSendViewModel @Inject constructor(
             feeEstimate = currentState.feeEstimate
         )
 
-        _state.update { it.copy(validationResult = validationResult) }
+        _state.update {
+            it.copy(
+                validationResult = validationResult,
+                isValid = validationResult.isValid
+            )
+        }
 
         // Update error field for backward compatibility
         val firstError = validationResult.addressError
@@ -194,28 +311,13 @@ class SolanaSendViewModel @Inject constructor(
         return validationResult.isValid
     }
 
-    fun updateAmount(amount: String) {
-        val amountValue = try {
-            amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
-        } catch (e: Exception) {
-            BigDecimal.ZERO
-        }
-        _state.update {
-            it.copy(
-                amount = amount,
-                amountValue = amountValue
-            )
-        }
-        viewModelScope.launch {
-            validateInputs()
-        }
-    }
-
     fun send(onSuccess: (String) -> Unit) {
         viewModelScope.launch {
             val state = _state.value
-            if (state.walletId.isEmpty()) {
-                _state.update { it.copy(error = "Wallet not loaded") }
+            val solanaCoin = solanaCoins[state.network]
+
+            if (state.walletId.isEmpty() || solanaCoin == null) {
+                _state.update { it.copy(error = "Wallet not properly loaded") }
                 return@launch
             }
 
@@ -230,6 +332,7 @@ class SolanaSendViewModel @Inject constructor(
                 toAddress = state.toAddress,
                 amount = state.amountValue,
                 feeLevel = state.feeLevel,
+                network = state.network,
                 note = null
             )
 
@@ -279,6 +382,34 @@ class SolanaSendViewModel @Inject constructor(
                 balance = _state.value.balance,
                 balanceFormatted = _state.value.balanceFormatted
             )
+        }
+    }
+
+    // Helper methods for the review screen
+    fun updateToAddress(address: String) {
+        _state.update { it.copy(toAddress = address) }
+        viewModelScope.launch {
+            validateInputs()
+        }
+    }
+
+    fun updateAmount(amount: String) {
+        val amountValue = amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
+        _state.update {
+            it.copy(
+                amount = amount,
+                amountValue = amountValue
+            )
+        }
+        viewModelScope.launch {
+            validateInputs()
+        }
+    }
+
+    fun updateFeeLevel(feeLevel: FeeLevel) {
+        _state.update { it.copy(feeLevel = feeLevel) }
+        viewModelScope.launch {
+            loadFeeEstimate(_state.value.network)
         }
     }
 }

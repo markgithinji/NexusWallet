@@ -7,66 +7,67 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionDao
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionEntity
-import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionDao
-import com.example.nexuswallet.feature.coin.ethereum.EthereumTransactionEntity
+import com.example.nexuswallet.feature.coin.ethereum.EVMTransactionDao
+import com.example.nexuswallet.feature.coin.ethereum.EVMTransactionEntity
 import com.example.nexuswallet.feature.coin.solana.SolanaTransactionDao
 import com.example.nexuswallet.feature.coin.solana.SolanaTransactionEntity
-import com.example.nexuswallet.feature.coin.usdc.USDCTransactionDao
-import com.example.nexuswallet.feature.coin.usdc.USDCTransactionEntity
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoinDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Converters
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumBalanceDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumCoinDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMBalanceDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMTokenDao
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLTokenDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoinDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCBalanceDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCCoinDao
 
 @Database(
     entities = [
-        // Wallet and coins
+        // Wallet core
         WalletEntity::class,
+
+        // Bitcoin
         BitcoinCoinEntity::class,
-        EthereumCoinEntity::class,
-        SolanaCoinEntity::class,
-        USDCCoinEntity::class,
-
-        // Balances
         BitcoinBalanceEntity::class,
-        EthereumBalanceEntity::class,
-        SolanaBalanceEntity::class,
-        USDCBalanceEntity::class,
-
-        // Transactions
         BitcoinTransactionEntity::class,
-        EthereumTransactionEntity::class,
+
+        // Solana
+        SolanaCoinEntity::class,
+        SolanaBalanceEntity::class,
         SolanaTransactionEntity::class,
-        USDCTransactionEntity::class
+
+        // Solana SPL Tokens
+        SPLTokenEntity::class,
+
+        // EVM
+        EVMTokenEntity::class,
+        EVMBalanceEntity::class,
+        EVMTransactionEntity::class
     ],
-    version = 17,  // INCREMENT FROM 16 TO 17
+    version = 1,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class WalletDatabase : RoomDatabase() {
     // Wallet DAOs
     abstract fun walletDao(): WalletDao
+
+    // Bitcoin DAOs
     abstract fun bitcoinCoinDao(): BitcoinCoinDao
-    abstract fun ethereumCoinDao(): EthereumCoinDao
-    abstract fun solanaCoinDao(): SolanaCoinDao
-    abstract fun usdcCoinDao(): USDCCoinDao
-
-    // Balance DAOs
     abstract fun bitcoinBalanceDao(): BitcoinBalanceDao
-    abstract fun ethereumBalanceDao(): EthereumBalanceDao
-    abstract fun solanaBalanceDao(): SolanaBalanceDao
-    abstract fun usdcBalanceDao(): USDCBalanceDao
-
-    // Transaction DAOs
     abstract fun bitcoinTransactionDao(): BitcoinTransactionDao
-    abstract fun ethereumTransactionDao(): EthereumTransactionDao
+
+    // Solana DAOs
+    abstract fun solanaCoinDao(): SolanaCoinDao
+    abstract fun solanaBalanceDao(): SolanaBalanceDao
     abstract fun solanaTransactionDao(): SolanaTransactionDao
-    abstract fun usdcTransactionDao(): USDCTransactionDao
+
+    // Solana SPL Token DAO
+    abstract fun splTokenDao(): SPLTokenDao
+
+    // EVM DAOs
+    abstract fun evmTokenDao(): EVMTokenDao
+    abstract fun evmBalanceDao(): EVMBalanceDao
+    abstract fun evmTransactionDao(): EVMTransactionDao
 
     companion object {
         @Volatile
@@ -79,20 +80,7 @@ abstract class WalletDatabase : RoomDatabase() {
                     WalletDatabase::class.java,
                     "wallet_database"
                 )
-                    .addMigrations(
-                        MIGRATION_5_6,
-                        MIGRATION_6_7,
-                        MIGRATION_7_8,
-                        MIGRATION_8_9,
-                        MIGRATION_9_10,
-                        MIGRATION_10_11,
-                        MIGRATION_11_12,
-                        MIGRATION_12_13,
-                        MIGRATION_13_14,
-                        MIGRATION_14_15,
-                        MIGRATION_15_16,
-                        MIGRATION_16_17
-                    )
+                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

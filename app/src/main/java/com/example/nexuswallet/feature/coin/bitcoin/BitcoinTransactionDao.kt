@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
+
 @Dao
 interface BitcoinTransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -20,6 +21,9 @@ interface BitcoinTransactionDao {
 
     @Query("SELECT * FROM BitcoinTransaction WHERE walletId = :walletId ORDER BY timestamp DESC")
     fun getByWalletId(walletId: String): Flow<List<BitcoinTransactionEntity>>
+
+    @Query("SELECT * FROM BitcoinTransaction WHERE walletId = :walletId AND network = :network ORDER BY timestamp DESC")
+    fun getByWalletIdAndNetwork(walletId: String, network: String): Flow<List<BitcoinTransactionEntity>>
 
     @Query("SELECT * FROM BitcoinTransaction WHERE walletId = :walletId AND isIncoming = :isIncoming ORDER BY timestamp DESC")
     fun getByWalletIdAndType(walletId: String, isIncoming: Boolean): Flow<List<BitcoinTransactionEntity>>
@@ -35,4 +39,7 @@ interface BitcoinTransactionDao {
 
     @Query("DELETE FROM BitcoinTransaction WHERE walletId = :walletId")
     suspend fun deleteByWalletId(walletId: String)
+
+    @Query("DELETE FROM BitcoinTransaction WHERE walletId = :walletId AND network = :network")
+    suspend fun deleteByWalletIdAndNetwork(walletId: String, network: String)
 }

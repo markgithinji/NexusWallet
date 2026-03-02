@@ -3,9 +3,6 @@ package com.example.nexuswallet.feature.wallet.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
-import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
-import com.example.nexuswallet.feature.coin.solana.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.GenerateMnemonicUseCase
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.ValidateMnemonicUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
@@ -13,6 +10,7 @@ import com.example.nexuswallet.feature.wallet.domain.CreateWalletUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,41 +24,50 @@ class WalletCreationViewModel @Inject constructor(
 
     // UI State
     private val _uiState = MutableStateFlow<WalletCreationUiState>(WalletCreationUiState.Idle)
-    val uiState: StateFlow<WalletCreationUiState> = _uiState
+    val uiState: StateFlow<WalletCreationUiState> = _uiState.asStateFlow()
 
     // Current step
     private val _currentStep = MutableStateFlow(0)
-    val currentStep: StateFlow<Int> = _currentStep
+    val currentStep: StateFlow<Int> = _currentStep.asStateFlow()
 
     // Generated mnemonic
     private val _mnemonic = MutableStateFlow<List<String>>(emptyList())
-    val mnemonic: StateFlow<List<String>> = _mnemonic
+    val mnemonic: StateFlow<List<String>> = _mnemonic.asStateFlow()
 
     // Coin selection state
     data class CoinSelection(
-        var includeBitcoin: Boolean = true,
-        var includeEthereum: Boolean = true,
-        var includeSolana: Boolean = true,
-        var includeUSDC: Boolean = false,
-        var ethereumNetwork: EthereumNetwork = EthereumNetwork.Sepolia,
-        var bitcoinNetwork: BitcoinNetwork = BitcoinNetwork.TESTNET,
-        var solanaNetwork: SolanaNetwork = SolanaNetwork.DEVNET
+        // Bitcoin - can select multiple networks
+        var includeBitcoinMainnet: Boolean = true,
+        var includeBitcoinTestnet: Boolean = true,
+
+        // Ethereum - Native ETH
+        var includeEthereumMainnet: Boolean = true,
+        var includeEthereumSepolia: Boolean = true,
+
+        // Solana
+        var includeSolanaMainnet: Boolean = false,
+        var includeSolanaDevnet: Boolean = false,
+
+        // Tokens (USDC, USDT, etc.)
+        var includeUSDCMainnet: Boolean = false,
+        var includeUSDCSepolia: Boolean = false,
+        var includeUSDTMainnet: Boolean = false
     )
 
     private val _coinSelection = MutableStateFlow(CoinSelection())
-    val coinSelection: StateFlow<CoinSelection> = _coinSelection
+    val coinSelection: StateFlow<CoinSelection> = _coinSelection.asStateFlow()
 
     // Wallet name
     private val _walletName = MutableStateFlow("")
-    val walletName: StateFlow<String> = _walletName
+    val walletName: StateFlow<String> = _walletName.asStateFlow()
 
     // User entered words for verification
     private val _enteredWords = MutableStateFlow<List<String>>(emptyList())
-    val enteredWords: StateFlow<List<String>> = _enteredWords
+    val enteredWords: StateFlow<List<String>> = _enteredWords.asStateFlow()
 
     // Track if mnemonic is generated
     private val _isMnemonicGenerated = MutableStateFlow(false)
-    val isMnemonicGenerated: StateFlow<Boolean> = _isMnemonicGenerated
+    val isMnemonicGenerated: StateFlow<Boolean> = _isMnemonicGenerated.asStateFlow()
 
     fun generateMnemonic() {
         viewModelScope.launch {
@@ -78,25 +85,77 @@ class WalletCreationViewModel @Inject constructor(
     }
 
     fun updateCoinSelection(
-        includeBitcoin: Boolean? = null,
-        includeEthereum: Boolean? = null,
-        includeSolana: Boolean? = null,
-        includeUSDC: Boolean? = null,
-        ethereumNetwork: EthereumNetwork? = null,
-        bitcoinNetwork: BitcoinNetwork? = null,
-        solanaNetwork: SolanaNetwork? = null
+        // Bitcoin
+        includeBitcoinMainnet: Boolean? = null,
+        includeBitcoinTestnet: Boolean? = null,
+
+        // Ethereum
+        includeEthereumMainnet: Boolean? = null,
+        includeEthereumSepolia: Boolean? = null,
+
+        // Solana
+        includeSolanaMainnet: Boolean? = null,
+        includeSolanaDevnet: Boolean? = null,
+
+        // Tokens
+        includeUSDCMainnet: Boolean? = null,
+        includeUSDCSepolia: Boolean? = null,
+        includeUSDTMainnet: Boolean? = null
     ) {
         _coinSelection.update { current ->
             current.copy(
-                includeBitcoin = includeBitcoin ?: current.includeBitcoin,
-                includeEthereum = includeEthereum ?: current.includeEthereum,
-                includeSolana = includeSolana ?: current.includeSolana,
-                includeUSDC = includeUSDC ?: current.includeUSDC,
-                ethereumNetwork = ethereumNetwork ?: current.ethereumNetwork,
-                bitcoinNetwork = bitcoinNetwork ?: current.bitcoinNetwork,
-                solanaNetwork = solanaNetwork ?: current.solanaNetwork
+                // Bitcoin
+                includeBitcoinMainnet = includeBitcoinMainnet ?: current.includeBitcoinMainnet,
+                includeBitcoinTestnet = includeBitcoinTestnet ?: current.includeBitcoinTestnet,
+
+                // Ethereum
+                includeEthereumMainnet = includeEthereumMainnet ?: current.includeEthereumMainnet,
+                includeEthereumSepolia = includeEthereumSepolia ?: current.includeEthereumSepolia,
+
+                // Solana
+                includeSolanaMainnet = includeSolanaMainnet ?: current.includeSolanaMainnet,
+                includeSolanaDevnet = includeSolanaDevnet ?: current.includeSolanaDevnet,
+
+                // Tokens
+                includeUSDCMainnet = includeUSDCMainnet ?: current.includeUSDCMainnet,
+                includeUSDCSepolia = includeUSDCSepolia ?: current.includeUSDCSepolia,
+                includeUSDTMainnet = includeUSDTMainnet ?: current.includeUSDTMainnet
             )
         }
+    }
+
+    // Helper methods to get counts for UI
+    fun getSelectedBitcoinCount(): Int {
+        val selection = _coinSelection.value
+        return listOfNotNull(
+            selection.includeBitcoinMainnet.takeIf { it },
+            selection.includeBitcoinTestnet.takeIf { it }
+        ).size
+    }
+
+    fun getSelectedEthereumCount(): Int {
+        val selection = _coinSelection.value
+        return listOfNotNull(
+            selection.includeEthereumMainnet.takeIf { it },
+            selection.includeEthereumSepolia.takeIf { it }
+        ).size
+    }
+
+    fun getSelectedSolanaCount(): Int {
+        val selection = _coinSelection.value
+        return listOfNotNull(
+            selection.includeSolanaMainnet.takeIf { it },
+            selection.includeSolanaDevnet.takeIf { it }
+        ).size
+    }
+
+    fun getSelectedTokenCount(): Int {
+        val selection = _coinSelection.value
+        return listOfNotNull(
+            selection.includeUSDCMainnet.takeIf { it },
+            selection.includeUSDCSepolia.takeIf { it },
+            selection.includeUSDTMainnet.takeIf { it }
+        ).size
     }
 
     fun setWalletName(name: String) {
@@ -167,13 +226,22 @@ class WalletCreationViewModel @Inject constructor(
                 val result = createWalletUseCase(
                     mnemonic = mnemonicList,
                     name = name,
-                    includeBitcoin = selection.includeBitcoin,
-                    includeEthereum = selection.includeEthereum,
-                    includeSolana = selection.includeSolana,
-                    includeUSDC = selection.includeUSDC,
-                    ethereumNetwork = selection.ethereumNetwork,
-                    bitcoinNetwork = selection.bitcoinNetwork,
-                    solanaNetwork = selection.solanaNetwork
+                    // Bitcoin networks
+                    includeBitcoinMainnet = selection.includeBitcoinMainnet,
+                    includeBitcoinTestnet = selection.includeBitcoinTestnet,
+
+                    // Ethereum networks
+                    includeEthereumMainnet = selection.includeEthereumMainnet,
+                    includeEthereumSepolia = selection.includeEthereumSepolia,
+
+                    // Solana networks
+                    includeSolanaMainnet = selection.includeSolanaMainnet,
+                    includeSolanaDevnet = selection.includeSolanaDevnet,
+
+                    // Tokens
+                    includeUSDCMainnet = selection.includeUSDCMainnet,
+                    includeUSDCSepolia = selection.includeUSDCSepolia,
+                    includeUSDTMainnet = selection.includeUSDTMainnet
                 )
 
                 when (result) {
@@ -184,7 +252,6 @@ class WalletCreationViewModel @Inject constructor(
                         _uiState.value = WalletCreationUiState.Error(result.message)
                     }
                     Result.Loading -> {
-                        // This shouldn't happen as our usecases don't return Loading
                         _uiState.value = WalletCreationUiState.Error("Unexpected loading state")
                     }
                 }
@@ -198,7 +265,17 @@ class WalletCreationViewModel @Inject constructor(
         _uiState.value = WalletCreationUiState.Idle
         _currentStep.value = 0
         _mnemonic.value = emptyList()
-        _coinSelection.value = CoinSelection()
+        _coinSelection.value = CoinSelection(
+            includeBitcoinMainnet = true,
+            includeBitcoinTestnet = true,
+            includeEthereumMainnet = true,
+            includeEthereumSepolia = true,
+            includeSolanaMainnet = false,
+            includeSolanaDevnet = false,
+            includeUSDCMainnet = false,
+            includeUSDCSepolia = false,
+            includeUSDTMainnet = false
+        )
         _walletName.value = ""
         _enteredWords.value = emptyList()
         _isMnemonicGenerated.value = false

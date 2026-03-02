@@ -33,6 +33,26 @@ object BitcoinUseCaseModule {
 
     @Provides
     @Singleton
+    fun providePrepareBitcoinTransactionUseCase(
+        walletRepository: WalletRepository,
+        bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+        bitcoinTransactionRepository: BitcoinTransactionRepository,
+        keyStoreRepository: KeyStoreRepository,
+        securityPreferencesRepository: SecurityPreferencesRepository,
+        logger: Logger
+    ): PrepareBitcoinTransactionUseCase {
+        return PrepareBitcoinTransactionUseCaseImpl(
+            walletRepository = walletRepository,
+            bitcoinBlockchainRepository = bitcoinBlockchainRepository,
+            bitcoinTransactionRepository = bitcoinTransactionRepository,
+            keyStoreRepository = keyStoreRepository,
+            securityPreferencesRepository = securityPreferencesRepository,
+            logger = logger
+        )
+    }
+
+    @Provides
+    @Singleton
     fun provideGetBitcoinWalletUseCase(
         walletRepository: WalletRepository,
         logger: Logger
@@ -98,8 +118,9 @@ object BitcoinUseCaseModule {
     @Provides
     @Singleton
     fun provideValidateBitcoinTransactionUseCase(
-        logger: Logger
+        logger: Logger,
+        validateBitcoinAddressUseCase: ValidateBitcoinAddressUseCase
     ): ValidateBitcoinTransactionUseCase {
-        return ValidateBitcoinTransactionUseCaseImpl(logger)
+        return ValidateBitcoinTransactionUseCaseImpl(validateBitcoinAddressUseCase,logger)
     }
 }

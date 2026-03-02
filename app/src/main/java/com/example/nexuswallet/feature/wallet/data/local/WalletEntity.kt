@@ -4,8 +4,6 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinNetwork
-import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 import java.util.UUID
 
 @Entity(tableName = "wallets")
@@ -18,7 +16,6 @@ data class WalletEntity(
     val updatedAt: Long = System.currentTimeMillis()
 )
 
-// Bitcoin coin table
 @Entity(
     tableName = "bitcoin_coins",
     foreignKeys = [
@@ -29,7 +26,7 @@ data class WalletEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["walletId"], unique = true)]
+    indices = [Index(value = ["walletId"])]
 )
 data class BitcoinCoinEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
@@ -37,35 +34,33 @@ data class BitcoinCoinEntity(
     val address: String,
     val publicKey: String,
     val derivationPath: String,
-    val network: BitcoinNetwork,
+    val network: String,
     val xpub: String,
     val updatedAt: Long = System.currentTimeMillis()
 )
 
-// Ethereum coin table
 @Entity(
-    tableName = "ethereum_coins",
+    tableName = "bitcoin_balances",
     foreignKeys = [
         ForeignKey(
-            entity = WalletEntity::class,
+            entity = BitcoinCoinEntity::class,
             parentColumns = ["id"],
-            childColumns = ["walletId"],
+            childColumns = ["coinId"],
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["walletId"], unique = true)]
+    indices = [Index(value = ["coinId"], unique = true)]
 )
-data class EthereumCoinEntity(
+data class BitcoinBalanceEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val walletId: String,
+    val coinId: String,
     val address: String,
-    val publicKey: String,
-    val derivationPath: String,
-    val network: EthereumNetwork,
+    val satoshis: String,
+    val btc: String,
+    val usdValue: Double,
     val updatedAt: Long = System.currentTimeMillis()
 )
 
-// Solana coin table
 @Entity(
     tableName = "solana_coins",
     foreignKeys = [
@@ -76,7 +71,7 @@ data class EthereumCoinEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["walletId"], unique = true)]
+    indices = [Index(value = ["walletId"])]
 )
 data class SolanaCoinEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
@@ -84,94 +79,25 @@ data class SolanaCoinEntity(
     val address: String,
     val publicKey: String,
     val derivationPath: String,
-    val updatedAt: Long = System.currentTimeMillis()
-)
-
-// USDC coin table
-@Entity(
-    tableName = "usdc_coins",
-    foreignKeys = [
-        ForeignKey(
-            entity = WalletEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["walletId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index(value = ["walletId"], unique = true)]
-)
-data class USDCCoinEntity(
-    @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val walletId: String,
-    val address: String,
-    val publicKey: String,
     val network: String,
-    val contractAddress: String,
     val updatedAt: Long = System.currentTimeMillis()
 )
 
-// Bitcoin balance table
-@Entity(
-    tableName = "bitcoin_balances",
-    foreignKeys = [
-        ForeignKey(
-            entity = WalletEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["walletId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index(value = ["walletId"], unique = true)]
-)
-data class BitcoinBalanceEntity(
-    @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val walletId: String,
-    val address: String,
-    val satoshis: String,
-    val btc: String,
-    val usdValue: Double,
-    val updatedAt: Long = System.currentTimeMillis()
-)
-
-// Ethereum balance table
-@Entity(
-    tableName = "ethereum_balances",
-    foreignKeys = [
-        ForeignKey(
-            entity = WalletEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["walletId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index(value = ["walletId"], unique = true)]
-)
-data class EthereumBalanceEntity(
-    @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val walletId: String,
-    val address: String,
-    val wei: String,
-    val eth: String,
-    val usdValue: Double,
-    val updatedAt: Long = System.currentTimeMillis()
-)
-
-// Solana balance table
 @Entity(
     tableName = "solana_balances",
     foreignKeys = [
         ForeignKey(
-            entity = WalletEntity::class,
+            entity = SolanaCoinEntity::class,
             parentColumns = ["id"],
-            childColumns = ["walletId"],
+            childColumns = ["coinId"],
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["walletId"], unique = true)]
+    indices = [Index(value = ["coinId"], unique = true)]
 )
 data class SolanaBalanceEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val walletId: String,
+    val coinId: String,
     val address: String,
     val lamports: String,
     val sol: String,
@@ -179,9 +105,30 @@ data class SolanaBalanceEntity(
     val updatedAt: Long = System.currentTimeMillis()
 )
 
-// USDC balance table
 @Entity(
-    tableName = "usdc_balances",
+    tableName = "spl_tokens",
+    foreignKeys = [
+        ForeignKey(
+            entity = SolanaCoinEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["solanaCoinId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["solanaCoinId", "mintAddress"], unique = true)]
+)
+data class SPLTokenEntity(
+    @PrimaryKey val id: String = UUID.randomUUID().toString(),
+    val solanaCoinId: String,
+    val mintAddress: String,
+    val symbol: String,
+    val name: String,
+    val decimals: Int,
+    val updatedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "evm_tokens",
     foreignKeys = [
         ForeignKey(
             entity = WalletEntity::class,
@@ -190,14 +137,57 @@ data class SolanaBalanceEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["walletId"], unique = true)]
+    indices = [
+        Index(value = ["walletId"]),
+        Index(value = ["walletId", "contractAddress", "network"], unique = true),
+        Index(value = ["externalId"])
+    ]
 )
-data class USDCBalanceEntity(
+data class EVMTokenEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val walletId: String,
     val address: String,
-    val amount: String,
-    val amountDecimal: String,
+    val publicKey: String,
+    val derivationPath: String,
+    val network: String,
+    val contractAddress: String,
+    val symbol: String,
+    val name: String,
+    val decimals: Int,
+    val tokenType: String,
+    val externalId: String,
+    val updatedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "evm_balances",
+    foreignKeys = [
+        ForeignKey(
+            entity = WalletEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["walletId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = EVMTokenEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tokenId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index(value = ["walletId", "tokenId"], unique = true),
+        Index(value = ["tokenId"])
+    ]
+)
+data class EVMBalanceEntity(
+    @PrimaryKey val id: String = UUID.randomUUID().toString(),
+    val walletId: String,
+    val tokenId: String,
+    val externalTokenId: String,
+    val address: String,
+    val balanceWei: String,
+    val balanceDecimal: String,
     val usdValue: Double,
     val updatedAt: Long = System.currentTimeMillis()
 )

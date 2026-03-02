@@ -4,10 +4,15 @@ import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import kotlinx.coroutines.flow.Flow
 
 interface BitcoinTransactionRepository {
-    suspend fun deleteAllForWallet(walletId: String)
     suspend fun saveTransaction(transaction: BitcoinTransaction)
     suspend fun updateTransaction(transaction: BitcoinTransaction)
     suspend fun getTransaction(id: String): BitcoinTransaction?
-    fun getTransactions(walletId: String): Flow<List<BitcoinTransaction>>
+
+    fun getTransactions(walletId: String, network: String): Flow<List<BitcoinTransaction>>
+
     suspend fun getPendingTransactions(): List<BitcoinTransaction>
+
+    suspend fun deleteTransaction(id: String)
+    suspend fun deleteAllForWallet(walletId: String)
+    suspend fun deleteForWalletAndNetwork(walletId: String, network: String)
 }

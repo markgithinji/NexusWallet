@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
 import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.serialization.Serializable
 import java.math.BigDecimal
