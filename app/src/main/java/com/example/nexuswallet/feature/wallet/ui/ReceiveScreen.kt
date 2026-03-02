@@ -91,9 +91,9 @@ fun ReceiveScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Initialize once
+    // Initialize once with coin type
     LaunchedEffect(Unit) {
-        viewModel.initialize(walletId)
+        viewModel.initialize(walletId, coinType)
     }
 
     // Show success snackbar when copied
@@ -125,7 +125,7 @@ fun ReceiveScreen(
         } else if (uiState.error != null) {
             ErrorView(
                 error = uiState.error,
-                onRetry = { viewModel.initialize(walletId) },
+                onRetry = { viewModel.initialize(walletId, coinType) },
                 modifier = Modifier.padding(paddingValues)
             )
         } else {
@@ -260,7 +260,6 @@ private fun ReceiveQrCodeSection(
                     .border(1.dp, coinColor.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                // Generate QR Code from address
                 val qrCodeBitmap = remember(address) {
                     generateQrCode(address)
                 }
@@ -272,7 +271,6 @@ private fun ReceiveQrCodeSection(
                         modifier = Modifier.size(220.dp)
                     )
                 } else {
-                    // Fallback if QR generation fails
                     Icon(
                         Icons.Outlined.QrCode,
                         contentDescription = "QR Code",
@@ -378,268 +376,6 @@ private fun ReceiveAddressCard(
 
 @Composable
 private fun ReceiveSecurityTips(coinType: CoinType) {
-    val displayName = when (coinType) {
-        CoinType.BITCOIN -> "BTC"
-        CoinType.ETHEREUM -> "ETH"
-        CoinType.SOLANA -> "SOL"
-        CoinType.USDC -> "USDC"
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Security Tips",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-
-            SecurityTipItem(
-                text = "Only send $displayName to this address",
-                icon = Icons.Outlined.Info
-            )
-            SecurityTipItem(
-                text = "Double-check the address before sending",
-                icon = Icons.Outlined.Visibility
-            )
-            SecurityTipItem(
-                text = "Test with a small amount first",
-                icon = Icons.Outlined.Science
-            )
-            SecurityTipItem(
-                text = "Never share your private key or seed phrase",
-                icon = Icons.Outlined.Shield
-            )
-        }
-    }
-}
-
-@Composable
-private fun SecurityTipItem(
-    text: String,
-    icon: ImageVector
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun ReceiveContent(
-    uiState: ReceiveViewModel.ReceiveUiState,
-    onCopy: () -> Unit,
-    coinColor: Color,
-    icon: ImageVector,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // QR Code Section
-        item {
-            QrCodeSection(
-                address = uiState.address,
-                coinColor = coinColor
-            )
-        }
-
-        // Address Card with Copy Icon
-        item {
-            AddressCard(
-                address = uiState.address,
-                coinType = uiState.coinType,
-                onCopy = onCopy,
-                copiedToClipboard = uiState.copiedToClipboard
-            )
-        }
-
-        // Security Tips
-        item {
-            SecurityTips(coinType = uiState.coinType)
-        }
-    }
-}
-
-@Composable
-private fun QrCodeSection(
-    address: String,
-    coinColor: Color
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // QR Code
-            Box(
-                modifier = Modifier
-                    .size(240.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(coinColor.copy(alpha = 0.05f))
-                    .border(1.dp, coinColor.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                // Generate QR Code from address
-                val qrCodeBitmap = remember(address) {
-                    generateQrCode(address)
-                }
-
-                if (qrCodeBitmap != null) {
-                    Image(
-                        bitmap = qrCodeBitmap.asImageBitmap(),
-                        contentDescription = "QR Code for $address",
-                        modifier = Modifier.size(220.dp)
-                    )
-                } else {
-                    // Fallback if QR generation fails
-                    Icon(
-                        Icons.Outlined.QrCode,
-                        contentDescription = "QR Code",
-                        modifier = Modifier.size(140.dp),
-                        tint = coinColor
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Scan to receive",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun AddressCard(
-    address: String,
-    coinType: CoinType,
-    onCopy: () -> Unit,
-    copiedToClipboard: Boolean
-) {
-    val (coinColor, _, displayName) = when (coinType) {
-        CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "BTC")
-        CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "ETH")
-        CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "SOL")
-        CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Your $displayName Address",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Address with copy icon
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = address,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                IconButton(
-                    onClick = onCopy,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = if (copiedToClipboard)
-                            Icons.Outlined.CheckCircle
-                        else
-                            Icons.Outlined.ContentCopy,
-                        contentDescription = "Copy Address",
-                        tint = if (copiedToClipboard) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SecurityTips(coinType: CoinType) {
     val displayName = when (coinType) {
         CoinType.BITCOIN -> "BTC"
         CoinType.ETHEREUM -> "ETH"
