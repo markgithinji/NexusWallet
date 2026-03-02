@@ -2,17 +2,17 @@ package com.example.nexuswallet.feature.wallet.data.walletsrefactor
 
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.ethereum.EthereumTransaction
+import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
+import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
-import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransaction
 import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import jakarta.inject.Inject
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
@@ -24,10 +24,10 @@ class FormatTransactionDisplayUseCaseImpl @Inject constructor() : FormatTransact
     ): TransactionDisplayInfo {
         return when (transaction) {
             is BitcoinTransaction -> formatBitcoinTransaction(transaction, coinType)
-            is EthereumTransaction -> formatEthereumTransaction(transaction, coinType)
+            is NativeETHTransaction -> formatNativeETHTransaction(transaction, coinType)
+            is TokenTransaction -> formatTokenTransaction(transaction, coinType)
             is SolanaTransaction -> formatSolanaTransaction(transaction, coinType)
-            is USDCTransaction -> formatUSDCTransaction(transaction, coinType)
-            else -> throw IllegalArgumentException("Unknown transaction type")
+            else -> throw IllegalArgumentException("Unknown transaction type: ${transaction::class.simpleName}")
         }
     }
 
@@ -54,8 +54,8 @@ class FormatTransactionDisplayUseCaseImpl @Inject constructor() : FormatTransact
         )
     }
 
-    private fun formatEthereumTransaction(
-        tx: EthereumTransaction,
+    private fun formatNativeETHTransaction(
+        tx: NativeETHTransaction,
         coinType: CoinType
     ): TransactionDisplayInfo {
         return TransactionDisplayInfo(
@@ -70,24 +70,8 @@ class FormatTransactionDisplayUseCaseImpl @Inject constructor() : FormatTransact
         )
     }
 
-    private fun formatSolanaTransaction(
-        tx: SolanaTransaction,
-        coinType: CoinType
-    ): TransactionDisplayInfo {
-        return TransactionDisplayInfo(
-            id = tx.id,
-            isIncoming = tx.isIncoming,
-            amount = tx.amountSol,
-            formattedAmount = formatAmount(tx.amountSol),
-            status = tx.status,
-            timestamp = tx.timestamp,
-            formattedTime = formatTimestamp(tx.timestamp),
-            hash = tx.signature
-        )
-    }
-
-    private fun formatUSDCTransaction(
-        tx: USDCTransaction,
+    private fun formatTokenTransaction(
+        tx: TokenTransaction,
         coinType: CoinType
     ): TransactionDisplayInfo {
         return TransactionDisplayInfo(
@@ -99,6 +83,22 @@ class FormatTransactionDisplayUseCaseImpl @Inject constructor() : FormatTransact
             timestamp = tx.timestamp,
             formattedTime = formatTimestamp(tx.timestamp),
             hash = tx.txHash
+        )
+    }
+
+    private fun formatSolanaTransaction(
+        tx: SolanaTransaction,
+        coinType: CoinType
+    ): TransactionDisplayInfo {
+        return TransactionDisplayInfo(
+            id = tx.id,
+            isIncoming = tx.isIncoming,
+            amount = if (tx.tokenSymbol != null) tx.amountSol else tx.amountSol,
+            formattedAmount = formatAmount(tx.amountSol),
+            status = tx.status,
+            timestamp = tx.timestamp,
+            formattedTime = formatTimestamp(tx.timestamp),
+            hash = tx.signature
         )
     }
 
