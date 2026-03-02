@@ -54,7 +54,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.*
 import androidx.compose.foundation.lazy.items
-
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendEvent
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SendScreen(
@@ -110,7 +110,9 @@ fun SendScreen(
                 solanaViewModel.init(walletId, networkObject as? SolanaNetwork)
             }
             CoinType.BITCOIN -> {
-                bitcoinViewModel.init(walletId, networkObject as? BitcoinNetwork)
+                bitcoinViewModel.handleEvent(
+                    BitcoinSendEvent.Initialize(walletId, networkObject as? BitcoinNetwork)
+                )
             }
         }
     }
@@ -215,7 +217,9 @@ fun SendScreen(
                                 solanaViewModel.switchNetwork(selectedNetwork as SolanaNetwork)
                             }
                             CoinType.BITCOIN -> {
-                                bitcoinViewModel.switchNetwork(selectedNetwork as BitcoinNetwork)
+                                bitcoinViewModel.handleEvent(
+                                    BitcoinSendEvent.SwitchNetwork(selectedNetwork as BitcoinNetwork)
+                                )
                             }
                         }
                         showNetworkSelector = false
@@ -386,7 +390,9 @@ fun SendScreen(
                         CoinType.BITCOIN -> {
                             SendAddressInput(
                                 toAddress = bitcoinState.value.toAddress,
-                                onAddressChange = { bitcoinViewModel.updateAddress(it) },
+                                onAddressChange = {
+                                    bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAddress(it))
+                                },
                                 coinType = coinType,
                                 isValid = bitcoinState.value.validationResult.isValid &&
                                         bitcoinState.value.validationResult.addressError == null,
@@ -394,7 +400,7 @@ fun SendScreen(
                                     ?: bitcoinState.value.validationResult.selfSendError,
                                 network = bitcoinState.value.network,
                                 onPaste = { pastedText ->
-                                    bitcoinViewModel.updateAddress(pastedText)
+                                    bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAddress(pastedText))
                                 }
                             )
                         }
@@ -433,7 +439,9 @@ fun SendScreen(
                         CoinType.BITCOIN -> {
                             SendAmountInput(
                                 amount = bitcoinState.value.amount,
-                                onAmountChange = { bitcoinViewModel.updateAmount(it) },
+                                onAmountChange = {
+                                    bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAmount(it))
+                                },
                                 balance = bitcoinState.value.balance,
                                 coinType = coinType,
                                 onMaxClick = { showMaxDialog = true },
@@ -467,7 +475,9 @@ fun SendScreen(
                         CoinType.BITCOIN -> {
                             SendFeeSelection(
                                 feeLevel = bitcoinState.value.feeLevel,
-                                onFeeLevelChange = { bitcoinViewModel.updateFeeLevel(it) },
+                                onFeeLevelChange = {
+                                    bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateFeeLevel(it))
+                                },
                                 feeEstimate = bitcoinState.value.feeEstimate,
                                 coinType = coinType
                             )
@@ -498,41 +508,35 @@ fun SendScreen(
                         CoinType.ETHEREUM, CoinType.USDC -> {
                             val token = selectedToken
                             if (token != null) {
-                                ethereumViewModel.send { txHash ->
-                                    onNavigateToReview(
-                                        walletId,
-                                        coinType,
-                                        ethereumState.value.toAddress,
-                                        ethereumState.value.amount,
-                                        ethereumState.value.feeLevel,
-                                        ethereumState.value.network
-                                    )
-                                }
+                                onNavigateToReview(
+                                    walletId,
+                                    coinType,
+                                    ethereumState.value.toAddress,
+                                    ethereumState.value.amount,
+                                    ethereumState.value.feeLevel,
+                                    ethereumState.value.network
+                                )
                             }
                         }
                         CoinType.SOLANA -> {
-                            solanaViewModel.send { txHash ->
-                                onNavigateToReview(
-                                    walletId,
-                                    CoinType.SOLANA,
-                                    solanaState.value.toAddress,
-                                    solanaState.value.amount,
-                                    solanaState.value.feeLevel,
-                                    solanaState.value.network
-                                )
-                            }
+                            onNavigateToReview(
+                                walletId,
+                                CoinType.SOLANA,
+                                solanaState.value.toAddress,
+                                solanaState.value.amount,
+                                solanaState.value.feeLevel,
+                                solanaState.value.network
+                            )
                         }
                         CoinType.BITCOIN -> {
-                            bitcoinViewModel.send { txHash ->
-                                onNavigateToReview(
-                                    walletId,
-                                    CoinType.BITCOIN,
-                                    bitcoinState.value.toAddress,
-                                    bitcoinState.value.amount,
-                                    bitcoinState.value.feeLevel,
-                                    bitcoinState.value.network
-                                )
-                            }
+                            onNavigateToReview(
+                                walletId,
+                                CoinType.BITCOIN,
+                                bitcoinState.value.toAddress,
+                                bitcoinState.value.amount,
+                                bitcoinState.value.feeLevel,
+                                bitcoinState.value.network
+                            )
                         }
                     }
                 },
@@ -580,7 +584,7 @@ fun SendScreen(
                     coinType = coinType,
                     onDismiss = { showMaxDialog = false },
                     onConfirm = { maxAmount ->
-                        bitcoinViewModel.updateAmount(maxAmount)
+                        bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAmount(maxAmount))
                         showMaxDialog = false
                     }
                 )
@@ -1919,7 +1923,7 @@ fun ErrorMessage(
     }
 }
 
-// Helper function for USD rate (simplified version)
+// Helper function for USD rate
 private fun getUsdRate(coinType: CoinType): Double {
     return when (coinType) {
         CoinType.BITCOIN -> 45000.0
