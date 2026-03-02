@@ -234,31 +234,33 @@ class ValidateEVMSendUseCaseImpl @Inject constructor(
             when (feeResult) {
                 is Result.Success -> {
                     feeEstimate = feeResult.data
+                    val feeEth = BigDecimal(feeEstimate.totalFeeEth)
 
-                    // For native ETH, fees are deducted from the same balance
-                    if (token is NativeETH) {
-                        val totalRequired = amountValue + BigDecimal(feeEstimate.totalFeeEth)
-                        if (totalRequired > tokenBalance) {
-                            balanceError = "Insufficient balance (need ${
-                                totalRequired.setScale(4, RoundingMode.HALF_UP)
-                            } ETH including fees)"
-                            isValid = false
-                            logger.d(tag, "Insufficient ETH balance")
+                    when (token) {
+                        // For native ETH: Need enough ETH for amount + gas
+                        is NativeETH -> {
+                            val totalRequired = amountValue + feeEth
+                            if (totalRequired > tokenBalance) {
+                                balanceError = "Insufficient ETH balance. You have ${tokenBalance.setScale(4)} ETH but need ${totalRequired.setScale(4)} ETH (including gas)"
+                                isValid = false
+                                logger.d(tag, "Insufficient ETH balance: have $tokenBalance, need $totalRequired")
+                            }
                         }
-                    }
-                    // For tokens, check token balance and ETH for gas separately
-                    else {
-                        if (amountValue > tokenBalance) {
-                            balanceError = "Insufficient ${token.symbol} balance"
-                            isValid = false
-                            logger.d(tag, "Insufficient token balance")
-                        }
+                        // For tokens (USDC, USDT, ERC20): Need enough tokens AND enough ETH for gas
+                        else -> {
+                            // Check token balance (USDC balance)
+                            if (amountValue > tokenBalance) {
+                                balanceError = "Insufficient ${token.symbol} balance. You have ${tokenBalance.setScale(2)} ${token.symbol} but need ${amountValue.setScale(2)} ${token.symbol}"
+                                isValid = false
+                                logger.d(tag, "Insufficient ${token.symbol} balance: have $tokenBalance, need $amountValue")
+                            }
 
-                        val requiredGas = BigDecimal(feeEstimate.totalFeeEth)
-                        if (ethBalance < requiredGas) {
-                            gasError = "Insufficient ETH for gas (need ${requiredGas.setScale(6)} ETH)"
-                            isValid = false
-                            logger.d(tag, "Insufficient ETH for gas")
+                            // Check ETH balance for gas
+                            if (ethBalance < feeEth) {
+                                gasError = "Insufficient ETH for gas. You have ${ethBalance.setScale(6)} ETH but need ${feeEth.setScale(6)} ETH"
+                                isValid = false
+                                logger.d(tag, "Insufficient ETH for gas: have $ethBalance, need $feeEth")
+                            }
                         }
                     }
                 }
