@@ -5,6 +5,9 @@ import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import org.sol4k.Keypair
 import java.math.BigDecimal
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 interface SolanaBlockchainRepository {
     suspend fun getRecentBlockhash(network: SolanaNetwork): Result<String>
@@ -18,14 +21,14 @@ interface SolanaBlockchainRepository {
         network: SolanaNetwork
     ): Result<SolanaFeeEstimate>
 
-    fun createAndSignTransaction(
+    suspend fun createAndSignTransaction(
         fromKeypair: Keypair,
         toAddress: String,
         lamports: Long,
         network: SolanaNetwork
     ): Result<SolanaSignedTransaction>
 
-    fun broadcastTransaction(
+    suspend fun broadcastTransaction(
         signedTransaction: SolanaSignedTransaction,
         network: SolanaNetwork
     ): Result<BroadcastResult>
@@ -51,6 +54,12 @@ interface SolanaBlockchainRepository {
         details: SolanaTransactionDetailsResponse,
         walletAddress: String
     ): TransferInfo?
+
+    suspend fun getTokenBalance(
+        address: String,
+        mintAddress: String,
+        network: SolanaNetwork
+    ): Result<BigDecimal>
 
     fun validateAddress(address: String): Result<Boolean>
 }
