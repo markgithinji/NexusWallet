@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.coin.usdc
 
 import com.example.nexuswallet.BuildConfig
-import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import okhttp3.OkHttpClient
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.http.HttpService
