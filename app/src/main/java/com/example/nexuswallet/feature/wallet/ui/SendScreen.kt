@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import com.example.nexuswallet.R
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -54,6 +55,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.*
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.res.painterResource
 import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendEvent
 import kotlinx.coroutines.flow.filter
@@ -132,31 +134,28 @@ fun SendScreen(
         CoinType.BITCOIN -> bitcoinState.value.isLoading
     }
 
-    // Get coin display config
-    val (coinColor, icon, displayName) = when (coinType) {
-        CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
-        CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
-        CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
-        CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
+    // Get coin display config with custom icons
+    val (coinColor, iconRes, displayName) = when (coinType) {
+        CoinType.BITCOIN -> Triple(bitcoinLight, R.drawable.bitcoin, "Bitcoin")
+        CoinType.ETHEREUM -> Triple(ethereumLight, R.drawable.ethereum, "Ethereum")
+        CoinType.SOLANA -> Triple(solanaLight, R.drawable.solana, "Solana")
+        CoinType.USDC -> Triple(usdcLight, R.drawable.usdc, "USDC")
     }
 
     val currentNetworkName = when (coinType) {
         CoinType.ETHEREUM, CoinType.USDC -> {
-            // Get from Ethereum ViewModel state
             when (ethereumState.value.network) {
                 EthereumNetwork.Mainnet -> "Ethereum Mainnet"
                 EthereumNetwork.Sepolia -> "Ethereum Sepolia"
             }
         }
         CoinType.SOLANA -> {
-            // Get from Solana ViewModel state
             when (solanaState.value.network) {
                 SolanaNetwork.Mainnet -> "Solana Mainnet"
                 SolanaNetwork.Devnet -> "Solana Devnet"
             }
         }
         CoinType.BITCOIN -> {
-            // Get from Bitcoin ViewModel state
             when (bitcoinState.value.network) {
                 BitcoinNetwork.Mainnet -> "Bitcoin Mainnet"
                 BitcoinNetwork.Testnet -> "Bitcoin Testnet"
@@ -192,10 +191,10 @@ fun SendScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = icon,
+                            painter = painterResource(id = iconRes),
                             contentDescription = null,
                             modifier = Modifier.size(24.dp),
-                            tint = coinColor
+                            tint = Color.Unspecified
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -646,11 +645,11 @@ fun TokenSelectorCard(
     selectedToken: EVMToken?,
     onClick: () -> Unit
 ) {
-    val (icon, color) = when (selectedToken) {
-        is NativeETH -> Pair(Icons.Outlined.Diamond, ethereumLight)
-        is USDCToken -> Pair(Icons.Outlined.AttachMoney, usdcLight)
-        is USDTToken -> Pair(Icons.Outlined.AttachMoney, usdtLight)
-        else -> Pair(Icons.Outlined.Token, MaterialTheme.colorScheme.primary)
+    val (iconRes, color) = when (selectedToken) {
+        is NativeETH -> Pair(R.drawable.ethereum, ethereumLight)
+        is USDCToken -> Pair(R.drawable.usdc, usdcLight)
+        is USDTToken -> Pair(R.drawable.usdc, usdtLight)
+        else -> Pair(null, MaterialTheme.colorScheme.primary)
     }
 
     Card(
@@ -677,12 +676,21 @@ fun TokenSelectorCard(
                     .background(color.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(16.dp)
-                )
+                if (iconRes != null) {
+                    Icon(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Token,
+                        contentDescription = null,
+                        tint = color,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -703,6 +711,266 @@ fun TokenSelectorCard(
                 contentDescription = "Change token",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+fun TokenSelectorDialog(
+    availableTokens: List<EVMToken>,
+    selectedToken: EVMToken?,
+    onTokenSelected: (EVMToken) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Text(
+                text = "Select Token",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 300.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(availableTokens) { token ->
+                    val isSelected = token == selectedToken
+                    val (iconRes, color) = when (token) {
+                        is NativeETH -> Pair(R.drawable.ethereum, ethereumLight)
+                        is USDCToken -> Pair(R.drawable.usdc, usdcLight)
+                        is USDTToken -> Pair(R.drawable.usdc, usdtLight)
+                        else -> Pair(null, MaterialTheme.colorScheme.primary)
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onTokenSelected(token) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected)
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(color.copy(alpha = 0.1f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (iconRes != null) {
+                                    Icon(
+                                        painter = painterResource(id = iconRes),
+                                        contentDescription = null,
+                                        tint = Color.Unspecified,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Token,
+                                        contentDescription = null,
+                                        tint = color,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = token.symbol,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = token.name,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (token.network != EthereumNetwork.Mainnet) {
+                                    Text(
+                                        text = token.network.displayName,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CheckCircle,
+                                    contentDescription = "Selected",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun SendBalanceCard(
+    balance: BigDecimal,
+    balanceFormatted: String,
+    coinType: CoinType,
+    address: String,
+    token: EVMToken? = null,
+    secondaryBalance: BigDecimal? = null,
+    secondaryBalanceFormatted: String? = null,
+    network: String? = null
+) {
+    val (coinColor, iconRes, displayName) = when {
+        token != null -> when (token) {
+            is NativeETH -> Triple(ethereumLight, R.drawable.ethereum, "Ethereum")
+            is USDCToken -> Triple(usdcLight, R.drawable.usdc, "USD Coin")
+            is USDTToken -> Triple(usdtLight, R.drawable.usdc, "Tether USD")
+            else -> Triple(MaterialTheme.colorScheme.primary, null, token.name)
+        }
+        coinType == CoinType.BITCOIN -> Triple(bitcoinLight, R.drawable.bitcoin, "Bitcoin")
+        coinType == CoinType.ETHEREUM -> Triple(ethereumLight, R.drawable.ethereum, "Ethereum")
+        coinType == CoinType.SOLANA -> Triple(solanaLight, R.drawable.solana, "Solana")
+        coinType == CoinType.USDC -> Triple(usdcLight, R.drawable.usdc, "USDC")
+        else -> Triple(MaterialTheme.colorScheme.primary, null, "Asset")
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Available Balance",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    val usdValue = if (token is USDCToken || token is USDTToken) {
+                        String.format("%.2f", balance.toDouble())
+                    } else {
+                        String.format("%.2f", balance.toDouble() * getUsdRate(coinType))
+                    }
+
+                    Text(
+                        text = "$$usdValue",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Text(
+                        text = balanceFormatted,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = coinColor
+                    )
+
+                    if (secondaryBalance != null && secondaryBalanceFormatted != null) {
+                        Text(
+                            text = secondaryBalanceFormatted,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (network != null && network != "MAINNET" && network != "Mainnet") {
+                        Text(
+                            text = "Network: $network",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(coinColor.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (iconRes != null) {
+                        Icon(
+                            painter = painterResource(id = iconRes),
+                            contentDescription = displayName,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.Token,
+                            contentDescription = displayName,
+                            tint = coinColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AccountBalanceWallet,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "From: ${address.take(6)}...${address.takeLast(4)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
@@ -840,248 +1108,6 @@ fun NetworkSelectorDialog(
     )
 }
 
-@Composable
-fun TokenSelectorDialog(
-    availableTokens: List<EVMToken>,
-    selectedToken: EVMToken?,
-    onTokenSelected: (EVMToken) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = {
-            Text(
-                text = "Select Token",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        },
-        text = {
-            LazyColumn(
-                modifier = Modifier.heightIn(max = 300.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(availableTokens) { token ->
-                    val isSelected = token == selectedToken
-                    val (icon, color) = when (token) {
-                        is NativeETH -> Pair(Icons.Outlined.Diamond, ethereumLight)
-                        is USDCToken -> Pair(Icons.Outlined.AttachMoney, usdcLight)
-                        is USDTToken -> Pair(Icons.Outlined.AttachMoney, usdtLight)
-                        else -> Pair(Icons.Outlined.Token, MaterialTheme.colorScheme.primary)
-                    }
-
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onTokenSelected(token) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isSelected)
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(color.copy(alpha = 0.1f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = null,
-                                    tint = color,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = token.symbol,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isSelected)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = token.name,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                if (token.network != EthereumNetwork.Mainnet) {
-                                    Text(
-                                        text = token.network.displayName,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    )
-                                }
-                            }
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = Icons.Outlined.CheckCircle,
-                                    contentDescription = "Selected",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-fun SendBalanceCard(
-    balance: BigDecimal,
-    balanceFormatted: String,
-    coinType: CoinType,
-    address: String,
-    token: EVMToken? = null,
-    secondaryBalance: BigDecimal? = null,
-    secondaryBalanceFormatted: String? = null,
-    network: String? = null
-) {
-    val (coinColor, icon, displayName) = when {
-        token != null -> when (token) {
-            is NativeETH -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
-            is USDCToken -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USD Coin")
-            is USDTToken -> Triple(usdtLight, Icons.Outlined.AttachMoney, "Tether USD")
-            else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.Token, token.name)
-        }
-        coinType == CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
-        coinType == CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
-        coinType == CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
-        coinType == CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
-        else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.AccountBalanceWallet, "Asset")
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Available Balance",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    val usdValue = if (token is USDCToken || token is USDTToken) {
-                        // Stablecoins are 1:1 with USD
-                        String.format("%.2f", balance.toDouble())
-                    } else {
-                        String.format("%.2f", balance.toDouble() * getUsdRate(coinType))
-                    }
-
-                    Text(
-                        text = "$$usdValue",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Text(
-                        text = balanceFormatted,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = coinColor
-                    )
-
-                    if (secondaryBalance != null && secondaryBalanceFormatted != null) {
-                        Text(
-                            text = secondaryBalanceFormatted,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    if (network != null && network != "MAINNET" && network != "Mainnet") {
-                        Text(
-                            text = "Network: $network",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(coinColor.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = displayName,
-                        tint = coinColor,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "From: ${address.take(6)}...${address.takeLast(4)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-    }
-}
 @Composable
 fun SendAddressInput(
     toAddress: String,
