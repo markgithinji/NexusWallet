@@ -25,7 +25,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.example.nexuswallet.R
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,6 +37,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLToken
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
@@ -367,7 +371,7 @@ fun CoinSelectionStep(
 
         // Bitcoin Mainnet
         NetworkToggleCard(
-            icon = Icons.Default.CurrencyBitcoin,
+            iconRes = R.drawable.bitcoin,
             color = bitcoinLight,
             coinName = "Bitcoin Mainnet",
             coinSymbol = "BTC",
@@ -383,7 +387,7 @@ fun CoinSelectionStep(
 
         // Bitcoin Testnet
         NetworkToggleCard(
-            icon = Icons.Default.CurrencyBitcoin,
+            iconRes = R.drawable.bitcoin,
             color = bitcoinLight.copy(alpha = 0.7f),
             coinName = "Bitcoin Testnet",
             coinSymbol = "BTC",
@@ -408,7 +412,7 @@ fun CoinSelectionStep(
 
         // Ethereum Mainnet
         NetworkToggleCard(
-            icon = Icons.Default.Diamond,
+            iconRes = R.drawable.ethereum,
             color = ethereumLight,
             coinName = "Ethereum Mainnet",
             coinSymbol = "ETH",
@@ -424,7 +428,7 @@ fun CoinSelectionStep(
 
         // Ethereum Sepolia
         NetworkToggleCard(
-            icon = Icons.Default.Diamond,
+            iconRes = R.drawable.ethereum,
             color = ethereumLight.copy(alpha = 0.7f),
             coinName = "Ethereum Sepolia",
             coinSymbol = "ETH",
@@ -449,7 +453,7 @@ fun CoinSelectionStep(
 
         // Solana Mainnet
         NetworkToggleCard(
-            icon = Icons.Default.FlashOn,
+            iconRes = R.drawable.solana,
             color = solanaLight,
             coinName = "Solana Mainnet",
             coinSymbol = "SOL",
@@ -465,7 +469,7 @@ fun CoinSelectionStep(
 
         // Solana Devnet
         NetworkToggleCard(
-            icon = Icons.Default.FlashOn,
+            iconRes = R.drawable.solana,
             color = solanaLight.copy(alpha = 0.7f),
             coinName = "Solana Devnet",
             coinSymbol = "SOL",
@@ -490,7 +494,7 @@ fun CoinSelectionStep(
 
         // USDC Mainnet
         NetworkToggleCard(
-            icon = Icons.Default.AttachMoney,
+            iconRes = R.drawable.usdc,
             color = usdcLight,
             coinName = "USDC",
             coinSymbol = "USDC",
@@ -506,7 +510,7 @@ fun CoinSelectionStep(
 
         // USDC Sepolia
         NetworkToggleCard(
-            icon = Icons.Default.AttachMoney,
+            iconRes = R.drawable.usdc,
             color = usdcLight.copy(alpha = 0.7f),
             coinName = "USDC",
             coinSymbol = "USDC",
@@ -522,7 +526,7 @@ fun CoinSelectionStep(
 
         // USDT Mainnet
         NetworkToggleCard(
-            icon = Icons.Default.AttachMoney,
+            iconRes = R.drawable.usdc,
             color = usdtLight,
             coinName = "USDT",
             coinSymbol = "USDT",
@@ -617,7 +621,7 @@ fun CoinSelectionStep(
 
 @Composable
 fun NetworkToggleCard(
-    icon: ImageVector,
+    iconRes: Int,
     color: Color,
     coinName: String,
     coinSymbol: String,
@@ -629,10 +633,11 @@ fun NetworkToggleCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) color.copy(alpha = 0.1f)
-            else MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (isSelected) color.copy(alpha = 0.05f)
+            else MaterialTheme.colorScheme.surface
         ),
-        border = if (isSelected) BorderStroke(2.dp, color) else null
+        border = if (isSelected) BorderStroke(1.dp, color) else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -641,18 +646,16 @@ fun NetworkToggleCard(
                 .clickable { onSelectedChange(!isSelected) },
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Icon with no background
             Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(color),
+                modifier = Modifier.size(48.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(id = iconRes),
                     contentDescription = coinName,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(36.dp)
                 )
             }
 
@@ -665,7 +668,7 @@ fun NetworkToggleCard(
                     text = coinName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "$coinSymbol • $networkName",
@@ -678,7 +681,8 @@ fun NetworkToggleCard(
                 checked = isSelected,
                 onCheckedChange = onSelectedChange,
                 colors = CheckboxDefaults.colors(
-                    checkedColor = color
+                    checkedColor = color,
+                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
         }
@@ -1563,13 +1567,20 @@ fun WalletSuccessStep(
     wallet: Wallet,
     onFinish: () -> Unit
 ) {
+    // Calculate total assets correctly
+    val totalAssets = wallet.bitcoinCoins.size +
+            wallet.solanaCoins.size +
+            wallet.evmTokens.size +
+            wallet.solanaCoins.flatMap { it.splTokens }.size
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Success icon
         Box(
             modifier = Modifier
                 .size(100.dp)
@@ -1618,7 +1629,9 @@ fun WalletSuccessStep(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Row {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         "Name: ",
                         fontWeight = FontWeight.Medium,
@@ -1626,11 +1639,12 @@ fun WalletSuccessStep(
                     )
                     Text(
                         wallet.name,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
                     "Enabled Assets:",
@@ -1638,39 +1652,84 @@ fun WalletSuccessStep(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // Bitcoin Coins
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Bitcoin Coins with icons
                 wallet.bitcoinCoins.forEach { coin ->
                     val networkSuffix = if (coin.network != BitcoinNetwork.Mainnet) " (Testnet)" else ""
-                    Text(
-                        "• Bitcoin$networkSuffix",
-                        modifier = Modifier.padding(start = 8.dp),
-                        color = bitcoinLight
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.bitcoin),
+                            contentDescription = "Bitcoin",
+                            modifier = Modifier.size(20.dp),
+                            tint = Color.Unspecified
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Bitcoin$networkSuffix",
+                            color = bitcoinLight,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
 
-                // Solana Coins
+                // Solana Coins with icons
                 wallet.solanaCoins.forEach { coin ->
                     val networkSuffix = if (coin.network != SolanaNetwork.Mainnet) " (Devnet)" else ""
-                    Text(
-                        "• Solana$networkSuffix",
-                        modifier = Modifier.padding(start = 8.dp),
-                        color = solanaLight
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.solana),
+                            contentDescription = "Solana",
+                            modifier = Modifier.size(20.dp),
+                            tint = Color.Unspecified
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Solana$networkSuffix",
+                            color = solanaLight,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
 
                     // Show SPL tokens if any
                     if (coin.splTokens.isNotEmpty()) {
                         coin.splTokens.take(3).forEach { token ->
-                            Text(
-                                "  • ${token.symbol} (SPL)",
-                                modifier = Modifier.padding(start = 16.dp),
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 28.dp, top = 2.dp, bottom = 2.dp) // FIXED: Individual padding
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Token,
+                                        contentDescription = token.symbol,
+                                        modifier = Modifier.size(10.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "${token.symbol} (SPL)",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
                         if (coin.splTokens.size > 3) {
                             Text(
-                                "  • +${coin.splTokens.size - 3} more",
-                                modifier = Modifier.padding(start = 16.dp),
+                                text = "  • +${coin.splTokens.size - 3} more",
+                                modifier = Modifier.padding(start = 28.dp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall
                             )
@@ -1678,20 +1737,51 @@ fun WalletSuccessStep(
                     }
                 }
 
-                // EVM Tokens
+                // EVM Tokens with icons
                 wallet.evmTokens.forEach { token ->
-                    val (color, networkSuffix) = when (token) {
-                        is NativeETH -> Pair(ethereumLight, if (token.network != EthereumNetwork.Mainnet) " (Sepolia)" else "")
-                        is USDCToken -> Pair(usdcLight, if (token.network != EthereumNetwork.Mainnet) " (Sepolia)" else "")
-                        is USDTToken -> Pair(usdtLight, if (token.network != EthereumNetwork.Mainnet) " (Sepolia)" else "")
-                        else -> Pair(MaterialTheme.colorScheme.primary, "")
+                    val (color, iconRes) = when (token) {
+                        is NativeETH -> Pair(ethereumLight, R.drawable.ethereum)
+                        is USDCToken -> Pair(usdcLight, R.drawable.usdc)
+                        is USDTToken -> Pair(usdtLight, R.drawable.usdc)
+                        else -> Pair(MaterialTheme.colorScheme.primary, null)
                     }
 
-                    Text(
-                        "• ${token.symbol}$networkSuffix",
-                        modifier = Modifier.padding(start = 8.dp),
-                        color = color
-                    )
+                    val networkSuffix = if (token.network != EthereumNetwork.Mainnet) " (Sepolia)" else ""
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        if (iconRes != null) {
+                            Icon(
+                                painter = painterResource(id = iconRes),
+                                contentDescription = token.symbol,
+                                modifier = Modifier.size(20.dp),
+                                tint = Color.Unspecified
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clip(CircleShape)
+                                    .background(color.copy(alpha = 0.1f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Token,
+                                    contentDescription = token.symbol,
+                                    modifier = Modifier.size(12.dp),
+                                    tint = color
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "${token.symbol}$networkSuffix",
+                            color = color,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
 
                 // Primary Address (first available)
@@ -1700,35 +1790,68 @@ fun WalletSuccessStep(
                     ?: wallet.solanaCoins.firstOrNull()?.address
 
                 if (primaryAddress != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Row {
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.AccountBalanceWallet,
+                            contentDescription = "Address",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "Address: ",
+                            "Primary Address: ",
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Text(
-                            text = primaryAddress.take(12) + "..." + primaryAddress.takeLast(8),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
                     }
+                    Text(
+                        text = primaryAddress,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(start = 24.dp)
+                    )
                 }
 
-                // Asset count summary
-                val totalAssets = wallet.bitcoinCoins.size +
-                        wallet.solanaCoins.size +
-                        wallet.evmTokens.size
-
+                Spacer(modifier = Modifier.height(16.dp))
+                Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
-                    text = "Total Assets: $totalAssets",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.AccountBalanceWallet,
+                            contentDescription = "Total Assets",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Total Assets:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "$totalAssets",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
 
@@ -1736,13 +1859,21 @@ fun WalletSuccessStep(
 
         Button(
             onClick = onFinish,
-            modifier = Modifier.fillMaxWidth(0.8f),
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .padding(bottom = 32.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
+            Icon(
+                imageVector = Icons.Outlined.Dashboard,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Text("Go to Dashboard")
         }
     }
