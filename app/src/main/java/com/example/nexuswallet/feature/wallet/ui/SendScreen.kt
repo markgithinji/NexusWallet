@@ -76,6 +76,11 @@ fun SendScreen(
     var showMaxDialog by remember { mutableStateOf(false) }
     var showNetworkSelector by remember { mutableStateOf(false) }
     var showTokenSelector by remember { mutableStateOf(false) }
+
+    // Track which fields have been touched/interacted with
+    var addressTouched by remember { mutableStateOf(false) }
+    var amountTouched by remember { mutableStateOf(false) }
+
     val context = LocalContext.current
 
     val ethereumState = ethereumViewModel.uiState.collectAsState()
@@ -183,6 +188,73 @@ fun SendScreen(
             NetworkType.BITCOIN_TESTNET
         )
         else -> emptyList()
+    }
+
+    // Determine if we should show error messages
+    val showAddressError = addressTouched && when (coinType) {
+        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.addressError != null
+        CoinType.SOLANA -> solanaState.value.validationResult.addressError != null
+        CoinType.BITCOIN -> bitcoinState.value.validationResult.addressError != null
+        else -> false
+    }
+
+    val showAmountError = amountTouched && when (coinType) {
+        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.amountError != null
+        CoinType.SOLANA -> solanaState.value.validationResult.amountError != null
+        CoinType.BITCOIN -> bitcoinState.value.validationResult.amountError != null
+        else -> false
+    }
+
+    val showBalanceError = amountTouched && when (coinType) {
+        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.balanceError != null
+        CoinType.SOLANA -> solanaState.value.validationResult.balanceError != null
+        CoinType.BITCOIN -> bitcoinState.value.validationResult.balanceError != null
+        else -> false
+    }
+
+    val showSelfSendError = addressTouched && when (coinType) {
+        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.selfSendError != null
+        CoinType.SOLANA -> solanaState.value.validationResult.selfSendError != null
+        CoinType.BITCOIN -> bitcoinState.value.validationResult.selfSendError != null
+        else -> false
+    }
+
+    val showGasError = amountTouched && when (coinType) {
+        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.gasError != null
+        else -> false
+    }
+
+    // Determine which error to show in the banner (only if touched)
+    val activeError = when {
+        showAddressError -> when (coinType) {
+            CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.addressError
+            CoinType.SOLANA -> solanaState.value.validationResult.addressError
+            CoinType.BITCOIN -> bitcoinState.value.validationResult.addressError
+            else -> null
+        }
+        showSelfSendError -> when (coinType) {
+            CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.selfSendError
+            CoinType.SOLANA -> solanaState.value.validationResult.selfSendError
+            CoinType.BITCOIN -> bitcoinState.value.validationResult.selfSendError
+            else -> null
+        }
+        showAmountError -> when (coinType) {
+            CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.amountError
+            CoinType.SOLANA -> solanaState.value.validationResult.amountError
+            CoinType.BITCOIN -> bitcoinState.value.validationResult.amountError
+            else -> null
+        }
+        showBalanceError -> when (coinType) {
+            CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.balanceError
+            CoinType.SOLANA -> solanaState.value.validationResult.balanceError
+            CoinType.BITCOIN -> bitcoinState.value.validationResult.balanceError
+            else -> null
+        }
+        showGasError -> when (coinType) {
+            CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.gasError
+            else -> null
+        }
+        else -> null
     }
 
     Scaffold(
@@ -356,37 +428,19 @@ fun SendScreen(
                     }
                 }
 
-                // Error/Info Messages
-                when (coinType) {
-                    CoinType.ETHEREUM, CoinType.USDC -> {
-                        ethereumState.value.error?.let { error ->
-                            item {
-                                ErrorMessage(
-                                    error = error,
-                                    onDismiss = { ethereumViewModel.clearError() }
-                                )
+                // Error Banner - only show if there's an active error and fields have been touched
+                if (activeError != null) {
+                    item {
+                        ErrorMessage(
+                            error = activeError,
+                            onDismiss = {
+                                when (coinType) {
+                                    CoinType.ETHEREUM, CoinType.USDC -> ethereumViewModel.clearError()
+                                    CoinType.SOLANA -> solanaViewModel.clearError()
+                                    CoinType.BITCOIN -> bitcoinViewModel.clearError()
+                                }
                             }
-                        }
-                    }
-                    CoinType.BITCOIN -> {
-                        bitcoinState.value.error?.let { error ->
-                            item {
-                                ErrorMessage(
-                                    error = error,
-                                    onDismiss = { bitcoinViewModel.clearError() }
-                                )
-                            }
-                        }
-                    }
-                    CoinType.SOLANA -> {
-                        solanaState.value.error?.let { error ->
-                            item {
-                                ErrorMessage(
-                                    error = error,
-                                    onDismiss = { solanaViewModel.clearError() }
-                                )
-                            }
-                        }
+                        )
                     }
                 }
 
@@ -396,14 +450,19 @@ fun SendScreen(
                         CoinType.ETHEREUM, CoinType.USDC -> {
                             SendAddressInput(
                                 toAddress = ethereumState.value.toAddress,
-                                onAddressChange = { ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(it)) },
+                                onAddressChange = {
+                                    addressTouched = true
+                                    ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(it))
+                                },
                                 coinType = coinType,
                                 token = selectedToken,
-                                isValid = ethereumState.value.validationResult.isValid &&
-                                        ethereumState.value.validationResult.addressError == null,
-                                errorMessage = ethereumState.value.validationResult.addressError
-                                    ?: ethereumState.value.validationResult.selfSendError,
+                                isValid = !showAddressError,
+                                errorMessage = if (showAddressError)
+                                    ethereumState.value.validationResult.addressError
+                                        ?: ethereumState.value.validationResult.selfSendError
+                                else null,
                                 onPaste = { pastedText ->
+                                    addressTouched = true
                                     ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(pastedText))
                                 }
                             )
@@ -411,13 +470,18 @@ fun SendScreen(
                         CoinType.SOLANA -> {
                             SendAddressInput(
                                 toAddress = solanaState.value.toAddress,
-                                onAddressChange = { solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(it)) },
+                                onAddressChange = {
+                                    addressTouched = true
+                                    solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(it))
+                                },
                                 coinType = coinType,
-                                isValid = solanaState.value.validationResult.isValid &&
-                                        solanaState.value.validationResult.addressError == null,
-                                errorMessage = solanaState.value.validationResult.addressError
-                                    ?: solanaState.value.validationResult.selfSendError,
+                                isValid = !showAddressError,
+                                errorMessage = if (showAddressError)
+                                    solanaState.value.validationResult.addressError
+                                        ?: solanaState.value.validationResult.selfSendError
+                                else null,
                                 onPaste = { pastedText ->
+                                    addressTouched = true
                                     solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(pastedText))
                                 }
                             )
@@ -426,15 +490,18 @@ fun SendScreen(
                             SendAddressInput(
                                 toAddress = bitcoinState.value.toAddress,
                                 onAddressChange = {
+                                    addressTouched = true
                                     bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAddress(it))
                                 },
                                 coinType = coinType,
-                                isValid = bitcoinState.value.validationResult.isValid &&
-                                        bitcoinState.value.validationResult.addressError == null,
-                                errorMessage = bitcoinState.value.validationResult.addressError
-                                    ?: bitcoinState.value.validationResult.selfSendError,
+                                isValid = !showAddressError,
+                                errorMessage = if (showAddressError)
+                                    bitcoinState.value.validationResult.addressError
+                                        ?: bitcoinState.value.validationResult.selfSendError
+                                else null,
                                 network = bitcoinState.value.network,
                                 onPaste = { pastedText ->
+                                    addressTouched = true
                                     bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAddress(pastedText))
                                 }
                             )
@@ -449,39 +516,70 @@ fun SendScreen(
                             val token = selectedToken
                             SendAmountInput(
                                 amount = ethereumState.value.amount,
-                                onAmountChange = { ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(it)) },
+                                onAmountChange = {
+                                    amountTouched = true
+                                    ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(it))
+                                },
                                 balance = if (token is NativeETH) ethereumState.value.ethBalance else ethereumState.value.tokenBalance,
                                 coinType = coinType,
                                 token = token,
                                 tokenSymbol = token?.symbol,
-                                onMaxClick = { showMaxDialog = true },
-                                errorMessage = ethereumState.value.validationResult.amountError
-                                    ?: ethereumState.value.validationResult.balanceError
-                                    ?: ethereumState.value.validationResult.gasError
+                                onMaxClick = {
+                                    amountTouched = true
+                                    showMaxDialog = true
+                                },
+                                errorMessage = if (showAmountError || showBalanceError || showGasError) {
+                                    when {
+                                        showAmountError -> ethereumState.value.validationResult.amountError
+                                        showBalanceError -> ethereumState.value.validationResult.balanceError
+                                        showGasError -> ethereumState.value.validationResult.gasError
+                                        else -> null
+                                    }
+                                } else null
                             )
                         }
                         CoinType.SOLANA -> {
                             SendAmountInput(
                                 amount = solanaState.value.amount,
-                                onAmountChange = { solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(it)) },
+                                onAmountChange = {
+                                    amountTouched = true
+                                    solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(it))
+                                },
                                 balance = solanaState.value.balance,
                                 coinType = coinType,
-                                onMaxClick = { showMaxDialog = true },
-                                errorMessage = solanaState.value.validationResult.amountError
-                                    ?: solanaState.value.validationResult.balanceError
+                                onMaxClick = {
+                                    amountTouched = true
+                                    showMaxDialog = true
+                                },
+                                errorMessage = if (showAmountError || showBalanceError) {
+                                    when {
+                                        showAmountError -> solanaState.value.validationResult.amountError
+                                        showBalanceError -> solanaState.value.validationResult.balanceError
+                                        else -> null
+                                    }
+                                } else null
                             )
                         }
                         CoinType.BITCOIN -> {
                             SendAmountInput(
                                 amount = bitcoinState.value.amount,
                                 onAmountChange = {
+                                    amountTouched = true
                                     bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAmount(it))
                                 },
                                 balance = bitcoinState.value.balance,
                                 coinType = coinType,
-                                onMaxClick = { showMaxDialog = true },
-                                errorMessage = bitcoinState.value.validationResult.amountError
-                                    ?: bitcoinState.value.validationResult.balanceError
+                                onMaxClick = {
+                                    amountTouched = true
+                                    showMaxDialog = true
+                                },
+                                errorMessage = if (showAmountError || showBalanceError) {
+                                    when {
+                                        showAmountError -> bitcoinState.value.validationResult.amountError
+                                        showBalanceError -> bitcoinState.value.validationResult.balanceError
+                                        else -> null
+                                    }
+                                } else null
                             )
                         }
                     }
@@ -533,11 +631,7 @@ fun SendScreen(
                     CoinType.BITCOIN -> bitcoinState.value.validationResult.isValid
                 },
                 isLoading = isLoading,
-                error = when (coinType) {
-                    CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.error
-                    CoinType.SOLANA -> solanaState.value.error
-                    CoinType.BITCOIN -> bitcoinState.value.error
-                },
+                error = activeError, // Use the same active error in bottom bar
                 onSend = {
                     when (coinType) {
                         CoinType.ETHEREUM, CoinType.USDC -> {
@@ -605,6 +699,7 @@ fun SendScreen(
                     token = token,
                     onDismiss = { showMaxDialog = false },
                     onConfirm = { maxAmount ->
+                        amountTouched = true
                         ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(maxAmount))
                         showMaxDialog = false
                     }
@@ -618,6 +713,7 @@ fun SendScreen(
                     coinType = coinType,
                     onDismiss = { showMaxDialog = false },
                     onConfirm = { maxAmount ->
+                        amountTouched = true
                         solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(maxAmount))
                         showMaxDialog = false
                     }
@@ -631,6 +727,7 @@ fun SendScreen(
                     coinType = coinType,
                     onDismiss = { showMaxDialog = false },
                     onConfirm = { maxAmount ->
+                        amountTouched = true
                         bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAmount(maxAmount))
                         showMaxDialog = false
                     }
