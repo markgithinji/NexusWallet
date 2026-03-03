@@ -47,9 +47,11 @@ import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendEvent
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendViewModel
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate
+import com.example.nexuswallet.feature.coin.ethereum.EthereumSendEffect
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendEvent
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendViewModel
 import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
+import com.example.nexuswallet.feature.coin.solana.SolanaSendEffect
 import com.example.nexuswallet.feature.coin.solana.SolanaSendEvent
 import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
@@ -98,6 +100,7 @@ fun TransactionReviewScreen(
     val solanaState = solanaViewModel.state.collectAsState()
     val bitcoinState = bitcoinReviewViewModel.state.collectAsState()
 
+    // Handle Bitcoin effects
     LaunchedEffect(bitcoinReviewViewModel) {
         bitcoinReviewViewModel.effect.collect { effect ->
             when (effect) {
@@ -107,6 +110,46 @@ fun TransactionReviewScreen(
                 }
                 is BitcoinReviewEffect.TransactionPrepared -> {}
                 is BitcoinReviewEffect.TransactionSent -> {
+                    txHash = effect.txHash
+                    txStatus = "Transaction sent!"
+                    isSending = false
+                    showSuccessBanner = true
+                    delay(5000)
+                    showSuccessBanner = false
+                }
+            }
+        }
+    }
+
+    // Handle Ethereum effects
+    LaunchedEffect(ethereumViewModel) {
+        ethereumViewModel.effect.collect { effect ->
+            when (effect) {
+                is EthereumSendEffect.ShowError -> {
+                    sendError = effect.message
+                    isSending = false
+                }
+                is EthereumSendEffect.TransactionSent -> {
+                    txHash = effect.txHash
+                    txStatus = "Transaction sent!"
+                    isSending = false
+                    showSuccessBanner = true
+                    delay(5000)
+                    showSuccessBanner = false
+                }
+            }
+        }
+    }
+
+    // Handle Solana effects
+    LaunchedEffect(solanaViewModel) {
+        solanaViewModel.effect.collect { effect ->
+            when (effect) {
+                is SolanaSendEffect.ShowError -> {
+                    sendError = effect.message
+                    isSending = false
+                }
+                is SolanaSendEffect.TransactionSent -> {
                     txHash = effect.txHash
                     txStatus = "Transaction sent!"
                     isSending = false
