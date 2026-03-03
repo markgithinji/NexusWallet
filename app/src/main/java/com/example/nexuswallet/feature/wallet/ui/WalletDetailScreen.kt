@@ -2,33 +2,79 @@ package com.example.nexuswallet.feature.wallet.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.AttachMoney
+import androidx.compose.material.icons.outlined.CurrencyBitcoin
+import androidx.compose.material.icons.outlined.Diamond
+import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.FlashOn
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.Receipt
+import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.Token
+import androidx.compose.material.icons.outlined.TrendingDown
+import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
-import com.example.nexuswallet.feature.market.ui.formatTwoDecimals
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
@@ -58,7 +104,8 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -533,7 +580,7 @@ fun QuickActionItem(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier 
+        modifier = modifier
             .clickable { onClick() }
     ) {
         Box(
@@ -593,15 +640,14 @@ fun BitcoinCoinCard(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(CircleShape)
-                    .background(bitcoinLight.copy(alpha = 0.1f)),
+                    .clip(CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.CurrencyBitcoin,
+                    painter = painterResource(id = R.drawable.bitcoin),
                     contentDescription = "BTC",
-                    tint = bitcoinLight,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.Unspecified
                 )
             }
 
@@ -680,15 +726,14 @@ fun SolanaCoinCard(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(CircleShape)
-                    .background(solanaLight.copy(alpha = 0.1f)),
+                    .clip(CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.FlashOn,
+                    painter = painterResource(id = R.drawable.solana),
                     contentDescription = "SOL",
-                    tint = solanaLight,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.Unspecified
                 )
             }
 
@@ -749,11 +794,11 @@ fun EVMTokenCard(
     onClick: () -> Unit,
     priceChangePercentage: Double? = null
 ) {
-    val (color, icon) = when (token) {
-        is NativeETH -> Pair(ethereumLight, Icons.Outlined.Diamond)
-        is USDCToken -> Pair(usdcLight, Icons.Outlined.AttachMoney)
-        is USDTToken -> Pair(Color(0xFF26A17B), Icons.Outlined.AttachMoney)
-        is ERC20Token -> Pair(MaterialTheme.colorScheme.primary, Icons.Outlined.Token)
+    val (color, iconRes, iconSize) = when (token) {
+        is NativeETH -> Triple(ethereumLight, R.drawable.ethereum, 44.dp)
+        is USDCToken -> Triple(usdcLight, R.drawable.usdc, 20.dp)
+        is USDTToken -> Triple(Color(0xFF26A17B), R.drawable.usdc, 28.dp)
+        is ERC20Token -> Triple(MaterialTheme.colorScheme.primary, null, 20.dp)
     }
 
     val balanceAmount = balance?.balanceDecimal ?: "0"
@@ -783,16 +828,24 @@ fun EVMTokenCard(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(CircleShape)
-                    .background(color.copy(alpha = 0.1f)),
+                    .clip(CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = token.symbol,
-                    tint = color,
-                    modifier = Modifier.size(20.dp)
-                )
+                if (iconRes != null) {
+                    Icon(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = token.symbol,
+                        modifier = Modifier.size(iconSize),
+                        tint = Color.Unspecified
+                    )
+                } else {
+                    // Fallback to Material icon for unknown tokens
+                    Icon(
+                        imageVector = Icons.Outlined.Token,
+                        contentDescription = token.symbol,
+                        modifier = Modifier.size(iconSize)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -922,7 +975,9 @@ fun SPLTokenCard(
                 )
                 if (balance?.usdValue != null) {
                     Text(
-                        text = "$${NumberFormat.getNumberInstance(Locale.US).format(balance.usdValue)}",
+                        text = "$${
+                            NumberFormat.getNumberInstance(Locale.US).format(balance.usdValue)
+                        }",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1007,13 +1062,20 @@ fun formatCryptoAmount(amount: String): String {
     return try {
         val amountDecimal = amount.toBigDecimal()
         when {
-            amountDecimal < BigDecimal("0.000001") -> amountDecimal.setScale(8, RoundingMode.HALF_UP)
+            amountDecimal < BigDecimal("0.000001") -> amountDecimal.setScale(
+                8,
+                RoundingMode.HALF_UP
+            )
                 .stripTrailingZeros().toPlainString()
+
             amountDecimal < BigDecimal("0.001") -> amountDecimal.setScale(6, RoundingMode.HALF_UP)
                 .stripTrailingZeros().toPlainString()
+
             amountDecimal < BigDecimal("1") -> amountDecimal.setScale(4, RoundingMode.HALF_UP)
                 .stripTrailingZeros().toPlainString()
-            else -> amountDecimal.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+
+            else -> amountDecimal.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros()
+                .toPlainString()
         }
     } catch (e: Exception) {
         amount
@@ -1145,7 +1207,8 @@ fun TransactionItem(
     val (isIncoming, amount, symbol, status, timestamp) = when (transaction) {
         is BitcoinTransaction -> {
             // Find the Bitcoin coin that matches this transaction
-            val bitcoinCoin = wallet.bitcoinCoins.find { it.address == transaction.toAddress || it.address == transaction.fromAddress }
+            val bitcoinCoin =
+                wallet.bitcoinCoins.find { it.address == transaction.toAddress || it.address == transaction.fromAddress }
             val isIncoming = transaction.toAddress == bitcoinCoin?.address
             TransactionDisplayData(
                 isIncoming = isIncoming,
@@ -1158,7 +1221,8 @@ fun TransactionItem(
 
         is SolanaTransaction -> {
             // Find the Solana coin that matches this transaction
-            val solanaCoin = wallet.solanaCoins.find { it.address == transaction.toAddress || it.address == transaction.fromAddress }
+            val solanaCoin =
+                wallet.solanaCoins.find { it.address == transaction.toAddress || it.address == transaction.fromAddress }
             val isIncoming = transaction.toAddress == solanaCoin?.address
             TransactionDisplayData(
                 isIncoming = isIncoming,
@@ -1171,7 +1235,8 @@ fun TransactionItem(
 
         is NativeETHTransaction -> {
             // Find any EVM token with the same address (Native ETH uses same address)
-            val evmToken = wallet.evmTokens.firstOrNull { it.address == transaction.toAddress || it.address == transaction.fromAddress }
+            val evmToken =
+                wallet.evmTokens.firstOrNull { it.address == transaction.toAddress || it.address == transaction.fromAddress }
             val isIncoming = transaction.toAddress == evmToken?.address
             TransactionDisplayData(
                 isIncoming = isIncoming,
@@ -1227,10 +1292,12 @@ fun TransactionItem(
             MaterialTheme.colorScheme.success,
             MaterialTheme.colorScheme.success.copy(alpha = 0.1f)
         )
+
         TransactionStatus.PENDING -> Pair(
             MaterialTheme.colorScheme.warning,
             MaterialTheme.colorScheme.warning.copy(alpha = 0.1f)
         )
+
         TransactionStatus.FAILED -> Pair(
             MaterialTheme.colorScheme.error,
             MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
@@ -1438,6 +1505,7 @@ fun EmptyWalletView(onBack: () -> Unit) {
                     )
                 }
             }
-        }    }
+        }
+    }
 }
 
