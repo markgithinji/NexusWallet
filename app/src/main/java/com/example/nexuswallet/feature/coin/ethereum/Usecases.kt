@@ -241,7 +241,7 @@ class ValidateEVMSendUseCaseImpl @Inject constructor(
                         is NativeETH -> {
                             val totalRequired = amountValue + feeEth
                             if (totalRequired > tokenBalance) {
-                                balanceError = "Insufficient ETH balance. You have ${tokenBalance.setScale(4)} ETH but need ${totalRequired.setScale(4)} ETH (including gas)"
+                                balanceError = "Insufficient ETH balance. You have ${tokenBalance.setScale(4, RoundingMode.HALF_UP)} ETH but need ${totalRequired.setScale(4, RoundingMode.HALF_UP)} ETH (including gas)"
                                 isValid = false
                                 logger.d(tag, "Insufficient ETH balance: have $tokenBalance, need $totalRequired")
                             }
@@ -250,14 +250,14 @@ class ValidateEVMSendUseCaseImpl @Inject constructor(
                         else -> {
                             // Check token balance (USDC balance)
                             if (amountValue > tokenBalance) {
-                                balanceError = "Insufficient ${token.symbol} balance. You have ${tokenBalance.setScale(2)} ${token.symbol} but need ${amountValue.setScale(2)} ${token.symbol}"
+                                balanceError = "Insufficient ${token.symbol} balance. You have ${tokenBalance.setScale(2, RoundingMode.HALF_UP)} ${token.symbol} but need ${amountValue.setScale(2, RoundingMode.HALF_UP)} ${token.symbol}"
                                 isValid = false
                                 logger.d(tag, "Insufficient ${token.symbol} balance: have $tokenBalance, need $amountValue")
                             }
 
                             // Check ETH balance for gas
                             if (ethBalance < feeEth) {
-                                gasError = "Insufficient ETH for gas. You have ${ethBalance.setScale(6)} ETH but need ${feeEth.setScale(6)} ETH"
+                                gasError = "Insufficient ETH for gas. You have ${ethBalance.setScale(6, RoundingMode.HALF_UP)} ETH but need ${feeEth.setScale(6, RoundingMode.HALF_UP)} ETH"
                                 isValid = false
                                 logger.d(tag, "Insufficient ETH for gas: have $ethBalance, need $feeEth")
                             }
