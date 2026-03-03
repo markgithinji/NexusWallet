@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
@@ -57,14 +58,13 @@ import java.math.RoundingMode
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletDetailScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToCoinDetail: (String, CoinType, String) -> Unit,
-    onNavigateToReceive: (String, CoinType) -> Unit,
-    onNavigateToSend: (String, CoinType, String) -> Unit,
+    onNavigateToCoinDetail: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToAllTransactions: (String) -> Unit,
     walletId: String,
     walletViewModel: WalletDetailViewModel = hiltViewModel(),
@@ -169,9 +169,9 @@ fun WalletDetailContent(
     transactions: List<Any>,
     pricePercentages: Map<String, Double>,
     totalUsdValue: Double,
-    onNavigateToCoinDetail: (String, CoinType, String) -> Unit,
-    onNavigateToReceive: (String, CoinType) -> Unit,
-    onNavigateToSend: (String, CoinType, String) -> Unit,
+    onNavigateToCoinDetail: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToAllTransactions: (String) -> Unit,
     onSwap: () -> Unit,
     onMore: () -> Unit,
@@ -208,7 +208,13 @@ fun WalletDetailContent(
                         wallet.solanaCoins.isNotEmpty() -> CoinType.SOLANA
                         else -> CoinType.BITCOIN
                     }
-                    onNavigateToReceive(wallet.id, defaultCoin)
+                    val defaultNetwork = when (defaultCoin) {
+                        CoinType.BITCOIN -> NetworkType.BITCOIN_MAINNET
+                        CoinType.ETHEREUM -> NetworkType.ETHEREUM_MAINNET
+                        CoinType.SOLANA -> NetworkType.SOLANA_MAINNET
+                        CoinType.USDC -> NetworkType.ETHEREUM_MAINNET
+                    }
+                    onNavigateToReceive(wallet.id, defaultCoin, defaultNetwork)
                 },
                 onSend = {
                     // Default to first available coin for send
@@ -218,12 +224,11 @@ fun WalletDetailContent(
                         wallet.solanaCoins.isNotEmpty() -> CoinType.SOLANA
                         else -> CoinType.BITCOIN
                     }
-                    // For the default quick action, we need a network
                     val defaultNetwork = when (defaultCoin) {
-                        CoinType.BITCOIN -> "mainnet"
-                        CoinType.ETHEREUM -> "mainnet"
-                        CoinType.SOLANA -> "mainnet"
-                        CoinType.USDC -> "mainnet"
+                        CoinType.BITCOIN -> NetworkType.BITCOIN_MAINNET
+                        CoinType.ETHEREUM -> NetworkType.ETHEREUM_MAINNET
+                        CoinType.SOLANA -> NetworkType.SOLANA_MAINNET
+                        CoinType.USDC -> NetworkType.ETHEREUM_MAINNET
                     }
                     onNavigateToSend(wallet.id, defaultCoin, defaultNetwork)
                 },
@@ -235,22 +240,20 @@ fun WalletDetailContent(
         // Bitcoin Coins
         wallet.bitcoinCoins.forEachIndexed { index, coin ->
             val percentage = pricePercentages["bitcoin"]
-            val networkKey = when (coin.network) {
-                BitcoinNetwork.Mainnet -> "mainnet"
-                BitcoinNetwork.Testnet -> "testnet"
+            val network = when (coin.network) {
+                BitcoinNetwork.Mainnet -> NetworkType.BITCOIN_MAINNET
+                BitcoinNetwork.Testnet -> NetworkType.BITCOIN_TESTNET
             }
-            val coinBalance = balance?.bitcoinBalances?.get(networkKey)
-            val networkSuffix = if (coin.network != BitcoinNetwork.Mainnet) " (Testnet)" else ""
+            val coinBalance = balance?.bitcoinBalances?.get(network.apiValue)
 
             item(key = "btc_${coin.network}_${coin.address.take(8)}_$index") {
                 BitcoinCoinCard(
                     coin = coin,
                     balance = coinBalance,
                     onClick = {
-                        onNavigateToCoinDetail(wallet.id, CoinType.BITCOIN, networkKey)
+                        onNavigateToCoinDetail(wallet.id, CoinType.BITCOIN, network)
                     },
-                    priceChangePercentage = percentage,
-                    networkSuffix = networkSuffix
+                    priceChangePercentage = percentage
                 )
             }
         }
@@ -258,32 +261,30 @@ fun WalletDetailContent(
         // Solana Coins
         wallet.solanaCoins.forEachIndexed { index, coin ->
             val percentage = pricePercentages["solana"]
-            val networkKey = when (coin.network) {
-                SolanaNetwork.Mainnet -> "mainnet"
-                SolanaNetwork.Devnet -> "devnet"
+            val network = when (coin.network) {
+                SolanaNetwork.Mainnet -> NetworkType.SOLANA_MAINNET
+                SolanaNetwork.Devnet -> NetworkType.SOLANA_DEVNET
             }
-            val coinBalance = balance?.solanaBalances?.get(networkKey)
-            val networkSuffix = if (coin.network != SolanaNetwork.Mainnet) " (Devnet)" else ""
+            val coinBalance = balance?.solanaBalances?.get(network.apiValue)
 
             item(key = "sol_${coin.network}_${coin.address.take(8)}_$index") {
                 SolanaCoinCard(
                     coin = coin,
                     balance = coinBalance,
                     onClick = {
-                        onNavigateToCoinDetail(wallet.id, CoinType.SOLANA, networkKey)
+                        onNavigateToCoinDetail(wallet.id, CoinType.SOLANA, network)
                     },
-                    priceChangePercentage = percentage,
-                    networkSuffix = networkSuffix
+                    priceChangePercentage = percentage
                 )
             }
         }
 
         // ============ EVM TOKENS ============
-// Group EVM tokens by network for better organization
+        // Group EVM tokens by network for better organization
         val mainnetTokens = wallet.evmTokens.filter { it.network == EthereumNetwork.Mainnet }
         val sepoliaTokens = wallet.evmTokens.filter { it.network == EthereumNetwork.Sepolia }
 
-// Mainnet tokens
+        // Mainnet tokens
         mainnetTokens.forEach { token ->
             val percentage = when (token) {
                 is NativeETH -> pricePercentages["ethereum"]
@@ -292,30 +293,30 @@ fun WalletDetailContent(
                 else -> null
             }
 
-            val networkParam = when (token.network) {
-                EthereumNetwork.Mainnet -> "mainnet"
-                EthereumNetwork.Sepolia -> "sepolia"
+            val network = when (token.network) {
+                EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
+                EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
             }
-
             val tokenBalance = balanceMap[token.externalId]
+            val coinType = when (token) {
+                is NativeETH -> CoinType.ETHEREUM
+                is USDCToken -> CoinType.USDC
+                else -> CoinType.ETHEREUM // Default for other ERC20s
+            }
 
             item(key = "${token.externalId}_mainnet") {
                 EVMTokenCard(
                     token = token,
                     balance = tokenBalance,
                     onClick = {
-                        when (token) {
-                            is NativeETH -> onNavigateToCoinDetail(wallet.id, CoinType.ETHEREUM, networkParam)
-                            is USDCToken -> onNavigateToCoinDetail(wallet.id, CoinType.USDC, networkParam)
-                            else -> { /* Navigate to token detail */ }
-                        }
+                        onNavigateToCoinDetail(wallet.id, coinType, network)
                     },
                     priceChangePercentage = percentage
                 )
             }
         }
 
-// Sepolia tokens (Testnet)
+        // Sepolia tokens (Testnet)
         if (sepoliaTokens.isNotEmpty()) {
             sepoliaTokens.forEach { token ->
                 val percentage = when (token) {
@@ -325,23 +326,23 @@ fun WalletDetailContent(
                     else -> null
                 }
 
-                val networkParam = when (token.network) {
-                    EthereumNetwork.Mainnet -> "mainnet"
-                    EthereumNetwork.Sepolia -> "sepolia"
+                val network = when (token.network) {
+                    EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
+                    EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
                 }
-
                 val tokenBalance = balanceMap[token.externalId]
+                val coinType = when (token) {
+                    is NativeETH -> CoinType.ETHEREUM
+                    is USDCToken -> CoinType.USDC
+                    else -> CoinType.ETHEREUM // Default for other ERC20s
+                }
 
                 item(key = "${token.externalId}_sepolia") {
                     EVMTokenCard(
                         token = token,
                         balance = tokenBalance,
                         onClick = {
-                            when (token) {
-                                is NativeETH -> onNavigateToCoinDetail(wallet.id, CoinType.ETHEREUM, networkParam)
-                                is USDCToken -> onNavigateToCoinDetail(wallet.id, CoinType.USDC, networkParam)
-                                else -> { /* Navigate to token detail */ }
-                            }
+                            onNavigateToCoinDetail(wallet.id, coinType, network)
                         },
                         priceChangePercentage = percentage
                     )
@@ -350,13 +351,17 @@ fun WalletDetailContent(
         }
 
         // ============ SPL TOKENS ============
-        val allSplTokens = wallet.solanaCoins.flatMap { it.splTokens }
-        if (allSplTokens.isNotEmpty()) {
-            allSplTokens.forEach { splToken ->
+        wallet.solanaCoins.forEach { solanaCoin ->
+            val solanaNetwork = when (solanaCoin.network) {
+                SolanaNetwork.Mainnet -> NetworkType.SOLANA_MAINNET
+                SolanaNetwork.Devnet -> NetworkType.SOLANA_DEVNET
+            }
+            solanaCoin.splTokens.forEach { splToken ->
                 item(key = "spl_${splToken.mintAddress}") {
                     SPLTokenCard(
                         token = splToken,
-                        // TODO: get SPL balances from somewhere
+                        network = solanaNetwork,
+                        balance = null // TODO: get SPL balances from somewhere
                     )
                 }
             }
@@ -380,169 +385,11 @@ fun WalletDetailContent(
 }
 
 @Composable
-fun SPLTokenCard(
-    token: SPLToken,
-    balance: SPLBalance? = null
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = token.symbol,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = token.name,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = balance?.balanceDecimal ?: "0",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "$${NumberFormat.getNumberInstance(Locale.US).format(balance?.usdValue ?: 0.0)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-
-@Serializable
-data class SPLBalance(
-    val mintAddress: String,
-    val balanceDecimal: String,
-    val usdValue: Double
-)
-@Composable
-fun WalletHeaderCard(
-    wallet: Wallet,
-    totalBalance: String
-) {
-    val assetCount = wallet.bitcoinCoins.size +
-            wallet.solanaCoins.size +
-            wallet.evmTokens.size
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
-        ) {
-            // Wallet icon and name
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.AccountBalanceWallet,
-                        contentDescription = "Wallet",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                Column {
-                    Text(
-                        text = wallet.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Multi-currency wallet",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Divider(
-                color = MaterialTheme.colorScheme.outline,
-                thickness = 1.dp
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Total Balance",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Text(
-                text = totalBalance,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "$assetCount assets",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun BitcoinCoinCard(
     coin: BitcoinCoin,
     balance: BitcoinBalance?,
     onClick: () -> Unit,
-    priceChangePercentage: Double? = null,
-    networkSuffix: String = ""
+    priceChangePercentage: Double? = null
 ) {
     val balanceAmount = balance?.btc ?: "0"
     val usdValue = balance?.usdValue ?: 0.0
@@ -590,7 +437,7 @@ fun BitcoinCoinCard(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = "BTC$networkSuffix",
+                    text = "BTC${if (coin.network != BitcoinNetwork.Mainnet) " (Testnet)" else ""}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -629,8 +476,7 @@ fun SolanaCoinCard(
     coin: SolanaCoin,
     balance: SolanaBalance?,
     onClick: () -> Unit,
-    priceChangePercentage: Double? = null,
-    networkSuffix: String = ""
+    priceChangePercentage: Double? = null
 ) {
     val balanceAmount = balance?.sol ?: "0"
     val usdValue = balance?.usdValue ?: 0.0
@@ -678,7 +524,7 @@ fun SolanaCoinCard(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = "SOL$networkSuffix",
+                    text = "SOL${if (coin.network != SolanaNetwork.Mainnet) " (Devnet)" else ""}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -823,6 +669,206 @@ fun EVMTokenCard(
 }
 
 @Composable
+fun SPLTokenCard(
+    token: SPLToken,
+    network: NetworkType,
+    balance: SPLBalance? = null
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 1.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Token icon and info
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(solanaLight.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Token,
+                        contentDescription = token.symbol,
+                        tint = solanaLight,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Column {
+                    Text(
+                        text = token.symbol,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = token.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (network == NetworkType.SOLANA_DEVNET) {
+                        Text(
+                            text = "Devnet",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.warning
+                        )
+                    }
+                }
+            }
+
+            // Balance
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    text = balance?.balanceDecimal ?: "0",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (balance?.usdValue != null) {
+                    Text(
+                        text = "$${NumberFormat.getNumberInstance(Locale.US).format(balance.usdValue)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Serializable
+data class SPLBalance(
+    val mintAddress: String,
+    val balanceDecimal: String,
+    val usdValue: Double
+)
+
+@Composable
+fun WalletHeaderCard(
+    wallet: Wallet,
+    totalBalance: String
+) {
+    val assetCount = wallet.bitcoinCoins.size +
+            wallet.solanaCoins.size +
+            wallet.evmTokens.size
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            // Wallet icon and name
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.AccountBalanceWallet,
+                        contentDescription = "Wallet",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Column {
+                    Text(
+                        text = wallet.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Multi-currency wallet",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Divider(
+                color = MaterialTheme.colorScheme.outline,
+                thickness = 1.dp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Total Balance",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Text(
+                text = totalBalance,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AccountBalanceWallet,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "$assetCount assets",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun PriceChangeIndicator(percentage: Double) {
     val changeColor = if (percentage >= 0)
         MaterialTheme.colorScheme.success
@@ -843,7 +889,7 @@ fun PriceChangeIndicator(percentage: Double) {
             tint = changeColor
         )
         Text(
-            text = "${if (percentage >= 0) "+" else ""}${percentage.formatTwoDecimals()}%",
+            text = "${if (percentage >= 0) "+" else ""}${String.format("%.2f", percentage)}%",
             style = MaterialTheme.typography.labelSmall,
             color = changeColor
         )
@@ -1058,6 +1104,7 @@ fun SectionHeader(
         }
     }
 }
+
 @Composable
 fun TransactionItem(
     transaction: Any,
@@ -1359,6 +1406,6 @@ fun EmptyWalletView(onBack: () -> Unit) {
                     )
                 }
             }
-        }
-    }
+        }    }
 }
+
