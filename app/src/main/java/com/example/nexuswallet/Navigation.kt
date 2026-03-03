@@ -149,8 +149,7 @@ fun Navigation() {
                     Log.d("Navigation", "MainTabScreen: navigate to SendRoute - walletId: $walletId, coinType: $coinType, network: $network")
                     navController.navigate(SendRoute(walletId, coinType, network))
                 },
-                padding = PaddingValues(0.dp),
-                navigationViewModel = navigationViewModel
+                padding = PaddingValues(0.dp)
             )
         }
 

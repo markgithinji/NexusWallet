@@ -38,8 +38,7 @@ fun MainTabScreen(
     onNavigateToTokenDetail: (String) -> Unit,
     onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
-    padding: PaddingValues,
-    navigationViewModel: NavigationViewModel
+    padding: PaddingValues
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -201,22 +200,6 @@ fun MainTabScreen(
                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             indicatorColor = Color.Transparent
                         )
-                    )
-                }
-            }
-        },
-        floatingActionButton = {
-            if (selectedTab == 0) {
-                FloatingActionButton(
-                    onClick = onNavigateToCreateWallet,
-                    shape = RoundedCornerShape(16.dp),
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    elevation = FloatingActionButtonDefaults.elevation(0.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Create New Wallet",
-                        tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
