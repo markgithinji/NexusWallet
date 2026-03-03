@@ -16,6 +16,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -286,10 +287,12 @@ fun WalletCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    // Show coin badges as small indicators
-                    Row(
+                    // Show coin badges as small indicators with FlowRow for wrapping
+                    FlowRow(
+                        modifier = Modifier.padding(top = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(top = 4.dp)
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        maxItemsInEachRow = Int.MAX_VALUE
                     ) {
                         // Bitcoin badges
                         wallet.bitcoinCoins.forEach { coin ->
@@ -313,8 +316,9 @@ fun WalletCard(
                             )
                         }
 
-                        // EVM token badges
-                        wallet.evmTokens.take(3).forEach { token ->
+                        // EVM token badges (show first 5, then +X for remaining)
+                        val visibleTokens = wallet.evmTokens.take(5)
+                        visibleTokens.forEach { token ->
                             CoinBadge(
                                 text = token.symbol,
                                 color = when (token) {
@@ -325,9 +329,12 @@ fun WalletCard(
                                 }
                             )
                         }
-                        if (wallet.evmTokens.size > 3) {
+
+                        // Show count of remaining tokens if any
+                        val remainingCount = wallet.evmTokens.size - 5
+                        if (remainingCount > 0) {
                             CoinBadge(
-                                text = "+${wallet.evmTokens.size - 3}",
+                                text = "+$remainingCount",
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -356,9 +363,6 @@ fun WalletCard(
                 WalletExpandedContent(
                     wallet = wallet,
                     balance = balance,
-                    onCoinClick = { coinType, network -> onCoinClick(wallet.id, coinType, network) },
-                    onReceiveClick = { coinType, network -> onReceiveClick(wallet.id, coinType, network) },
-                    onSendClick = { coinType, network -> onSendClick(wallet.id, coinType, network) },
                     onDelete = { showDeleteDialog = true }
                 )
             }
@@ -370,9 +374,6 @@ fun WalletCard(
 fun WalletExpandedContent(
     wallet: Wallet,
     balance: WalletBalance?,
-    onCoinClick: (CoinType, NetworkType?) -> Unit,
-    onReceiveClick: (CoinType, NetworkType?) -> Unit,
-    onSendClick: (CoinType, NetworkType?) -> Unit,
     onDelete: () -> Unit
 ) {
     // Create maps for quick balance lookups
@@ -402,26 +403,14 @@ fun WalletExpandedContent(
                 BitcoinNetwork.Testnet -> "testnet"
             }
             val btcBalance = balance?.bitcoinBalances?.get(networkKey)
-            val networkType = when (coin.network) {
-                BitcoinNetwork.Mainnet -> NetworkType.BITCOIN_MAINNET
-                BitcoinNetwork.Testnet -> NetworkType.BITCOIN_TESTNET
-            }
 
             btcBalance?.let {
-                ExpandableCoinRow(
-                    coinType = CoinType.BITCOIN,
-                    network = networkType,
+                SimpleBalanceRow(
                     icon = Icons.Outlined.CurrencyBitcoin,
-                    symbol = when (coin.network) {
-                        BitcoinNetwork.Mainnet -> "Bitcoin"
-                        BitcoinNetwork.Testnet -> "Bitcoin Testnet"
-                    },
+                    symbol = "Bitcoin${if (coin.network != BitcoinNetwork.Mainnet) " (Testnet)" else ""}",
                     amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.btc.toDoubleOrNull() ?: 0.0)} BTC",
                     usdValue = it.usdValue,
-                    color = bitcoinLight,
-                    onCoinClick = { onCoinClick(CoinType.BITCOIN, networkType) },
-                    onReceiveClick = { onReceiveClick(CoinType.BITCOIN, networkType) },
-                    onSendClick = { onSendClick(CoinType.BITCOIN, networkType) }
+                    color = bitcoinLight
                 )
             }
         }
@@ -433,26 +422,14 @@ fun WalletExpandedContent(
                 SolanaNetwork.Devnet -> "devnet"
             }
             val solBalance = balance?.solanaBalances?.get(networkKey)
-            val networkType = when (coin.network) {
-                SolanaNetwork.Mainnet -> NetworkType.SOLANA_MAINNET
-                SolanaNetwork.Devnet -> NetworkType.SOLANA_DEVNET
-            }
 
             solBalance?.let {
-                ExpandableCoinRow(
-                    coinType = CoinType.SOLANA,
-                    network = networkType,
+                SimpleBalanceRow(
                     icon = Icons.Outlined.FlashOn,
-                    symbol = when (coin.network) {
-                        SolanaNetwork.Mainnet -> "Solana"
-                        SolanaNetwork.Devnet -> "Solana Devnet"
-                    },
+                    symbol = "Solana${if (coin.network != SolanaNetwork.Mainnet) " (Devnet)" else ""}",
                     amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.sol.toDoubleOrNull() ?: 0.0)} SOL",
                     usdValue = it.usdValue,
-                    color = solanaLight,
-                    onCoinClick = { onCoinClick(CoinType.SOLANA, networkType) },
-                    onReceiveClick = { onReceiveClick(CoinType.SOLANA, networkType) },
-                    onSendClick = { onSendClick(CoinType.SOLANA, networkType) }
+                    color = solanaLight
                 )
             }
         }
@@ -460,23 +437,13 @@ fun WalletExpandedContent(
         // Native ETH tokens
         nativeTokens.forEach { token ->
             val tokenBalance = evmBalanceMap[token.externalId]
-            val networkType = when (token.network) {
-                EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
-                EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
-            }
-
             tokenBalance?.let {
-                ExpandableCoinRow(
-                    coinType = CoinType.ETHEREUM,
-                    network = networkType,
+                SimpleBalanceRow(
                     icon = Icons.Outlined.Diamond,
-                    symbol = "Ethereum",
+                    symbol = "Ethereum${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
                     amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} ETH",
                     usdValue = it.usdValue,
-                    color = ethereumLight,
-                    onCoinClick = { onCoinClick(CoinType.ETHEREUM, networkType) },
-                    onReceiveClick = { onReceiveClick(CoinType.ETHEREUM, networkType) },
-                    onSendClick = { onSendClick(CoinType.ETHEREUM, networkType) }
+                    color = ethereumLight
                 )
             }
         }
@@ -484,23 +451,13 @@ fun WalletExpandedContent(
         // USDC tokens
         usdcTokens.forEach { token ->
             val tokenBalance = evmBalanceMap[token.externalId]
-            val networkType = when (token.network) {
-                EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
-                EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
-            }
-
             tokenBalance?.let {
-                ExpandableCoinRow(
-                    coinType = CoinType.USDC,
-                    network = networkType,
+                SimpleBalanceRow(
                     icon = Icons.Outlined.AttachMoney,
-                    symbol = "USD Coin",
+                    symbol = "USD Coin${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
                     amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} USDC",
                     usdValue = it.usdValue,
-                    color = usdcLight,
-                    onCoinClick = { onCoinClick(CoinType.USDC, networkType) },
-                    onReceiveClick = { onReceiveClick(CoinType.USDC, networkType) },
-                    onSendClick = { onSendClick(CoinType.USDC, networkType) }
+                    color = usdcLight
                 )
             }
         }
@@ -508,23 +465,13 @@ fun WalletExpandedContent(
         // USDT tokens
         usdtTokens.forEach { token ->
             val tokenBalance = evmBalanceMap[token.externalId]
-            val networkType = when (token.network) {
-                EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
-                EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
-            }
-
             tokenBalance?.let {
-                ExpandableCoinRow(
-                    coinType = CoinType.USDC,
-                    network = networkType,
+                SimpleBalanceRow(
                     icon = Icons.Outlined.AttachMoney,
-                    symbol = "Tether USD",
+                    symbol = "Tether USD${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
                     amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} USDT",
                     usdValue = it.usdValue,
-                    color = Color(0xFF26A17B),
-                    onCoinClick = { onCoinClick(CoinType.USDC, networkType) },
-                    onReceiveClick = { onReceiveClick(CoinType.USDC, networkType) },
-                    onSendClick = { onSendClick(CoinType.USDC, networkType) }
+                    color = Color(0xFF26A17B)
                 )
             }
         }
@@ -532,23 +479,13 @@ fun WalletExpandedContent(
         // Other ERC20 tokens
         otherTokens.forEach { token ->
             val tokenBalance = evmBalanceMap[token.externalId]
-            val networkType = when (token.network) {
-                EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
-                EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
-            }
-
             tokenBalance?.let {
-                ExpandableCoinRow(
-                    coinType = CoinType.ETHEREUM,
-                    network = networkType,
+                SimpleBalanceRow(
                     icon = Icons.Outlined.Token,
-                    symbol = token.symbol,
+                    symbol = "${token.symbol}${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
                     amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} ${token.symbol}",
                     usdValue = it.usdValue,
-                    color = MaterialTheme.colorScheme.primary,
-                    onCoinClick = { onCoinClick(CoinType.ETHEREUM, networkType) },
-                    onReceiveClick = { onReceiveClick(CoinType.ETHEREUM, networkType) },
-                    onSendClick = { onSendClick(CoinType.ETHEREUM, networkType) }
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -578,6 +515,57 @@ fun WalletExpandedContent(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun SimpleBalanceRow(
+    icon: ImageVector,
+    symbol: String,
+    amount: String,
+    usdValue: Double,
+    color: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Left side - icon and details
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(20.dp)
+            )
+            Column {
+                Text(
+                    text = symbol,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = amount,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // Right side - USD value
+        Text(
+            text = NumberFormat.getCurrencyInstance(Locale.US).format(usdValue),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -1012,154 +1000,6 @@ fun WalletCard(
                     wallet = wallet,
                     balance = balance,
                     onDelete = { showDeleteDialog = true }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun WalletExpandedContent(
-    wallet: Wallet,
-    balance: WalletBalance?,
-    onDelete: () -> Unit
-) {
-    // Create maps for quick balance lookups
-    val evmBalanceMap = balance?.evmBalances?.associateBy { it.externalTokenId } ?: emptyMap()
-
-    // Group EVM tokens
-    val nativeTokens = wallet.evmTokens.filterIsInstance<NativeETH>()
-    val usdcTokens = wallet.evmTokens.filterIsInstance<USDCToken>()
-    val usdtTokens = wallet.evmTokens.filterIsInstance<USDTToken>()
-    val otherTokens = wallet.evmTokens.filter { it !is NativeETH && it !is USDCToken && it !is USDTToken }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-    ) {
-        Divider(
-            modifier = Modifier.padding(bottom = 12.dp),
-            color = MaterialTheme.colorScheme.outline,
-            thickness = 1.dp
-        )
-
-        // Bitcoin balances (all networks)
-        wallet.bitcoinCoins.forEach { coin ->
-            val networkKey = when (coin.network) {
-                BitcoinNetwork.Mainnet -> "mainnet"
-                BitcoinNetwork.Testnet -> "testnet"
-            }
-            val btcBalance = balance?.bitcoinBalances?.get(networkKey)
-
-            btcBalance?.let {
-                CoinBalanceRow(
-                    icon = Icons.Outlined.CurrencyBitcoin,
-                    symbol = "Bitcoin${if (coin.network != BitcoinNetwork.Mainnet) " (Testnet)" else ""}",
-                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.btc.toDoubleOrNull() ?: 0.0)} BTC",
-                    usdValue = it.usdValue,
-                    color = bitcoinLight
-                )
-            }
-        }
-
-        // Solana balances (all networks)
-        wallet.solanaCoins.forEach { coin ->
-            val networkKey = when (coin.network) {
-                SolanaNetwork.Mainnet -> "mainnet"
-                SolanaNetwork.Devnet -> "devnet"
-            }
-            val solBalance = balance?.solanaBalances?.get(networkKey)
-
-            solBalance?.let {
-                CoinBalanceRow(
-                    icon = Icons.Outlined.FlashOn,
-                    symbol = "Solana${if (coin.network != SolanaNetwork.Mainnet) " (Devnet)" else ""}",
-                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.sol.toDoubleOrNull() ?: 0.0)} SOL",
-                    usdValue = it.usdValue,
-                    color = solanaLight
-                )
-            }
-        }
-
-        // Native ETH tokens
-        nativeTokens.forEach { token ->
-            val tokenBalance = evmBalanceMap[token.externalId]
-            tokenBalance?.let {
-                CoinBalanceRow(
-                    icon = Icons.Outlined.Diamond,
-                    symbol = "${token.symbol} (${token.network.displayName})",
-                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} ${token.symbol}",
-                    usdValue = it.usdValue,
-                    color = ethereumLight
-                )
-            }
-        }
-
-        // USDC tokens
-        usdcTokens.forEach { token ->
-            val tokenBalance = evmBalanceMap[token.externalId]
-            tokenBalance?.let {
-                CoinBalanceRow(
-                    icon = Icons.Outlined.AttachMoney,
-                    symbol = "${token.symbol} (${token.network.displayName})",
-                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} ${token.symbol}",
-                    usdValue = it.usdValue,
-                    color = usdcLight
-                )
-            }
-        }
-
-        // USDT tokens
-        usdtTokens.forEach { token ->
-            val tokenBalance = evmBalanceMap[token.externalId]
-            tokenBalance?.let {
-                CoinBalanceRow(
-                    icon = Icons.Outlined.AttachMoney,
-                    symbol = "${token.symbol} (${token.network.displayName})",
-                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} ${token.symbol}",
-                    usdValue = it.usdValue,
-                    color = Color(0xFF26A17B)
-                )
-            }
-        }
-
-        // Other ERC20 tokens
-        otherTokens.forEach { token ->
-            val tokenBalance = evmBalanceMap[token.externalId]
-            tokenBalance?.let {
-                CoinBalanceRow(
-                    icon = Icons.Outlined.Token,
-                    symbol = "${token.symbol} (${token.network.displayName})",
-                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} ${token.symbol}",
-                    usdValue = it.usdValue,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Delete button
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            TextButton(
-                onClick = onDelete,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Delete,
-                    contentDescription = "Delete",
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    "Delete Wallet",
-                    style = MaterialTheme.typography.labelLarge
                 )
             }
         }
