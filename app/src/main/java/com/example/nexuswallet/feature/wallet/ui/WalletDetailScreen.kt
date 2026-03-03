@@ -1,5 +1,8 @@
 package com.example.nexuswallet.feature.wallet.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -57,6 +60,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -460,6 +466,24 @@ fun WalletHeaderCard(
             wallet.solanaCoins.size +
             wallet.evmTokens.size
 
+    // Extract numeric value from formatted string
+    val numericBalance = remember(totalBalance) {
+        totalBalance.replace("[$,]".toRegex(), "").toDoubleOrNull() ?: 0.0
+    }
+
+    var previousValue by remember { mutableStateOf(numericBalance) }
+    val animatedValue = remember { Animatable(previousValue.toFloat()) }
+
+    LaunchedEffect(numericBalance) {
+        if (previousValue != numericBalance) {
+            animatedValue.animateTo(
+                targetValue = numericBalance.toFloat(),
+                animationSpec = tween(1000, easing = FastOutSlowInEasing)
+            )
+            previousValue = numericBalance
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -484,13 +508,13 @@ fun WalletHeaderCard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Balance with optional warning icon
+            // Animated Balance with optional warning icon
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = totalBalance,
+                    text = NumberFormat.getCurrencyInstance(Locale.US).format(animatedValue.value),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
