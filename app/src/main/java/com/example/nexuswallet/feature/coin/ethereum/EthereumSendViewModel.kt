@@ -16,8 +16,11 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
@@ -65,6 +68,9 @@ class EthereumSendViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(EthSendUiState())
     val uiState: StateFlow<EthSendUiState> = _uiState.asStateFlow()
+
+    private val _effect = MutableSharedFlow<EthereumSendEffect>()
+    val effect: SharedFlow<EthereumSendEffect> = _effect.asSharedFlow()
 
     private var wallet: Wallet? = null
     private var evmTokensByNetwork: Map<EthereumNetwork, List<EVMToken>> = emptyMap()
@@ -181,7 +187,7 @@ class EthereumSendViewModel @Inject constructor(
                     error = null,
                     validationResult = ValidateEVMSendUseCase.ValidationResult(isValid = false),
                     balancesLoaded = false,
-                    tokenBalance = BigDecimal.ZERO // Reset token balance
+                    tokenBalance = BigDecimal.ZERO
                 )
             }
 
@@ -199,7 +205,7 @@ class EthereumSendViewModel @Inject constructor(
                     selectedToken = token,
                     fromAddress = token.address,
                     balancesLoaded = false,
-                    tokenBalance = BigDecimal.ZERO, // Reset token balance
+                    tokenBalance = BigDecimal.ZERO,
                     validationResult = ValidateEVMSendUseCase.ValidationResult(isValid = false)
                 )
             }
@@ -223,7 +229,6 @@ class EthereumSendViewModel @Inject constructor(
         when (ethBalanceResult) {
             is Result.Success -> {
                 _uiState.update { currentState ->
-                    // Only update if token hasn't changed
                     if (currentState.selectedToken?.externalId == currentTokenId) {
                         currentState.copy(ethBalance = ethBalanceResult.data)
                     } else {
@@ -247,12 +252,9 @@ class EthereumSendViewModel @Inject constructor(
         // Load token balance (for the selected token - could be ETH, USDC, etc.)
         val tokenBalanceResult = when (token) {
             is NativeETH -> {
-                // For ETH, we don't need to make another API call
-                // Just use the ETH balance we already have
                 Result.Success(state.ethBalance)
             }
             else -> {
-                // For tokens like USDC, get the token balance
                 evmBlockchainRepository.getTokenBalance(
                     address = token.address,
                     tokenContract = token.contractAddress,
@@ -266,7 +268,6 @@ class EthereumSendViewModel @Inject constructor(
             is Result.Success -> {
                 val balance = tokenBalanceResult.data
                 _uiState.update { currentState ->
-                    // Only update if this is still the selected token
                     if (currentState.selectedToken?.externalId == currentTokenId) {
                         currentState.copy(
                             tokenBalance = balance,
@@ -285,7 +286,6 @@ class EthereumSendViewModel @Inject constructor(
                 }
                 Log.d("EthereumVM", "Token balance loaded: $balance for ${token.symbol}")
 
-                // Only validate if this is still the selected token
                 if (_uiState.value.selectedToken?.externalId == currentTokenId) {
                     validateInputs()
                 }
@@ -296,7 +296,7 @@ class EthereumSendViewModel @Inject constructor(
                         currentState.copy(
                             error = "Failed to load balance: ${tokenBalanceResult.message}",
                             isLoading = false,
-                            balancesLoaded = true // Mark as loaded even on error to prevent infinite waiting
+                            balancesLoaded = true
                         )
                     } else {
                         currentState
@@ -433,6 +433,7 @@ class EthereumSendViewModel @Inject constructor(
                     val sendResult = result.data
                     if (sendResult.success) {
                         _uiState.update { it.copy(isLoading = false, step = "Sent!") }
+                        _effect.emit(EthereumSendEffect.TransactionSent(sendResult.txHash))
                         onSuccess(sendResult.txHash)
                     } else {
                         _uiState.update {
@@ -441,6 +442,7 @@ class EthereumSendViewModel @Inject constructor(
                                 error = sendResult.error ?: "Send failed"
                             )
                         }
+                        _effect.emit(EthereumSendEffect.ShowError(sendResult.error ?: "Send failed"))
                     }
                 }
                 is Result.Error -> {
@@ -450,6 +452,7 @@ class EthereumSendViewModel @Inject constructor(
                             error = result.message
                         )
                     }
+                    _effect.emit(EthereumSendEffect.ShowError(result.message))
                 }
                 Result.Loading -> {}
             }
@@ -457,4 +460,9 @@ class EthereumSendViewModel @Inject constructor(
     }
 
     fun clearError() = _uiState.update { it.copy(error = null) }
+}
+
+sealed class EthereumSendEffect {
+    data class ShowError(val message: String) : EthereumSendEffect()
+    data class TransactionSent(val txHash: String) : EthereumSendEffect()
 }

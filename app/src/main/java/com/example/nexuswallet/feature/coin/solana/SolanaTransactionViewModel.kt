@@ -10,8 +10,11 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -56,6 +59,9 @@ class SolanaSendViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(SolanaSendUIState())
     val state: StateFlow<SolanaSendUIState> = _state.asStateFlow()
+
+    private val _effect = MutableSharedFlow<SolanaSendEffect>()
+    val effect: SharedFlow<SolanaSendEffect> = _effect.asSharedFlow()
 
     private var wallet: Wallet? = null
     private var solanaCoins: Map<SolanaNetwork, SolanaCoin> = emptyMap()
@@ -129,7 +135,6 @@ class SolanaSendViewModel @Inject constructor(
         }
     }
 
-    // Helper method to set transaction data from review screen
     fun setTransactionData(
         toAddress: String,
         amount: String,
@@ -145,7 +150,6 @@ class SolanaSendViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            // Reload fee estimate with new fee level
             loadFeeEstimate(_state.value.network)
             validateInputs()
         }
@@ -242,40 +246,32 @@ class SolanaSendViewModel @Inject constructor(
     }
 
     fun onEvent(event: SolanaSendEvent) {
-        when (event) {
-            is SolanaSendEvent.ToAddressChanged -> {
-                _state.update { it.copy(toAddress = event.address) }
-                viewModelScope.launch {
+        viewModelScope.launch {
+            when (event) {
+                is SolanaSendEvent.ToAddressChanged -> {
+                    _state.update { it.copy(toAddress = event.address) }
                     validateInputs()
                 }
-            }
 
-            is SolanaSendEvent.AmountChanged -> {
-                val amountValue = event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
-                _state.update {
-                    it.copy(
-                        amount = event.amount,
-                        amountValue = amountValue
-                    )
-                }
-                viewModelScope.launch {
+                is SolanaSendEvent.AmountChanged -> {
+                    val amountValue = event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
+                    _state.update {
+                        it.copy(
+                            amount = event.amount,
+                            amountValue = amountValue
+                        )
+                    }
                     validateInputs()
                 }
-            }
 
-            is SolanaSendEvent.FeeLevelChanged -> {
-                _state.update { it.copy(feeLevel = event.feeLevel) }
-                viewModelScope.launch {
+                is SolanaSendEvent.FeeLevelChanged -> {
+                    _state.update { it.copy(feeLevel = event.feeLevel) }
                     loadFeeEstimate(_state.value.network)
                 }
-            }
 
-            SolanaSendEvent.Validate -> {
-                viewModelScope.launch {
-                    validateInputs()
-                }
+                SolanaSendEvent.Validate -> validateInputs()
+                SolanaSendEvent.ClearError -> clearError()
             }
-            SolanaSendEvent.ClearError -> clearError()
         }
     }
 
@@ -296,7 +292,6 @@ class SolanaSendViewModel @Inject constructor(
             )
         }
 
-        // Update error field for backward compatibility
         val firstError = validationResult.addressError
             ?: validationResult.amountError
             ?: validationResult.balanceError
@@ -341,6 +336,7 @@ class SolanaSendViewModel @Inject constructor(
                     val sendResult = result.data
                     if (sendResult.success) {
                         _state.update { it.copy(isLoading = false, step = "Sent!") }
+                        _effect.emit(SolanaSendEffect.TransactionSent(sendResult.txHash))
                         onSuccess(sendResult.txHash)
                     } else {
                         _state.update {
@@ -350,6 +346,7 @@ class SolanaSendViewModel @Inject constructor(
                                 step = ""
                             )
                         }
+                        _effect.emit(SolanaSendEffect.ShowError(sendResult.error ?: "Send failed"))
                     }
                 }
 
@@ -361,6 +358,7 @@ class SolanaSendViewModel @Inject constructor(
                             step = ""
                         )
                     }
+                    _effect.emit(SolanaSendEffect.ShowError(result.message))
                 }
 
                 Result.Loading -> {}
@@ -385,7 +383,6 @@ class SolanaSendViewModel @Inject constructor(
         }
     }
 
-    // Helper methods for the review screen
     fun updateToAddress(address: String) {
         _state.update { it.copy(toAddress = address) }
         viewModelScope.launch {
@@ -412,4 +409,9 @@ class SolanaSendViewModel @Inject constructor(
             loadFeeEstimate(_state.value.network)
         }
     }
+}
+
+sealed class SolanaSendEffect {
+    data class ShowError(val message: String) : SolanaSendEffect()
+    data class TransactionSent(val txHash: String) : SolanaSendEffect()
 }
