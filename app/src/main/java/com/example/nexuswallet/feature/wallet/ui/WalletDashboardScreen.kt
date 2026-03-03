@@ -10,6 +10,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,15 +36,18 @@ import androidx.compose.material.icons.outlined.CurrencyBitcoin
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Diamond
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FlashOn
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Token
 import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -55,6 +59,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -82,8 +87,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
@@ -95,13 +103,18 @@ import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
+import com.example.nexuswallet.ui.theme.warning
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun WalletDashboardScreen(
     onNavigateToWalletDetail: (String) -> Unit,
+    onNavigateToCoinDetail: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToCreateWallet: () -> Unit,
     padding: PaddingValues,
     viewModel: WalletDashboardViewModel = hiltViewModel()
@@ -153,6 +166,15 @@ fun WalletDashboardScreen(
                         onWalletClick = { wallet ->
                             onNavigateToWalletDetail(wallet.id)
                         },
+                        onCoinClick = { walletId, coinType, network ->
+                            onNavigateToCoinDetail(walletId, coinType, network)
+                        },
+                        onReceiveClick = { walletId, coinType, network ->
+                            onNavigateToReceive(walletId, coinType, network)
+                        },
+                        onSendClick = { walletId, coinType, network ->
+                            onNavigateToSend(walletId, coinType, network)
+                        },
                         onDeleteWallet = { walletId ->
                             viewModel.deleteWallet(walletId)
                         },
@@ -162,6 +184,670 @@ fun WalletDashboardScreen(
                             isRefreshing = false
                         },
                         isRefreshing = isRefreshing
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+fun WalletCard(
+    wallet: Wallet,
+    balance: WalletBalance?,
+    onWalletClick: () -> Unit,
+    onCoinClick: (String, CoinType, NetworkType?) -> Unit,
+    onReceiveClick: (String, CoinType, NetworkType?) -> Unit,
+    onSendClick: (String, CoinType, NetworkType?) -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        DeleteWalletDialog(
+            walletName = wallet.name,
+            onConfirm = {
+                onDelete()
+                showDeleteDialog = false
+            },
+            onDismiss = { showDeleteDialog = false }
+        )
+    }
+
+    // Calculate total USD value from all balances
+    val totalUsdValue = balance?.let {
+        var total = 0.0
+        it.bitcoinBalances.values.forEach { btc -> total += btc.usdValue }
+        it.solanaBalances.values.forEach { sol -> total += sol.usdValue }
+        it.evmBalances.forEach { evm -> total += evm.usdValue }
+        total
+    } ?: 0.0
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onWalletClick() }
+        ) {
+            // Main card content
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Wallet icon
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.AccountBalanceWallet,
+                        contentDescription = "Wallet",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Wallet info
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = wallet.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Text(
+                        text = NumberFormat.getCurrencyInstance(Locale.US).format(totalUsdValue),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    // Show coin badges as small indicators
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        // Bitcoin badges
+                        wallet.bitcoinCoins.forEach { coin ->
+                            CoinBadge(
+                                text = when (coin.network) {
+                                    BitcoinNetwork.Mainnet -> "BTC"
+                                    BitcoinNetwork.Testnet -> "BTC (Test)"
+                                },
+                                color = bitcoinLight
+                            )
+                        }
+
+                        // Solana badges
+                        wallet.solanaCoins.forEach { coin ->
+                            CoinBadge(
+                                text = when (coin.network) {
+                                    SolanaNetwork.Mainnet -> "SOL"
+                                    SolanaNetwork.Devnet -> "SOL (Dev)"
+                                },
+                                color = solanaLight
+                            )
+                        }
+
+                        // EVM token badges
+                        wallet.evmTokens.take(3).forEach { token ->
+                            CoinBadge(
+                                text = token.symbol,
+                                color = when (token) {
+                                    is NativeETH -> ethereumLight
+                                    is USDCToken -> usdcLight
+                                    is USDTToken -> Color(0xFF26A17B)
+                                    else -> MaterialTheme.colorScheme.primary
+                                }
+                            )
+                        }
+                        if (wallet.evmTokens.size > 3) {
+                            CoinBadge(
+                                text = "+${wallet.evmTokens.size - 3}",
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                IconButton(
+                    onClick = { isExpanded = !isExpanded },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                        contentDescription = if (isExpanded) "Collapse" else "Expand",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Expanded content with coin details
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                WalletExpandedContent(
+                    wallet = wallet,
+                    balance = balance,
+                    onCoinClick = { coinType, network -> onCoinClick(wallet.id, coinType, network) },
+                    onReceiveClick = { coinType, network -> onReceiveClick(wallet.id, coinType, network) },
+                    onSendClick = { coinType, network -> onSendClick(wallet.id, coinType, network) },
+                    onDelete = { showDeleteDialog = true }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun WalletExpandedContent(
+    wallet: Wallet,
+    balance: WalletBalance?,
+    onCoinClick: (CoinType, NetworkType?) -> Unit,
+    onReceiveClick: (CoinType, NetworkType?) -> Unit,
+    onSendClick: (CoinType, NetworkType?) -> Unit,
+    onDelete: () -> Unit
+) {
+    // Create maps for quick balance lookups
+    val evmBalanceMap = balance?.evmBalances?.associateBy { it.externalTokenId } ?: emptyMap()
+
+    // Group EVM tokens
+    val nativeTokens = wallet.evmTokens.filterIsInstance<NativeETH>()
+    val usdcTokens = wallet.evmTokens.filterIsInstance<USDCToken>()
+    val usdtTokens = wallet.evmTokens.filterIsInstance<USDTToken>()
+    val otherTokens = wallet.evmTokens.filter { it !is NativeETH && it !is USDCToken && it !is USDTToken }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Divider(
+            modifier = Modifier.padding(bottom = 12.dp),
+            color = MaterialTheme.colorScheme.outline,
+            thickness = 1.dp
+        )
+
+        // Bitcoin balances (all networks)
+        wallet.bitcoinCoins.forEach { coin ->
+            val networkKey = when (coin.network) {
+                BitcoinNetwork.Mainnet -> "mainnet"
+                BitcoinNetwork.Testnet -> "testnet"
+            }
+            val btcBalance = balance?.bitcoinBalances?.get(networkKey)
+            val networkType = when (coin.network) {
+                BitcoinNetwork.Mainnet -> NetworkType.BITCOIN_MAINNET
+                BitcoinNetwork.Testnet -> NetworkType.BITCOIN_TESTNET
+            }
+
+            btcBalance?.let {
+                ExpandableCoinRow(
+                    coinType = CoinType.BITCOIN,
+                    network = networkType,
+                    icon = Icons.Outlined.CurrencyBitcoin,
+                    symbol = when (coin.network) {
+                        BitcoinNetwork.Mainnet -> "Bitcoin"
+                        BitcoinNetwork.Testnet -> "Bitcoin Testnet"
+                    },
+                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.btc.toDoubleOrNull() ?: 0.0)} BTC",
+                    usdValue = it.usdValue,
+                    color = bitcoinLight,
+                    onCoinClick = { onCoinClick(CoinType.BITCOIN, networkType) },
+                    onReceiveClick = { onReceiveClick(CoinType.BITCOIN, networkType) },
+                    onSendClick = { onSendClick(CoinType.BITCOIN, networkType) }
+                )
+            }
+        }
+
+        // Solana balances (all networks)
+        wallet.solanaCoins.forEach { coin ->
+            val networkKey = when (coin.network) {
+                SolanaNetwork.Mainnet -> "mainnet"
+                SolanaNetwork.Devnet -> "devnet"
+            }
+            val solBalance = balance?.solanaBalances?.get(networkKey)
+            val networkType = when (coin.network) {
+                SolanaNetwork.Mainnet -> NetworkType.SOLANA_MAINNET
+                SolanaNetwork.Devnet -> NetworkType.SOLANA_DEVNET
+            }
+
+            solBalance?.let {
+                ExpandableCoinRow(
+                    coinType = CoinType.SOLANA,
+                    network = networkType,
+                    icon = Icons.Outlined.FlashOn,
+                    symbol = when (coin.network) {
+                        SolanaNetwork.Mainnet -> "Solana"
+                        SolanaNetwork.Devnet -> "Solana Devnet"
+                    },
+                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.sol.toDoubleOrNull() ?: 0.0)} SOL",
+                    usdValue = it.usdValue,
+                    color = solanaLight,
+                    onCoinClick = { onCoinClick(CoinType.SOLANA, networkType) },
+                    onReceiveClick = { onReceiveClick(CoinType.SOLANA, networkType) },
+                    onSendClick = { onSendClick(CoinType.SOLANA, networkType) }
+                )
+            }
+        }
+
+        // Native ETH tokens
+        nativeTokens.forEach { token ->
+            val tokenBalance = evmBalanceMap[token.externalId]
+            val networkType = when (token.network) {
+                EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
+                EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
+            }
+
+            tokenBalance?.let {
+                ExpandableCoinRow(
+                    coinType = CoinType.ETHEREUM,
+                    network = networkType,
+                    icon = Icons.Outlined.Diamond,
+                    symbol = "Ethereum",
+                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} ETH",
+                    usdValue = it.usdValue,
+                    color = ethereumLight,
+                    onCoinClick = { onCoinClick(CoinType.ETHEREUM, networkType) },
+                    onReceiveClick = { onReceiveClick(CoinType.ETHEREUM, networkType) },
+                    onSendClick = { onSendClick(CoinType.ETHEREUM, networkType) }
+                )
+            }
+        }
+
+        // USDC tokens
+        usdcTokens.forEach { token ->
+            val tokenBalance = evmBalanceMap[token.externalId]
+            val networkType = when (token.network) {
+                EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
+                EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
+            }
+
+            tokenBalance?.let {
+                ExpandableCoinRow(
+                    coinType = CoinType.USDC,
+                    network = networkType,
+                    icon = Icons.Outlined.AttachMoney,
+                    symbol = "USD Coin",
+                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} USDC",
+                    usdValue = it.usdValue,
+                    color = usdcLight,
+                    onCoinClick = { onCoinClick(CoinType.USDC, networkType) },
+                    onReceiveClick = { onReceiveClick(CoinType.USDC, networkType) },
+                    onSendClick = { onSendClick(CoinType.USDC, networkType) }
+                )
+            }
+        }
+
+        // USDT tokens
+        usdtTokens.forEach { token ->
+            val tokenBalance = evmBalanceMap[token.externalId]
+            val networkType = when (token.network) {
+                EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
+                EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
+            }
+
+            tokenBalance?.let {
+                ExpandableCoinRow(
+                    coinType = CoinType.USDC,
+                    network = networkType,
+                    icon = Icons.Outlined.AttachMoney,
+                    symbol = "Tether USD",
+                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} USDT",
+                    usdValue = it.usdValue,
+                    color = Color(0xFF26A17B),
+                    onCoinClick = { onCoinClick(CoinType.USDC, networkType) },
+                    onReceiveClick = { onReceiveClick(CoinType.USDC, networkType) },
+                    onSendClick = { onSendClick(CoinType.USDC, networkType) }
+                )
+            }
+        }
+
+        // Other ERC20 tokens
+        otherTokens.forEach { token ->
+            val tokenBalance = evmBalanceMap[token.externalId]
+            val networkType = when (token.network) {
+                EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
+                EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
+            }
+
+            tokenBalance?.let {
+                ExpandableCoinRow(
+                    coinType = CoinType.ETHEREUM,
+                    network = networkType,
+                    icon = Icons.Outlined.Token,
+                    symbol = token.symbol,
+                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} ${token.symbol}",
+                    usdValue = it.usdValue,
+                    color = MaterialTheme.colorScheme.primary,
+                    onCoinClick = { onCoinClick(CoinType.ETHEREUM, networkType) },
+                    onReceiveClick = { onReceiveClick(CoinType.ETHEREUM, networkType) },
+                    onSendClick = { onSendClick(CoinType.ETHEREUM, networkType) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Delete button
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(
+                onClick = onDelete,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = "Delete",
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    "Delete Wallet",
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ExpandableCoinRow(
+    coinType: CoinType,
+    network: NetworkType,
+    icon: ImageVector,
+    symbol: String,
+    amount: String,
+    usdValue: Double,
+    color: Color,
+    onCoinClick: () -> Unit,
+    onReceiveClick: () -> Unit,
+    onSendClick: () -> Unit
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { isExpanded = !isExpanded }
+    ) {
+        // Main row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left side - icon and details
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(20.dp)
+                )
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = symbol,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        // Show testnet badge if needed
+                        if (network == NetworkType.BITCOIN_TESTNET ||
+                            network == NetworkType.ETHEREUM_SEPOLIA ||
+                            network == NetworkType.SOLANA_DEVNET) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        MaterialTheme.colorScheme.warning.copy(alpha = 0.1f),
+                                        RoundedCornerShape(4.dp)
+                                    )
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "TESTNET",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 8.sp,
+                                    color = MaterialTheme.colorScheme.warning
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        text = amount,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Right side - USD value and expand icon
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = NumberFormat.getCurrencyInstance(Locale.US).format(usdValue),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+
+                Icon(
+                    imageVector = if (isExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // Expanded actions
+        AnimatedVisibility(
+            visible = isExpanded,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 30.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // View Details button
+                OutlinedButton(
+                    onClick = onCoinClick,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = color
+                    ),
+                    border = BorderStroke(1.dp, color),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        Icons.Outlined.Info,
+                        contentDescription = "Details",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Details", style = MaterialTheme.typography.labelSmall)
+                }
+
+                // Receive button
+                OutlinedButton(
+                    onClick = onReceiveClick,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = color
+                    ),
+                    border = BorderStroke(1.dp, color),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        Icons.Outlined.Download,
+                        contentDescription = "Receive",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Receive", style = MaterialTheme.typography.labelSmall)
+                }
+
+                // Send button
+                OutlinedButton(
+                    onClick = onSendClick,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = color
+                    ),
+                    border = BorderStroke(1.dp, color),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        Icons.Outlined.Upload,
+                        contentDescription = "Send",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Send", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DashboardContent(
+    wallets: List<Wallet>,
+    totalPortfolio: BigDecimal,
+    balances: Map<String, WalletBalance>,
+    isOperationLoading: Boolean,
+    onWalletClick: (Wallet) -> Unit,
+    onCoinClick: (String, CoinType, NetworkType?) -> Unit,
+    onReceiveClick: (String, CoinType, NetworkType?) -> Unit,
+    onSendClick: (String, CoinType, NetworkType?) -> Unit,
+    onDeleteWallet: (String) -> Unit,
+    onRefresh: () -> Unit,
+    isRefreshing: Boolean
+) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp > 600
+
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            DashboardTopBar(
+                scrollBehavior = scrollBehavior,
+                onRefresh = onRefresh,
+                isRefreshing = isRefreshing || isOperationLoading
+            )
+        },
+        floatingActionButton = {},
+        containerColor = Color.Transparent
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Portfolio Summary Header
+            item {
+                AnimatedPortfolioHeader(
+                    totalPortfolio = totalPortfolio,
+                    walletCount = wallets.size,
+                    isTablet = isTablet
+                )
+            }
+
+            // Wallets Section Header
+            item {
+                Text(
+                    text = "Your Wallets",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+
+            // Wallets Grid/List
+            if (isTablet) {
+                // Grid layout for tablets
+                items(wallets.chunked(2)) { walletPair ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        walletPair.forEach { wallet ->
+                            WalletCard(
+                                wallet = wallet,
+                                balance = balances[wallet.id],
+                                onWalletClick = { onWalletClick(wallet) },
+                                onCoinClick = onCoinClick,
+                                onReceiveClick = onReceiveClick,
+                                onSendClick = onSendClick,
+                                onDelete = { onDeleteWallet(wallet.id) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            } else {
+                // List layout for phones
+                items(wallets) { wallet ->
+                    WalletCard(
+                        wallet = wallet,
+                        balance = balances[wallet.id],
+                        onWalletClick = { onWalletClick(wallet) },
+                        onCoinClick = onCoinClick,
+                        onReceiveClick = onReceiveClick,
+                        onSendClick = onSendClick,
+                        onDelete = { onDeleteWallet(wallet.id) }
                     )
                 }
             }
