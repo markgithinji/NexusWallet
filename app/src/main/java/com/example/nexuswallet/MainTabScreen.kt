@@ -27,16 +27,17 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.contentColorFor
+import com.example.nexuswallet.feature.coin.NetworkType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTabScreen(
     onNavigateToCreateWallet: () -> Unit,
     onNavigateToWalletDetail: (String) -> Unit,
-    onNavigateToCoinDetail: (String, CoinType) -> Unit,
+    onNavigateToCoinDetail: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToTokenDetail: (String) -> Unit,
-    onNavigateToReceive: (String, CoinType) -> Unit,
-    onNavigateToSend: (String, CoinType) -> Unit,
+    onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
     padding: PaddingValues,
     navigationViewModel: NavigationViewModel
 ) {
@@ -225,6 +226,9 @@ fun MainTabScreen(
         when (selectedTab) {
             0 -> WalletDashboardScreen(
                 onNavigateToWalletDetail = onNavigateToWalletDetail,
+                onNavigateToCoinDetail = onNavigateToCoinDetail,
+                onNavigateToReceive = onNavigateToReceive,
+                onNavigateToSend = onNavigateToSend,
                 onNavigateToCreateWallet = onNavigateToCreateWallet,
                 padding = PaddingValues(
                     top = scaffoldPadding.calculateTopPadding(),
@@ -232,7 +236,7 @@ fun MainTabScreen(
                 )
             )
             1 -> MarketScreen(
-                onNavigateUp = { /* Handle market screen back navigation if needed */ },
+                onNavigateUp = { /* Handle market screen back navigation*/ },
                 onNavigateToTokenDetail = onNavigateToTokenDetail,
                 padding = PaddingValues(
                     top = scaffoldPadding.calculateTopPadding(),

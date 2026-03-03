@@ -1,6 +1,7 @@
 package com.example.nexuswallet
 
 import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.coin.NetworkType
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -30,21 +31,23 @@ data class WalletDetailRoute(
 data class CoinDetailRoute(
     val walletId: String,
     val coinType: CoinType,
-    val network: String = ""
+    val network: NetworkType? = null
 )
+
 @Serializable
 data class ReceiveRoute(
     val walletId: String,
     val coinType: CoinType = CoinType.BITCOIN,
-    val network: String = ""
+    val network: NetworkType? = null
 )
 
 @Serializable
 data class SendRoute(
     val walletId: String,
     val coinType: CoinType,
-    val network: String = ""
+    val network: NetworkType? = null
 )
+
 @Serializable
 data class ReviewRoute(
     val walletId: String,
@@ -52,7 +55,7 @@ data class ReviewRoute(
     val toAddress: String,
     val amount: String,
     val feeLevel: String? = null,
-    val network: String = ""
+    val network: NetworkType? = null
 )
 
 @Serializable

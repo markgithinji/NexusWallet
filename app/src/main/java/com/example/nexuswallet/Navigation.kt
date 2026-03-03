@@ -41,7 +41,6 @@ import androidx.compose.material3.MaterialTheme
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
-
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun Navigation() {
@@ -134,21 +133,21 @@ fun Navigation() {
                     Log.d("Navigation", "MainTabScreen: navigate to WalletDetailRoute - walletId: $walletId")
                     navController.navigate(WalletDetailRoute(walletId))
                 },
-                onNavigateToCoinDetail = { walletId, coinType ->
-                    Log.d("Navigation", "MainTabScreen: navigate to CoinDetailRoute - walletId: $walletId, coinType: $coinType")
-                    navController.navigate(CoinDetailRoute(walletId, coinType))
+                onNavigateToCoinDetail = { walletId, coinType, network ->
+                    Log.d("Navigation", "MainTabScreen: navigate to CoinDetailRoute - walletId: $walletId, coinType: $coinType, network: $network")
+                    navController.navigate(CoinDetailRoute(walletId, coinType, network))
                 },
                 onNavigateToTokenDetail = { tokenId ->
                     Log.d("Navigation", "MainTabScreen: navigate to TokenDetailRoute - tokenId: $tokenId")
                     navController.navigate(TokenDetailRoute(tokenId))
                 },
-                onNavigateToReceive = { walletId, coinType ->
-                    Log.d("Navigation", "MainTabScreen: navigate to ReceiveRoute - walletId: $walletId, coinType: $coinType")
-                    navController.navigate(ReceiveRoute(walletId, coinType))
+                onNavigateToReceive = { walletId, coinType, network ->
+                    Log.d("Navigation", "MainTabScreen: navigate to ReceiveRoute - walletId: $walletId, coinType: $coinType, network: $network")
+                    navController.navigate(ReceiveRoute(walletId, coinType, network))
                 },
-                onNavigateToSend = { walletId, coinType ->
-                    Log.d("Navigation", "MainTabScreen: navigate to SendRoute - walletId: $walletId, coinType: $coinType")
-                    navController.navigate(SendRoute(walletId, coinType))
+                onNavigateToSend = { walletId, coinType, network ->
+                    Log.d("Navigation", "MainTabScreen: navigate to SendRoute - walletId: $walletId, coinType: $coinType, network: $network")
+                    navController.navigate(SendRoute(walletId, coinType, network))
                 },
                 padding = PaddingValues(0.dp),
                 navigationViewModel = navigationViewModel
@@ -227,9 +226,9 @@ fun Navigation() {
                     Log.d("Navigation", "WalletDetailScreen: navigate to CoinDetailRoute - walletId: $walletId, coinType: $coinType, network: $network")
                     navController.navigate(CoinDetailRoute(walletId, coinType, network))
                 },
-                onNavigateToReceive = { walletId, coinType ->
-                    Log.d("Navigation", "WalletDetailScreen: navigate to ReceiveRoute - walletId: $walletId, coinType: $coinType")
-                    navController.navigate(ReceiveRoute(walletId, coinType))
+                onNavigateToReceive = { walletId, coinType, network ->
+                    Log.d("Navigation", "WalletDetailScreen: navigate to ReceiveRoute - walletId: $walletId, coinType: $coinType, network: $network")
+                    navController.navigate(ReceiveRoute(walletId, coinType, network))
                 },
                 onNavigateToSend = { walletId, coinType, network ->
                     Log.d("Navigation", "WalletDetailScreen: navigate to SendRoute - walletId: $walletId, coinType: $coinType, network: $network")
@@ -272,7 +271,7 @@ fun Navigation() {
 
         composable<ReceiveRoute> { backStackEntry ->
             val args = backStackEntry.toRoute<ReceiveRoute>()
-            Log.d("Navigation", "Navigated to ReceiveRoute - walletId: ${args.walletId}, coinType: ${args.coinType}")
+            Log.d("Navigation", "Navigated to ReceiveRoute - walletId: ${args.walletId}, coinType: ${args.coinType}, network: ${args.network}")
 
             ReceiveScreen(
                 onNavigateUp = {
@@ -286,34 +285,17 @@ fun Navigation() {
 
         composable<SendRoute> { backStackEntry ->
             val args = backStackEntry.toRoute<SendRoute>()
-            Log.d("Navigation", "Navigated to SendRoute - walletId: ${args.walletId}, coinType: ${args.coinType}")
+            Log.d("Navigation", "Navigated to SendRoute - walletId: ${args.walletId}, coinType: ${args.coinType}, network: ${args.network}")
 
             SendScreen(
                 onNavigateUp = {
                     Log.d("Navigation", "SendScreen: navigate up")
                     navController.navigateUp()
                 },
-                onNavigateToReview = { walletId, coinType, toAddress, amount, feeLevel, networkObject ->
+                onNavigateToReview = { walletId, coinType, toAddress, amount, feeLevel, network ->
                     Log.d("Navigation", "SendScreen: navigate to ReviewRoute - " +
                             "walletId: $walletId, coinType: $coinType, toAddress: $toAddress, " +
-                            "amount: $amount, feeLevel: $feeLevel, network: $networkObject")
-
-                    // Convert network object to string for routing
-                    val networkString = when (networkObject) {
-                        is EthereumNetwork -> when (networkObject) {
-                            EthereumNetwork.Mainnet -> "mainnet"
-                            EthereumNetwork.Sepolia -> "sepolia"
-                        }
-                        is SolanaNetwork -> when (networkObject) {
-                            SolanaNetwork.Mainnet -> "mainnet"
-                            SolanaNetwork.Devnet -> "devnet"
-                        }
-                        is BitcoinNetwork -> when (networkObject) {
-                            BitcoinNetwork.Mainnet -> "mainnet"
-                            BitcoinNetwork.Testnet -> "testnet"
-                        }
-                        else -> ""
-                    }
+                            "amount: $amount, feeLevel: $feeLevel, network: $network")
 
                     navController.navigate(
                         ReviewRoute(
@@ -322,12 +304,13 @@ fun Navigation() {
                             toAddress = toAddress,
                             amount = amount,
                             feeLevel = feeLevel?.name,
-                            network = networkString
+                            network = network
                         )
                     )
                 },
                 walletId = args.walletId,
-                coinType = args.coinType
+                coinType = args.coinType,
+                network = args.network
             )
         }
 
