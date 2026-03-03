@@ -6,6 +6,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -55,7 +56,19 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.*
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.FocusState
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendEvent
 import kotlinx.coroutines.flow.filter
@@ -77,9 +90,16 @@ fun SendScreen(
     var showNetworkSelector by remember { mutableStateOf(false) }
     var showTokenSelector by remember { mutableStateOf(false) }
 
-    // Track which fields have been touched/interacted with
+    // Track focus states
+    val focusManager = LocalFocusManager.current
+    val addressFocusRequester = remember { FocusRequester() }
+    val amountFocusRequester = remember { FocusRequester() }
+
+    // Track when fields have been touched and when they lose focus
     var addressTouched by remember { mutableStateOf(false) }
     var amountTouched by remember { mutableStateOf(false) }
+    var addressFocused by remember { mutableStateOf(false) }
+    var amountFocused by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
 
@@ -190,71 +210,76 @@ fun SendScreen(
         else -> emptyList()
     }
 
-    // Determine if we should show error messages
-    val showAddressError = addressTouched && when (coinType) {
+    // Determine if we should show error messages (only when field is NOT focused AND has been touched)
+    val showAddressError = !addressFocused && addressTouched && when (coinType) {
         CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.addressError != null
         CoinType.SOLANA -> solanaState.value.validationResult.addressError != null
         CoinType.BITCOIN -> bitcoinState.value.validationResult.addressError != null
         else -> false
     }
 
-    val showAmountError = amountTouched && when (coinType) {
+    val showAmountError = !amountFocused && amountTouched && when (coinType) {
         CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.amountError != null
         CoinType.SOLANA -> solanaState.value.validationResult.amountError != null
         CoinType.BITCOIN -> bitcoinState.value.validationResult.amountError != null
         else -> false
     }
 
-    val showBalanceError = amountTouched && when (coinType) {
+    val showBalanceError = !amountFocused && amountTouched && when (coinType) {
         CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.balanceError != null
         CoinType.SOLANA -> solanaState.value.validationResult.balanceError != null
         CoinType.BITCOIN -> bitcoinState.value.validationResult.balanceError != null
         else -> false
     }
 
-    val showSelfSendError = addressTouched && when (coinType) {
+    val showSelfSendError = !addressFocused && addressTouched && when (coinType) {
         CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.selfSendError != null
         CoinType.SOLANA -> solanaState.value.validationResult.selfSendError != null
         CoinType.BITCOIN -> bitcoinState.value.validationResult.selfSendError != null
         else -> false
     }
 
-    val showGasError = amountTouched && when (coinType) {
+    val showGasError = !amountFocused && amountTouched && when (coinType) {
         CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.gasError != null
         else -> false
     }
 
-    // Determine which error to show in the banner (only if touched)
+    // Determine which error to show in the banner (only when no field is focused)
     val activeError = when {
-        showAddressError -> when (coinType) {
-            CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.addressError
-            CoinType.SOLANA -> solanaState.value.validationResult.addressError
-            CoinType.BITCOIN -> bitcoinState.value.validationResult.addressError
-            else -> null
+        !addressFocused && !amountFocused -> {
+            when {
+                showSelfSendError -> when (coinType) {
+                    CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.selfSendError
+                    CoinType.SOLANA -> solanaState.value.validationResult.selfSendError
+                    CoinType.BITCOIN -> bitcoinState.value.validationResult.selfSendError
+                    else -> null
+                }
+                showAddressError -> when (coinType) {
+                    CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.addressError
+                    CoinType.SOLANA -> solanaState.value.validationResult.addressError
+                    CoinType.BITCOIN -> bitcoinState.value.validationResult.addressError
+                    else -> null
+                }
+                showGasError -> when (coinType) {
+                    CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.gasError
+                    else -> null
+                }
+                showAmountError -> when (coinType) {
+                    CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.amountError
+                    CoinType.SOLANA -> solanaState.value.validationResult.amountError
+                    CoinType.BITCOIN -> bitcoinState.value.validationResult.amountError
+                    else -> null
+                }
+                showBalanceError -> when (coinType) {
+                    CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.balanceError
+                    CoinType.SOLANA -> solanaState.value.validationResult.balanceError
+                    CoinType.BITCOIN -> bitcoinState.value.validationResult.balanceError
+                    else -> null
+                }
+                else -> null
+            }
         }
-        showSelfSendError -> when (coinType) {
-            CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.selfSendError
-            CoinType.SOLANA -> solanaState.value.validationResult.selfSendError
-            CoinType.BITCOIN -> bitcoinState.value.validationResult.selfSendError
-            else -> null
-        }
-        showAmountError -> when (coinType) {
-            CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.amountError
-            CoinType.SOLANA -> solanaState.value.validationResult.amountError
-            CoinType.BITCOIN -> bitcoinState.value.validationResult.amountError
-            else -> null
-        }
-        showBalanceError -> when (coinType) {
-            CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.balanceError
-            CoinType.SOLANA -> solanaState.value.validationResult.balanceError
-            CoinType.BITCOIN -> bitcoinState.value.validationResult.balanceError
-            else -> null
-        }
-        showGasError -> when (coinType) {
-            CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.gasError
-            else -> null
-        }
-        else -> null
+        else -> null // Don't show banner while typing
     }
 
     Scaffold(
@@ -359,269 +384,286 @@ fun SendScreen(
             }
 
             // Scrollable content
-            LazyColumn(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 80.dp),
-                contentPadding = PaddingValues(vertical = 16.dp),
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 80.dp)
+                    .padding(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Network Selector Card
-                item {
-                    NetworkSelectorCard(
-                        currentNetwork = currentNetworkName,
-                        onClick = { showNetworkSelector = true }
-                    )
-                }
+                NetworkSelectorCard(
+                    currentNetwork = currentNetworkName,
+                    onClick = { showNetworkSelector = true }
+                )
 
                 // Token Selector (for EVM coins with multiple tokens)
                 if ((coinType == CoinType.ETHEREUM || coinType == CoinType.USDC) &&
                     ethereumState.value.availableTokens.size > 1
                 ) {
-                    item {
-                        TokenSelectorCard(
-                            selectedToken = selectedToken,
-                            onClick = { showTokenSelector = true }
-                        )
-                    }
+                    TokenSelectorCard(
+                        selectedToken = selectedToken,
+                        onClick = { showTokenSelector = true }
+                    )
                 }
 
                 // Balance Card
-                item {
-                    when (coinType) {
-                        CoinType.ETHEREUM, CoinType.USDC -> {
-                            val token = selectedToken
-                            val balance = if (token is NativeETH) {
-                                ethereumState.value.ethBalance
-                            } else {
-                                ethereumState.value.tokenBalance
-                            }
-                            SendBalanceCard(
-                                balance = balance,
-                                balanceFormatted = "${balance.setScale(if (token?.decimals == 6) 2 else 6, RoundingMode.HALF_UP)} ${token?.symbol ?: "ETH"}",
-                                coinType = coinType,
-                                address = ethereumState.value.fromAddress,
-                                token = token,
-                                network = currentNetworkName,
-                                secondaryBalance = if (token !is NativeETH) ethereumState.value.ethBalance else null,
-                                secondaryBalanceFormatted = if (token !is NativeETH) "${ethereumState.value.ethBalance.setScale(4, RoundingMode.HALF_UP)} ETH" else null
-                            )
+                when (coinType) {
+                    CoinType.ETHEREUM, CoinType.USDC -> {
+                        val token = selectedToken
+                        val balance = if (token is NativeETH) {
+                            ethereumState.value.ethBalance
+                        } else {
+                            ethereumState.value.tokenBalance
                         }
-                        CoinType.SOLANA -> {
-                            SendBalanceCard(
-                                balance = solanaState.value.balance,
-                                balanceFormatted = solanaState.value.balanceFormatted,
-                                coinType = coinType,
-                                address = solanaState.value.walletAddress,
-                                network = currentNetworkName
-                            )
-                        }
-                        CoinType.BITCOIN -> {
-                            SendBalanceCard(
-                                balance = bitcoinState.value.balance,
-                                balanceFormatted = bitcoinState.value.balanceFormatted,
-                                coinType = coinType,
-                                address = bitcoinState.value.walletAddress,
-                                network = currentNetworkName
-                            )
-                        }
+                        SendBalanceCard(
+                            balance = balance,
+                            balanceFormatted = "${balance.setScale(if (token?.decimals == 6) 2 else 6, RoundingMode.HALF_UP)} ${token?.symbol ?: "ETH"}",
+                            coinType = coinType,
+                            address = ethereumState.value.fromAddress,
+                            token = token,
+                            network = currentNetworkName,
+                            secondaryBalance = if (token !is NativeETH) ethereumState.value.ethBalance else null,
+                            secondaryBalanceFormatted = if (token !is NativeETH) "${ethereumState.value.ethBalance.setScale(4, RoundingMode.HALF_UP)} ETH" else null
+                        )
                     }
-                }
-
-                // Error Banner - only show if there's an active error and fields have been touched
-                if (activeError != null) {
-                    item {
-                        ErrorMessage(
-                            error = activeError,
-                            onDismiss = {
-                                when (coinType) {
-                                    CoinType.ETHEREUM, CoinType.USDC -> ethereumViewModel.clearError()
-                                    CoinType.SOLANA -> solanaViewModel.clearError()
-                                    CoinType.BITCOIN -> bitcoinViewModel.clearError()
-                                }
-                            }
+                    CoinType.SOLANA -> {
+                        SendBalanceCard(
+                            balance = solanaState.value.balance,
+                            balanceFormatted = solanaState.value.balanceFormatted,
+                            coinType = coinType,
+                            address = solanaState.value.walletAddress,
+                            network = currentNetworkName
+                        )
+                    }
+                    CoinType.BITCOIN -> {
+                        SendBalanceCard(
+                            balance = bitcoinState.value.balance,
+                            balanceFormatted = bitcoinState.value.balanceFormatted,
+                            coinType = coinType,
+                            address = bitcoinState.value.walletAddress,
+                            network = currentNetworkName
                         )
                     }
                 }
 
-                // Address Input
-                item {
-                    when (coinType) {
-                        CoinType.ETHEREUM, CoinType.USDC -> {
-                            SendAddressInput(
-                                toAddress = ethereumState.value.toAddress,
-                                onAddressChange = {
-                                    addressTouched = true
-                                    ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(it))
-                                },
-                                coinType = coinType,
-                                token = selectedToken,
-                                isValid = !showAddressError,
-                                errorMessage = if (showAddressError)
-                                    ethereumState.value.validationResult.addressError
-                                        ?: ethereumState.value.validationResult.selfSendError
-                                else null,
-                                onPaste = { pastedText ->
-                                    addressTouched = true
-                                    ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(pastedText))
-                                }
-                            )
+                // Error Banner - only show if there's an active error and no field is focused
+                if (activeError != null) {
+                    ErrorMessage(
+                        error = activeError,
+                        onDismiss = {
+                            when (coinType) {
+                                CoinType.ETHEREUM, CoinType.USDC -> ethereumViewModel.clearError()
+                                CoinType.SOLANA -> solanaViewModel.clearError()
+                                CoinType.BITCOIN -> bitcoinViewModel.clearError()
+                            }
                         }
-                        CoinType.SOLANA -> {
-                            SendAddressInput(
-                                toAddress = solanaState.value.toAddress,
-                                onAddressChange = {
-                                    addressTouched = true
-                                    solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(it))
-                                },
-                                coinType = coinType,
-                                isValid = !showAddressError,
-                                errorMessage = if (showAddressError)
-                                    solanaState.value.validationResult.addressError
-                                        ?: solanaState.value.validationResult.selfSendError
-                                else null,
-                                onPaste = { pastedText ->
-                                    addressTouched = true
-                                    solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(pastedText))
+                    )
+                }
+
+                // Address Input with focus tracking
+                when (coinType) {
+                    CoinType.ETHEREUM, CoinType.USDC -> {
+                        SendAddressInput(
+                            toAddress = ethereumState.value.toAddress,
+                            onAddressChange = {
+                                addressTouched = true
+                                ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(it))
+                            },
+                            onFocusChange = { isFocused ->
+                                addressFocused = isFocused
+                            },
+                            coinType = coinType,
+                            token = selectedToken,
+                            isValid = !showAddressError && !showSelfSendError,
+                            errorMessage = if (showAddressError || showSelfSendError) {
+                                when {
+                                    showSelfSendError -> ethereumState.value.validationResult.selfSendError
+                                    showAddressError -> ethereumState.value.validationResult.addressError
+                                    else -> null
                                 }
-                            )
-                        }
-                        CoinType.BITCOIN -> {
-                            SendAddressInput(
-                                toAddress = bitcoinState.value.toAddress,
-                                onAddressChange = {
-                                    addressTouched = true
-                                    bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAddress(it))
-                                },
-                                coinType = coinType,
-                                isValid = !showAddressError,
-                                errorMessage = if (showAddressError)
-                                    bitcoinState.value.validationResult.addressError
-                                        ?: bitcoinState.value.validationResult.selfSendError
-                                else null,
-                                network = bitcoinState.value.network,
-                                onPaste = { pastedText ->
-                                    addressTouched = true
-                                    bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAddress(pastedText))
+                            } else null,
+                            onPaste = { pastedText ->
+                                addressTouched = true
+                                ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(pastedText))
+                            },
+                            focusRequester = addressFocusRequester
+                        )
+                    }
+                    CoinType.SOLANA -> {
+                        SendAddressInput(
+                            toAddress = solanaState.value.toAddress,
+                            onAddressChange = {
+                                addressTouched = true
+                                solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(it))
+                            },
+                            onFocusChange = { isFocused ->
+                                addressFocused = isFocused
+                            },
+                            coinType = coinType,
+                            isValid = !showAddressError && !showSelfSendError,
+                            errorMessage = if (showAddressError || showSelfSendError) {
+                                when {
+                                    showSelfSendError -> solanaState.value.validationResult.selfSendError
+                                    showAddressError -> solanaState.value.validationResult.addressError
+                                    else -> null
                                 }
-                            )
-                        }
+                            } else null,
+                            onPaste = { pastedText ->
+                                addressTouched = true
+                                solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(pastedText))
+                            },
+                            focusRequester = addressFocusRequester
+                        )
+                    }
+                    CoinType.BITCOIN -> {
+                        SendAddressInput(
+                            toAddress = bitcoinState.value.toAddress,
+                            onAddressChange = {
+                                addressTouched = true
+                                bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAddress(it))
+                            },
+                            onFocusChange = { isFocused ->
+                                addressFocused = isFocused
+                            },
+                            coinType = coinType,
+                            isValid = !showAddressError && !showSelfSendError,
+                            errorMessage = if (showAddressError || showSelfSendError) {
+                                when {
+                                    showSelfSendError -> bitcoinState.value.validationResult.selfSendError
+                                    showAddressError -> bitcoinState.value.validationResult.addressError
+                                    else -> null
+                                }
+                            } else null,
+                            network = bitcoinState.value.network,
+                            onPaste = { pastedText ->
+                                addressTouched = true
+                                bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAddress(pastedText))
+                            },
+                            focusRequester = addressFocusRequester
+                        )
                     }
                 }
 
-                // Amount Input
-                item {
-                    when (coinType) {
-                        CoinType.ETHEREUM, CoinType.USDC -> {
-                            val token = selectedToken
-                            SendAmountInput(
-                                amount = ethereumState.value.amount,
-                                onAmountChange = {
-                                    amountTouched = true
-                                    ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(it))
-                                },
-                                balance = if (token is NativeETH) ethereumState.value.ethBalance else ethereumState.value.tokenBalance,
-                                coinType = coinType,
-                                token = token,
-                                tokenSymbol = token?.symbol,
-                                onMaxClick = {
-                                    amountTouched = true
-                                    showMaxDialog = true
-                                },
-                                errorMessage = if (showAmountError || showBalanceError || showGasError) {
-                                    when {
-                                        showAmountError -> ethereumState.value.validationResult.amountError
-                                        showBalanceError -> ethereumState.value.validationResult.balanceError
-                                        showGasError -> ethereumState.value.validationResult.gasError
-                                        else -> null
-                                    }
-                                } else null
-                            )
-                        }
-                        CoinType.SOLANA -> {
-                            SendAmountInput(
-                                amount = solanaState.value.amount,
-                                onAmountChange = {
-                                    amountTouched = true
-                                    solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(it))
-                                },
-                                balance = solanaState.value.balance,
-                                coinType = coinType,
-                                onMaxClick = {
-                                    amountTouched = true
-                                    showMaxDialog = true
-                                },
-                                errorMessage = if (showAmountError || showBalanceError) {
-                                    when {
-                                        showAmountError -> solanaState.value.validationResult.amountError
-                                        showBalanceError -> solanaState.value.validationResult.balanceError
-                                        else -> null
-                                    }
-                                } else null
-                            )
-                        }
-                        CoinType.BITCOIN -> {
-                            SendAmountInput(
-                                amount = bitcoinState.value.amount,
-                                onAmountChange = {
-                                    amountTouched = true
-                                    bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAmount(it))
-                                },
-                                balance = bitcoinState.value.balance,
-                                coinType = coinType,
-                                onMaxClick = {
-                                    amountTouched = true
-                                    showMaxDialog = true
-                                },
-                                errorMessage = if (showAmountError || showBalanceError) {
-                                    when {
-                                        showAmountError -> bitcoinState.value.validationResult.amountError
-                                        showBalanceError -> bitcoinState.value.validationResult.balanceError
-                                        else -> null
-                                    }
-                                } else null
-                            )
-                        }
+                // Amount Input with focus tracking
+                when (coinType) {
+                    CoinType.ETHEREUM, CoinType.USDC -> {
+                        val token = selectedToken
+                        SendAmountInput(
+                            amount = ethereumState.value.amount,
+                            onAmountChange = {
+                                amountTouched = true
+                                ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(it))
+                            },
+                            onFocusChange = { isFocused ->
+                                amountFocused = isFocused
+                            },
+                            balance = if (token is NativeETH) ethereumState.value.ethBalance else ethereumState.value.tokenBalance,
+                            coinType = coinType,
+                            token = token,
+                            tokenSymbol = token?.symbol,
+                            onMaxClick = {
+                                amountTouched = true
+                                showMaxDialog = true
+                            },
+                            errorMessage = if (!amountFocused && amountTouched && (showAmountError || showBalanceError || showGasError)) {
+                                when {
+                                    showGasError -> ethereumState.value.validationResult.gasError
+                                    showAmountError -> ethereumState.value.validationResult.amountError
+                                    showBalanceError -> ethereumState.value.validationResult.balanceError
+                                    else -> null
+                                }
+                            } else null,
+                            focusRequester = amountFocusRequester
+                        )
+                    }
+                    CoinType.SOLANA -> {
+                        SendAmountInput(
+                            amount = solanaState.value.amount,
+                            onAmountChange = {
+                                amountTouched = true
+                                solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(it))
+                            },
+                            onFocusChange = { isFocused ->
+                                amountFocused = isFocused
+                            },
+                            balance = solanaState.value.balance,
+                            coinType = coinType,
+                            onMaxClick = {
+                                amountTouched = true
+                                showMaxDialog = true
+                            },
+                            errorMessage = if (!amountFocused && amountTouched && (showAmountError || showBalanceError)) {
+                                when {
+                                    showAmountError -> solanaState.value.validationResult.amountError
+                                    showBalanceError -> solanaState.value.validationResult.balanceError
+                                    else -> null
+                                }
+                            } else null,
+                            focusRequester = amountFocusRequester
+                        )
+                    }
+                    CoinType.BITCOIN -> {
+                        SendAmountInput(
+                            amount = bitcoinState.value.amount,
+                            onAmountChange = {
+                                amountTouched = true
+                                bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAmount(it))
+                            },
+                            onFocusChange = { isFocused ->
+                                amountFocused = isFocused
+                            },
+                            balance = bitcoinState.value.balance,
+                            coinType = coinType,
+                            onMaxClick = {
+                                amountTouched = true
+                                showMaxDialog = true
+                            },
+                            errorMessage = if (!amountFocused && amountTouched && (showAmountError || showBalanceError)) {
+                                when {
+                                    showAmountError -> bitcoinState.value.validationResult.amountError
+                                    showBalanceError -> bitcoinState.value.validationResult.balanceError
+                                    else -> null
+                                }
+                            } else null,
+                            focusRequester = amountFocusRequester
+                        )
                     }
                 }
 
                 // Fee Selection
-                item {
-                    when (coinType) {
-                        CoinType.ETHEREUM, CoinType.USDC -> {
-                            SendFeeSelection(
-                                feeLevel = ethereumState.value.feeLevel,
-                                onFeeLevelChange = { ethereumViewModel.onEvent(EthereumSendEvent.FeeLevelChanged(it)) },
-                                feeEstimate = ethereumState.value.feeEstimate,
-                                coinType = coinType,
-                                token = selectedToken
-                            )
-                        }
-                        CoinType.SOLANA -> {
-                            SendFeeSelection(
-                                feeLevel = solanaState.value.feeLevel,
-                                onFeeLevelChange = { solanaViewModel.onEvent(SolanaSendEvent.FeeLevelChanged(it)) },
-                                feeEstimate = solanaState.value.feeEstimate,
-                                coinType = coinType
-                            )
-                        }
-                        CoinType.BITCOIN -> {
-                            SendFeeSelection(
-                                feeLevel = bitcoinState.value.feeLevel,
-                                onFeeLevelChange = {
-                                    bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateFeeLevel(it))
-                                },
-                                feeEstimate = bitcoinState.value.feeEstimate,
-                                coinType = coinType
-                            )
-                        }
+                when (coinType) {
+                    CoinType.ETHEREUM, CoinType.USDC -> {
+                        SendFeeSelection(
+                            feeLevel = ethereumState.value.feeLevel,
+                            onFeeLevelChange = { ethereumViewModel.onEvent(EthereumSendEvent.FeeLevelChanged(it)) },
+                            feeEstimate = ethereumState.value.feeEstimate,
+                            coinType = coinType,
+                            token = selectedToken
+                        )
+                    }
+                    CoinType.SOLANA -> {
+                        SendFeeSelection(
+                            feeLevel = solanaState.value.feeLevel,
+                            onFeeLevelChange = { solanaViewModel.onEvent(SolanaSendEvent.FeeLevelChanged(it)) },
+                            feeEstimate = solanaState.value.feeEstimate,
+                            coinType = coinType
+                        )
+                    }
+                    CoinType.BITCOIN -> {
+                        SendFeeSelection(
+                            feeLevel = bitcoinState.value.feeLevel,
+                            onFeeLevelChange = {
+                                bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateFeeLevel(it))
+                            },
+                            feeEstimate = bitcoinState.value.feeEstimate,
+                            coinType = coinType
+                        )
                     }
                 }
 
-                // Bottom spacing
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             SendBottomBar(
@@ -631,8 +673,10 @@ fun SendScreen(
                     CoinType.BITCOIN -> bitcoinState.value.validationResult.isValid
                 },
                 isLoading = isLoading,
-                error = activeError, // Use the same active error in bottom bar
+                error = activeError,
                 onSend = {
+                    // Clear focus when sending
+                    focusManager.clearFocus()
                     when (coinType) {
                         CoinType.ETHEREUM, CoinType.USDC -> {
                             val token = selectedToken
@@ -731,6 +775,787 @@ fun SendScreen(
                         bitcoinViewModel.handleEvent(BitcoinSendEvent.UpdateAmount(maxAmount))
                         showMaxDialog = false
                     }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SendAddressInput(
+    toAddress: String,
+    onAddressChange: (String) -> Unit,
+    onFocusChange: (Boolean) -> Unit = {},
+    coinType: CoinType,
+    token: EVMToken? = null,
+    isValid: Boolean = true,
+    errorMessage: String? = null,
+    network: BitcoinNetwork? = null,
+    onPaste: (String) -> Unit,
+    focusRequester: FocusRequester = FocusRequester()
+) {
+    val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
+
+    val (coinColor, _, _) = when {
+        token != null -> when (token) {
+            is NativeETH -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+            is USDCToken -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USD Coin")
+            is USDTToken -> Triple(usdtLight, Icons.Outlined.AttachMoney, "Tether USD")
+            else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.Token, token.name)
+        }
+        coinType == CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
+        coinType == CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+        coinType == CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
+        coinType == CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
+        else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.AccountBalanceWallet, "Asset")
+    }
+
+    var focused by remember { mutableStateOf(false) }
+
+    // Call onFocusChange when focused state changes
+    LaunchedEffect(focused) {
+        onFocusChange(focused)
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Recipient Address",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = toAddress,
+                onValueChange = onAddressChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .onFocusChanged { focusState ->
+                        focused = focusState.isFocused
+                    },
+                placeholder = {
+                    Text(
+                        text = when {
+                            token != null || coinType == CoinType.ETHEREUM || coinType == CoinType.USDC ->
+                                "Enter Ethereum address (0x...)"
+                            coinType == CoinType.BITCOIN -> {
+                                val networkHint = if (network == BitcoinNetwork.Testnet)
+                                    " (testnet)" else ""
+                                "Enter Bitcoin address$networkHint"
+                            }
+                            coinType == CoinType.SOLANA -> "Enter Solana address"
+                            else -> "Enter address"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                isError = toAddress.isNotEmpty() && !isValid,
+                supportingText = if (errorMessage != null) {
+                    {
+                        Text(
+                            errorMessage,
+                            color = MaterialTheme.colorScheme.error,
+                            maxLines = 1,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                } else null,
+                trailingIcon = {
+                    if (toAddress.isNotEmpty()) {
+                        IconButton(
+                            onClick = { onAddressChange("") },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = "Clear",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = if (isValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    cursorColor = MaterialTheme.colorScheme.primary
+                ),
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = {
+                        focusManager.moveFocus(FocusDirection.Down)
+                    }
+                )
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(
+                    onClick = { /* Scan QR code */ },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.QrCodeScanner,
+                        contentDescription = "Scan",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        "Scan",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                TextButton(
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = clipboard.primaryClip
+                        val pastedText = clip?.getItemAt(0)?.text?.toString()
+                        if (!pastedText.isNullOrBlank()) {
+                            onPaste(pastedText)
+                        }
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ContentPaste,
+                        contentDescription = "Paste",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        "Paste",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SendAmountInput(
+    amount: String,
+    onAmountChange: (String) -> Unit,
+    onFocusChange: (Boolean) -> Unit = {},
+    balance: BigDecimal,
+    coinType: CoinType,
+    token: EVMToken? = null,
+    tokenSymbol: String? = null,
+    onMaxClick: () -> Unit,
+    errorMessage: String? = null,
+    focusRequester: FocusRequester = FocusRequester()
+) {
+    val focusManager = LocalFocusManager.current
+    val symbol = tokenSymbol ?: token?.symbol ?: when (coinType) {
+        CoinType.BITCOIN -> "BTC"
+        CoinType.ETHEREUM -> "ETH"
+        CoinType.SOLANA -> "SOL"
+        CoinType.USDC -> "USDC"
+    }
+
+    val (coinColor, _, _) = when {
+        token != null -> when (token) {
+            is NativeETH -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+            is USDCToken -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USD Coin")
+            is USDTToken -> Triple(usdtLight, Icons.Outlined.AttachMoney, "Tether USD")
+            else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.Token, token.name)
+        }
+        coinType == CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
+        coinType == CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+        coinType == CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
+        coinType == CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
+        else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.AccountBalanceWallet, "Asset")
+    }
+
+    var focused by remember { mutableStateOf(false) }
+
+    // Call onFocusChange when focused state changes
+    LaunchedEffect(focused) {
+        onFocusChange(focused)
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Amount",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Text(
+                    text = "Max: ${
+                        balance.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros()
+                            .toPlainString()
+                    }",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Amount TextField
+                Box(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = amount,
+                        onValueChange = { newValue ->
+                            if (newValue.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                                onAmountChange(newValue)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester)
+                            .onFocusChanged { focusState ->
+                                focused = focusState.isFocused
+                            },
+                        placeholder = {
+                            Text(
+                                "0.00",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                maxLines = 1
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        isError = errorMessage != null,
+                        supportingText = if (errorMessage != null) {
+                            {
+                                Text(
+                                    errorMessage,
+                                    color = MaterialTheme.colorScheme.error,
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        } else null,
+                        trailingIcon = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (amount.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = { onAmountChange("") },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Close,
+                                            contentDescription = "Clear",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = symbol,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = coinColor,
+                                    modifier = Modifier.padding(end = 12.dp)
+                                )
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = if (errorMessage == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            cursorColor = MaterialTheme.colorScheme.primary,
+                            focusedTrailingIconColor = coinColor,
+                            unfocusedTrailingIconColor = coinColor
+                        ),
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                focusManager.clearFocus()
+                            }
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(
+                    onClick = onMaxClick,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.height(56.dp)
+                ) {
+                    Text(
+                        "MAX",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+
+            if (amount.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val amountValue = try {
+                    BigDecimal(amount)
+                } catch (e: Exception) {
+                    BigDecimal.ZERO
+                }
+
+                val usdAmount = if (token is USDCToken || token is USDTToken) {
+                    amountValue.toDouble() // Stablecoins are 1:1
+                } else {
+                    amountValue.toDouble() * getUsdRate(coinType)
+                }
+
+                Text(
+                    text = "≈ $${String.format("%.2f", usdAmount)} USD",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SendAddressInput(
+    toAddress: String,
+    onAddressChange: (String) -> Unit,
+    coinType: CoinType,
+    token: EVMToken? = null,
+    isValid: Boolean = true,
+    errorMessage: String? = null,
+    network: BitcoinNetwork? = null,
+    onPaste: (String) -> Unit,
+    focusRequester: FocusRequester = FocusRequester()
+) {
+    val focusManager = LocalFocusManager.current
+
+    val context = LocalContext.current
+    val (coinColor, _, _) = when {
+        token != null -> when (token) {
+            is NativeETH -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+            is USDCToken -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USD Coin")
+            is USDTToken -> Triple(usdtLight, Icons.Outlined.AttachMoney, "Tether USD")
+            else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.Token, token.name)
+        }
+        coinType == CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
+        coinType == CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+        coinType == CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
+        coinType == CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
+        else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.AccountBalanceWallet, "Asset")
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Recipient Address",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = toAddress,
+                onValueChange = onAddressChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
+                placeholder = {
+                    Text(
+                        text = when {
+                            token != null || coinType == CoinType.ETHEREUM || coinType == CoinType.USDC ->
+                                "Enter Ethereum address (0x...)"
+                            coinType == CoinType.BITCOIN -> {
+                                val networkHint = if (network == BitcoinNetwork.Testnet)
+                                    " (testnet)" else ""
+                                "Enter Bitcoin address$networkHint"
+                            }
+                            coinType == CoinType.SOLANA -> "Enter Solana address"
+                            else -> "Enter address"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                isError = toAddress.isNotEmpty() && !isValid,
+                supportingText = if (errorMessage != null) {
+                    {
+                        Text(
+                            errorMessage,
+                            color = MaterialTheme.colorScheme.error,
+                            maxLines = 1,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                } else null,
+                trailingIcon = {
+                    if (toAddress.isNotEmpty()) {
+                        IconButton(
+                            onClick = { onAddressChange("") },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = "Clear",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = if (isValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    cursorColor = MaterialTheme.colorScheme.primary
+                ),
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                )
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(
+                    onClick = { /* Scan QR code */ },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.QrCodeScanner,
+                        contentDescription = "Scan",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        "Scan",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                TextButton(
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = clipboard.primaryClip
+                        val pastedText = clip?.getItemAt(0)?.text?.toString()
+                        if (!pastedText.isNullOrBlank()) {
+                            onPaste(pastedText)
+                        }
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ContentPaste,
+                        contentDescription = "Paste",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        "Paste",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SendAmountInput(
+    amount: String,
+    onAmountChange: (String) -> Unit,
+    balance: BigDecimal,
+    coinType: CoinType,
+    token: EVMToken? = null,
+    tokenSymbol: String? = null,
+    onMaxClick: () -> Unit,
+    errorMessage: String? = null,
+    focusRequester: FocusRequester = FocusRequester()
+) {
+    val focusManager = LocalFocusManager.current
+
+    val symbol = tokenSymbol ?: token?.symbol ?: when (coinType) {
+        CoinType.BITCOIN -> "BTC"
+        CoinType.ETHEREUM -> "ETH"
+        CoinType.SOLANA -> "SOL"
+        CoinType.USDC -> "USDC"
+    }
+
+    val (coinColor, _, _) = when {
+        token != null -> when (token) {
+            is NativeETH -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+            is USDCToken -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USD Coin")
+            is USDTToken -> Triple(usdtLight, Icons.Outlined.AttachMoney, "Tether USD")
+            else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.Token, token.name)
+        }
+        coinType == CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
+        coinType == CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
+        coinType == CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
+        coinType == CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
+        else -> Triple(MaterialTheme.colorScheme.primary, Icons.Outlined.AccountBalanceWallet, "Asset")
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Amount",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Text(
+                    text = "Max: ${
+                        balance.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros()
+                            .toPlainString()
+                    }",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Amount TextField
+                Box(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = amount,
+                        onValueChange = { newValue ->
+                            if (newValue.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                                onAmountChange(newValue)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester),
+                        placeholder = {
+                            Text(
+                                "0.00",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                maxLines = 1
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        isError = errorMessage != null,
+                        supportingText = if (errorMessage != null) {
+                            {
+                                Text(
+                                    errorMessage,
+                                    color = MaterialTheme.colorScheme.error,
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        } else null,
+                        trailingIcon = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (amount.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = { onAmountChange("") },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Close,
+                                            contentDescription = "Clear",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = symbol,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = coinColor,
+                                    modifier = Modifier.padding(end = 12.dp)
+                                )
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = if (errorMessage == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            cursorColor = MaterialTheme.colorScheme.primary,
+                            focusedTrailingIconColor = coinColor,
+                            unfocusedTrailingIconColor = coinColor
+                        ),
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = { focusManager.clearFocus() }
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(
+                    onClick = onMaxClick,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.height(56.dp)
+                ) {
+                    Text(
+                        "MAX",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+
+            if (amount.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val amountValue = try {
+                    BigDecimal(amount)
+                } catch (e: Exception) {
+                    BigDecimal.ZERO
+                }
+
+                val usdAmount = if (token is USDCToken || token is USDTToken) {
+                    amountValue.toDouble() // Stablecoins are 1:1
+                } else {
+                    amountValue.toDouble() * getUsdRate(coinType)
+                }
+
+                Text(
+                    text = "≈ $${String.format("%.2f", usdAmount)} USD",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End,
+                    maxLines = 1
                 )
             }
         }
