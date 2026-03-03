@@ -436,7 +436,7 @@ fun OtherTokenRow(
 ) {
     val (color, iconRes) = when (token) {
         is USDCToken -> Pair(usdcLight, R.drawable.usdc)
-        is USDTToken -> Pair(Color(0xFF26A17B), R.drawable.usdc)
+        is USDTToken -> Pair(Color(0xFF26A17B), R.drawable.tether)
         else -> Pair(MaterialTheme.colorScheme.primary, null)
     }
 

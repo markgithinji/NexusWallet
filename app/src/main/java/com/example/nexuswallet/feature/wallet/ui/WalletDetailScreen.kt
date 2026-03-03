@@ -821,7 +821,7 @@ fun EVMTokenCard(
     val (color, iconRes, iconSize) = when (token) {
         is NativeETH -> Triple(ethereumLight, R.drawable.ethereum, 44.dp)
         is USDCToken -> Triple(usdcLight, R.drawable.usdc, 20.dp)
-        is USDTToken -> Triple(Color(0xFF26A17B), R.drawable.usdc, 28.dp)
+        is USDTToken -> Triple(Color(0xFF26A17B), R.drawable.tether, 28.dp)
         is ERC20Token -> Triple(MaterialTheme.colorScheme.primary, null, 20.dp)
     }
 

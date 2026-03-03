@@ -1742,7 +1742,7 @@ fun WalletSuccessStep(
                     val (color, iconRes) = when (token) {
                         is NativeETH -> Pair(ethereumLight, R.drawable.ethereum)
                         is USDCToken -> Pair(usdcLight, R.drawable.usdc)
-                        is USDTToken -> Pair(usdtLight, R.drawable.usdc)
+                        is USDTToken -> Pair(usdtLight, R.drawable.tether)
                         else -> Pair(MaterialTheme.colorScheme.primary, null)
                     }
 
