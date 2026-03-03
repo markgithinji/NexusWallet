@@ -209,18 +209,12 @@ fun WalletDetailContent(
         contentPadding = PaddingValues(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Wallet Header Card (with sync error indicator)
+        // Wallet Header Card
         item {
             WalletHeaderCard(
                 wallet = wallet,
                 totalBalance = totalFormatted,
-                hasSyncError = hasSyncError
-            )
-        }
-
-        // Quick Actions
-        item {
-            QuickActionsRow(
+                hasSyncError = hasSyncError,
                 onReceive = {
                     // Default to first available coin for receive
                     val defaultCoin = when {
@@ -409,7 +403,11 @@ fun WalletDetailContent(
 fun WalletHeaderCard(
     wallet: Wallet,
     totalBalance: String,
-    hasSyncError: Boolean = false
+    hasSyncError: Boolean = false,
+    onReceive: () -> Unit,
+    onSend: () -> Unit,
+    onSwap: () -> Unit,
+    onMore: () -> Unit
 ) {
     val assetCount = wallet.bitcoinCoins.size +
             wallet.solanaCoins.size +
@@ -430,16 +428,26 @@ fun WalletHeaderCard(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            // Total Balance with optional warning icon
+            // Total Balance Label
+            Text(
+                text = "Total Balance",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Balance with optional warning icon
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Total Balance",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = totalBalance,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
                 )
 
                 // Show warning icon if there's a sync error
@@ -448,22 +456,14 @@ fun WalletHeaderCard(
                         imageVector = Icons.Outlined.Warning,
                         contentDescription = "Sync error",
                         tint = MaterialTheme.colorScheme.warning,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = totalBalance,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
+            // Asset count
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -481,7 +481,81 @@ fun WalletHeaderCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Quick Actions
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                QuickActionItem(
+                    icon = Icons.Outlined.ArrowDownward,
+                    label = "Receive",
+                    onClick = onReceive,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+                QuickActionItem(
+                    icon = Icons.Outlined.ArrowUpward,
+                    label = "Send",
+                    onClick = onSend,
+                    color = MaterialTheme.colorScheme.success,
+                    modifier = Modifier.weight(1f)
+                )
+                QuickActionItem(
+                    icon = Icons.Outlined.SwapHoriz,
+                    label = "Swap",
+                    onClick = onSwap,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.weight(1f)
+                )
+                QuickActionItem(
+                    icon = Icons.Outlined.MoreHoriz,
+                    label = "More",
+                    onClick = onMore,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
+    }
+}
+
+@Composable
+fun QuickActionItem(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier 
+            .clickable { onClick() }
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(color.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = color,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -975,7 +1049,7 @@ fun TransactionsContainer(
             ) {
                 Text(
                     text = "Recent Transactions",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -986,7 +1060,7 @@ fun TransactionsContainer(
                 ) {
                     Text(
                         text = "See All",
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Icon(
@@ -1019,80 +1093,6 @@ fun TransactionsContainer(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun QuickActionsRow(
-    onReceive: () -> Unit,
-    onSend: () -> Unit,
-    onSwap: () -> Unit,
-    onMore: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        QuickActionItem(
-            icon = Icons.Outlined.ArrowDownward,
-            label = "Receive",
-            onClick = onReceive,
-            color = MaterialTheme.colorScheme.primary
-        )
-        QuickActionItem(
-            icon = Icons.Outlined.ArrowUpward,
-            label = "Send",
-            onClick = onSend,
-            color = MaterialTheme.colorScheme.success
-        )
-        QuickActionItem(
-            icon = Icons.Outlined.SwapHoriz,
-            label = "Swap",
-            onClick = onSwap,
-            color = MaterialTheme.colorScheme.tertiary
-        )
-        QuickActionItem(
-            icon = Icons.Outlined.MoreHoriz,
-            label = "More",
-            onClick = onMore,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-fun QuickActionItem(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    color: Color
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = color,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
