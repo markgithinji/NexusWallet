@@ -109,21 +109,22 @@ class EthereumSendViewModel @Inject constructor(
 
             val networkTokens = evmTokensByNetwork[targetNetwork] ?: emptyList()
             val nativeEth = networkTokens.filterIsInstance<NativeETH>().firstOrNull()
+            val initialToken = nativeEth ?: networkTokens.firstOrNull()
 
             _uiState.update {
                 it.copy(
                     walletId = walletId,
                     walletName = wallet!!.name,
-                    fromAddress = nativeEth?.address ?: networkTokens.firstOrNull()?.address ?: "",
+                    fromAddress = initialToken?.address ?: "",
                     network = targetNetwork,
                     availableNetworks = availableNetworks,
                     availableTokens = networkTokens,
-                    selectedToken = nativeEth ?: networkTokens.firstOrNull(),
+                    selectedToken = initialToken,
                     isInitialized = true
                 )
             }
 
-            // Load balance and fee estimate
+            // Load balance and fee estimate for the initial token
             loadBalances()
             loadFeeEstimate()
         }
@@ -165,20 +166,22 @@ class EthereumSendViewModel @Inject constructor(
 
             val networkTokens = evmTokensByNetwork[network] ?: emptyList()
             val nativeEth = networkTokens.filterIsInstance<NativeETH>().firstOrNull()
+            val newToken = nativeEth ?: networkTokens.firstOrNull()
 
             _uiState.update {
                 it.copy(
                     network = network,
                     availableTokens = networkTokens,
-                    selectedToken = nativeEth ?: networkTokens.firstOrNull(),
-                    fromAddress = nativeEth?.address ?: networkTokens.firstOrNull()?.address ?: "",
+                    selectedToken = newToken,
+                    fromAddress = newToken?.address ?: "",
                     toAddress = "",
                     amount = "",
                     amountValue = BigDecimal.ZERO,
                     feeEstimate = null,
                     error = null,
                     validationResult = ValidateEVMSendUseCase.ValidationResult(isValid = false),
-                    balancesLoaded = false
+                    balancesLoaded = false,
+                    tokenBalance = BigDecimal.ZERO // Reset token balance
                 )
             }
 
@@ -195,7 +198,9 @@ class EthereumSendViewModel @Inject constructor(
                 it.copy(
                     selectedToken = token,
                     fromAddress = token.address,
-                    balancesLoaded = false
+                    balancesLoaded = false,
+                    tokenBalance = BigDecimal.ZERO, // Reset token balance
+                    validationResult = ValidateEVMSendUseCase.ValidationResult(isValid = false)
                 )
             }
             loadBalances()
@@ -205,6 +210,7 @@ class EthereumSendViewModel @Inject constructor(
     private suspend fun loadBalances() {
         val state = _uiState.value
         val token = state.selectedToken ?: return
+        val currentTokenId = token.externalId
 
         Log.d("EthereumVM", "loadBalances() for network: ${state.network}, token: ${token.symbol}")
 
@@ -216,11 +222,24 @@ class EthereumSendViewModel @Inject constructor(
 
         when (ethBalanceResult) {
             is Result.Success -> {
-                _uiState.update { it.copy(ethBalance = ethBalanceResult.data) }
+                _uiState.update { currentState ->
+                    // Only update if token hasn't changed
+                    if (currentState.selectedToken?.externalId == currentTokenId) {
+                        currentState.copy(ethBalance = ethBalanceResult.data)
+                    } else {
+                        currentState
+                    }
+                }
                 Log.d("EthereumVM", "ETH balance loaded: ${ethBalanceResult.data}")
             }
             is Result.Error -> {
-                _uiState.update { it.copy(error = "Failed to load ETH balance: ${ethBalanceResult.message}") }
+                _uiState.update { currentState ->
+                    if (currentState.selectedToken?.externalId == currentTokenId) {
+                        currentState.copy(error = "Failed to load ETH balance: ${ethBalanceResult.message}")
+                    } else {
+                        currentState
+                    }
+                }
             }
             Result.Loading -> {}
         }
@@ -228,11 +247,9 @@ class EthereumSendViewModel @Inject constructor(
         // Load token balance (for the selected token - could be ETH, USDC, etc.)
         val tokenBalanceResult = when (token) {
             is NativeETH -> {
-                // For ETH, token balance is the same as ETH balance
-                evmBlockchainRepository.getNativeBalance(
-                    address = token.address,
-                    network = state.network
-                )
+                // For ETH, we don't need to make another API call
+                // Just use the ETH balance we already have
+                Result.Success(state.ethBalance)
             }
             else -> {
                 // For tokens like USDC, get the token balance
@@ -248,29 +265,42 @@ class EthereumSendViewModel @Inject constructor(
         when (tokenBalanceResult) {
             is Result.Success -> {
                 val balance = tokenBalanceResult.data
-                _uiState.update {
-                    it.copy(
-                        tokenBalance = balance,
-                        balanceFormatted = when (token) {
-                            is USDCToken, is USDTToken ->
-                                "$${balance.setScale(2, RoundingMode.HALF_UP)} ${token.symbol}"
-                            else ->
-                                "${balance.setScale(4, RoundingMode.HALF_UP)} ${token.symbol}"
-                        },
-                        isLoading = false,
-                        balancesLoaded = true
-                    )
+                _uiState.update { currentState ->
+                    // Only update if this is still the selected token
+                    if (currentState.selectedToken?.externalId == currentTokenId) {
+                        currentState.copy(
+                            tokenBalance = balance,
+                            balanceFormatted = when (token) {
+                                is USDCToken, is USDTToken ->
+                                    "$${balance.setScale(2, RoundingMode.HALF_UP)} ${token.symbol}"
+                                else ->
+                                    "${balance.setScale(4, RoundingMode.HALF_UP)} ${token.symbol}"
+                            },
+                            isLoading = false,
+                            balancesLoaded = true
+                        )
+                    } else {
+                        currentState
+                    }
                 }
                 Log.d("EthereumVM", "Token balance loaded: $balance for ${token.symbol}")
-                validateInputs()
+
+                // Only validate if this is still the selected token
+                if (_uiState.value.selectedToken?.externalId == currentTokenId) {
+                    validateInputs()
+                }
             }
             is Result.Error -> {
-                _uiState.update {
-                    it.copy(
-                        error = "Failed to load balance: ${tokenBalanceResult.message}",
-                        isLoading = false,
-                        balancesLoaded = true // Mark as loaded even on error to prevent infinite waiting
-                    )
+                _uiState.update { currentState ->
+                    if (currentState.selectedToken?.externalId == currentTokenId) {
+                        currentState.copy(
+                            error = "Failed to load balance: ${tokenBalanceResult.message}",
+                            isLoading = false,
+                            balancesLoaded = true // Mark as loaded even on error to prevent infinite waiting
+                        )
+                    } else {
+                        currentState
+                    }
                 }
             }
             Result.Loading -> {}
@@ -279,6 +309,8 @@ class EthereumSendViewModel @Inject constructor(
 
     private suspend fun loadFeeEstimate() {
         val state = _uiState.value
+        val currentToken = state.selectedToken
+
         Log.d("EthereumVM", "loadFeeEstimate() for network: ${state.network}, isToken: ${state.selectedToken !is NativeETH}")
 
         val feeEstimateResult = getFeeEstimateUseCase(
@@ -289,11 +321,23 @@ class EthereumSendViewModel @Inject constructor(
 
         when (feeEstimateResult) {
             is Result.Success -> {
-                _uiState.update { it.copy(feeEstimate = feeEstimateResult.data) }
+                _uiState.update { currentState ->
+                    if (currentState.selectedToken?.externalId == currentToken?.externalId) {
+                        currentState.copy(feeEstimate = feeEstimateResult.data)
+                    } else {
+                        currentState
+                    }
+                }
                 validateInputs()
             }
             is Result.Error -> {
-                _uiState.update { it.copy(error = "Failed to load fee: ${feeEstimateResult.message}") }
+                _uiState.update { currentState ->
+                    if (currentState.selectedToken?.externalId == currentToken?.externalId) {
+                        currentState.copy(error = "Failed to load fee: ${feeEstimateResult.message}")
+                    } else {
+                        currentState
+                    }
+                }
             }
             Result.Loading -> {}
         }
