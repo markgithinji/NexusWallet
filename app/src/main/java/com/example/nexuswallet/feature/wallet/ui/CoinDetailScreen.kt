@@ -19,8 +19,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.example.nexuswallet.R
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -84,14 +86,14 @@ fun CoinDetailScreen(
         return
     }
 
-    val (coinColor, icon) = getCoinDetailConfig(coinType)
+    val (coinColor, iconRes) = getCoinDetailConfig(coinType)
     val displayName = getCoinDisplayName(coinType)
 
     Scaffold(
         topBar = {
             CoinDetailTopBar(
                 coinColor = coinColor,
-                icon = icon,
+                iconRes = iconRes,
                 displayName = displayName,
                 isLoading = state.isLoading,
                 onNavigateUp = onNavigateUp,
@@ -104,7 +106,7 @@ fun CoinDetailScreen(
             state = state,
             coinType = coinType,
             coinColor = coinColor,
-            icon = icon,
+            iconRes = iconRes,
             displayName = displayName,
             network = network,
             onCopyAddress = { address ->
@@ -126,7 +128,7 @@ fun CoinDetailScreen(
 @Composable
 private fun CoinDetailTopBar(
     coinColor: Color,
-    icon: ImageVector,
+    iconRes: Int,
     displayName: String,
     isLoading: Boolean,
     onNavigateUp: () -> Unit,
@@ -136,10 +138,10 @@ private fun CoinDetailTopBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(id = iconRes),
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    tint = coinColor
+                    tint = Color.Unspecified
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -191,7 +193,7 @@ private fun CoinDetailContent(
     state: CoinDetailViewModel.CoinDetailState,
     coinType: CoinType,
     coinColor: Color,
-    icon: ImageVector,
+    iconRes: Int,
     displayName: String,
     network: NetworkType?,
     onCopyAddress: (String) -> Unit,
@@ -220,7 +222,7 @@ private fun CoinDetailContent(
             CoinDetailBalanceCard(
                 coinType = coinType,
                 coinColor = coinColor,
-                icon = icon,
+                iconRes = iconRes,
                 displayName = displayName,
                 balance = state.balance,
                 balanceFormatted = state.balanceFormatted,
@@ -270,7 +272,6 @@ private fun CoinDetailContent(
                         when (token) {
                             is USDCToken -> onNavigateToSend(state.walletId, CoinType.USDC, network)
                             is USDTToken -> {
-                                // For USDT, using USDC type for now
                                 onNavigateToSend(state.walletId, CoinType.USDC, network)
                             }
                             else -> {
@@ -433,10 +434,10 @@ fun OtherTokenRow(
     network: NetworkType?,
     onClick: () -> Unit
 ) {
-    val (color, icon) = when (token) {
-        is USDCToken -> Pair(usdcLight, Icons.Outlined.AttachMoney)
-        is USDTToken -> Pair(Color(0xFF26A17B), Icons.Outlined.AttachMoney)
-        else -> Pair(MaterialTheme.colorScheme.primary, Icons.Outlined.Token)
+    val (color, iconRes) = when (token) {
+        is USDCToken -> Pair(usdcLight, R.drawable.usdc)
+        is USDTToken -> Pair(Color(0xFF26A17B), R.drawable.usdc)
+        else -> Pair(MaterialTheme.colorScheme.primary, null)
     }
 
     Row(
@@ -453,12 +454,21 @@ fun OtherTokenRow(
                 .background(color.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = token.symbol,
-                tint = color,
-                modifier = Modifier.size(18.dp)
-            )
+            if (iconRes != null) {
+                Icon(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = token.symbol,
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(20.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.Token,
+                    contentDescription = token.symbol,
+                    tint = color,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(12.dp))
@@ -490,196 +500,10 @@ fun OtherTokenRow(
 }
 
 @Composable
-fun CoinDetailOtherTokensCard(
-    tokens: List<EVMToken>,
-    onTokenClick: (EVMToken) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "Other Tokens",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            tokens.forEach { token ->
-                OtherTokenRow(
-                    token = token,
-                    onClick = { onTokenClick(token) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun OtherTokenRow(
-    token: EVMToken,
-    onClick: () -> Unit
-) {
-    val (color, icon) = when (token) {
-        is USDCToken -> Pair(usdcLight, Icons.Outlined.AttachMoney)
-        is USDTToken -> Pair(Color(0xFF26A17B), Icons.Outlined.AttachMoney)
-        else -> Pair(MaterialTheme.colorScheme.primary, Icons.Outlined.Token)
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = token.symbol,
-                tint = color,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = token.symbol,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = token.name,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (token.network != EthereumNetwork.Mainnet) {
-                Text(
-                    text = token.network.displayName,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.warning,
-                    fontSize = 10.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CoinDetailSPLTokensCard(
-    splTokens: List<SPLToken>,
-    onTokenClick: (SPLToken) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "SPL Tokens",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-
-            splTokens.take(3).forEach { token ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onTokenClick(token) }
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(solanaLight.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Token,
-                            contentDescription = null,
-                            tint = solanaLight,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = token.name,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = token.symbol,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Outlined.ChevronRight,
-                        contentDescription = "View",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (splTokens.indexOf(token) < splTokens.size - 1 && splTokens.indexOf(token) < 2) {
-                    Divider(
-                        color = MaterialTheme.colorScheme.outline,
-                        thickness = 1.dp
-                    )
-                }
-            }
-
-            if (splTokens.size > 3) {
-                TextButton(
-                    onClick = { /* View all */ },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("View All ${splTokens.size} Tokens")
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun CoinDetailBalanceCard(
     coinType: CoinType,
     coinColor: Color,
-    icon: ImageVector,
+    iconRes: Int,
     displayName: String,
     balance: String,
     balanceFormatted: String,
@@ -719,10 +543,10 @@ private fun CoinDetailBalanceCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = icon,
+                            painter = painterResource(id = iconRes),
                             contentDescription = displayName,
-                            tint = coinColor,
-                            modifier = Modifier.size(24.dp)
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(28.dp)
                         )
                     }
 
@@ -1076,12 +900,12 @@ private fun CoinDetailTransactionItem(
 }
 
 // Helper functions
-private fun getCoinDetailConfig(coinType: CoinType): Pair<Color, ImageVector> {
+private fun getCoinDetailConfig(coinType: CoinType): Pair<Color, Int> {
     return when (coinType) {
-        CoinType.BITCOIN -> Pair(bitcoinLight, Icons.Outlined.CurrencyBitcoin)
-        CoinType.ETHEREUM -> Pair(ethereumLight, Icons.Outlined.Diamond)
-        CoinType.SOLANA -> Pair(solanaLight, Icons.Outlined.FlashOn)
-        CoinType.USDC -> Pair(usdcLight, Icons.Outlined.AttachMoney)
+        CoinType.BITCOIN -> Pair(bitcoinLight, R.drawable.bitcoin)
+        CoinType.ETHEREUM -> Pair(ethereumLight, R.drawable.ethereum)
+        CoinType.SOLANA -> Pair(solanaLight, R.drawable.solana)
+        CoinType.USDC -> Pair(usdcLight, R.drawable.usdc)
     }
 }
 
