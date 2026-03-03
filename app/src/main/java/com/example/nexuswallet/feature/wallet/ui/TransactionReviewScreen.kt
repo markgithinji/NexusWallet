@@ -105,16 +105,12 @@ fun TransactionReviewScreen(
                     sendError = effect.message
                     isSending = false
                 }
-                is BitcoinReviewEffect.TransactionPrepared -> {
-                    // Transaction prepared successfully
-                }
+                is BitcoinReviewEffect.TransactionPrepared -> {}
                 is BitcoinReviewEffect.TransactionSent -> {
                     txHash = effect.txHash
                     txStatus = "Transaction sent!"
                     isSending = false
                     showSuccessBanner = true
-
-                    // Auto-hide banner after 5 seconds
                     delay(5000)
                     showSuccessBanner = false
                 }
@@ -149,15 +145,29 @@ fun TransactionReviewScreen(
         else -> null
     }
 
-    // Initialize
     LaunchedEffect(Unit) {
         when (coinType) {
             CoinType.ETHEREUM, CoinType.USDC -> {
+                // For both ETH and USDC, we use the Ethereum ViewModel
                 ethereumViewModel.initialize(walletId, ethereumNetwork)
+
+                // Set the transaction data
                 ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(toAddress))
                 ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(amount))
                 feeLevel?.let {
                     ethereumViewModel.onEvent(EthereumSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
+                }
+
+                // If this is USDC, we need to select the USDC token
+                if (coinType == CoinType.USDC) {
+                    // Wait for initialization
+                    snapshotFlow { ethereumState.value.isInitialized }
+                        .filter { it }
+                        .firstOrNull()
+
+                    // Find and select USDC token
+                    val usdcToken = ethereumState.value.availableTokens.firstOrNull { it is USDCToken }
+                    usdcToken?.let { ethereumViewModel.selectToken(it) }
                 }
             }
             CoinType.SOLANA -> {
@@ -222,7 +232,7 @@ fun TransactionReviewScreen(
         is NativeETH -> R.drawable.ethereum
         is USDCToken -> R.drawable.usdc
         is USDTToken -> R.drawable.tether
-        else -> null
+        else -> iconRes
     }
 
     Scaffold(
