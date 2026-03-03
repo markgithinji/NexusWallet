@@ -7,6 +7,12 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import com.example.nexuswallet.R
 import androidx.compose.foundation.layout.*
@@ -59,6 +65,7 @@ import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.successContainer
 import com.example.nexuswallet.ui.theme.usdcLight
+import com.example.nexuswallet.ui.theme.warning
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
@@ -85,6 +92,7 @@ fun TransactionReviewScreen(
     var sendError by remember { mutableStateOf<String?>(null) }
     var txHash by remember { mutableStateOf<String?>(null) }
     var txStatus by remember { mutableStateOf("") }
+    var showSuccessBanner by remember { mutableStateOf(false) }
 
     val ethereumState = ethereumViewModel.uiState.collectAsState()
     val solanaState = solanaViewModel.state.collectAsState()
@@ -104,6 +112,11 @@ fun TransactionReviewScreen(
                     txHash = effect.txHash
                     txStatus = "Transaction sent!"
                     isSending = false
+                    showSuccessBanner = true
+
+                    // Auto-hide banner after 5 seconds
+                    delay(5000)
+                    showSuccessBanner = false
                 }
             }
         }
@@ -288,48 +301,168 @@ fun TransactionReviewScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        if (isPreparing) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Main content
+            if (isPreparing) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = coinColor)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Preparing transaction...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                TransactionReviewContent(
+                    coinType = coinType,
+                    amount = amount,
+                    fromAddress = fromAddress,
+                    toAddress = toAddress,
+                    feeEstimate = feeEstimate,
+                    txHash = txHash,
+                    coinColor = coinColor,
+                    iconRes = iconRes,
+                    tokenIconRes = tokenIconRes,
+                    selectedToken = selectedToken,
+                    network = networkDisplayName,
+                    isValid = true,
+                    validationErrors = if (sendError != null) listOf(sendError!!) else emptyList(),
+                    onCopyAddress = { address ->
+                        copyToClipboard(context, address)
+                    },
+                    onViewOnExplorer = { hash ->
+                        val url = getExplorerUrl(coinType, hash, network)
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            // Floating Success Banner
+            AnimatedVisibility(
+                visible = showSuccessBanner,
+                enter = fadeIn() + slideInVertically { -it },
+                exit = fadeOut() + slideOutVertically { -it }
+            ) {
+                SuccessBanner(
+                    txHash = txHash ?: "",
+                    coinType = coinType,
+                    onViewExplorer = { hash ->
+                        val url = getExplorerUrl(coinType, hash, network)
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        context.startActivity(intent)
+                    },
+                    onDismiss = { showSuccessBanner = false },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SuccessBanner(
+    txHash: String,
+    coinType: CoinType,
+    onViewExplorer: (String) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.successContainer
+        ),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Success icon
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.success.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = coinColor)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Preparing transaction...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Icon(
+                    imageVector = Icons.Outlined.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.success,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Message
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "Transaction Sent!",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Hash: ${txHash.take(6)}...${txHash.takeLast(4)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            // Actions
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Explorer button
+                IconButton(
+                    onClick = { onViewExplorer(txHash) },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.OpenInBrowser,
+                        contentDescription = "View on Explorer",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                // Dismiss button
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.Close,
+                        contentDescription = "Dismiss",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
-        } else {
-            TransactionReviewContent(
-                coinType = coinType,
-                amount = amount,
-                fromAddress = fromAddress,
-                toAddress = toAddress,
-                feeEstimate = feeEstimate,
-                txHash = txHash,
-                coinColor = coinColor,
-                iconRes = iconRes,
-                tokenIconRes = tokenIconRes,
-                selectedToken = selectedToken,
-                network = networkDisplayName,
-                isValid = true,
-                validationErrors = if (sendError != null) listOf(sendError!!) else emptyList(),
-                onCopyAddress = { address ->
-                    copyToClipboard(context, address)
-                },
-                onViewOnExplorer = { hash ->
-                    val url = getExplorerUrl(coinType, hash, network)
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                    context.startActivity(intent)
-                },
-                modifier = Modifier.padding(padding)
-            )
         }
     }
 }
@@ -405,35 +538,53 @@ fun TransactionReviewContent(
             elevation = CardDefaults.cardElevation(0.dp)
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.Start
             ) {
                 Text(
                     text = "You are sending",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                Text(
-                    text = "$amount ${getTokenSymbol(coinType, selectedToken)}",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                // Amount with better alignment
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    Text(
+                        text = amount,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = getTokenSymbol(coinType, selectedToken),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = coinColor,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
 
                 if (selectedToken != null && selectedToken !is NativeETH) {
                     Text(
                         text = "on ${selectedToken.network.displayName}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 } else if (network != null) {
                     Text(
                         text = "on ${network.toString()}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
             }
@@ -710,75 +861,118 @@ fun FeePreviewCard(
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
         ) {
-            Text(
-                text = "Network Fee",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
+            // Header with icon and title
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "Priority:",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                Icon(
+                    imageVector = Icons.Outlined.LocalGasStation,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary
                 )
-
                 Text(
-                    text = priority.name.lowercase().replaceFirstChar { it.uppercase() },
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    text = "Network Fee",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
-            rows.forEach { (label, value) ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "$label:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(
-                        text = value,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+            // Priority chip
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = getPriorityColor(priority).copy(alpha = 0.1f),
+                contentColor = getPriorityColor(priority),
+                modifier = Modifier.align(Alignment.Start)
+            ) {
+                Text(
+                    text = priority.name.lowercase().replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                )
             }
 
-            if (estimatedTime != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Est. Time:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Fee details in a grid layout
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rows.forEach { (label, value) ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = value,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                if (estimatedTime != null) {
+                    Divider(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                     )
 
-                    Text(
-                        text = "~${estimatedTime}s",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Schedule,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "Estimated time",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = "~${estimatedTime}s",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun getPriorityColor(priority: FeeLevel): Color {
+    return when (priority) {
+        FeeLevel.SLOW -> MaterialTheme.colorScheme.success
+        FeeLevel.NORMAL -> MaterialTheme.colorScheme.primary
+        FeeLevel.FAST -> MaterialTheme.colorScheme.warning
     }
 }
 
@@ -790,63 +984,135 @@ fun TransactionSuccessCard(
     network: Any? = null,
     onViewOnExplorer: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.successContainer
+            containerColor = MaterialTheme.colorScheme.surface
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.success.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
         ) {
+            // Success header
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.CheckCircle,
-                    contentDescription = "Success",
-                    tint = MaterialTheme.colorScheme.success
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Transaction Sent!",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.success
-                )
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.success.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.CheckCircle,
+                        contentDescription = "Success",
+                        tint = MaterialTheme.colorScheme.success,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Column {
+                    Text(
+                        text = "Transaction Sent!",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Your transaction has been broadcast",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = "Hash: ${hash.take(8)}...${hash.takeLast(8)}",
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Transaction hash with copy option
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Link,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = hash.take(8) + "..." + hash.takeLast(8),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
 
+                    // Copy hash button
+                    IconButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("Transaction Hash", hash)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "Hash copied", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ContentCopy,
+                            contentDescription = "Copy hash",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Explorer button
             Button(
                 onClick = onViewOnExplorer,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = coinColor,
+                    contentColor = Color.White
                 )
             ) {
                 Icon(
                     Icons.Outlined.OpenInBrowser,
-                    "View",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     "View on ${getExplorerName(coinType)}",
-                    color = MaterialTheme.colorScheme.onPrimary,
                     style = MaterialTheme.typography.labelLarge
                 )
             }
