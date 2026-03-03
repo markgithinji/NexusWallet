@@ -52,12 +52,14 @@ import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
 import com.example.nexuswallet.ui.theme.warning
+import com.example.nexuswallet.ui.theme.warningContainer
 import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletDetailScreen(
@@ -112,6 +114,22 @@ fun WalletDetailScreen(
                     }
                 },
                 actions = {
+                    // Show warning icon if there's a sync error
+                    if (uiState.hasSyncError) {
+                        Box(
+                            modifier = Modifier
+                                .padding(end = 4.dp)
+                                .size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Warning,
+                                contentDescription = "Sync error",
+                                tint = MaterialTheme.colorScheme.warning,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
                     IconButton(
                         onClick = { walletViewModel.refresh() },
                         enabled = !uiState.isLoading
@@ -146,6 +164,7 @@ fun WalletDetailScreen(
                 transactions = uiState.transactions,
                 pricePercentages = uiState.pricePercentages,
                 totalUsdValue = walletViewModel.getTotalUsdValue(),
+                hasSyncError = uiState.hasSyncError,
                 onNavigateToCoinDetail = onNavigateToCoinDetail,
                 onNavigateToReceive = onNavigateToReceive,
                 onNavigateToSend = onNavigateToSend,
@@ -169,6 +188,7 @@ fun WalletDetailContent(
     transactions: List<Any>,
     pricePercentages: Map<String, Double>,
     totalUsdValue: Double,
+    hasSyncError: Boolean,
     onNavigateToCoinDetail: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
@@ -189,11 +209,12 @@ fun WalletDetailContent(
         contentPadding = PaddingValues(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Wallet Header Card
+        // Wallet Header Card (with sync error indicator)
         item {
             WalletHeaderCard(
                 wallet = wallet,
-                totalBalance = totalFormatted
+                totalBalance = totalFormatted,
+                hasSyncError = hasSyncError
             )
         }
 
@@ -379,6 +400,86 @@ fun WalletDetailContent(
         } else {
             item {
                 EmptyTransactionsView()
+            }
+        }
+    }
+}
+
+@Composable
+fun WalletHeaderCard(
+    wallet: Wallet,
+    totalBalance: String,
+    hasSyncError: Boolean = false
+) {
+    val assetCount = wallet.bitcoinCoins.size +
+            wallet.solanaCoins.size +
+            wallet.evmTokens.size
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            // Total Balance with optional warning icon
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Total Balance",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // Show warning icon if there's a sync error
+                if (hasSyncError) {
+                    Icon(
+                        imageVector = Icons.Outlined.Warning,
+                        contentDescription = "Sync error",
+                        tint = MaterialTheme.colorScheme.warning,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = totalBalance,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AccountBalanceWallet,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "$assetCount assets",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     }
@@ -765,105 +866,36 @@ data class SPLBalance(
 )
 
 @Composable
-fun WalletHeaderCard(
-    wallet: Wallet,
-    totalBalance: String
+fun SyncErrorMessage(
+    message: String,
+    modifier: Modifier = Modifier
 ) {
-    val assetCount = wallet.bitcoinCoins.size +
-            wallet.solanaCoins.size +
-            wallet.evmTokens.size
-
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(20.dp),
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
+            containerColor = MaterialTheme.colorScheme.warningContainer
+        )
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Wallet icon and name
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.AccountBalanceWallet,
-                        contentDescription = "Wallet",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                Column {
-                    Text(
-                        text = wallet.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Multi-currency wallet",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Divider(
-                color = MaterialTheme.colorScheme.outline,
-                thickness = 1.dp
+            Icon(
+                imageVector = Icons.Outlined.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.warning,
+                modifier = Modifier.size(16.dp)
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             Text(
-                text = "Total Balance",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.warning,
+                modifier = Modifier.weight(1f)
             )
-
-            Text(
-                text = totalBalance,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "$assetCount assets",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
         }
     }
 }
