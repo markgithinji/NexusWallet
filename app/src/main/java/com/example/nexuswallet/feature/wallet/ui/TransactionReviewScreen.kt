@@ -7,8 +7,11 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.background
+import com.example.nexuswallet.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -18,12 +21,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.feature.coin.CoinType
@@ -45,6 +51,8 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -101,12 +109,12 @@ fun TransactionReviewScreen(
         }
     }
 
-    // Get coin config
-    val (coinColor, icon, displayName) = when (coinType) {
-        CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "Bitcoin")
-        CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "Ethereum")
-        CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "Solana")
-        CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
+    // Get coin config with custom icons
+    val (coinColor, iconRes, displayName) = when (coinType) {
+        CoinType.BITCOIN -> Triple(bitcoinLight, R.drawable.bitcoin, "Bitcoin")
+        CoinType.ETHEREUM -> Triple(ethereumLight, R.drawable.ethereum, "Ethereum")
+        CoinType.SOLANA -> Triple(solanaLight, R.drawable.solana, "Solana")
+        CoinType.USDC -> Triple(usdcLight, R.drawable.usdc, "USDC")
     }
 
     // Extract network objects from NetworkType enum
@@ -196,16 +204,24 @@ fun TransactionReviewScreen(
         CoinType.SOLANA -> "Solana"
     }
 
+    // Get token icon for selected token
+    val tokenIconRes = when (selectedToken) {
+        is NativeETH -> R.drawable.ethereum
+        is USDCToken -> R.drawable.usdc
+        is USDTToken -> R.drawable.tether
+        else -> null
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = icon,
+                            painter = painterResource(id = iconRes),
                             contentDescription = null,
                             modifier = Modifier.size(24.dp),
-                            tint = coinColor
+                            tint = Color.Unspecified
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -298,7 +314,8 @@ fun TransactionReviewScreen(
                 feeEstimate = feeEstimate,
                 txHash = txHash,
                 coinColor = coinColor,
-                icon = icon,
+                iconRes = iconRes,
+                tokenIconRes = tokenIconRes,
                 selectedToken = selectedToken,
                 network = networkDisplayName,
                 isValid = true,
@@ -317,111 +334,6 @@ fun TransactionReviewScreen(
     }
 }
 
-private fun getExplorerUrl(coinType: CoinType, txHash: String, network: NetworkType?): String {
-    return when (coinType) {
-        CoinType.BITCOIN -> {
-            when (network) {
-                NetworkType.BITCOIN_TESTNET -> "https://blockstream.info/testnet/tx/$txHash"
-                else -> "https://blockstream.info/tx/$txHash"
-            }
-        }
-        CoinType.ETHEREUM, CoinType.USDC -> {
-            when (network) {
-                NetworkType.ETHEREUM_SEPOLIA -> "https://sepolia.etherscan.io/tx/$txHash"
-                else -> "https://etherscan.io/tx/$txHash"
-            }
-        }
-        CoinType.SOLANA -> {
-            when (network) {
-                NetworkType.SOLANA_DEVNET -> "https://solscan.io/tx/$txHash?cluster=devnet"
-                else -> "https://solscan.io/tx/$txHash"
-            }
-        }
-    }
-}
-
-@Composable
-fun TransactionBottomBar(
-    txHash: String?,
-    isSending: Boolean,
-    sendError: String?,
-    txStatus: String,
-    isValid: Boolean,
-    isPreparing: Boolean = false,
-    onSend: () -> Unit,
-    onDone: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            if (txHash != null) {
-                Button(
-                    onClick = onDone,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text(
-                        "Done",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
-            } else {
-                sendError?.let { error ->
-                    Text(
-                        text = error,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                Button(
-                    onClick = onSend,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    enabled = !isSending && !isPreparing && isValid,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    if (isSending || isPreparing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            if (isPreparing) "Preparing..." else txStatus.ifEmpty { "Sending..." },
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    } else {
-                        Text(
-                            "Confirm & Send",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 @Composable
 fun TransactionReviewContent(
     coinType: CoinType,
@@ -431,7 +343,8 @@ fun TransactionReviewContent(
     feeEstimate: Any?,
     txHash: String?,
     coinColor: Color,
-    icon: ImageVector,
+    iconRes: Int,
+    tokenIconRes: Int? = null,
     selectedToken: EVMToken? = null,
     network: Any? = null,
     isValid: Boolean = true,
@@ -534,6 +447,7 @@ fun TransactionReviewContent(
                 label = "From",
                 address = fromAddress,
                 coinColor = coinColor,
+                iconRes = iconRes,
                 onCopy = { onCopyAddress(fromAddress) }
             )
         }
@@ -545,199 +459,8 @@ fun TransactionReviewContent(
             label = "To",
             address = toAddress,
             coinColor = coinColor,
-            onCopy = { onCopyAddress(toAddress) }
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Fee Preview
-        feeEstimate?.let {
-            when (coinType) {
-                CoinType.ETHEREUM, CoinType.USDC -> EVMFeePreviewCard(feeEstimate = it as EVMFeeEstimate)
-                CoinType.BITCOIN -> BitcoinFeePreviewCard(feeEstimate = it as BitcoinFeeEstimate)
-                CoinType.SOLANA -> SolanaFeePreviewCard(feeEstimate = it as SolanaFeeEstimate)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Success Message
-        txHash?.let { hash ->
-            TransactionSuccessCard(
-                hash = hash,
-                coinType = coinType,
-                coinColor = coinColor,
-                network = network,
-                onViewOnExplorer = { onViewOnExplorer(hash) }
-            )
-        }
-    }
-}
-
-@Composable
-fun TransactionBottomBar(
-    txHash: String?,
-    isSending: Boolean,
-    sendError: String?,
-    txStatus: String,
-    onSend: () -> Unit,
-    onDone: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            if (txHash != null) {
-                Button(
-                    onClick = onDone,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text(
-                        "Done",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
-            } else {
-                sendError?.let { error ->
-                    Text(
-                        text = error,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-
-                Button(
-                    onClick = onSend,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    enabled = !isSending,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    if (isSending) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            txStatus.ifEmpty { "Sending..." },
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    } else {
-                        Text(
-                            "Confirm & Send",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun TransactionReviewContent(
-    coinType: CoinType,
-    amount: String,
-    fromAddress: String?,
-    toAddress: String,
-    feeEstimate: Any?,
-    txHash: String?,
-    coinColor: Color,
-    icon: ImageVector,
-    selectedToken: EVMToken? = null,
-    network: Any? = null,
-    onCopyAddress: (String) -> Unit,
-    onViewOnExplorer: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-    ) {
-        // Transaction Summary Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(0.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "You are sending",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "$amount ${getTokenSymbol(coinType, selectedToken)}",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                if (selectedToken != null && selectedToken !is NativeETH) {
-                    Text(
-                        text = "on ${selectedToken.network.displayName}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else if (network != null) {
-                    Text(
-                        text = "on ${network.toString()}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // From Address
-        if (!fromAddress.isNullOrEmpty()) {
-            AddressCard(
-                label = "From",
-                address = fromAddress,
-                coinColor = coinColor,
-                onCopy = { onCopyAddress(fromAddress) }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // To Address Card
-        AddressCard(
-            label = "To",
-            address = toAddress,
-            coinColor = coinColor,
+            iconRes = tokenIconRes ?: iconRes,
+            isToAddress = true,
             onCopy = { onCopyAddress(toAddress) }
         )
 
@@ -772,6 +495,8 @@ fun AddressCard(
     label: String,
     address: String,
     coinColor: Color,
+    iconRes: Int,
+    isToAddress: Boolean = false,
     onCopy: () -> Unit
 ) {
     Card(
@@ -784,35 +509,147 @@ fun AddressCard(
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            // Icon
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(coinColor.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
             ) {
+                Icon(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Address info
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
                 Text(
                     text = address,
                     style = MaterialTheme.typography.bodyMedium,
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
+            }
 
-                IconButton(onClick = onCopy) {
-                    Icon(
-                        Icons.Outlined.ContentCopy,
-                        "Copy",
-                        tint = coinColor,
-                        modifier = Modifier.size(16.dp)
+            // Copy button
+            IconButton(onClick = onCopy) {
+                Icon(
+                    Icons.Outlined.ContentCopy,
+                    "Copy",
+                    tint = coinColor,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionBottomBar(
+    txHash: String?,
+    isSending: Boolean,
+    sendError: String?,
+    txStatus: String,
+    isValid: Boolean,
+    isPreparing: Boolean = false,
+    onSend: () -> Unit,
+    onDone: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            if (txHash != null) {
+                Button(
+                    onClick = onDone,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
+                ) {
+                    Text(
+                        "Done",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            } else {
+                sendError?.let { error ->
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Button(
+                    onClick = onSend,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !isSending && !isPreparing && isValid,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    if (isSending || isPreparing) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                if (isPreparing) "Preparing..." else txStatus.ifEmpty { "Sending..." },
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                    } else {
+                        Text(
+                            "Confirm & Send",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
                 }
             }
         }
@@ -1045,24 +882,23 @@ private fun getExplorerName(coinType: CoinType): String {
     }
 }
 
-private fun getExplorerUrl(coinType: CoinType, txHash: String, network: Any? = null): String {
+private fun getExplorerUrl(coinType: CoinType, txHash: String, network: NetworkType?): String {
     return when (coinType) {
         CoinType.BITCOIN -> {
-            if (network == BitcoinNetwork.Testnet) {
-                "https://blockstream.info/testnet/tx/$txHash"
-            } else {
-                "https://blockstream.info/tx/$txHash"
+            when (network) {
+                NetworkType.BITCOIN_TESTNET -> "https://blockstream.info/testnet/tx/$txHash"
+                else -> "https://blockstream.info/tx/$txHash"
             }
         }
         CoinType.ETHEREUM, CoinType.USDC -> {
             when (network) {
-                EthereumNetwork.Sepolia -> "https://sepolia.etherscan.io/tx/$txHash"
+                NetworkType.ETHEREUM_SEPOLIA -> "https://sepolia.etherscan.io/tx/$txHash"
                 else -> "https://etherscan.io/tx/$txHash"
             }
         }
         CoinType.SOLANA -> {
             when (network) {
-                SolanaNetwork.Devnet -> "https://solscan.io/tx/$txHash?cluster=devnet"
+                NetworkType.SOLANA_DEVNET -> "https://solscan.io/tx/$txHash?cluster=devnet"
                 else -> "https://solscan.io/tx/$txHash"
             }
         }
