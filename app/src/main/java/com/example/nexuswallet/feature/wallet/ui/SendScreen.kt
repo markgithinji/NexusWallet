@@ -54,15 +54,19 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.*
 import androidx.compose.foundation.lazy.items
+import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendEvent
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.firstOrNull
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SendScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToReview: (String, CoinType, String, String, FeeLevel?, Any?) -> Unit,
+    onNavigateToReview: (String, CoinType, String, String, FeeLevel?, NetworkType?) -> Unit,
     walletId: String,
     coinType: CoinType,
-    network: String = "",
+    network: NetworkType? = null,
     ethereumViewModel: EthereumSendViewModel = hiltViewModel(),
     solanaViewModel: SolanaSendViewModel = hiltViewModel(),
     bitcoinViewModel: BitcoinSendViewModel = hiltViewModel()
@@ -76,42 +80,46 @@ fun SendScreen(
     val solanaState = solanaViewModel.state.collectAsState()
     val bitcoinState = bitcoinViewModel.state.collectAsState()
 
-    val networkObject = when (coinType) {
-        CoinType.ETHEREUM, CoinType.USDC -> {
-            when (network.lowercase()) {
-                "mainnet" -> EthereumNetwork.Mainnet
-                "sepolia" -> EthereumNetwork.Sepolia
-                else -> null
-            }
-        }
-        CoinType.SOLANA -> {
-            when (network.lowercase()) {
-                "mainnet" -> SolanaNetwork.Mainnet
-                "devnet" -> SolanaNetwork.Devnet
-                else -> null
-            }
-        }
-        CoinType.BITCOIN -> {
-            when (network.lowercase()) {
-                "mainnet" -> BitcoinNetwork.Mainnet
-                "testnet" -> BitcoinNetwork.Testnet
-                else -> null
-            }
-        }
+    // Extract network objects from NetworkType enum
+    val bitcoinNetwork = when (network) {
+        NetworkType.BITCOIN_MAINNET -> BitcoinNetwork.Mainnet
+        NetworkType.BITCOIN_TESTNET -> BitcoinNetwork.Testnet
+        else -> null
+    }
+
+    val ethereumNetwork = when (network) {
+        NetworkType.ETHEREUM_MAINNET -> EthereumNetwork.Mainnet
+        NetworkType.ETHEREUM_SEPOLIA -> EthereumNetwork.Sepolia
+        else -> null
+    }
+
+    val solanaNetwork = when (network) {
+        NetworkType.SOLANA_MAINNET -> SolanaNetwork.Mainnet
+        NetworkType.SOLANA_DEVNET -> SolanaNetwork.Devnet
+        else -> null
     }
 
     // Initialize ViewModels with network parameter
     LaunchedEffect(Unit) {
         when (coinType) {
             CoinType.ETHEREUM, CoinType.USDC -> {
-                ethereumViewModel.initialize(walletId, networkObject as? EthereumNetwork)
+                ethereumViewModel.initialize(walletId, ethereumNetwork)
+                // Auto-select USDC if needed
+                if (coinType == CoinType.USDC) {
+                    snapshotFlow { ethereumState.value.isInitialized }
+                        .filter { it }
+                        .firstOrNull()
+
+                    val usdcToken = ethereumState.value.availableTokens.firstOrNull { it is USDCToken }
+                    usdcToken?.let { ethereumViewModel.selectToken(it) }
+                }
             }
             CoinType.SOLANA -> {
-                solanaViewModel.init(walletId, networkObject as? SolanaNetwork)
+                solanaViewModel.init(walletId, solanaNetwork)
             }
             CoinType.BITCOIN -> {
                 bitcoinViewModel.handleEvent(
-                    BitcoinSendEvent.Initialize(walletId, networkObject as? BitcoinNetwork)
+                    BitcoinSendEvent.Initialize(walletId, bitcoinNetwork)
                 )
             }
         }
@@ -132,20 +140,51 @@ fun SendScreen(
         CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
     }
 
-    // Get current network display name
     val currentNetworkName = when (coinType) {
-        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.network.displayName
-        CoinType.SOLANA -> when (solanaState.value.network) {
-            SolanaNetwork.Mainnet -> "Mainnet"
-            SolanaNetwork.Devnet -> "Devnet"
+        CoinType.ETHEREUM, CoinType.USDC -> {
+            // Get from Ethereum ViewModel state
+            when (ethereumState.value.network) {
+                EthereumNetwork.Mainnet -> "Ethereum Mainnet"
+                EthereumNetwork.Sepolia -> "Ethereum Sepolia"
+            }
         }
-        CoinType.BITCOIN -> bitcoinState.value.network.name
+        CoinType.SOLANA -> {
+            // Get from Solana ViewModel state
+            when (solanaState.value.network) {
+                SolanaNetwork.Mainnet -> "Solana Mainnet"
+                SolanaNetwork.Devnet -> "Solana Devnet"
+            }
+        }
+        CoinType.BITCOIN -> {
+            // Get from Bitcoin ViewModel state
+            when (bitcoinState.value.network) {
+                BitcoinNetwork.Mainnet -> "Bitcoin Mainnet"
+                BitcoinNetwork.Testnet -> "Bitcoin Testnet"
+            }
+        }
     }
 
     // Get selected token for EVM
     val selectedToken = if (coinType == CoinType.ETHEREUM || coinType == CoinType.USDC) {
         ethereumState.value.selectedToken
     } else null
+
+    // Get available networks based on coin type
+    val availableNetworks = when (coinType) {
+        CoinType.ETHEREUM, CoinType.USDC -> listOf(
+            NetworkType.ETHEREUM_MAINNET,
+            NetworkType.ETHEREUM_SEPOLIA
+        )
+        CoinType.SOLANA -> listOf(
+            NetworkType.SOLANA_MAINNET,
+            NetworkType.SOLANA_DEVNET
+        )
+        CoinType.BITCOIN -> listOf(
+            NetworkType.BITCOIN_MAINNET,
+            NetworkType.BITCOIN_TESTNET
+        )
+        else -> emptyList()
+    }
 
     Scaffold(
         topBar = {
@@ -198,29 +237,36 @@ fun SendScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Network and Token Selector Dialogs
+            // Network Selector Dialog
             if (showNetworkSelector) {
                 NetworkSelectorDialog(
-                    availableNetworks = when (coinType) {
-                        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.availableNetworks
-                        CoinType.SOLANA -> solanaState.value.availableNetworks
-                        CoinType.BITCOIN -> bitcoinState.value.availableNetworks
-                        else -> emptyList()
-                    },
+                    availableNetworks = availableNetworks,
                     currentNetwork = currentNetworkName,
                     onNetworkSelected = { selectedNetwork ->
-                        when (coinType) {
-                            CoinType.ETHEREUM, CoinType.USDC -> {
-                                ethereumViewModel.switchNetwork(selectedNetwork as EthereumNetwork)
+                        when (selectedNetwork) {
+                            NetworkType.ETHEREUM_MAINNET -> {
+                                ethereumViewModel.switchNetwork(EthereumNetwork.Mainnet)
                             }
-                            CoinType.SOLANA -> {
-                                solanaViewModel.switchNetwork(selectedNetwork as SolanaNetwork)
+                            NetworkType.ETHEREUM_SEPOLIA -> {
+                                ethereumViewModel.switchNetwork(EthereumNetwork.Sepolia)
                             }
-                            CoinType.BITCOIN -> {
+                            NetworkType.SOLANA_MAINNET -> {
+                                solanaViewModel.switchNetwork(SolanaNetwork.Mainnet)
+                            }
+                            NetworkType.SOLANA_DEVNET -> {
+                                solanaViewModel.switchNetwork(SolanaNetwork.Devnet)
+                            }
+                            NetworkType.BITCOIN_MAINNET -> {
                                 bitcoinViewModel.handleEvent(
-                                    BitcoinSendEvent.SwitchNetwork(selectedNetwork as BitcoinNetwork)
+                                    BitcoinSendEvent.SwitchNetwork(BitcoinNetwork.Mainnet)
                                 )
                             }
+                            NetworkType.BITCOIN_TESTNET -> {
+                                bitcoinViewModel.handleEvent(
+                                    BitcoinSendEvent.SwitchNetwork(BitcoinNetwork.Testnet)
+                                )
+                            }
+                            else -> {}
                         }
                         showNetworkSelector = false
                     },
@@ -228,6 +274,7 @@ fun SendScreen(
                 )
             }
 
+            // Token Selector Dialog (for EVM coins)
             if (showTokenSelector && (coinType == CoinType.ETHEREUM || coinType == CoinType.USDC)) {
                 TokenSelectorDialog(
                     availableTokens = ethereumState.value.availableTokens,
@@ -248,20 +295,12 @@ fun SendScreen(
                 contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Network Selector (if multiple networks available)
-                if (when (coinType) {
-                        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.availableNetworks.size > 1
-                        CoinType.SOLANA -> solanaState.value.availableNetworks.size > 1
-                        CoinType.BITCOIN -> bitcoinState.value.availableNetworks.size > 1
-                        else -> false
-                    }
-                ) {
-                    item {
-                        NetworkSelectorCard(
-                            currentNetwork = currentNetworkName,
-                            onClick = { showNetworkSelector = true }
-                        )
-                    }
+                // Network Selector Card
+                item {
+                    NetworkSelectorCard(
+                        currentNetwork = currentNetworkName,
+                        onClick = { showNetworkSelector = true }
+                    )
                 }
 
                 // Token Selector (for EVM coins with multiple tokens)
@@ -292,7 +331,7 @@ fun SendScreen(
                                 coinType = coinType,
                                 address = ethereumState.value.fromAddress,
                                 token = token,
-                                network = ethereumState.value.network.displayName,
+                                network = currentNetworkName,
                                 secondaryBalance = if (token !is NativeETH) ethereumState.value.ethBalance else null,
                                 secondaryBalanceFormatted = if (token !is NativeETH) "${ethereumState.value.ethBalance.setScale(4, RoundingMode.HALF_UP)} ETH" else null
                             )
@@ -303,10 +342,7 @@ fun SendScreen(
                                 balanceFormatted = solanaState.value.balanceFormatted,
                                 coinType = coinType,
                                 address = solanaState.value.walletAddress,
-                                network = when (solanaState.value.network) {
-                                    SolanaNetwork.Mainnet -> "Mainnet"
-                                    SolanaNetwork.Devnet -> "Devnet"
-                                }
+                                network = currentNetworkName
                             )
                         }
                         CoinType.BITCOIN -> {
@@ -315,7 +351,7 @@ fun SendScreen(
                                 balanceFormatted = bitcoinState.value.balanceFormatted,
                                 coinType = coinType,
                                 address = bitcoinState.value.walletAddress,
-                                network = bitcoinState.value.network.name
+                                network = currentNetworkName
                             )
                         }
                     }
@@ -508,34 +544,46 @@ fun SendScreen(
                         CoinType.ETHEREUM, CoinType.USDC -> {
                             val token = selectedToken
                             if (token != null) {
+                                val currentNetwork = when (ethereumState.value.network) {
+                                    EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
+                                    EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
+                                }
                                 onNavigateToReview(
                                     walletId,
                                     coinType,
                                     ethereumState.value.toAddress,
                                     ethereumState.value.amount,
                                     ethereumState.value.feeLevel,
-                                    ethereumState.value.network
+                                    currentNetwork
                                 )
                             }
                         }
                         CoinType.SOLANA -> {
+                            val currentNetwork = when (solanaState.value.network) {
+                                SolanaNetwork.Mainnet -> NetworkType.SOLANA_MAINNET
+                                SolanaNetwork.Devnet -> NetworkType.SOLANA_DEVNET
+                            }
                             onNavigateToReview(
                                 walletId,
                                 CoinType.SOLANA,
                                 solanaState.value.toAddress,
                                 solanaState.value.amount,
                                 solanaState.value.feeLevel,
-                                solanaState.value.network
+                                currentNetwork
                             )
                         }
                         CoinType.BITCOIN -> {
+                            val currentNetwork = when (bitcoinState.value.network) {
+                                BitcoinNetwork.Mainnet -> NetworkType.BITCOIN_MAINNET
+                                BitcoinNetwork.Testnet -> NetworkType.BITCOIN_TESTNET
+                            }
                             onNavigateToReview(
                                 walletId,
                                 CoinType.BITCOIN,
                                 bitcoinState.value.toAddress,
                                 bitcoinState.value.amount,
                                 bitcoinState.value.feeLevel,
-                                bitcoinState.value.network
+                                currentNetwork
                             )
                         }
                     }
@@ -712,9 +760,9 @@ fun NetworkSelectorCard(
 
 @Composable
 fun NetworkSelectorDialog(
-    availableNetworks: List<Any>,
+    availableNetworks: List<NetworkType>,
     currentNetwork: String,
-    onNetworkSelected: (Any) -> Unit,
+    onNetworkSelected: (NetworkType) -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -735,18 +783,7 @@ fun NetworkSelectorDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(availableNetworks) { network ->
-                    val networkName = when (network) {
-                        is BitcoinNetwork -> when (network) {
-                            BitcoinNetwork.Mainnet -> "Bitcoin Mainnet"
-                            BitcoinNetwork.Testnet -> "Bitcoin Testnet"
-                        }
-                        is EthereumNetwork -> network.displayName
-                        is SolanaNetwork -> when (network) {
-                            SolanaNetwork.Mainnet -> "Solana Mainnet"
-                            SolanaNetwork.Devnet -> "Solana Devnet"
-                        }
-                        else -> network.toString()
-                    }
+                    val networkName = network.displayName
                     val isSelected = networkName == currentNetwork
 
                     Card(
