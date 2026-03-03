@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinReviewEffect
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinReviewViewModel
@@ -66,7 +67,7 @@ fun TransactionReviewScreen(
     toAddress: String,
     amount: String,
     feeLevel: String? = null,
-    network: String = "",
+    network: NetworkType? = null,
     ethereumViewModel: EthereumSendViewModel = hiltViewModel(),
     solanaViewModel: SolanaSendViewModel = hiltViewModel(),
     bitcoinReviewViewModel: BitcoinReviewViewModel = hiltViewModel()
@@ -89,6 +90,7 @@ fun TransactionReviewScreen(
                     isSending = false
                 }
                 is BitcoinReviewEffect.TransactionPrepared -> {
+                    // Transaction prepared successfully
                 }
                 is BitcoinReviewEffect.TransactionSent -> {
                     txHash = effect.txHash
@@ -107,35 +109,30 @@ fun TransactionReviewScreen(
         CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
     }
 
-    val networkObject = when (coinType) {
-        CoinType.ETHEREUM, CoinType.USDC -> {
-            when (network.lowercase()) {
-                "mainnet" -> EthereumNetwork.Mainnet
-                "sepolia" -> EthereumNetwork.Sepolia
-                else -> null
-            }
-        }
-        CoinType.SOLANA -> {
-            when (network.lowercase()) {
-                "mainnet" -> SolanaNetwork.Mainnet
-                "devnet" -> SolanaNetwork.Devnet
-                else -> null
-            }
-        }
-        CoinType.BITCOIN -> {
-            when (network.lowercase()) {
-                "mainnet" -> BitcoinNetwork.Mainnet
-                "testnet" -> BitcoinNetwork.Testnet
-                else -> null
-            }
-        }
+    // Extract network objects from NetworkType enum
+    val bitcoinNetwork = when (network) {
+        NetworkType.BITCOIN_MAINNET -> BitcoinNetwork.Mainnet
+        NetworkType.BITCOIN_TESTNET -> BitcoinNetwork.Testnet
+        else -> null
+    }
+
+    val ethereumNetwork = when (network) {
+        NetworkType.ETHEREUM_MAINNET -> EthereumNetwork.Mainnet
+        NetworkType.ETHEREUM_SEPOLIA -> EthereumNetwork.Sepolia
+        else -> null
+    }
+
+    val solanaNetwork = when (network) {
+        NetworkType.SOLANA_MAINNET -> SolanaNetwork.Mainnet
+        NetworkType.SOLANA_DEVNET -> SolanaNetwork.Devnet
+        else -> null
     }
 
     // Initialize
     LaunchedEffect(Unit) {
         when (coinType) {
             CoinType.ETHEREUM, CoinType.USDC -> {
-                ethereumViewModel.initialize(walletId, networkObject as? EthereumNetwork)
+                ethereumViewModel.initialize(walletId, ethereumNetwork)
                 ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(toAddress))
                 ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(amount))
                 feeLevel?.let {
@@ -143,7 +140,7 @@ fun TransactionReviewScreen(
                 }
             }
             CoinType.SOLANA -> {
-                solanaViewModel.init(walletId, networkObject as? SolanaNetwork)
+                solanaViewModel.init(walletId, solanaNetwork)
                 solanaViewModel.updateToAddress(toAddress)
                 solanaViewModel.updateAmount(amount)
                 feeLevel?.let {
@@ -156,9 +153,8 @@ fun TransactionReviewScreen(
                     toAddress = toAddress,
                     amount = amount,
                     feeLevel = FeeLevel.valueOf(feeLevel ?: "NORMAL"),
-                    network = networkObject as? BitcoinNetwork ?: BitcoinNetwork.Testnet
+                    network = bitcoinNetwork ?: BitcoinNetwork.Testnet
                 )
-
                 bitcoinReviewViewModel.prepareTransaction()
             }
         }
@@ -191,6 +187,13 @@ fun TransactionReviewScreen(
     val isPreparing = when (coinType) {
         CoinType.BITCOIN -> bitcoinState.value.isLoading && !bitcoinState.value.transactionPrepared
         else -> false
+    }
+
+    // Get network display name
+    val networkDisplayName = network?.displayName ?: when (coinType) {
+        CoinType.BITCOIN -> "Bitcoin"
+        CoinType.ETHEREUM, CoinType.USDC -> "Ethereum"
+        CoinType.SOLANA -> "Solana"
     }
 
     Scaffold(
@@ -297,7 +300,7 @@ fun TransactionReviewScreen(
                 coinColor = coinColor,
                 icon = icon,
                 selectedToken = selectedToken,
-                network = network,
+                network = networkDisplayName,
                 isValid = true,
                 validationErrors = if (sendError != null) listOf(sendError!!) else emptyList(),
                 onCopyAddress = { address ->
@@ -310,6 +313,29 @@ fun TransactionReviewScreen(
                 },
                 modifier = Modifier.padding(padding)
             )
+        }
+    }
+}
+
+private fun getExplorerUrl(coinType: CoinType, txHash: String, network: NetworkType?): String {
+    return when (coinType) {
+        CoinType.BITCOIN -> {
+            when (network) {
+                NetworkType.BITCOIN_TESTNET -> "https://blockstream.info/testnet/tx/$txHash"
+                else -> "https://blockstream.info/tx/$txHash"
+            }
+        }
+        CoinType.ETHEREUM, CoinType.USDC -> {
+            when (network) {
+                NetworkType.ETHEREUM_SEPOLIA -> "https://sepolia.etherscan.io/tx/$txHash"
+                else -> "https://etherscan.io/tx/$txHash"
+            }
+        }
+        CoinType.SOLANA -> {
+            when (network) {
+                NetworkType.SOLANA_DEVNET -> "https://solscan.io/tx/$txHash?cluster=devnet"
+                else -> "https://solscan.io/tx/$txHash"
+            }
         }
     }
 }
