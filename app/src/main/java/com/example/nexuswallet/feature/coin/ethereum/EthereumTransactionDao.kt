@@ -49,4 +49,10 @@ interface EVMTransactionDao {
 
     @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId AND tokenExternalId = :tokenExternalId ORDER BY timestamp DESC")
     suspend fun getTransactionsForToken(walletId: String, tokenExternalId: String): List<EVMTransactionEntity>
+
+    @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId ORDER BY timestamp DESC")
+    suspend fun getByWalletIdSync(walletId: String): List<EVMTransactionEntity>
+
+    @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId AND tokenContract IS NULL ORDER BY timestamp DESC")
+    suspend fun getNativeTransactionsSync(walletId: String): List<EVMTransactionEntity>
 }

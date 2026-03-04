@@ -6,8 +6,7 @@ import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
-import javax.inject.Singleton
-@Singleton
+import javax.inject.Singleton@Singleton
 class EVMTransactionRepositoryImpl @Inject constructor(
     private val evmTransactionDao: EVMTransactionDao
 ) : EVMTransactionRepository {
@@ -52,14 +51,33 @@ class EVMTransactionRepositoryImpl @Inject constructor(
             .map { entities -> entities.map { it.toDomain() } }
     }
 
-    override suspend fun getPendingTransactions(): List<EVMTransaction> {
-        return evmTransactionDao.getPendingTransactions()
-            .map { it.toDomain() }
-    }
-
     override fun observePendingTransactions(): Flow<List<EVMTransaction>> {
         return evmTransactionDao.observePendingTransactions()
             .map { entities -> entities.map { it.toDomain() } }
+    }
+
+
+    override suspend fun getTransactionsSync(walletId: String): List<EVMTransaction> {
+        return evmTransactionDao.getByWalletIdSync(walletId)
+            .map { it.toDomain() }
+    }
+
+    override suspend fun getNativeTransactionsSync(walletId: String): List<EVMTransaction> {
+        return evmTransactionDao.getNativeTransactionsSync(walletId)
+            .map { it.toDomain() }
+    }
+
+    override suspend fun getTransactionsForToken(
+        walletId: String,
+        tokenExternalId: String
+    ): List<EVMTransaction> {
+        return evmTransactionDao.getTransactionsForToken(walletId, tokenExternalId)
+            .map { it.toDomain() }
+    }
+
+    override suspend fun getPendingTransactions(): List<EVMTransaction> {
+        return evmTransactionDao.getPendingTransactions()
+            .map { it.toDomain() }
     }
 
     override suspend fun deleteTransaction(id: String) {
@@ -76,13 +94,5 @@ class EVMTransactionRepositoryImpl @Inject constructor(
 
     override suspend fun updateTransactionStatus(transactionId: String, status: TransactionStatus) {
         evmTransactionDao.updateStatus(transactionId, status.name)
-    }
-
-    override suspend fun getTransactionsForToken(
-        walletId: String,
-        tokenExternalId: String
-    ): List<EVMTransaction> {
-        return evmTransactionDao.getTransactionsForToken(walletId, tokenExternalId)
-            .map { it.toDomain() }
     }
 }
