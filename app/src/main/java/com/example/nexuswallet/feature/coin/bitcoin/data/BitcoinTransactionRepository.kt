@@ -10,6 +10,8 @@ interface BitcoinTransactionRepository {
 
     fun getTransactions(walletId: String, network: String): Flow<List<BitcoinTransaction>>
 
+    suspend fun getTransactionsSync(walletId: String, network: String): List<BitcoinTransaction>
+
     suspend fun getPendingTransactions(): List<BitcoinTransaction>
 
     suspend fun deleteTransaction(id: String)
