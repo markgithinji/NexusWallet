@@ -460,81 +460,8 @@ class SendEVMAssetUseCaseImpl @Inject constructor(
         }
         val (_, signedHex, txHash) = (createResult as Result.Success).data
 
-        // 5. Create transaction record with tokenExternalId
-        logger.d(tag, "Step 5: Creating transaction record...")
-        val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
-
-        val transaction = when (token) {
-            is NativeETH -> NativeETHTransaction(
-                id = "tx_${System.currentTimeMillis()}",
-                walletId = walletId,
-                fromAddress = token.address,
-                toAddress = toAddress,
-                amountWei = amountInWei.toString(),
-                amountEth = amount.toPlainString(),
-                gasPriceWei = feeEstimate.gasPriceWei,
-                gasPriceGwei = feeEstimate.gasPriceGwei,
-                gasLimit = feeEstimate.gasLimit,
-                feeWei = feeEstimate.totalFeeWei,
-                feeEth = feeEstimate.totalFeeEth,
-                nonce = nonce.toInt(),
-                chainId = token.network.chainId.toLong(),
-                signedHex = signedHex,
-                txHash = txHash,
-                status = TransactionStatus.PENDING,
-                note = note,
-                timestamp = System.currentTimeMillis(),
-                feeLevel = feeLevel,
-                network = token.network.displayName,
-                isIncoming = false,
-                data = "",
-                tokenExternalId = token.externalId
-            )
-            else -> TokenTransaction(
-                id = "tx_${System.currentTimeMillis()}",
-                walletId = walletId,
-                fromAddress = token.address,
-                toAddress = toAddress,
-                amountWei = amountInWei.toString(),
-                amountDecimal = amount.toPlainString(),
-                gasPriceWei = feeEstimate.gasPriceWei,
-                gasPriceGwei = feeEstimate.gasPriceGwei,
-                gasLimit = feeEstimate.gasLimit,
-                feeWei = feeEstimate.totalFeeWei,
-                feeEth = feeEstimate.totalFeeEth,
-                nonce = nonce.toInt(),
-                chainId = token.network.chainId.toLong(),
-                signedHex = signedHex,
-                txHash = txHash,
-                status = TransactionStatus.PENDING,
-                note = note,
-                timestamp = System.currentTimeMillis(),
-                feeLevel = feeLevel,
-                network = token.network.displayName,
-                isIncoming = false,
-                tokenContract = token.contractAddress,
-                tokenSymbol = token.symbol,
-                tokenDecimals = token.decimals,
-                data = when (token) {
-                    is USDCToken, is USDTToken, is ERC20Token -> {
-                        val function = org.web3j.abi.datatypes.Function(
-                            "transfer",
-                            listOf(Address(toAddress), Uint256(amountInWei)),
-                            listOf(object : TypeReference<Bool>() {})
-                        )
-                        FunctionEncoder.encode(function)
-                    }
-                    else -> ""
-                },
-                tokenExternalId = token.externalId
-            )
-        }
-
-        evmTransactionRepository.saveTransaction(transaction)
-        logger.d(tag, "Transaction record saved: ${transaction.id} with tokenExternalId: ${token.externalId}")
-
-        // 6. Broadcast transaction
-        logger.d(tag, "Step 6: Broadcasting transaction...")
+        // 5. Broadcast transaction
+        logger.d(tag, "Step 5: Broadcasting transaction...")
         val broadcastResult = evmBlockchainRepository.broadcastTransaction(
             signedHex,
             token.network
@@ -543,20 +470,87 @@ class SendEVMAssetUseCaseImpl @Inject constructor(
         when (broadcastResult) {
             is Result.Success -> {
                 val broadcastData = broadcastResult.data
-                val updatedTransaction = when (transaction) {
-                    is NativeETHTransaction -> transaction.copy(
-                        status = if (broadcastData.success) TransactionStatus.SUCCESS else TransactionStatus.FAILED,
-                        txHash = broadcastData.hash ?: txHash
-                    )
-                    is TokenTransaction -> transaction.copy(
-                        status = if (broadcastData.success) TransactionStatus.SUCCESS else TransactionStatus.FAILED,
-                        txHash = broadcastData.hash ?: txHash
-                    )
+
+                // 6. save transaction after successful broadcast
+                if (broadcastData.success) {
+                    logger.d(tag, "Step 6: Creating and saving transaction record after successful broadcast...")
+
+                    val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
+
+                    val transaction = when (token) {
+                        is NativeETH -> NativeETHTransaction(
+                            id = "tx_${System.currentTimeMillis()}",
+                            walletId = walletId,
+                            fromAddress = token.address,
+                            toAddress = toAddress,
+                            amountWei = amountInWei.toString(),
+                            amountEth = amount.toPlainString(),
+                            gasPriceWei = feeEstimate.gasPriceWei,
+                            gasPriceGwei = feeEstimate.gasPriceGwei,
+                            gasLimit = feeEstimate.gasLimit,
+                            feeWei = feeEstimate.totalFeeWei,
+                            feeEth = feeEstimate.totalFeeEth,
+                            nonce = nonce.toInt(),
+                            chainId = token.network.chainId.toLong(),
+                            signedHex = signedHex,
+                            txHash = broadcastData.hash ?: txHash,
+                            status = TransactionStatus.SUCCESS, // Set to SUCCESS immediately
+                            note = note,
+                            timestamp = System.currentTimeMillis(),
+                            feeLevel = feeLevel,
+                            network = token.network.displayName,
+                            isIncoming = false,
+                            data = "",
+                            tokenExternalId = token.externalId
+                        )
+                        else -> TokenTransaction(
+                            id = "tx_${System.currentTimeMillis()}",
+                            walletId = walletId,
+                            fromAddress = token.address,
+                            toAddress = toAddress,
+                            amountWei = amountInWei.toString(),
+                            amountDecimal = amount.toPlainString(),
+                            gasPriceWei = feeEstimate.gasPriceWei,
+                            gasPriceGwei = feeEstimate.gasPriceGwei,
+                            gasLimit = feeEstimate.gasLimit,
+                            feeWei = feeEstimate.totalFeeWei,
+                            feeEth = feeEstimate.totalFeeEth,
+                            nonce = nonce.toInt(),
+                            chainId = token.network.chainId.toLong(),
+                            signedHex = signedHex,
+                            txHash = broadcastData.hash ?: txHash,
+                            status = TransactionStatus.SUCCESS,
+                            note = note,
+                            timestamp = System.currentTimeMillis(),
+                            feeLevel = feeLevel,
+                            network = token.network.displayName,
+                            isIncoming = false,
+                            tokenContract = token.contractAddress,
+                            tokenSymbol = token.symbol,
+                            tokenDecimals = token.decimals,
+                            data = when (token) {
+                                is USDCToken, is USDTToken, is ERC20Token -> {
+                                    val function = org.web3j.abi.datatypes.Function(
+                                        "transfer",
+                                        listOf(Address(toAddress), Uint256(amountInWei)),
+                                        listOf(object : TypeReference<Bool>() {})
+                                    )
+                                    FunctionEncoder.encode(function)
+                                }
+                                else -> ""
+                            },
+                            tokenExternalId = token.externalId
+                        )
+                    }
+
+                    evmTransactionRepository.saveTransaction(transaction)
+                    logger.d(tag, "Transaction saved after successful broadcast: ${transaction.id} with hash: ${transaction.txHash?.take(8)}...")
+                } else {
+                    logger.e(tag, "Broadcast returned success=false, no transaction saved: ${broadcastData.error}")
                 }
-                evmTransactionRepository.updateTransaction(updatedTransaction)
 
                 val sendResult = SendEthereumResult(
-                    transactionId = transaction.id,
+                    transactionId = "tx_${System.currentTimeMillis()}",
                     txHash = broadcastData.hash ?: txHash,
                     success = broadcastData.success,
                     error = broadcastData.error
@@ -572,17 +566,12 @@ class SendEVMAssetUseCaseImpl @Inject constructor(
             }
 
             is Result.Error -> {
-                val failedTransaction = when (transaction) {
-                    is NativeETHTransaction -> transaction.copy(status = TransactionStatus.FAILED)
-                    is TokenTransaction -> transaction.copy(status = TransactionStatus.FAILED)
-                }
-                evmTransactionRepository.updateTransaction(failedTransaction)
-                logger.e(tag, "Broadcast failed: ${broadcastResult.message}")
+                logger.e(tag, "Broadcast failed: ${broadcastResult.message}, no transaction saved")
                 Result.Error(broadcastResult.message, broadcastResult.throwable)
             }
 
             Result.Loading -> {
-                logger.e(tag, "Broadcast timeout")
+                logger.e(tag, "Broadcast timeout, no transaction saved")
                 Result.Error("Broadcast timeout")
             }
         }
