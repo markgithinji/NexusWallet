@@ -45,14 +45,24 @@ class SolanaTransactionRepositoryImpl @Inject constructor(
             .map { entities -> entities.map { it.toDomain() } }
     }
 
-    override suspend fun getPendingTransactions(): List<SolanaTransaction> {
-        return solanaTransactionDao.getPendingTransactions()
-            .map { it.toDomain() }
-    }
-
     override fun observePendingTransactions(): Flow<List<SolanaTransaction>> {
         return solanaTransactionDao.observePendingTransactions()
             .map { entities -> entities.map { it.toDomain() } }
+    }
+
+    override suspend fun getTransactionsSync(walletId: String, network: String): List<SolanaTransaction> {
+        return solanaTransactionDao.getByWalletIdAndNetworkSync(walletId, network)
+            .map { it.toDomain() }
+    }
+
+    override suspend fun getNativeTransactionsSync(walletId: String, network: String): List<SolanaTransaction> {
+        return solanaTransactionDao.getNativeTransactionsSync(walletId, network)
+            .map { it.toDomain() }
+    }
+
+    override suspend fun getPendingTransactions(): List<SolanaTransaction> {
+        return solanaTransactionDao.getPendingTransactions()
+            .map { it.toDomain() }
     }
 
     override suspend fun deleteTransaction(id: String) {

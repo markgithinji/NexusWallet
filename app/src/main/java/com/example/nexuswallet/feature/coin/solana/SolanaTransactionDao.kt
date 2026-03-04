@@ -6,7 +6,6 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
-
 @Dao
 interface SolanaTransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -31,10 +30,16 @@ interface SolanaTransactionDao {
     fun getByWalletId(walletId: String): Flow<List<SolanaTransactionEntity>>
 
     @Query("SELECT * FROM solana_transactions WHERE status = 'PENDING'")
-    suspend fun getPendingTransactions(): List<SolanaTransactionEntity>
+    fun observePendingTransactions(): Flow<List<SolanaTransactionEntity>>
+
+    @Query("SELECT * FROM solana_transactions WHERE walletId = :walletId AND network = :network ORDER BY timestamp DESC")
+    suspend fun getByWalletIdAndNetworkSync(walletId: String, network: String): List<SolanaTransactionEntity>
+
+    @Query("SELECT * FROM solana_transactions WHERE walletId = :walletId AND tokenMint IS NULL AND network = :network ORDER BY timestamp DESC")
+    suspend fun getNativeTransactionsSync(walletId: String, network: String): List<SolanaTransactionEntity>
 
     @Query("SELECT * FROM solana_transactions WHERE status = 'PENDING'")
-    fun observePendingTransactions(): Flow<List<SolanaTransactionEntity>>
+    suspend fun getPendingTransactions(): List<SolanaTransactionEntity>
 
     @Query("DELETE FROM solana_transactions WHERE id = :id")
     suspend fun deleteById(id: String)
