@@ -4,6 +4,7 @@ import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.SendValidationResult
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
@@ -476,84 +477,65 @@ class ValidateSolanaSendUseCaseImpl @Inject constructor(
 
     private val tag = "ValidateSolanaSendUC"
 
-    override fun invoke(
+    override suspend fun invoke(
         toAddress: String,
         amountValue: BigDecimal,
         walletAddress: String,
         balance: BigDecimal,
         feeEstimate: SolanaFeeEstimate?
-    ): ValidateSolanaSendUseCase.ValidationResult {
-
-        var addressError: String? = null
-        var amountError: String? = null
-        var balanceError: String? = null
-        var selfSendError: String? = null
-        var isValid = true
+    ): SendValidationResult {
 
         // Validate address is not empty
         if (toAddress.isBlank()) {
-            addressError = "Please enter a recipient address"
-            isValid = false
-            logger.d(tag, "Address is empty")
+            logger.w(tag, "Address is empty")
+            return SendValidationResult(
+                isValid = false,
+                addressError = "Please enter a recipient address"
+            )
         }
+
         // Validate address format
-        else {
-            val validationResult = validateSolanaAddressUseCase(toAddress)
-            when (validationResult) {
-                is Result.Success -> {
-                    if (!validationResult.data) {
-                        addressError = "Invalid Solana address format"
-                        isValid = false
-                        logger.d(tag, "Invalid address format: $toAddress")
-                    }
-                }
-
-                is Result.Error -> {
-                    addressError = "Address validation failed"
-                    isValid = false
-                    logger.d(tag, "Address validation error: ${validationResult.message}")
-                }
-
-                Result.Loading -> {}
-            }
-        }
-
-        // Validate amount
-        if (amountValue <= BigDecimal.ZERO) {
-            amountError = "Amount must be greater than 0"
-            isValid = false
-            logger.d(tag, "Invalid amount: $amountValue")
+        val addressValid = validateSolanaAddressUseCase(toAddress)
+        if (addressValid is Result.Error || addressValid is Result.Success && !addressValid.data) {
+            logger.w(tag, "Invalid address format")
+            return SendValidationResult(
+                isValid = false,
+                addressError = "Invalid Solana address"
+            )
         }
 
         // Validate not sending to self
-        if (toAddress.isNotBlank() && toAddress == walletAddress) {
-            selfSendError = "Cannot send to yourself"
-            isValid = false
-            logger.d(tag, "Attempted self-send")
+        if (toAddress == walletAddress) {
+            logger.w(tag, "Attempted self-send")
+            return SendValidationResult(
+                isValid = false,
+                selfSendError = "Cannot send to yourself"
+            )
         }
 
-        // Validate balance including fees
-        if (amountValue > BigDecimal.ZERO) {
-            val fee = feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal("0.000005")
-            val totalRequired = amountValue + fee
-            if (totalRequired > balance) {
-                balanceError = "Insufficient balance (need ${
-                    totalRequired.setScale(
-                        4,
-                        RoundingMode.HALF_UP
-                    )
-                } SOL including fees)"
-                isValid = false
-                logger.d(tag, "Insufficient balance: have $balance, need $totalRequired")
-            }
+        // Validate amount > 0
+        if (amountValue <= BigDecimal.ZERO) {
+            logger.w(tag, "Invalid amount: $amountValue")
+            return SendValidationResult(
+                isValid = false,
+                amountError = "Amount must be greater than zero"
+            )
         }
 
-        return ValidateSolanaSendUseCase.ValidationResult(
-            isValid = isValid,
-            addressError = addressError,
-            amountError = amountError,
-            balanceError = balanceError,
-            selfSendError = selfSendError
-        )
+        // Calculate total required including fees
+        val feeSol = feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal("0.000005")
+        val totalRequired = amountValue + feeSol
+
+        // Check against user's actual balance
+        if (totalRequired > balance) {
+            logger.w(tag, "Insufficient balance: have $balance SOL, need $totalRequired SOL")
+            return SendValidationResult(
+                isValid = false,
+                balanceError = "Insufficient balance. You have ${balance.setScale(9)} SOL but need ${totalRequired.setScale(9)} SOL (including fees)"
+            )
+        }
+
+        // All validations passed
+        return SendValidationResult(isValid = true)
     }
 }

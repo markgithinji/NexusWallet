@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.coin.solana
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.SendValidationResult
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
@@ -48,9 +49,7 @@ class SolanaSendViewModel @Inject constructor(
         val amountValue: BigDecimal = BigDecimal.ZERO,
         val feeLevel: FeeLevel = FeeLevel.NORMAL,
         val feeEstimate: SolanaFeeEstimate? = null,
-        val validationResult: ValidateSolanaSendUseCase.ValidationResult = ValidateSolanaSendUseCase.ValidationResult(
-            isValid = false
-        ),
+        val validationResult: SendValidationResult = SendValidationResult(isValid = false),
         val isLoading: Boolean = false,
         val error: String? = null,
         val step: String = "",
@@ -277,6 +276,7 @@ class SolanaSendViewModel @Inject constructor(
 
     private suspend fun validateInputs(): Boolean {
         val currentState = _state.value
+
         val validationResult = validateSolanaSendUseCase(
             toAddress = currentState.toAddress,
             amountValue = currentState.amountValue,
@@ -288,19 +288,20 @@ class SolanaSendViewModel @Inject constructor(
         _state.update {
             it.copy(
                 validationResult = validationResult,
-                isValid = validationResult.isValid
+                isValid = validationResult.isValid,
+                error = when {
+                    !validationResult.isValid -> {
+                        validationResult.addressError
+                            ?: validationResult.selfSendError
+                            ?: validationResult.amountError
+                            ?: validationResult.balanceError
+                            ?: validationResult.gasError
+                            ?: validationResult.networkError
+                            ?: "Invalid transaction"
+                    }
+                    else -> null
+                }
             )
-        }
-
-        val firstError = validationResult.addressError
-            ?: validationResult.amountError
-            ?: validationResult.balanceError
-            ?: validationResult.selfSendError
-
-        if (firstError != null) {
-            _state.update { it.copy(error = firstError) }
-        } else if (validationResult.isValid) {
-            _state.update { it.copy(error = null) }
         }
 
         return validationResult.isValid
