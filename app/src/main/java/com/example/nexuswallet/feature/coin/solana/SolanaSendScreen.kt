@@ -1,192 +1,264 @@
 package com.example.nexuswallet.feature.coin.solana
 
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import java.math.BigDecimal
-
+import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.coin.NetworkType
+import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.ui.ErrorMessage
+import com.example.nexuswallet.feature.wallet.ui.MaxAmountDialog
+import com.example.nexuswallet.feature.wallet.ui.NetworkSelectorCard
+import com.example.nexuswallet.feature.wallet.ui.NetworkSelectorDialog
+import com.example.nexuswallet.feature.wallet.ui.SendAddressInput
+import com.example.nexuswallet.feature.wallet.ui.SendAmountInput
+import com.example.nexuswallet.feature.wallet.ui.SendBalanceCard
+import com.example.nexuswallet.feature.wallet.ui.SendBottomBar
+import com.example.nexuswallet.feature.wallet.ui.SendFeeSelection
+import com.example.nexuswallet.feature.wallet.ui.SendTopBar
+import com.example.nexuswallet.feature.wallet.ui.rememberSendErrorState
+import com.example.nexuswallet.ui.theme.solanaLight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SolanaSendScreen(
+    onNavigateUp: () -> Unit,
+    onNavigateToReview: (String, CoinType, String, String, FeeLevel?, NetworkType?) -> Unit,
     walletId: String,
-    onBack: () -> Unit,
-    onSuccess: (hash: String) -> Unit
+    network: NetworkType? = null,
+    viewModel: SolanaSendViewModel = hiltViewModel()
 ) {
-    val viewModel: SolanaSendViewModel = hiltViewModel()
+    var showMaxDialog by remember { mutableStateOf(false) }
+    var showNetworkSelector by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        viewModel.init(walletId)
+    val focusManager = LocalFocusManager.current
+    val addressFocusRequester = remember { FocusRequester() }
+    val amountFocusRequester = remember { FocusRequester() }
+
+    var addressTouched by remember { mutableStateOf(false) }
+    var amountTouched by remember { mutableStateOf(false) }
+    var addressFocused by remember { mutableStateOf(false) }
+    var amountFocused by remember { mutableStateOf(false) }
+
+    val state by viewModel.state.collectAsState()
+
+    // Extract Solana network from NetworkType
+    val solanaNetwork = when (network) {
+        NetworkType.SOLANA_MAINNET -> SolanaNetwork.Mainnet
+        NetworkType.SOLANA_DEVNET -> SolanaNetwork.Devnet
+        else -> null
     }
 
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    // Initialize ViewModel
+    LaunchedEffect(Unit) {
+        viewModel.init(walletId, solanaNetwork)
+    }
+
+    val currentNetworkName = when (state.network) {
+        SolanaNetwork.Mainnet -> "Solana Mainnet"
+        SolanaNetwork.Devnet -> "Solana Devnet"
+    }
+
+    val availableNetworks = listOf(
+        NetworkType.SOLANA_MAINNET,
+        NetworkType.SOLANA_DEVNET
+    )
+
+    val errorState = rememberSendErrorState(
+        validationResult = state.validationResult,
+        addressTouched = addressTouched,
+        amountTouched = amountTouched,
+        addressFocused = addressFocused,
+        amountFocused = amountFocused
+    )
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Send SOL") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
-                    }
-                }
+            SendTopBar(
+                title = "Send Solana",
+                iconRes = R.drawable.solana,
+                coinColor = solanaLight,
+                isLoading = state.isLoading,
+                onNavigateUp = onNavigateUp
             )
         },
-        bottomBar = {
-//            if (state.wallet != null) {
-//                BottomSendBar(
-//                    enabled = state.toAddress.isNotBlank() &&
-//                            state.amountValue > BigDecimal.ZERO &&
-//                            !state.isLoading,
-//                    isLoading = state.isLoading,
-//                    onClick = { viewModel.send(onSuccess) }
-//                )
-//            }
-        }
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
-                .padding(padding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(padding)
         ) {
-            // Wallet Info
-//            state.wallet?.let { wallet ->
-//                Card {
-//                    Column(
-//                        modifier = Modifier.padding(16.dp),
-//                        verticalArrangement = Arrangement.spacedBy(8.dp)
-//                    ) {
-//                        Text("From:", style = MaterialTheme.typography.labelMedium)
-//                        Text(
-//                            wallet.address.take(8) + "..." + wallet.address.takeLast(8),
-//                            style = MaterialTheme.typography.bodyMedium
-//                        )
-//                        Text("Wallet: ${wallet.name}", style = MaterialTheme.typography.bodySmall)
-//                    }
-//                }
-//            }
+            // Network Selector Dialog
+            if (showNetworkSelector) {
+                NetworkSelectorDialog(
+                    availableNetworks = availableNetworks,
+                    currentNetwork = currentNetworkName,
+                    onNetworkSelected = { selectedNetwork ->
+                        when (selectedNetwork) {
+                            NetworkType.SOLANA_MAINNET -> {
+                                viewModel.switchNetwork(SolanaNetwork.Mainnet)
+                            }
 
-            Button(
-                onClick = {
-//                    viewModel.requestAirdrop()
-                }
-            ) {
-                Text("Get Test SOL")
-            }
-            // To Address
-//            OutlinedTextField(
-//                value = state.toAddress,
-//                onValueChange = viewModel::updateAddress,
-//                label = { Text("To Address") },
-//                placeholder = { Text("Enter Solana address") },
-//                modifier = Modifier.fillMaxWidth(),
-//                singleLine = true,
-//                isError = state.toAddress.isNotBlank() && state.error?.contains("address") == true
-//            )
+                            NetworkType.SOLANA_DEVNET -> {
+                                viewModel.switchNetwork(SolanaNetwork.Devnet)
+                            }
 
-//            // Amount
-//            OutlinedTextField(
-//                value = state.amount,
-//                onValueChange = viewModel::updateAmount,
-//                label = { Text("Amount") },
-//                placeholder = { Text("0.0") },
-//                modifier = Modifier.fillMaxWidth(),
-//                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-//                suffix = { Text("SOL") },
-//                isError = state.amount.isNotBlank() && state.error?.contains("amount") == true
-//            )
-
-            // Error Message
-            state.error?.let { error ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            error,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = { viewModel.clearError() },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onErrorContainer)
+                            else -> {}
                         }
-                    }
-                }
+                        showNetworkSelector = false
+                    },
+                    onDismiss = { showNetworkSelector = false }
+                )
             }
-        }
-    }
 
-    if (state.isLoading) {
-        LoadingDialog()
-    }
-}
-
-@Composable
-fun LoadingDialog() {
-    CircularProgressIndicator()
-}
-
-@Composable
-private fun BottomSendBar(
-    enabled: Boolean,
-    isLoading: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        tonalElevation = 8.dp,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Button(
-                onClick = onClick,
-                enabled = enabled,
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(vertical = 16.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 80.dp)
+                    .padding(vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
+                // Network Selector Card
+                NetworkSelectorCard(
+                    currentNetwork = currentNetworkName,
+                    onClick = { showNetworkSelector = true }
+                )
+
+                // Balance Card
+                SendBalanceCard(
+                    balance = state.balance,
+                    balanceFormatted = state.balanceFormatted,
+                    coinColor = solanaLight,
+                    iconRes = R.drawable.solana,
+                    address = state.walletAddress,
+                    network = currentNetworkName
+                )
+
+                // Error Banner - only show if there's an active error and no field is focused
+                if (errorState.activeError != null) {
+                    ErrorMessage(
+                        error = errorState.activeError,
+                        onDismiss = { viewModel.clearError() }
                     )
-                } else {
-                    Icon(
-                        Icons.Default.Send,
-                        "Send",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Send Transaction")
                 }
+
+                // Address Input
+                SendAddressInput(
+                    toAddress = state.toAddress,
+                    onAddressChange = {
+                        addressTouched = true
+                        viewModel.onEvent(SolanaSendEvent.ToAddressChanged(it))
+                    },
+                    onFocusChange = { isFocused ->
+                        addressFocused = isFocused
+                    },
+                    placeholder = "Enter Solana address",
+                    isValid = !errorState.showAddressError && !errorState.showSelfSendError,
+                    errorMessage = errorState.addressErrorMessage,
+                    onPaste = { pastedText ->
+                        addressTouched = true
+                        viewModel.onEvent(SolanaSendEvent.ToAddressChanged(pastedText))
+                    },
+                    focusRequester = addressFocusRequester
+                )
+
+                // Amount Input
+                SendAmountInput(
+                    amount = state.amount,
+                    coinType = CoinType.BITCOIN,
+                    onAmountChange = {
+                        amountTouched = true
+                        viewModel.onEvent(SolanaSendEvent.AmountChanged(it))
+                    },
+                    onFocusChange = { isFocused ->
+                        amountFocused = isFocused
+                    },
+                    balance = state.balance,
+                    symbol = "SOL",
+                    coinColor = solanaLight,
+                    onMaxClick = {
+                        amountTouched = true
+                        showMaxDialog = true
+                    },
+                    errorMessage = errorState.amountErrorMessage,
+                    focusRequester = amountFocusRequester
+                )
+
+                // Fee Selection
+                SendFeeSelection(
+                    feeLevel = state.feeLevel,
+                    onFeeLevelChange = { viewModel.onEvent(SolanaSendEvent.FeeLevelChanged(it)) },
+                    feeEstimate = state.feeEstimate,
+                    coinType = CoinType.SOLANA
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
+
+            // Bottom Bar
+            SendBottomBar(
+                isValid = state.validationResult.isValid,
+                isLoading = state.isLoading,
+                error = errorState.activeError,
+                onSend = {
+                    focusManager.clearFocus()
+                    val currentNetwork = when (state.network) {
+                        SolanaNetwork.Mainnet -> NetworkType.SOLANA_MAINNET
+                        SolanaNetwork.Devnet -> NetworkType.SOLANA_DEVNET
+                    }
+                    onNavigateToReview(
+                        walletId,
+                        CoinType.SOLANA,
+                        state.toAddress,
+                        state.amount,
+                        state.feeLevel,
+                        currentNetwork
+                    )
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
+    }
+
+    // Max Amount Dialog
+    if (showMaxDialog) {
+        MaxAmountDialog(
+            balance = state.balance,
+            feeEstimate = state.feeEstimate,
+            tokenSymbol = "SOL",
+            coinType = CoinType.SOLANA,
+            onDismiss = { showMaxDialog = false },
+            onConfirm = { maxAmount ->
+                amountTouched = true
+                viewModel.onEvent(SolanaSendEvent.AmountChanged(maxAmount))
+                showMaxDialog = false
+            }
+        )
     }
 }
