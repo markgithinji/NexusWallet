@@ -5,6 +5,7 @@ import com.example.nexuswallet.feature.authentication.domain.SecurityPreferences
 import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
+import com.example.nexuswallet.feature.coin.SendValidationResult
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
@@ -186,117 +187,101 @@ class ValidateEVMSendUseCaseImpl @Inject constructor(
         ethBalance: BigDecimal,
         feeLevel: FeeLevel,
         token: EVMToken
-    ): ValidateEVMSendUseCase.ValidationResult {
-
-        var addressError: String? = null
-        var amountError: String? = null
-        var balanceError: String? = null
-        var selfSendError: String? = null
-        var gasError: String? = null
-        var isValid = true
-        var feeEstimate: EVMFeeEstimate? = null
+    ): SendValidationResult {
 
         // Validate address is not empty
         if (toAddress.isBlank()) {
-            addressError = "Please enter a recipient address"
-            isValid = false
-            logger.d(tag, "Address is empty")
+            logger.w(tag, "Address is empty")
+            return SendValidationResult(
+                isValid = false,
+                addressError = "Please enter a recipient address"
+            )
         }
+
         // Validate address format
-        else if (!isValidEthereumAddress(toAddress)) {
-            addressError = "Invalid Ethereum address format"
-            isValid = false
-            logger.d(tag, "Invalid address format: $toAddress")
-        }
+//        if (!validateEthereumAddressUseCase(toAddress)) {
+//            logger.w(tag, "Invalid address format")
+//            return SendValidationResult(
+//                isValid = false,
+//                addressError = "Invalid Ethereum address"
+//            )
+//        }
 
         // Validate not sending to self
-        if (toAddress.isNotBlank() && toAddress.equals(fromAddress, ignoreCase = true)) {
-            selfSendError = "Cannot send to yourself"
-            isValid = false
-            logger.d(tag, "Self-send attempt detected")
-        }
-
-        // Validate amount
-        if (amountValue <= BigDecimal.ZERO) {
-            amountError = "Amount must be greater than 0"
-            isValid = false
-            logger.d(tag, "Invalid amount: $amountValue")
-        }
-
-        // Get fee estimate and validate balance
-        if (isValid || amountValue > BigDecimal.ZERO) {
-            val feeResult = getFeeEstimateUseCase(
-                feeLevel = feeLevel,
-                network = token.network,
-                isToken = token !is NativeETH
+        if (toAddress.equals(fromAddress, ignoreCase = true)) {
+            logger.w(tag, "Attempted self-send")
+            return SendValidationResult(
+                isValid = false,
+                selfSendError = "Cannot send to yourself"
             )
+        }
 
-            when (feeResult) {
-                is Result.Success -> {
-                    feeEstimate = feeResult.data
-                    val feeEth = BigDecimal(feeEstimate.totalFeeEth)
+        // Validate amount > 0
+        if (amountValue <= BigDecimal.ZERO) {
+            logger.w(tag, "Invalid amount: $amountValue")
+            return SendValidationResult(
+                isValid = false,
+                amountError = "Amount must be greater than zero"
+            )
+        }
 
-                    when (token) {
-                        // For native ETH: Need enough ETH for amount + gas
-                        is NativeETH -> {
-                            val totalRequired = amountValue + feeEth
-                            if (totalRequired > tokenBalance) {
-                                balanceError = "Insufficient ETH balance. You have ${tokenBalance.setScale(4, RoundingMode.HALF_UP)} ETH but need ${totalRequired.setScale(4, RoundingMode.HALF_UP)} ETH (including gas)"
-                                isValid = false
-                                logger.d(tag, "Insufficient ETH balance: have $tokenBalance, need $totalRequired")
-                            }
-                        }
-                        // For tokens (USDC, USDT, ERC20): Need enough tokens AND enough ETH for gas
-                        else -> {
-                            // Check token balance (USDC balance)
-                            if (amountValue > tokenBalance) {
-                                balanceError = "Insufficient ${token.symbol} balance. You have ${tokenBalance.setScale(2, RoundingMode.HALF_UP)} ${token.symbol} but need ${amountValue.setScale(2, RoundingMode.HALF_UP)} ${token.symbol}"
-                                isValid = false
-                                logger.d(tag, "Insufficient ${token.symbol} balance: have $tokenBalance, need $amountValue")
-                            }
+        // Get fee estimate
+        val feeResult = getFeeEstimateUseCase(
+            feeLevel = feeLevel,
+            network = token.network,
+            isToken = token !is NativeETH
+        )
 
-                            // Check ETH balance for gas
-                            if (ethBalance < feeEth) {
-                                gasError = "Insufficient ETH for gas. You have ${ethBalance.setScale(6, RoundingMode.HALF_UP)} ETH but need ${feeEth.setScale(6, RoundingMode.HALF_UP)} ETH"
-                                isValid = false
-                                logger.d(tag, "Insufficient ETH for gas: have $ethBalance, need $feeEth")
-                            }
-                        }
-                    }
-                }
-                is Result.Error -> {
-                    logger.w(tag, "Failed to get fee estimate: ${feeResult.message}")
-                }
-                Result.Loading -> {}
+        val feeEstimate = when (feeResult) {
+            is Result.Success -> feeResult.data
+            is Result.Error -> {
+                logger.e(tag, "Failed to get fee estimate: ${feeResult.message}")
+                return SendValidationResult(
+                    isValid = false,
+                    gasError = "Failed to estimate gas fee"
+                )
+            }
+            else -> return SendValidationResult(
+                isValid = false,
+                gasError = "Failed to estimate gas fee"
+            )
+        }
+
+        val feeEth = feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
+
+        // Check if it's a token transfer
+        if (token !is NativeETH) {
+            // For token transfers, need enough token balance AND enough ETH for gas
+            if (amountValue > tokenBalance) {
+                logger.w(tag, "Insufficient token balance")
+                return SendValidationResult(
+                    isValid = false,
+                    balanceError = "Insufficient ${token.symbol} balance"
+                )
+            }
+
+            if (ethBalance < feeEth) {
+                logger.w(tag, "Insufficient ETH for gas")
+                return SendValidationResult(
+                    isValid = false,
+                    gasError = "Insufficient ETH for gas fees. You need at least ${feeEth.setScale(6)} ETH"
+                )
+            }
+        } else {
+            // For ETH transfers, total amount + fee must be <= balance
+            val totalRequired = amountValue + feeEth
+            if (totalRequired > ethBalance) {
+                logger.w(tag, "Insufficient ETH balance")
+                return SendValidationResult(
+                    isValid = false,
+                    balanceError = "Insufficient balance. You have ${ethBalance.setScale(6)} ETH but need ${totalRequired.setScale(6)} ETH (including fees)"
+                )
             }
         }
 
-        return ValidateEVMSendUseCase.ValidationResult(
-            isValid = isValid,
-            addressError = addressError,
-            amountError = amountError,
-            balanceError = balanceError,
-            selfSendError = selfSendError,
-            gasError = gasError,
-            feeEstimate = feeEstimate
-        )
+        // All validations passed
+        return SendValidationResult(isValid = true)
     }
-
-    private fun isValidEthereumAddress(address: String): Boolean {
-        return address.startsWith("0x") &&
-                address.length == 42 &&
-                address.substring(2).all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
-    }
-
-    data class ValidationResult(
-        val isValid: Boolean,
-        val addressError: String? = null,
-        val amountError: String? = null,
-        val balanceError: String? = null,
-        val selfSendError: String? = null,
-        val gasError: String? = null,
-        val feeEstimate: EVMFeeEstimate? = null
-    )
 }
 
 @Singleton

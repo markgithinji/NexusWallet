@@ -5,6 +5,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.SendValidationResult
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
@@ -56,9 +57,7 @@ class EthereumSendViewModel @Inject constructor(
         val note: String = "",
         val feeLevel: FeeLevel = FeeLevel.NORMAL,
         val feeEstimate: EVMFeeEstimate? = null,
-        val validationResult: ValidateEVMSendUseCase.ValidationResult = ValidateEVMSendUseCase.ValidationResult(
-            isValid = false
-        ),
+        val validationResult: SendValidationResult = SendValidationResult(isValid = false),
         val isLoading: Boolean = false,
         val error: String? = null,
         val step: String = "",
@@ -185,7 +184,7 @@ class EthereumSendViewModel @Inject constructor(
                     amountValue = BigDecimal.ZERO,
                     feeEstimate = null,
                     error = null,
-                    validationResult = ValidateEVMSendUseCase.ValidationResult(isValid = false),
+                    validationResult = SendValidationResult(isValid = false),
                     balancesLoaded = false,
                     tokenBalance = BigDecimal.ZERO
                 )
@@ -206,7 +205,7 @@ class EthereumSendViewModel @Inject constructor(
                     fromAddress = token.address,
                     balancesLoaded = false,
                     tokenBalance = BigDecimal.ZERO,
-                    validationResult = ValidateEVMSendUseCase.ValidationResult(isValid = false)
+                    validationResult = SendValidationResult(isValid = false)
                 )
             }
             loadBalances()
@@ -391,16 +390,22 @@ class EthereumSendViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 validationResult = validationResult,
-                feeEstimate = validationResult.feeEstimate ?: it.feeEstimate,
-                error = validationResult.addressError
-                    ?: validationResult.amountError
-                    ?: validationResult.balanceError
-                    ?: validationResult.selfSendError
-                    ?: validationResult.gasError
+                error = when {
+                    !validationResult.isValid -> {
+                        validationResult.addressError
+                            ?: validationResult.selfSendError
+                            ?: validationResult.gasError
+                            ?: validationResult.amountError
+                            ?: validationResult.balanceError
+                            ?: validationResult.networkError
+                            ?: "Invalid transaction"
+                    }
+                    else -> null
+                }
             )
         }
 
-        Log.d("EthereumVM", "Validation result: isValid=${validationResult.isValid}, balanceError=${validationResult.balanceError}, gasError=${validationResult.gasError}")
+        Log.d("EthereumVM", "Validation result: isValid=${validationResult.isValid}")
 
         return validationResult.isValid
     }
