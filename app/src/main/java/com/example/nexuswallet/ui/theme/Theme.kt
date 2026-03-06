@@ -86,7 +86,7 @@ fun NexusWalletTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = NexusTypography,
+        typography = FinanceTypography,
         content = content
     )
 }

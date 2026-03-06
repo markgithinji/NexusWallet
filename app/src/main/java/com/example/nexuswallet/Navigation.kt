@@ -29,7 +29,6 @@ import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
 import com.example.nexuswallet.feature.wallet.ui.ReceiveScreen
-import com.example.nexuswallet.feature.wallet.ui.SendScreen
 import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
@@ -38,6 +37,10 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDetailViewModel
 import com.example.nexuswallet.feature.wallet.ui.CoinDetailScreen
 
 import androidx.compose.material3.MaterialTheme
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendScreen
+import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.ethereum.EthereumSendScreen
+import com.example.nexuswallet.feature.coin.solana.SolanaSendScreen
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
@@ -286,35 +289,84 @@ fun Navigation() {
             val args = backStackEntry.toRoute<SendRoute>()
             Log.d("Navigation", "Navigated to SendRoute - walletId: ${args.walletId}, coinType: ${args.coinType}, network: ${args.network}")
 
-            SendScreen(
-                onNavigateUp = {
-                    Log.d("Navigation", "SendScreen: navigate up")
-                    navController.navigateUp()
-                },
-                onNavigateToReview = { walletId, coinType, toAddress, amount, feeLevel, network ->
-                    Log.d("Navigation", "SendScreen: navigate to ReviewRoute - " +
-                            "walletId: $walletId, coinType: $coinType, toAddress: $toAddress, " +
-                            "amount: $amount, feeLevel: $feeLevel, network: $network")
-
-                    navController.navigate(
-                        ReviewRoute(
-                            walletId = walletId,
-                            coinType = coinType,
-                            toAddress = toAddress,
-                            amount = amount,
-                            feeLevel = feeLevel?.name,
-                            network = network
-                        )
+            when (args.coinType) {
+                CoinType.BITCOIN -> {
+                    BitcoinSendScreen(
+                        onNavigateUp = {
+                            Log.d("Navigation", "BitcoinSendScreen: navigate up")
+                            navController.navigateUp()
+                        },
+                        onNavigateToReview = { walletId, coinType, toAddress, amount, feeLevel, network ->
+                            Log.d("Navigation", "BitcoinSendScreen: navigate to ReviewRoute")
+                            navController.navigate(
+                                ReviewRoute(
+                                    walletId = walletId,
+                                    coinType = coinType,
+                                    toAddress = toAddress,
+                                    amount = amount,
+                                    feeLevel = feeLevel?.name,
+                                    network = network
+                                )
+                            )
+                        },
+                        walletId = args.walletId,
+                        network = args.network
                     )
-                },
-                walletId = args.walletId,
-                coinType = args.coinType,
-                network = args.network
-            )
+                }
+                CoinType.ETHEREUM, CoinType.USDC -> {
+                    EthereumSendScreen(
+                        onNavigateUp = {
+                            Log.d("Navigation", "EthereumSendScreen: navigate up")
+                            navController.navigateUp()
+                        },
+                        onNavigateToReview = { walletId, coinType, toAddress, amount, feeLevel, network ->
+                            Log.d("Navigation", "EthereumSendScreen: navigate to ReviewRoute")
+                            navController.navigate(
+                                ReviewRoute(
+                                    walletId = walletId,
+                                    coinType = coinType,
+                                    toAddress = toAddress,
+                                    amount = amount,
+                                    feeLevel = feeLevel?.name,
+                                    network = network
+                                )
+                            )
+                        },
+                        walletId = args.walletId,
+                        coinType = args.coinType,
+                        network = args.network
+                    )
+                }
+                CoinType.SOLANA -> {
+                    SolanaSendScreen(
+                        onNavigateUp = {
+                            Log.d("Navigation", "SolanaSendScreen: navigate up")
+                            navController.navigateUp()
+                        },
+                        onNavigateToReview = { walletId, coinType, toAddress, amount, feeLevel, network ->
+                            Log.d("Navigation", "SolanaSendScreen: navigate to ReviewRoute")
+                            navController.navigate(
+                                ReviewRoute(
+                                    walletId = walletId,
+                                    coinType = coinType,
+                                    toAddress = toAddress,
+                                    amount = amount,
+                                    feeLevel = feeLevel?.name,
+                                    network = network
+                                )
+                            )
+                        },
+                        walletId = args.walletId,
+                        network = args.network
+                    )
+                }
+            }
         }
 
         composable<ReviewRoute> { backStackEntry ->
             val args = backStackEntry.toRoute<ReviewRoute>()
+            val feeLevel = args.feeLevel?.let { FeeLevel.valueOf(it) }
+
             Log.d("Navigation", "Navigated to ReviewRoute - " +
                     "walletId: ${args.walletId}, coinType: ${args.coinType}, " +
                     "toAddress: ${args.toAddress}, amount: ${args.amount}, feeLevel: ${args.feeLevel}, network: ${args.network}")
@@ -334,7 +386,7 @@ fun Navigation() {
                 coinType = args.coinType,
                 toAddress = args.toAddress,
                 amount = args.amount,
-                feeLevel = args.feeLevel,
+                feeLevel = feeLevel.toString(),
                 network = args.network
             )
         }
