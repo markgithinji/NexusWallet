@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
@@ -62,7 +63,7 @@ fun CoinDetailScreen(
     network: NetworkType? = null,
     viewModel: CoinDetailViewModel = hiltViewModel()
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val networkString = network?.apiValue ?: ""
