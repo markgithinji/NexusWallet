@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.SendValidationResult
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import java.math.BigDecimal
@@ -50,7 +51,7 @@ interface ValidateBitcoinAddressUseCase {
 }
 
 interface ValidateBitcoinTransactionUseCase {
-    operator fun invoke(
+    suspend operator fun invoke(
         walletId: String,
         wallet: Wallet?,
         toAddress: String,
@@ -58,13 +59,5 @@ interface ValidateBitcoinTransactionUseCase {
         network: BitcoinNetwork,
         balance: BigDecimal,
         feeEstimate: BitcoinFeeEstimate? = null
-    ): ValidateBitcoinTransactionUseCase.ValidationResult
-
-    data class ValidationResult(
-        val isValid: Boolean,
-        val addressError: String? = null,
-        val amountError: String? = null,
-        val balanceError: String? = null,
-        val selfSendError: String? = null
-    )
+    ): SendValidationResult
 }
