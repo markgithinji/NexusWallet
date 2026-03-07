@@ -307,7 +307,10 @@ fun Navigation() {
                                     feeLevel = feeLevel?.name,
                                     network = network
                                 )
-                            )
+                            ) {
+                                // Remove the send screen from back stack
+                                popUpTo<SendRoute> { inclusive = true }
+                            }
                         },
                         walletId = args.walletId,
                         network = args.network
@@ -330,7 +333,10 @@ fun Navigation() {
                                     feeLevel = feeLevel?.name,
                                     network = network
                                 )
-                            )
+                            ) {
+                                // Remove the send screen from back stack
+                                popUpTo<SendRoute> { inclusive = true }
+                            }
                         },
                         walletId = args.walletId,
                         coinType = args.coinType,
@@ -354,7 +360,10 @@ fun Navigation() {
                                     feeLevel = feeLevel?.name,
                                     network = network
                                 )
-                            )
+                            ) {
+                                // Remove the send screen from back stack
+                                popUpTo<SendRoute> { inclusive = true }
+                            }
                         },
                         walletId = args.walletId,
                         network = args.network
@@ -374,7 +383,10 @@ fun Navigation() {
             TransactionReviewScreen(
                 onNavigateUp = {
                     Log.d("Navigation", "TransactionReviewScreen: navigate up")
-                    navController.navigateUp()
+                    // Navigate up to wallet detail
+                    navController.navigate(WalletDetailRoute(args.walletId)) {
+                        popUpTo(WalletDetailRoute(args.walletId)) { inclusive = true }
+                    }
                 },
                 onNavigateToWalletDetail = { walletId ->
                     Log.d("Navigation", "TransactionReviewScreen: navigate to WalletDetailRoute - walletId: $walletId")
