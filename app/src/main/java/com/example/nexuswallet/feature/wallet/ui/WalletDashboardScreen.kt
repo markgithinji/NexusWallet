@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
+import com.example.nexuswallet.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -79,12 +80,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -307,7 +311,7 @@ fun WalletCard(
                                     BitcoinNetwork.Mainnet -> "BTC"
                                     BitcoinNetwork.Testnet -> "BTC (Test)"
                                 },
-                                color = bitcoinLight
+                                color = bitcoinLight,
                             )
                         }
 
@@ -318,7 +322,7 @@ fun WalletCard(
                                     SolanaNetwork.Mainnet -> "SOL"
                                     SolanaNetwork.Devnet -> "SOL (Dev)"
                                 },
-                                color = solanaLight
+                                color = solanaLight,
                             )
                         }
 
@@ -332,7 +336,7 @@ fun WalletCard(
                                     is USDCToken -> usdcLight
                                     is USDTToken -> Color(0xFF26A17B)
                                     else -> MaterialTheme.colorScheme.primary
-                                }
+                                },
                             )
                         }
 
@@ -412,7 +416,7 @@ fun WalletExpandedContent(
 
             btcBalance?.let {
                 SimpleBalanceRow(
-                    icon = Icons.Outlined.CurrencyBitcoin,
+                    icon = painterResource(id = R.drawable.bitcoin),
                     symbol = "Bitcoin${if (coin.network != BitcoinNetwork.Mainnet) " (Testnet)" else ""}",
                     amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.btc.toDoubleOrNull() ?: 0.0)} BTC",
                     usdValue = it.usdValue,
@@ -431,7 +435,7 @@ fun WalletExpandedContent(
 
             solBalance?.let {
                 SimpleBalanceRow(
-                    icon = Icons.Outlined.FlashOn,
+                    icon = painterResource(id = R.drawable.solana),
                     symbol = "Solana${if (coin.network != SolanaNetwork.Mainnet) " (Devnet)" else ""}",
                     amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.sol.toDoubleOrNull() ?: 0.0)} SOL",
                     usdValue = it.usdValue,
@@ -445,7 +449,7 @@ fun WalletExpandedContent(
             val tokenBalance = evmBalanceMap[token.externalId]
             tokenBalance?.let {
                 SimpleBalanceRow(
-                    icon = Icons.Outlined.Diamond,
+                    icon = painterResource(id = R.drawable.ethereum),
                     symbol = "Ethereum${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
                     amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} ETH",
                     usdValue = it.usdValue,
@@ -459,7 +463,7 @@ fun WalletExpandedContent(
             val tokenBalance = evmBalanceMap[token.externalId]
             tokenBalance?.let {
                 SimpleBalanceRow(
-                    icon = Icons.Outlined.AttachMoney,
+                    icon = painterResource(id = R.drawable.usdc),
                     symbol = "USD Coin${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
                     amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} USDC",
                     usdValue = it.usdValue,
@@ -473,7 +477,7 @@ fun WalletExpandedContent(
             val tokenBalance = evmBalanceMap[token.externalId]
             tokenBalance?.let {
                 SimpleBalanceRow(
-                    icon = Icons.Outlined.AttachMoney,
+                    icon = painterResource(id = R.drawable.tether),
                     symbol = "Tether USD${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
                     amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} USDT",
                     usdValue = it.usdValue,
@@ -526,7 +530,7 @@ fun WalletExpandedContent(
 
 @Composable
 fun SimpleBalanceRow(
-    icon: ImageVector,
+    icon: Any,
     symbol: String,
     amount: String,
     usdValue: Double,
@@ -544,12 +548,32 @@ fun SimpleBalanceRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.weight(1f)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(20.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                when (icon) {
+                    is ImageVector -> {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = color,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    is Painter -> {
+                        Icon(
+                            painter = icon,
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+
             Column {
                 Text(
                     text = symbol,
