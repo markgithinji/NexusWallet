@@ -66,6 +66,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -74,6 +76,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.NetworkType
@@ -124,24 +127,28 @@ fun WalletDetailScreen(
     walletId: String,
     walletViewModel: WalletDetailViewModel = hiltViewModel(),
 ) {
-    val uiState by walletViewModel.uiState.collectAsState()
+    val uiState by walletViewModel.uiState.collectAsStateWithLifecycle()
 
     // Load wallet when screen is first composed
     LaunchedEffect(walletId) {
         walletViewModel.loadWallet(walletId)
     }
 
+    // Show full screen loading only on initial load with no wallet
     if (uiState.isLoading && uiState.wallet == null) {
         LoadingScreen()
         return
     }
 
+    // Show error if present and no wallet
     uiState.error?.let {
-        ErrorScreen(
-            message = it,
-            onRetry = { walletViewModel.loadWallet(walletId) }
-        )
-        return
+        if (uiState.wallet == null) {
+            ErrorScreen(
+                message = it,
+                onRetry = { walletViewModel.loadWallet(walletId) }
+            )
+            return
+        }
     }
 
     Scaffold(
@@ -183,11 +190,12 @@ fun WalletDetailScreen(
                         }
                     }
 
+                    // Refresh button with proper loading states
                     IconButton(
                         onClick = { walletViewModel.refresh() },
-                        enabled = !uiState.isLoading
+                        enabled = !uiState.isRefreshingBalance && !uiState.isRefreshingTransactions
                     ) {
-                        if (uiState.isLoading) {
+                        if (uiState.isRefreshingBalance || uiState.isRefreshingTransactions) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp,
@@ -218,6 +226,10 @@ fun WalletDetailScreen(
                 pricePercentages = uiState.pricePercentages,
                 totalUsdValue = walletViewModel.getTotalUsdValue(),
                 hasSyncError = uiState.hasSyncError,
+                isLoadingBalance = walletViewModel.isBalanceLoading(),
+                isLoadingTransactions = walletViewModel.isTransactionsLoading(),
+                balanceLoadingMessage = walletViewModel.getBalanceLoadingMessage(),
+                transactionsLoadingMessage = walletViewModel.getTransactionsLoadingMessage(),
                 onNavigateToCoinDetail = onNavigateToCoinDetail,
                 onNavigateToReceive = onNavigateToReceive,
                 onNavigateToSend = onNavigateToSend,
@@ -242,6 +254,10 @@ fun WalletDetailContent(
     pricePercentages: Map<String, Double>,
     totalUsdValue: Double,
     hasSyncError: Boolean,
+    isLoadingBalance: Boolean,
+    isLoadingTransactions: Boolean,
+    balanceLoadingMessage: String,
+    transactionsLoadingMessage: String,
     onNavigateToCoinDetail: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
@@ -268,6 +284,8 @@ fun WalletDetailContent(
                 wallet = wallet,
                 totalBalance = totalFormatted,
                 hasSyncError = hasSyncError,
+                isLoadingBalance = isLoadingBalance,
+                balanceLoadingMessage = balanceLoadingMessage,
                 onReceive = {
                     // Default to first available coin for receive
                     val defaultCoin = when {
@@ -321,7 +339,8 @@ fun WalletDetailContent(
                     onClick = {
                         onNavigateToCoinDetail(wallet.id, CoinType.BITCOIN, network)
                     },
-                    priceChangePercentage = percentage
+                    priceChangePercentage = percentage,
+                    isLoading = isLoadingBalance && coinBalance == null
                 )
             }
         }
@@ -342,13 +361,13 @@ fun WalletDetailContent(
                     onClick = {
                         onNavigateToCoinDetail(wallet.id, CoinType.SOLANA, network)
                     },
-                    priceChangePercentage = percentage
+                    priceChangePercentage = percentage,
+                    isLoading = isLoadingBalance && coinBalance == null
                 )
             }
         }
 
         // ============ EVM TOKENS ============
-        // Group EVM tokens by network for better organization
         val mainnetTokens = wallet.evmTokens.filter { it.network == EthereumNetwork.Mainnet }
         val sepoliaTokens = wallet.evmTokens.filter { it.network == EthereumNetwork.Sepolia }
 
@@ -369,7 +388,7 @@ fun WalletDetailContent(
             val coinType = when (token) {
                 is NativeETH -> CoinType.ETHEREUM
                 is USDCToken -> CoinType.USDC
-                else -> CoinType.ETHEREUM // Default for other ERC20s
+                else -> CoinType.ETHEREUM
             }
 
             item(key = "${token.externalId}_mainnet") {
@@ -379,42 +398,42 @@ fun WalletDetailContent(
                     onClick = {
                         onNavigateToCoinDetail(wallet.id, coinType, network)
                     },
-                    priceChangePercentage = percentage
+                    priceChangePercentage = percentage,
+                    isLoading = isLoadingBalance && tokenBalance == null
                 )
             }
         }
 
-        // Sepolia tokens (Testnet)
-        if (sepoliaTokens.isNotEmpty()) {
-            sepoliaTokens.forEach { token ->
-                val percentage = when (token) {
-                    is NativeETH -> pricePercentages["ethereum"]
-                    is USDCToken -> pricePercentages["usd-coin"]
-                    is USDTToken -> pricePercentages["tether"]
-                    else -> null
-                }
+        // Sepolia tokens
+        sepoliaTokens.forEach { token ->
+            val percentage = when (token) {
+                is NativeETH -> pricePercentages["ethereum"]
+                is USDCToken -> pricePercentages["usd-coin"]
+                is USDTToken -> pricePercentages["tether"]
+                else -> null
+            }
 
-                val network = when (token.network) {
-                    EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
-                    EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
-                }
-                val tokenBalance = balanceMap[token.externalId]
-                val coinType = when (token) {
-                    is NativeETH -> CoinType.ETHEREUM
-                    is USDCToken -> CoinType.USDC
-                    else -> CoinType.ETHEREUM // Default for other ERC20s
-                }
+            val network = when (token.network) {
+                EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
+                EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
+            }
+            val tokenBalance = balanceMap[token.externalId]
+            val coinType = when (token) {
+                is NativeETH -> CoinType.ETHEREUM
+                is USDCToken -> CoinType.USDC
+                else -> CoinType.ETHEREUM
+            }
 
-                item(key = "${token.externalId}_sepolia") {
-                    EVMTokenCard(
-                        token = token,
-                        balance = tokenBalance,
-                        onClick = {
-                            onNavigateToCoinDetail(wallet.id, coinType, network)
-                        },
-                        priceChangePercentage = percentage
-                    )
-                }
+            item(key = "${token.externalId}_sepolia") {
+                EVMTokenCard(
+                    token = token,
+                    balance = tokenBalance,
+                    onClick = {
+                        onNavigateToCoinDetail(wallet.id, coinType, network)
+                    },
+                    priceChangePercentage = percentage,
+                    isLoading = isLoadingBalance && tokenBalance == null
+                )
             }
         }
 
@@ -436,18 +455,14 @@ fun WalletDetailContent(
         }
 
         // ============ TRANSACTIONS ============
-        if (transactions.isNotEmpty()) {
-            item {
-                TransactionsContainer(
-                    transactions = transactions,
-                    wallet = wallet,
-                    onViewAll = { onNavigateToAllTransactions(wallet.id) }
-                )
-            }
-        } else {
-            item {
-                EmptyTransactionsView()
-            }
+        item {
+            TransactionsContainer(
+                transactions = transactions,
+                wallet = wallet,
+                isLoading = isLoadingTransactions,
+                loadingMessage = transactionsLoadingMessage,
+                onViewAll = { onNavigateToAllTransactions(wallet.id) }
+            )
         }
     }
 }
@@ -457,6 +472,8 @@ fun WalletHeaderCard(
     wallet: Wallet,
     totalBalance: String,
     hasSyncError: Boolean = false,
+    isLoadingBalance: Boolean = false,
+    balanceLoadingMessage: String = "",
     onReceive: () -> Unit,
     onSend: () -> Unit,
     onSwap: () -> Unit,
@@ -513,13 +530,23 @@ fun WalletHeaderCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = NumberFormat.getCurrencyInstance(Locale.US).format(animatedValue.value),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
+                if (isLoadingBalance && numericBalance == 0.0) {
+                    // Show shimmer loading effect
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp)
+                            .shimmer()
+                    )
+                } else {
+                    Text(
+                        text = NumberFormat.getCurrencyInstance(Locale.US).format(animatedValue.value),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
 
                 // Show warning icon if there's a sync error
                 if (hasSyncError) {
@@ -530,6 +557,16 @@ fun WalletHeaderCard(
                         modifier = Modifier.size(24.dp)
                     )
                 }
+            }
+
+            // Show loading message if balance is loading
+            if (isLoadingBalance && balanceLoadingMessage.isNotEmpty()) {
+                Text(
+                    text = balanceLoadingMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -590,6 +627,317 @@ fun WalletHeaderCard(
                     modifier = Modifier.weight(1f)
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun BitcoinCoinCard(
+    coin: BitcoinCoin,
+    balance: BitcoinBalance?,
+    onClick: () -> Unit,
+    priceChangePercentage: Double? = null,
+    isLoading: Boolean = false
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 1.dp)
+            .clickable(enabled = !isLoading) { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Coin icon
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.bitcoin),
+                    contentDescription = "BTC",
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.Unspecified
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Coin info
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "BTC${if (coin.network != BitcoinNetwork.Mainnet) " (Testnet)" else ""}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.5f)
+                            .height(20.dp)
+                            .shimmer()
+                    )
+                } else {
+                    Text(
+                        text = "${formatCryptoAmount(balance?.btc ?: "0")} BTC",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // USD Value and percentage
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(20.dp)
+                            .shimmer()
+                    )
+                } else {
+                    Text(
+                        text = NumberFormat.getCurrencyInstance(Locale.US).format(balance?.usdValue ?: 0.0),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
+                    )
+                }
+
+                if (priceChangePercentage != null && !isLoading) {
+                    PriceChangeIndicator(priceChangePercentage)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionsContainer(
+    transactions: List<Any>,
+    wallet: Wallet,
+    isLoading: Boolean = false,
+    loadingMessage: String = "Loading transactions...",
+    onViewAll: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Header with "Recent Transactions" and "See All" button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Recent Transactions",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                TextButton(
+                    onClick = onViewAll,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    enabled = !isLoading
+                ) {
+                    Text(
+                        text = "See All",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isLoading)
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        else
+                            MaterialTheme.colorScheme.primary
+                    )
+                    Icon(
+                        imageVector = Icons.Outlined.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = if (isLoading)
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        else
+                            MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Transaction list or loading state
+            if (isLoading && transactions.isEmpty()) {
+                // Show loading skeletons
+                repeat(3) { index ->
+                    TransactionLoadingSkeleton()
+                    if (index < 2) {
+                        Divider(
+                            color = MaterialTheme.colorScheme.outline,
+                            thickness = 1.dp,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                }
+
+                // Show loading message
+                Text(
+                    text = loadingMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    textAlign = TextAlign.Center
+                )
+            } else if (transactions.isNotEmpty()) {
+                // Show actual transactions
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    transactions.take(3).forEachIndexed { index, transaction ->
+                        TransactionItem(
+                            transaction = transaction,
+                            wallet = wallet
+                        )
+
+                        if (index < 2) {
+                            Divider(
+                                color = MaterialTheme.colorScheme.outline,
+                                thickness = 1.dp
+                            )
+                        }
+                    }
+                }
+            } else {
+                EmptyTransactionsView()
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionLoadingSkeleton() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Icon skeleton
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .shimmer()
+        )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Text skeletons
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.6f)
+                    .height(16.dp)
+                    .shimmer()
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.4f)
+                    .height(12.dp)
+                    .shimmer()
+            )
+        }
+
+        // Amount skeleton
+        Box(
+            modifier = Modifier
+                .width(80.dp)
+                .height(32.dp)
+                .shimmer()
+        )
+    }
+}
+
+// Simple shimmer effect composable
+@Composable
+fun Modifier.shimmer(): Modifier = this.then(
+    Modifier.background(
+        brush = Brush.linearGradient(
+            colors = listOf(
+                MaterialTheme.colorScheme.surfaceVariant,
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                MaterialTheme.colorScheme.surfaceVariant
+            ),
+            start = Offset.Zero,
+            end = Offset.Infinite
+        )
+    )
+)
+
+@Composable
+fun LoadingIndicatorCard(
+    message: String,
+    icon: Int
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
@@ -715,25 +1063,19 @@ fun BitcoinCoinCard(
         }
     }
 }
-
 @Composable
 fun SolanaCoinCard(
     coin: SolanaCoin,
     balance: SolanaBalance?,
     onClick: () -> Unit,
-    priceChangePercentage: Double? = null
+    priceChangePercentage: Double? = null,
+    isLoading: Boolean = false
 ) {
-    val balanceAmount = balance?.sol ?: "0"
-    val usdValue = balance?.usdValue ?: 0.0
-
-    val formattedBalance = formatCryptoAmount(balanceAmount)
-    val formattedUsd = NumberFormat.getCurrencyInstance(Locale.US).format(usdValue)
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 1.dp)
-            .clickable { onClick() },
+            .clickable(enabled = !isLoading) { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -773,16 +1115,26 @@ fun SolanaCoinCard(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = "$formattedBalance SOL",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.5f)
+                            .height(20.dp)
+                            .shimmer()
+                    )
+                } else {
+                    Text(
+                        text = "${formatCryptoAmount(balance?.sol ?: "0")} SOL",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
 
                 // Show SPL token count if any
-                if (coin.splTokens.isNotEmpty()) {
+                if (coin.splTokens.isNotEmpty() && !isLoading) {
                     Text(
                         text = "+${coin.splTokens.size} tokens",
                         style = MaterialTheme.typography.labelSmall,
@@ -795,15 +1147,24 @@ fun SolanaCoinCard(
             Column(
                 horizontalAlignment = Alignment.End
             ) {
-                Text(
-                    text = formattedUsd,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1
-                )
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(20.dp)
+                            .shimmer()
+                    )
+                } else {
+                    Text(
+                        text = NumberFormat.getCurrencyInstance(Locale.US).format(balance?.usdValue ?: 0.0),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
+                    )
+                }
 
-                if (priceChangePercentage != null) {
+                if (priceChangePercentage != null && !isLoading) {
                     PriceChangeIndicator(priceChangePercentage)
                 }
             }
@@ -816,7 +1177,8 @@ fun EVMTokenCard(
     token: EVMToken,
     balance: EVMBalance?,
     onClick: () -> Unit,
-    priceChangePercentage: Double? = null
+    priceChangePercentage: Double? = null,
+    isLoading: Boolean = false
 ) {
     val (color, iconRes, iconSize) = when (token) {
         is NativeETH -> Triple(ethereumLight, R.drawable.ethereum, 44.dp)
@@ -825,17 +1187,11 @@ fun EVMTokenCard(
         is ERC20Token -> Triple(MaterialTheme.colorScheme.primary, null, 20.dp)
     }
 
-    val balanceAmount = balance?.balanceDecimal ?: "0"
-    val usdValue = balance?.usdValue ?: 0.0
-
-    val formattedBalance = formatCryptoAmount(balanceAmount)
-    val formattedUsd = NumberFormat.getCurrencyInstance(Locale.US).format(usdValue)
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 1.dp)
-            .clickable { onClick() },
+            .clickable(enabled = !isLoading) { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -863,7 +1219,6 @@ fun EVMTokenCard(
                         tint = Color.Unspecified
                     )
                 } else {
-                    // Fallback to Material icon for unknown tokens
                     Icon(
                         imageVector = Icons.Outlined.Token,
                         contentDescription = token.symbol,
@@ -884,14 +1239,27 @@ fun EVMTokenCard(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = "$formattedBalance ${token.symbol}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (token.network != EthereumNetwork.Mainnet) {
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.5f)
+                            .height(20.dp)
+                            .shimmer()
+                    )
+                } else {
+                    Text(
+                        text = "${
+                            formatCryptoAmount(balance?.balanceDecimal ?: "0")
+                        } ${token.symbol}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                if (token.network != EthereumNetwork.Mainnet && !isLoading) {
                     Text(
                         text = token.network.displayName,
                         style = MaterialTheme.typography.labelSmall,
@@ -904,15 +1272,24 @@ fun EVMTokenCard(
             Column(
                 horizontalAlignment = Alignment.End
             ) {
-                Text(
-                    text = formattedUsd,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1
-                )
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(20.dp)
+                            .shimmer()
+                    )
+                } else {
+                    Text(
+                        text = NumberFormat.getCurrencyInstance(Locale.US).format(balance?.usdValue ?: 0.0),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
+                    )
+                }
 
-                if (priceChangePercentage != null) {
+                if (priceChangePercentage != null && !isLoading) {
                     PriceChangeIndicator(priceChangePercentage)
                 }
             }
