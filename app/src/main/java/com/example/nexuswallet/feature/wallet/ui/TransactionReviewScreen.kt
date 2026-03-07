@@ -251,6 +251,17 @@ fun TransactionReviewScreen(
         CoinType.BITCOIN -> bitcoinState.value.feeEstimate
     }
 
+    val isFeeLoading = when (coinType) {
+        CoinType.BITCOIN -> bitcoinState.value.isFeeLoading
+        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.isFeeLoading
+        CoinType.SOLANA -> solanaState.value.isFeeLoading
+    }
+    // Add debug logging
+    LaunchedEffect(isFeeLoading, coinType) {
+        Log.d("TransactionReview", "CoinType: $coinType, isFeeLoading: $isFeeLoading")
+        Log.d("TransactionReview", "Solana - isFeeLoading: ${solanaState.value.isFeeLoading}, feeEstimate: ${solanaState.value.feeEstimate}")
+    }
+
     val isReady = when (coinType) {
         CoinType.BITCOIN -> bitcoinState.value.transactionPrepared
         CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.isValid
@@ -321,6 +332,7 @@ fun TransactionReviewScreen(
                 txStatus = txStatus,
                 isValid = isReady,
                 isPreparing = isPreparing,
+                isFeeLoading = isFeeLoading,
                 onSend = {
                     isSending = true
                     sendError = null
@@ -360,47 +372,31 @@ fun TransactionReviewScreen(
                 .padding(padding)
         ) {
             // Main content
-            if (isPreparing) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = coinColor)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Preparing transaction...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            } else {
-                TransactionReviewContent(
-                    coinType = coinType,
-                    amount = amount,
-                    fromAddress = fromAddress,
-                    toAddress = toAddress,
-                    feeEstimate = feeEstimate,
-                    txHash = txHash,
-                    coinColor = coinColor,
-                    iconRes = iconRes,
-                    tokenIconRes = tokenIconRes,
-                    selectedToken = selectedToken,
-                    network = networkDisplayName,
-                    isValid = true,
-                    validationErrors = if (sendError != null) listOf(sendError!!) else emptyList(),
-                    onCopyAddress = { address ->
-                        copyToClipboard(context, address)
-                    },
-                    onViewOnExplorer = { hash ->
-                        val url = getExplorerUrl(coinType, hash, network)
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+            TransactionReviewContent(
+                coinType = coinType,
+                amount = amount,
+                fromAddress = fromAddress,
+                toAddress = toAddress,
+                feeEstimate = feeEstimate,
+                isFeeLoading = isFeeLoading,
+                txHash = txHash,
+                coinColor = coinColor,
+                iconRes = iconRes,
+                tokenIconRes = tokenIconRes,
+                selectedToken = selectedToken,
+                network = networkDisplayName,
+                isValid = true,
+                validationErrors = if (sendError != null) listOf(sendError!!) else emptyList(),
+                onCopyAddress = { address ->
+                    copyToClipboard(context, address)
+                },
+                onViewOnExplorer = { hash ->
+                    val url = getExplorerUrl(coinType, hash, network)
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    context.startActivity(intent)
+                },
+                modifier = Modifier.fillMaxSize()
+            )
 
             // Floating Success Banner
             AnimatedVisibility(
@@ -527,6 +523,7 @@ fun TransactionReviewContent(
     fromAddress: String?,
     toAddress: String,
     feeEstimate: Any?,
+    isFeeLoading: Boolean,
     txHash: String?,
     coinColor: Color,
     iconRes: Int,
@@ -670,12 +667,16 @@ fun TransactionReviewContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Fee Preview
-        feeEstimate?.let {
-            when (coinType) {
-                CoinType.ETHEREUM, CoinType.USDC -> EVMFeePreviewCard(feeEstimate = it as EVMFeeEstimate)
-                CoinType.BITCOIN -> BitcoinFeePreviewCard(feeEstimate = it as BitcoinFeeEstimate)
-                CoinType.SOLANA -> SolanaFeePreviewCard(feeEstimate = it as SolanaFeeEstimate)
+        // Fee Preview with shimmer loading
+        if (isFeeLoading) {
+            FeeLoadingShimmer()
+        } else {
+            feeEstimate?.let {
+                when (coinType) {
+                    CoinType.ETHEREUM, CoinType.USDC -> EVMFeePreviewCard(feeEstimate = it as EVMFeeEstimate)
+                    CoinType.BITCOIN -> BitcoinFeePreviewCard(feeEstimate = it as BitcoinFeeEstimate)
+                    CoinType.SOLANA -> SolanaFeePreviewCard(feeEstimate = it as SolanaFeeEstimate)
+                }
             }
         }
 
@@ -780,6 +781,7 @@ fun TransactionBottomBar(
     txStatus: String,
     isValid: Boolean,
     isPreparing: Boolean = false,
+    isFeeLoading: Boolean = false,
     onSend: () -> Unit,
     onDone: () -> Unit
 ) {
@@ -823,37 +825,22 @@ fun TransactionBottomBar(
                     onClick = onSend,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    enabled = !isSending && !isPreparing && isValid,
+                    enabled = !isSending && !isPreparing && isValid && !isFeeLoading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
-                    if (isSending || isPreparing) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                if (isPreparing) "Preparing..." else txStatus.ifEmpty { "Sending..." },
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    } else {
-                        Text(
-                            "Confirm & Send",
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
+                    Text(
+                        if (isSending || isPreparing) {
+                            if (isPreparing) "Preparing..." else txStatus.ifEmpty { "Sending..." }
+                        } else {
+                            "Confirm & Send"
+                        },
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
                 }
             }
         }
@@ -1167,6 +1154,163 @@ fun TransactionSuccessCard(
                 Text(
                     "View on ${getExplorerName(coinType)}",
                     style = MaterialTheme.typography.labelLarge
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun FeeLoadingShimmer() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            // Header with icon and title
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Icon shimmer
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .shimmer()
+                )
+                // Title shimmer
+                Box(
+                    modifier = Modifier
+                        .width(100.dp)
+                        .height(20.dp)
+                        .shimmer()
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Priority chip shimmer
+            Box(
+                modifier = Modifier
+                    .width(80.dp)
+                    .height(24.dp)
+                    .shimmer()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Fee details shimmer
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Row 1: Total Fee
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(70.dp)
+                            .height(16.dp)
+                            .shimmer()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(100.dp)
+                            .height(16.dp)
+                            .shimmer()
+                    )
+                }
+
+                // Row 2: Gas Price / Fee Rate
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(16.dp)
+                            .shimmer()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(90.dp)
+                            .height(16.dp)
+                            .shimmer()
+                    )
+                }
+
+                // Row 3: Gas Limit / Compute Units
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(75.dp)
+                            .height(16.dp)
+                            .shimmer()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(60.dp)
+                            .height(16.dp)
+                            .shimmer()
+                    )
+                }
+            }
+
+            // Estimated time section
+            Spacer(modifier = Modifier.height(4.dp))
+            Divider(
+                modifier = Modifier.padding(vertical = 4.dp),
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Icon shimmer
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .shimmer()
+                    )
+                    // "Estimated time" text shimmer
+                    Box(
+                        modifier = Modifier
+                            .width(90.dp)
+                            .height(16.dp)
+                            .shimmer()
+                    )
+                }
+                // Time value shimmer
+                Box(
+                    modifier = Modifier
+                        .width(50.dp)
+                        .height(16.dp)
+                        .shimmer()
                 )
             }
         }
