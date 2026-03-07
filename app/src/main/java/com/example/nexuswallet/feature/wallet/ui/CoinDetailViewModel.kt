@@ -121,6 +121,11 @@ class CoinDetailViewModel @Inject constructor(
     }
 
     private fun updateStateWithBitcoinData(data: BitcoinDetailResult) {
+        Log.d("CoinDetailVM", "Updating with ${data.transactions.size} Bitcoin transactions")
+        data.transactions.forEachIndexed { index, tx ->
+            Log.d("CoinDetailVM", "  Tx $index: ${tx.formattedAmount} BTC, ${tx.status}")
+        }
+
         _state.update {
             it.copy(
                 walletId = data.walletId,

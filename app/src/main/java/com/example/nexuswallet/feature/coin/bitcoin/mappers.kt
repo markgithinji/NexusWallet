@@ -44,7 +44,7 @@ fun BitcoinTransaction.toEntity(): BitcoinTransactionEntity = BitcoinTransaction
     estimatedSize = estimatedSize,
     signedHex = signedHex,
     txHash = txHash,
-    network = network.toStorageString(),
+    network = network.name,
     isIncoming = isIncoming
 )
 

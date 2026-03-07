@@ -48,7 +48,8 @@ data class EthereumDetailResult(
     val token: EVMToken,
     val externalTokenId: String,
     val ethGasBalance: BigDecimal? = null,
-    val availableTokens: List<EVMToken> = emptyList()
+    val availableTokens: List<EVMToken> = emptyList(),
+    val chainId: String
 ) : CoinDetailResult
 
 // Solana specific result

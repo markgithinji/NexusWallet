@@ -81,9 +81,11 @@ class GetBitcoinDetailUseCaseImpl @Inject constructor(
 
             // 3. Fetch fresh transactions from blockchain
             val networkParam = when (bitcoinCoin.network) {
-                BitcoinNetwork.Mainnet -> "mainnet"
-                BitcoinNetwork.Testnet -> "testnet"
+                BitcoinNetwork.Mainnet -> BitcoinNetwork.Mainnet.name
+                BitcoinNetwork.Testnet -> BitcoinNetwork.Testnet.name
             }
+
+            logger.d(tag, "Using networkParam: $networkParam for ${bitcoinCoin.network}")
 
             val txResult = bitcoinBlockchainRepository.getAddressTransactions(
                 address = bitcoinCoin.address,
@@ -91,16 +93,20 @@ class GetBitcoinDetailUseCaseImpl @Inject constructor(
             )
 
             if (txResult is Result.Success) {
+                logger.d(tag, "Fetched ${txResult.data.size} transactions from blockchain")
+
                 // Delete old transactions and save new ones
                 bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, networkParam)
+                logger.d(tag, "Deleted old transactions for wallet $walletId, network $networkParam")
 
-                txResult.data.forEach { tx ->
+                txResult.data.forEachIndexed { index, tx ->
                     val domainTx = tx.toDomain(
                         walletId = walletId,
                         isIncoming = tx.isIncoming,
                         network = bitcoinCoin.network
                     )
                     bitcoinTransactionRepository.saveTransaction(domainTx)
+                    logger.d(tag, "Saved transaction $index: ${tx.txid.take(8)}... with network ${bitcoinCoin.network.name}")
                 }
                 logger.d(tag, "Synced ${txResult.data.size} transactions")
             }
@@ -112,9 +118,13 @@ class GetBitcoinDetailUseCaseImpl @Inject constructor(
                 BitcoinNetwork.Testnet -> "testnet"
             }
             val coinBalance = balance?.bitcoinBalances?.get(networkKey)
+            logger.d(tag, "Balance for $networkKey: ${coinBalance?.btc ?: "0"} BTC")
 
             // 5. Get transactions from local DB
+            logger.d(tag, "Querying transactions with walletId=$walletId, network=$networkParam")
             val transactions = bitcoinTransactionRepository.getTransactionsSync(walletId, networkParam)
+            logger.d(tag, "Retrieved ${transactions.size} transactions from DB for $networkParam")
+
             val displayTransactions = formatTransactionDisplayUseCase.formatTransactionList(
                 transactions,
                 CoinType.BITCOIN
@@ -133,7 +143,7 @@ class GetBitcoinDetailUseCaseImpl @Inject constructor(
                 availableNetworks = wallet.bitcoinCoins.map { it.network }
             )
 
-            logger.d(tag, "Successfully retrieved Bitcoin details")
+            logger.d(tag, "Successfully retrieved Bitcoin details with ${displayTransactions.size} transactions")
             Result.Success(result)
 
         } catch (e: Exception) {

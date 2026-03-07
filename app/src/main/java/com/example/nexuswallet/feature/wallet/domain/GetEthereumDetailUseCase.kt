@@ -53,7 +53,6 @@ interface GetEthereumDetailUseCase {
         network: String = ""
     ): Result<EthereumDetailResult>
 }
-
 @Singleton
 class GetEthereumDetailUseCaseImpl @Inject constructor(
     private val walletRepository: WalletRepository,
@@ -87,8 +86,8 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
             val wallet = walletRepository.getWallet(walletId)
                 ?: return Result.Error("Wallet not found")
 
-            // 2. Find the specific token
-            val (token, isEth) = when (coinType) {
+            // 2. Find the specific token with network awareness
+            val (token, isEth, targetNetwork) = when (coinType) {
                 CoinType.ETHEREUM -> {
                     val nativeEth = wallet.evmTokens.filterIsInstance<NativeETH>().find {
                         when (network.lowercase()) {
@@ -98,7 +97,7 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
                         }
                     } ?: wallet.evmTokens.filterIsInstance<NativeETH>().firstOrNull()
                     ?: return Result.Error("Ethereum not enabled")
-                    Pair(nativeEth as EVMToken, true)
+                    Triple(nativeEth as EVMToken, true, nativeEth.network)
                 }
                 CoinType.USDC -> {
                     val usdcToken = wallet.evmTokens.filterIsInstance<USDCToken>().find {
@@ -109,7 +108,7 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
                         }
                     } ?: wallet.evmTokens.filterIsInstance<USDCToken>().firstOrNull()
                     ?: return Result.Error("USDC not enabled")
-                    Pair(usdcToken as EVMToken, false)
+                    Triple(usdcToken as EVMToken, false, usdcToken.network)
                 }
                 else -> return Result.Error("Invalid coin type")
             }
@@ -117,7 +116,7 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
             // 3. Fetch fresh native transactions
             val nativeTxResult = evmBlockchainRepository.getNativeTransactions(
                 address = token.address,
-                network = token.network,
+                network = targetNetwork,
                 walletId = walletId,
                 tokenExternalId = token.externalId
             )
@@ -126,7 +125,7 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
                 nativeTxResult.data.forEach { tx ->
                     evmTransactionRepository.saveTransaction(tx)
                 }
-                logger.d(tag, "Synced ${nativeTxResult.data.size} native transactions")
+                logger.d(tag, "Synced ${nativeTxResult.data.size} native transactions for ${targetNetwork.displayName}")
             }
 
             // 4. Fetch fresh token transactions (if not native ETH)
@@ -134,7 +133,7 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
                 val tokenTxResult = evmBlockchainRepository.getTokenTransactions(
                     address = token.address,
                     tokenContract = token.contractAddress,
-                    network = token.network,
+                    network = targetNetwork,
                     walletId = walletId,
                     tokenExternalId = token.externalId
                 )
@@ -143,7 +142,7 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
                     tokenTxResult.data.forEach { tx ->
                         evmTransactionRepository.saveTransaction(tx)
                     }
-                    logger.d(tag, "Synced ${tokenTxResult.data.size} token transactions")
+                    logger.d(tag, "Synced ${tokenTxResult.data.size} token transactions for ${targetNetwork.displayName}")
                 }
             }
 
@@ -156,7 +155,7 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
             var ethGasBalance: BigDecimal? = null
             if (!isEth) {
                 val nativeEth = wallet.evmTokens.filterIsInstance<NativeETH>().find {
-                    it.network == token.network
+                    it.network == targetNetwork
                 }
                 ethGasBalance = nativeEth?.let {
                     balanceMap[it.externalId]?.balanceDecimal?.toBigDecimalOrNull()
@@ -166,9 +165,18 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
             // 7. Get transactions from local DB
             val allTxs = evmTransactionRepository.getTransactionsSync(walletId)
             val filteredTxs = when (coinType) {
-                CoinType.ETHEREUM -> allTxs.filterIsInstance<NativeETHTransaction>()
-                CoinType.USDC -> allTxs.filterIsInstance<TokenTransaction>()
-                    .filter { tx -> tx.tokenSymbol == "USDC" && tx.tokenExternalId == token.externalId }
+                CoinType.ETHEREUM -> {
+                    allTxs.filterIsInstance<NativeETHTransaction>()
+                        .filter { tx -> tx.network == targetNetwork.displayName }
+                }
+                CoinType.USDC -> {
+                    allTxs.filterIsInstance<TokenTransaction>()
+                        .filter { tx ->
+                            tx.tokenSymbol == "USDC" &&
+                                    tx.tokenExternalId == token.externalId &&
+                                    tx.network == targetNetwork.displayName
+                        }
+                }
                 else -> emptyList()
             }
 
@@ -188,16 +196,17 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
                         "${tokenBalance?.balanceDecimal ?: "0"} ${token.symbol}"
                 },
                 usdValue = tokenBalance?.usdValue ?: 0.0,
-                network = token.network.displayName,
-                networkDisplayName = token.network.displayName,
+                network = targetNetwork.displayName,
+                networkDisplayName = targetNetwork.displayName,
                 transactions = displayTransactions,
                 token = token,
                 externalTokenId = token.externalId,
                 ethGasBalance = ethGasBalance,
-                availableTokens = wallet.evmTokens.filter { it.network == token.network }
+                availableTokens = wallet.evmTokens.filter { it.network == targetNetwork },
+                chainId = targetNetwork.chainId
             )
 
-            logger.d(tag, "Successfully retrieved $coinType details")
+            logger.d(tag, "Successfully retrieved $coinType details for ${targetNetwork.displayName} with ${filteredTxs.size} transactions")
             Result.Success(result)
 
         } catch (e: Exception) {
