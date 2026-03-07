@@ -3,7 +3,12 @@ package com.example.nexuswallet.feature.wallet.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
+import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
+import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
+import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
 import com.example.nexuswallet.feature.market.domain.MarketRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.ERC20Token
@@ -14,10 +19,12 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SyncWalletBalancesUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TokenType
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
+import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.GetAllTransactionsUseCase
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,46 +38,47 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class WalletDetailUiState(
-    val wallet: Wallet? = null,
-    val balance: WalletBalance? = null,
-    val transactions: List<Any> = emptyList(),
-    val pricePercentages: Map<String, Double> = emptyMap(),
-
-    // Granular loading states
-    val isLoading: Boolean = false,              // Initial load - true until wallet is loaded
-    val isLoadingBalance: Boolean = false,       // Balance is being loaded from cache
-    val isLoadingTransactions: Boolean = false,  // Transactions are being loaded from cache
-    val isRefreshingBalance: Boolean = false,    // Background balance refresh
-    val isRefreshingTransactions: Boolean = false, // Background transaction refresh
-
-    // Timestamps for cache freshness
-    val lastBalanceSyncTime: Long = 0,
-    val lastTransactionSyncTime: Long = 0,
-
-    // Error states
-    val error: String? = null,
-    val hasSyncError: Boolean = false,
-    val syncErrorMessage: String? = null,
-    val balanceError: String? = null,
-    val transactionsError: String? = null
-)
-
 @HiltViewModel
 class WalletDetailViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
     private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
     private val getAllTransactionsUseCase: GetAllTransactionsUseCase,
-    private val marketRepository: MarketRepository
+    private val marketRepository: MarketRepository,
+    private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase // Already have this
 ) : ViewModel() {
+
+    data class WalletDetailUiState(
+        val wallet: Wallet? = null,
+        val balance: WalletBalance? = null,
+        val transactions: List<TransactionDisplayInfo> = emptyList(), // Already formatted
+        val pricePercentages: Map<String, Double> = emptyMap(),
+
+        // Granular loading states
+        val isLoading: Boolean = false,
+        val isLoadingBalance: Boolean = false,
+        val isLoadingTransactions: Boolean = false,
+        val isRefreshingBalance: Boolean = false,
+        val isRefreshingTransactions: Boolean = false,
+
+        // Timestamps for cache freshness
+        val lastBalanceSyncTime: Long = 0,
+        val lastTransactionSyncTime: Long = 0,
+
+        // Error states
+        val error: String? = null,
+        val hasSyncError: Boolean = false,
+        val syncErrorMessage: String? = null,
+        val balanceError: String? = null,
+        val transactionsError: String? = null
+    )
 
     private val _uiState = MutableStateFlow(WalletDetailUiState(isLoading = true))
     val uiState: StateFlow<WalletDetailUiState> = _uiState.asStateFlow()
 
     // Cache expiration times
     private companion object {
-        const val BALANCE_CACHE_TIME = 0 * 60 * 1000      // 2 minutes
-        const val TRANSACTIONS_CACHE_TIME = 0 * 60 * 1000 // 5 minutes
+        const val BALANCE_CACHE_TIME = 2 * 60 * 1000      // 2 minutes
+        const val TRANSACTIONS_CACHE_TIME = 5 * 60 * 1000 // 5 minutes
     }
 
     fun loadWallet(walletId: String) {
@@ -192,15 +200,18 @@ class WalletDetailViewModel @Inject constructor(
             Log.d("WalletDetailVM", "Loading cached transactions...")
             val initialTransactions = getAllTransactionsUseCase.getCachedTransactions(walletId)
 
+            // Format transactions using the existing use case
+            val displayTransactions = formatTransactionList(initialTransactions)
+
             _uiState.update {
                 it.copy(
-                    transactions = initialTransactions,
+                    transactions = displayTransactions,
                     isLoadingTransactions = false,
                     lastTransactionSyncTime = System.currentTimeMillis()
                 )
             }
 
-            Log.d("WalletDetailVM", "Loaded ${initialTransactions.size} cached transactions")
+            Log.d("WalletDetailVM", "Loaded ${displayTransactions.size} cached transactions")
 
         } catch (e: Exception) {
             Log.e("WalletDetailVM", "Error loading cached transactions", e)
@@ -315,14 +326,39 @@ class WalletDetailViewModel @Inject constructor(
                 }
                 .collect { updatedTransactions ->
                     Log.d("WalletDetailVM", "Transactions updated: ${updatedTransactions.size} transactions")
+
+                    // Format transactions using the existing use case
+                    val displayTransactions = formatTransactionList(updatedTransactions)
+
                     _uiState.update {
                         it.copy(
-                            transactions = updatedTransactions,
+                            transactions = displayTransactions,
                             isLoadingTransactions = false,
                             isRefreshingTransactions = false
                         )
                     }
                 }
+        }
+    }
+
+    // Helper function to format a list of transactions using the existing use case
+    private fun formatTransactionList(transactions: List<Any>): List<TransactionDisplayInfo> {
+        return transactions.map { transaction ->
+            val coinType = determineCoinType(transaction)
+            formatTransactionDisplayUseCase(transaction, coinType)
+        }
+    }
+
+    private fun determineCoinType(transaction: Any): CoinType {
+        return when (transaction) {
+            is BitcoinTransaction -> CoinType.BITCOIN
+            is SolanaTransaction -> CoinType.SOLANA
+            is NativeETHTransaction -> CoinType.ETHEREUM
+            is TokenTransaction -> when (transaction.tokenSymbol) {
+                "USDC" -> CoinType.USDC
+                else -> CoinType.ETHEREUM
+            }
+            else -> CoinType.BITCOIN
         }
     }
 

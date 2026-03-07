@@ -49,7 +49,8 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
 class CoinDetailViewModel @Inject constructor(
     private val getBitcoinDetailUseCase: GetBitcoinDetailUseCase,
     private val getEthereumDetailUseCase: GetEthereumDetailUseCase,
-    private val getSolanaDetailUseCase: GetSolanaDetailUseCase
+    private val getSolanaDetailUseCase: GetSolanaDetailUseCase,
+    private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase
 ) : ViewModel() {
 
     data class CoinDetailState(
@@ -121,10 +122,12 @@ class CoinDetailViewModel @Inject constructor(
     }
 
     private fun updateStateWithBitcoinData(data: BitcoinDetailResult) {
-        Log.d("CoinDetailVM", "Updating with ${data.transactions.size} Bitcoin transactions")
-        data.transactions.forEachIndexed { index, tx ->
-            Log.d("CoinDetailVM", "  Tx $index: ${tx.formattedAmount} BTC, ${tx.status}")
+        // Format transactions using the use case in ViewModel
+        val displayTransactions = data.rawTransactions.map { transaction ->
+            formatTransactionDisplayUseCase(transaction, CoinType.BITCOIN)
         }
+
+        Log.d("CoinDetailVM", "Updating with ${displayTransactions.size} Bitcoin transactions")
 
         _state.update {
             it.copy(
@@ -135,7 +138,7 @@ class CoinDetailViewModel @Inject constructor(
                 usdValue = data.usdValue,
                 network = data.network,
                 networkDisplayName = data.networkDisplayName,
-                transactions = data.transactions,
+                transactions = displayTransactions,
                 isLoading = false,
                 isRefreshing = false
             )
@@ -143,6 +146,14 @@ class CoinDetailViewModel @Inject constructor(
     }
 
     private fun updateStateWithEthereumData(data: EthereumDetailResult) {
+        // Determine coin type for formatting
+        val coinType = if (data.token is USDCToken) CoinType.USDC else CoinType.ETHEREUM
+
+        // Format transactions using the use case in ViewModel
+        val displayTransactions = data.rawTransactions.map { transaction ->
+            formatTransactionDisplayUseCase(transaction, coinType)
+        }
+
         _state.update {
             it.copy(
                 walletId = data.walletId,
@@ -152,7 +163,7 @@ class CoinDetailViewModel @Inject constructor(
                 usdValue = data.usdValue,
                 network = data.network,
                 networkDisplayName = data.networkDisplayName,
-                transactions = data.transactions,
+                transactions = displayTransactions,
                 ethGasBalance = data.ethGasBalance,
                 evmTokens = listOf(data.token),
                 externalTokenId = data.externalTokenId,
@@ -163,6 +174,11 @@ class CoinDetailViewModel @Inject constructor(
     }
 
     private fun updateStateWithSolanaData(data: SolanaDetailResult) {
+        // Format transactions using the use case in ViewModel
+        val displayTransactions = data.rawTransactions.map { transaction ->
+            formatTransactionDisplayUseCase(transaction, CoinType.SOLANA)
+        }
+
         _state.update {
             it.copy(
                 walletId = data.walletId,
@@ -172,7 +188,7 @@ class CoinDetailViewModel @Inject constructor(
                 usdValue = data.usdValue,
                 network = data.network,
                 networkDisplayName = data.networkDisplayName,
-                transactions = data.transactions,
+                transactions = displayTransactions,
                 splTokens = data.splTokens,
                 isLoading = false,
                 isRefreshing = false
