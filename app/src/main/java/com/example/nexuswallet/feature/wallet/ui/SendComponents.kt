@@ -1463,8 +1463,11 @@ fun rememberSendErrorState(
 ): SendErrorState {
 
     val showAddressError = !addressFocused && addressTouched && validationResult.addressError != null
-    val showAmountError = !amountFocused && amountTouched && (validationResult.amountError != null || validationResult.balanceError != null)
     val showSelfSendError = !addressFocused && addressTouched && validationResult.selfSendError != null
+
+    // Only show amount errors if amount field has been touched
+    val showAmountError = !amountFocused && amountTouched && validationResult.amountError != null
+    val showBalanceError = !amountFocused && amountTouched && validationResult.balanceError != null
     val showGasError = !amountFocused && amountTouched && validationResult.gasError != null
 
     val activeError = when {
@@ -1473,9 +1476,8 @@ fun rememberSendErrorState(
                 showSelfSendError -> validationResult.selfSendError
                 showAddressError -> validationResult.addressError
                 showGasError -> validationResult.gasError
-                showAmountError -> {
-                    validationResult.amountError ?: validationResult.balanceError
-                }
+                showAmountError -> validationResult.amountError
+                showBalanceError -> validationResult.balanceError
                 else -> null
             }
         }
@@ -1485,7 +1487,7 @@ fun rememberSendErrorState(
     return SendErrorState(
         showAddressError = showAddressError,
         showAmountError = showAmountError,
-        showBalanceError = !amountFocused && amountTouched && validationResult.balanceError != null,
+        showBalanceError = showBalanceError,
         showSelfSendError = showSelfSendError,
         showGasError = showGasError,
         activeError = activeError,
@@ -1496,8 +1498,8 @@ fun rememberSendErrorState(
         },
         amountErrorMessage = when {
             showGasError -> validationResult.gasError
-            validationResult.amountError != null -> validationResult.amountError
-            validationResult.balanceError != null -> validationResult.balanceError
+            showAmountError -> validationResult.amountError
+            showBalanceError -> validationResult.balanceError
             else -> null
         }
     )

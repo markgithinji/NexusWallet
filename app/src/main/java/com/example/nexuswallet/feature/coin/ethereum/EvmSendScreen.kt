@@ -167,7 +167,13 @@ fun EthereumSendScreen(
         NetworkType.ETHEREUM_SEPOLIA
     )
 
-    // Use the common error state calculator
+    // Determine the current coin type for the amount input
+    val currentCoinType = when {
+        selectedToken is USDCToken -> CoinType.USDC
+        selectedToken is USDTToken -> CoinType.USDC // Treat USDT as USDC for USD price
+        else -> CoinType.ETHEREUM
+    }
+
     val errorState = rememberSendErrorState(
         validationResult = state.validationResult,
         addressTouched = addressTouched,
@@ -275,7 +281,7 @@ fun EthereumSendScreen(
                     )
                 }
 
-                // Error Banner - only show if there's an active error and no field is focused
+                // Error Banner
                 if (errorState.activeError != null) {
                     ErrorMessage(
                         error = errorState.activeError,
@@ -292,6 +298,10 @@ fun EthereumSendScreen(
                     },
                     onFocusChange = { isFocused ->
                         addressFocused = isFocused
+                        // Mark as touched when focus leaves and field has content
+                        if (!isFocused && state.toAddress.isNotEmpty()) {
+                            addressTouched = true
+                        }
                     },
                     placeholder = "Enter Ethereum address (0x...)",
                     isValid = !errorState.showAddressError && !errorState.showSelfSendError,
@@ -303,16 +313,20 @@ fun EthereumSendScreen(
                     focusRequester = addressFocusRequester
                 )
 
-                // Amount Input
+                // Amount Input - FIXED: Use currentCoinType instead of hardcoded BITCOIN
                 SendAmountInput(
                     amount = state.amount,
-                    coinType = CoinType.BITCOIN,
+                    coinType = currentCoinType,
                     onAmountChange = {
                         amountTouched = true
                         viewModel.onEvent(EthereumSendEvent.AmountChanged(it))
                     },
                     onFocusChange = { isFocused ->
                         amountFocused = isFocused
+                        // Mark as touched when focus leaves and field has content
+                        if (!isFocused && state.amount.isNotEmpty()) {
+                            amountTouched = true
+                        }
                     },
                     balance = if (selectedToken is NativeETH) state.ethBalance else state.tokenBalance,
                     symbol = selectedToken?.symbol ?: "ETH",

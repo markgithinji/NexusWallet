@@ -123,11 +123,9 @@ fun SolanaSendScreen(
                             NetworkType.SOLANA_MAINNET -> {
                                 viewModel.switchNetwork(SolanaNetwork.Mainnet)
                             }
-
                             NetworkType.SOLANA_DEVNET -> {
                                 viewModel.switchNetwork(SolanaNetwork.Devnet)
                             }
-
                             else -> {}
                         }
                         showNetworkSelector = false
@@ -160,7 +158,7 @@ fun SolanaSendScreen(
                     network = currentNetworkName
                 )
 
-                // Error Banner - only show if there's an active error and no field is focused
+                // Error Banner
                 if (errorState.activeError != null) {
                     ErrorMessage(
                         error = errorState.activeError,
@@ -177,6 +175,10 @@ fun SolanaSendScreen(
                     },
                     onFocusChange = { isFocused ->
                         addressFocused = isFocused
+                        // Mark as touched when focus leaves and field has content
+                        if (!isFocused && state.toAddress.isNotEmpty()) {
+                            addressTouched = true
+                        }
                     },
                     placeholder = "Enter Solana address",
                     isValid = !errorState.showAddressError && !errorState.showSelfSendError,
@@ -191,13 +193,17 @@ fun SolanaSendScreen(
                 // Amount Input
                 SendAmountInput(
                     amount = state.amount,
-                    coinType = CoinType.BITCOIN,
+                    coinType = CoinType.SOLANA,
                     onAmountChange = {
                         amountTouched = true
                         viewModel.onEvent(SolanaSendEvent.AmountChanged(it))
                     },
                     onFocusChange = { isFocused ->
                         amountFocused = isFocused
+                        // Mark as touched when focus leaves and field has content
+                        if (!isFocused && state.amount.isNotEmpty()) {
+                            amountTouched = true
+                        }
                     },
                     balance = state.balance,
                     symbol = "SOL",

@@ -39,6 +39,7 @@ import com.example.nexuswallet.feature.wallet.ui.SendBalanceCard
 import com.example.nexuswallet.feature.wallet.ui.SendBottomBar
 import com.example.nexuswallet.feature.wallet.ui.SendFeeSelection
 import com.example.nexuswallet.feature.wallet.ui.SendTopBar
+import com.example.nexuswallet.feature.wallet.ui.rememberSendErrorState
 import com.example.nexuswallet.ui.theme.bitcoinLight
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,24 +87,13 @@ fun BitcoinSendScreen(
         NetworkType.BITCOIN_TESTNET
     )
 
-    // Error calculations
-    val showAddressError = !addressFocused && addressTouched && state.validationResult.addressError != null
-    val showAmountError = !amountFocused && amountTouched && state.validationResult.amountError != null
-    val showBalanceError = !amountFocused && amountTouched && state.validationResult.balanceError != null
-    val showSelfSendError = !addressFocused && addressTouched && state.validationResult.selfSendError != null
-
-    val activeError = when {
-        !addressFocused && !amountFocused -> {
-            when {
-                showSelfSendError -> state.validationResult.selfSendError
-                showAddressError -> state.validationResult.addressError
-                showAmountError -> state.validationResult.amountError
-                showBalanceError -> state.validationResult.balanceError
-                else -> null
-            }
-        }
-        else -> null
-    }
+    val errorState = rememberSendErrorState(
+        validationResult = state.validationResult,
+        addressTouched = addressTouched,
+        amountTouched = amountTouched,
+        addressFocused = addressFocused,
+        amountFocused = amountFocused
+    )
 
     Scaffold(
         topBar = {
@@ -169,9 +159,9 @@ fun BitcoinSendScreen(
                 )
 
                 // Error Banner
-                if (activeError != null) {
+                if (errorState.activeError != null) {
                     ErrorMessage(
-                        error = activeError,
+                        error = errorState.activeError,
                         onDismiss = { viewModel.clearError() }
                     )
                 }
@@ -185,19 +175,17 @@ fun BitcoinSendScreen(
                     },
                     onFocusChange = { isFocused ->
                         addressFocused = isFocused
+                        // Mark as touched when focus leaves and field has content
+                        if (!isFocused && state.toAddress.isNotEmpty()) {
+                            addressTouched = true
+                        }
                     },
                     placeholder = if (state.network == BitcoinNetwork.Testnet)
                         "Enter Bitcoin testnet address"
                     else
                         "Enter Bitcoin address",
-                    isValid = !showAddressError && !showSelfSendError,
-                    errorMessage = if (showAddressError || showSelfSendError) {
-                        when {
-                            showSelfSendError -> state.validationResult.selfSendError
-                            showAddressError -> state.validationResult.addressError
-                            else -> null
-                        }
-                    } else null,
+                    isValid = !errorState.showAddressError && !errorState.showSelfSendError,
+                    errorMessage = errorState.addressErrorMessage,
                     onPaste = { pastedText ->
                         addressTouched = true
                         viewModel.handleEvent(BitcoinSendEvent.UpdateAddress(pastedText))
@@ -215,6 +203,10 @@ fun BitcoinSendScreen(
                     },
                     onFocusChange = { isFocused ->
                         amountFocused = isFocused
+                        // Mark as touched when focus leaves and field has content
+                        if (!isFocused && state.amount.isNotEmpty()) {
+                            amountTouched = true
+                        }
                     },
                     balance = state.balance,
                     symbol = "BTC",
@@ -223,13 +215,7 @@ fun BitcoinSendScreen(
                         amountTouched = true
                         showMaxDialog = true
                     },
-                    errorMessage = if (!amountFocused && amountTouched && (showAmountError || showBalanceError)) {
-                        when {
-                            showAmountError -> state.validationResult.amountError
-                            showBalanceError -> state.validationResult.balanceError
-                            else -> null
-                        }
-                    } else null,
+                    errorMessage = errorState.amountErrorMessage,
                     focusRequester = amountFocusRequester
                 )
 
@@ -250,7 +236,7 @@ fun BitcoinSendScreen(
             SendBottomBar(
                 isValid = state.isValid,
                 isLoading = state.isLoading,
-                error = activeError,
+                error = errorState.activeError,
                 onSend = {
                     focusManager.clearFocus()
                     val currentNetwork = when (state.network) {
