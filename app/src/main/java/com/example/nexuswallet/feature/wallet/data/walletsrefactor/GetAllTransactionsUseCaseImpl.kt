@@ -1,11 +1,11 @@
 package com.example.nexuswallet.feature.wallet.data.walletsrefactor
 
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
+import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.EVMTransaction
-import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
-import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
@@ -13,21 +13,14 @@ import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
 import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.GetAllTransactionsUseCase
+import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import kotlinx.coroutines.flow.flowOn
 
 @Singleton
 class GetAllTransactionsUseCaseImpl @Inject constructor(
@@ -43,89 +36,55 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
 
     private val tag = "GetAllTransactionsUC"
 
+    // Fetches from network and returns combined list
     override suspend operator fun invoke(walletId: String): List<Any> {
         logger.d(tag, "Fetching all transactions for wallet: $walletId")
+
+        // This will do network calls and save to DB
+        refreshTransactions(walletId)
+
+        // Then return cached transactions
+        return getCachedTransactions(walletId)
+    }
+
+    // Only gets from local DB, no network calls
+    override suspend fun getCachedTransactions(walletId: String): List<Any> {
+        logger.d(tag, "Getting cached transactions for wallet: $walletId")
 
         val wallet = walletRepository.getWallet(walletId) ?: return emptyList()
         val allTransactions = mutableListOf<Any>()
 
-        var btcMainnetCount = 0
-        var btcTestnetCount = 0
-        var evmNativeCount = 0
-        var evmTokenCount = 0
-        var solMainnetCount = 0
-        var solDevnetCount = 0
-
-        // Fetch and collect Bitcoin transactions
+        // Bitcoin transactions from local DB only
         wallet.bitcoinCoins.forEach { coin ->
-            fetchBitcoinTransactions(walletId, coin)
-
-            // Then read from local DB using SYNC method
             val networkStr = when (coin.network) {
                 BitcoinNetwork.Mainnet -> "mainnet"
                 BitcoinNetwork.Testnet -> "testnet"
             }
             val transactions = bitcoinTransactionRepository.getTransactionsSync(walletId, networkStr)
             allTransactions.addAll(transactions)
-
-            if (coin.network == BitcoinNetwork.Mainnet) {
-                btcMainnetCount += transactions.size
-            } else {
-                btcTestnetCount += transactions.size
-            }
         }
 
-        // Fetch EVM transactions (native + tokens)
-        val evmAddresses = wallet.evmTokens.map { it.address }.distinct()
-        evmAddresses.forEach { address ->
-            // Fetch native ETH transactions for each network
-            val tokensByNetwork = wallet.evmTokens.filter { it.address == address }.groupBy { it.network }
+        // EVM transactions from local DB only
+        val nativeTransactions = evmTransactionRepository.getNativeTransactionsSync(walletId)
+        allTransactions.addAll(nativeTransactions)
 
-            tokensByNetwork.forEach { (network, tokens) ->
-                val nativeToken = tokens.find { it is NativeETH }
-                fetchEVMNativeTransactions(walletId, address, network, nativeToken?.externalId)
+        val allEvmTransactions = evmTransactionRepository.getTransactionsSync(walletId)
+        allTransactions.addAll(allEvmTransactions)
 
-                // Fetch token transactions for each token on this network
-                tokens.filter { it.contractAddress != "0x0000000000000000000000000000000000000000" }
-                    .forEach { token ->
-                        fetchEVMTokenTransactions(walletId, address, token)
-                    }
-            }
-
-            // Then read from local DB using SYNC methods
-            val nativeTransactions = evmTransactionRepository.getNativeTransactionsSync(walletId)
-            evmNativeCount += nativeTransactions.size
-            allTransactions.addAll(nativeTransactions)
-
-            val allEvmTransactions = evmTransactionRepository.getTransactionsSync(walletId)
-            evmTokenCount += allEvmTransactions.size - nativeTransactions.size
-            allTransactions.addAll(allEvmTransactions)
-        }
-
-        // Fetch Solana transactions
+        // Solana transactions from local DB only
         wallet.solanaCoins.forEach { coin ->
-            fetchSolanaTransactions(walletId, coin)
-
-            // Then read from local DB using SYNC methods
             val networkStr = when (coin.network) {
                 SolanaNetwork.Mainnet -> "mainnet"
                 SolanaNetwork.Devnet -> "devnet"
             }
             val nativeTransactions = solanaTransactionRepository.getNativeTransactionsSync(walletId, networkStr)
             val tokenTransactions = solanaTransactionRepository.getTransactionsSync(walletId, networkStr)
-
             allTransactions.addAll(nativeTransactions)
             allTransactions.addAll(tokenTransactions)
-
-            if (coin.network == SolanaNetwork.Mainnet) {
-                solMainnetCount += nativeTransactions.size + tokenTransactions.size
-            } else {
-                solDevnetCount += nativeTransactions.size + tokenTransactions.size
-            }
         }
 
-        // Sort all transactions by timestamp descending (newest first)
-        val sortedTransactions = allTransactions.sortedByDescending { transaction ->
+        // Sort by timestamp descending
+        return allTransactions.sortedByDescending { transaction ->
             when (transaction) {
                 is BitcoinTransaction -> transaction.timestamp
                 is EVMTransaction -> transaction.timestamp
@@ -133,11 +92,41 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
                 else -> 0L
             }
         }
+    }
 
-        logger.d(tag, "Retrieved transactions - BTC Mainnet: $btcMainnetCount, BTC Testnet: $btcTestnetCount, EVM: ${evmNativeCount + evmTokenCount} (Native: $evmNativeCount, Token: $evmTokenCount), SOL Mainnet: $solMainnetCount, SOL Devnet: $solDevnetCount")
-        logger.d(tag, "Returning ${sortedTransactions.size} total transactions")
+    // Only does network calls, doesn't return data
+    override suspend fun refreshTransactions(walletId: String) {
+        logger.d(tag, "Refreshing transactions for wallet: $walletId")
 
-        return sortedTransactions
+        val wallet = walletRepository.getWallet(walletId) ?: return
+
+        // Fetch Bitcoin transactions
+        wallet.bitcoinCoins.forEach { coin ->
+            fetchBitcoinTransactions(walletId, coin)
+        }
+
+        // Fetch EVM transactions
+        val evmAddresses = wallet.evmTokens.map { it.address }.distinct()
+        evmAddresses.forEach { address ->
+            val tokensByNetwork = wallet.evmTokens.filter { it.address == address }.groupBy { it.network }
+
+            tokensByNetwork.forEach { (network, tokens) ->
+                val nativeToken = tokens.find { it is NativeETH }
+                fetchEVMNativeTransactions(walletId, address, network, nativeToken?.externalId)
+
+                tokens.filter { it.contractAddress != "0x0000000000000000000000000000000000000000" }
+                    .forEach { token ->
+                        fetchEVMTokenTransactions(walletId, address, token)
+                    }
+            }
+        }
+
+        // Fetch Solana transactions
+        wallet.solanaCoins.forEach { coin ->
+            fetchSolanaTransactions(walletId, coin)
+        }
+
+        logger.d(tag, "Transaction refresh completed")
     }
 
     override fun observeTransactions(walletId: String): Flow<List<Any>> {
@@ -152,14 +141,12 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
         ) { btcMainnet, btcTestnet, evm, solMainnet, solDevnet ->
             val allTransactions = mutableListOf<Any>()
 
-            // Add ALL transaction types
             allTransactions.addAll(btcMainnet)
             allTransactions.addAll(btcTestnet)
             allTransactions.addAll(evm)
             allTransactions.addAll(solMainnet)
             allTransactions.addAll(solDevnet)
 
-            // Sort by timestamp descending (newest first)
             allTransactions.sortedByDescending { transaction ->
                 when (transaction) {
                     is BitcoinTransaction -> transaction.timestamp
@@ -168,7 +155,6 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
                     else -> 0L
                 }
             }.also { sortedList ->
-                // Add debug logging to verify what's being emitted
                 val btcCount = sortedList.count { it is BitcoinTransaction }
                 val evmCount = sortedList.count { it is EVMTransaction }
                 val solCount = sortedList.count { it is SolanaTransaction }
