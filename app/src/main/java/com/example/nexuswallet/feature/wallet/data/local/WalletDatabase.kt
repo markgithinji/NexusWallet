@@ -80,7 +80,7 @@ abstract class WalletDatabase : RoomDatabase() {
                     WalletDatabase::class.java,
                     "wallet_database"
                 )
-                     .fallbackToDestructiveMigration()
+//                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

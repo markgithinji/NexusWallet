@@ -69,8 +69,8 @@ class WalletDetailViewModel @Inject constructor(
 
     // Cache expiration times
     private companion object {
-        const val BALANCE_CACHE_TIME = 2 * 60 * 1000      // 2 minutes
-        const val TRANSACTIONS_CACHE_TIME = 5 * 60 * 1000 // 5 minutes
+        const val BALANCE_CACHE_TIME = 0 * 60 * 1000      // 2 minutes
+        const val TRANSACTIONS_CACHE_TIME = 0 * 60 * 1000 // 5 minutes
     }
 
     fun loadWallet(walletId: String) {
