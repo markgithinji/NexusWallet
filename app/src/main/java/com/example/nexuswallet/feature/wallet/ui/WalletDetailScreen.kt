@@ -96,6 +96,7 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
@@ -222,7 +223,7 @@ fun WalletDetailScreen(
             WalletDetailContent(
                 wallet = currentWallet,
                 balance = uiState.balance,
-                transactions = uiState.transactions,
+                transactions = uiState.transactions, // Now List<TransactionDisplayInfo>
                 pricePercentages = uiState.pricePercentages,
                 totalUsdValue = walletViewModel.getTotalUsdValue(),
                 hasSyncError = uiState.hasSyncError,
@@ -250,7 +251,7 @@ fun WalletDetailScreen(
 fun WalletDetailContent(
     wallet: Wallet,
     balance: WalletBalance?,
-    transactions: List<Any>,
+    transactions: List<TransactionDisplayInfo>, // Changed from List<Any> to List<TransactionDisplayInfo>
     pricePercentages: Map<String, Double>,
     totalUsdValue: Double,
     hasSyncError: Boolean,
@@ -339,8 +340,7 @@ fun WalletDetailContent(
                     onClick = {
                         onNavigateToCoinDetail(wallet.id, CoinType.BITCOIN, network)
                     },
-                    priceChangePercentage = percentage,
-                    isLoading = isLoadingBalance && coinBalance == null
+                    priceChangePercentage = percentage
                 )
             }
         }
@@ -361,8 +361,7 @@ fun WalletDetailContent(
                     onClick = {
                         onNavigateToCoinDetail(wallet.id, CoinType.SOLANA, network)
                     },
-                    priceChangePercentage = percentage,
-                    isLoading = isLoadingBalance && coinBalance == null
+                    priceChangePercentage = percentage
                 )
             }
         }
@@ -398,8 +397,7 @@ fun WalletDetailContent(
                     onClick = {
                         onNavigateToCoinDetail(wallet.id, coinType, network)
                     },
-                    priceChangePercentage = percentage,
-                    isLoading = isLoadingBalance && tokenBalance == null
+                    priceChangePercentage = percentage
                 )
             }
         }
@@ -431,8 +429,7 @@ fun WalletDetailContent(
                     onClick = {
                         onNavigateToCoinDetail(wallet.id, coinType, network)
                     },
-                    priceChangePercentage = percentage,
-                    isLoading = isLoadingBalance && tokenBalance == null
+                    priceChangePercentage = percentage
                 )
             }
         }
@@ -457,7 +454,7 @@ fun WalletDetailContent(
         // ============ TRANSACTIONS ============
         item {
             TransactionsContainer(
-                transactions = transactions,
+                transactions = transactions, // Now passing List<TransactionDisplayInfo>
                 wallet = wallet,
                 isLoading = isLoadingTransactions,
                 loadingMessage = transactionsLoadingMessage,
@@ -592,7 +589,7 @@ fun WalletHeaderCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Quick Actions
+            // In WalletHeaderCard
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -602,14 +599,14 @@ fun WalletHeaderCard(
                     icon = Icons.Outlined.ArrowDownward,
                     label = "Receive",
                     onClick = onReceive,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.success, // Green for receive
                     modifier = Modifier.weight(1f)
                 )
                 QuickActionItem(
                     icon = Icons.Outlined.ArrowUpward,
                     label = "Send",
                     onClick = onSend,
-                    color = MaterialTheme.colorScheme.success,
+                    color = MaterialTheme.colorScheme.primary, // Blue for send
                     modifier = Modifier.weight(1f)
                 )
                 QuickActionItem(
@@ -733,7 +730,7 @@ fun BitcoinCoinCard(
 
 @Composable
 fun TransactionsContainer(
-    transactions: List<Any>,
+    transactions: List<TransactionDisplayInfo>, // Now takes formatted transactions directly
     wallet: Wallet,
     isLoading: Boolean = false,
     loadingMessage: String = "Loading transactions...",
@@ -819,20 +816,23 @@ fun TransactionsContainer(
                     textAlign = TextAlign.Center
                 )
             } else if (transactions.isNotEmpty()) {
-                // Show actual transactions
+                // Show actual transactions - directly using pre-formatted TransactionDisplayInfo
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    transactions.take(3).forEachIndexed { index, transaction ->
+                    transactions.take(3).forEachIndexed { index, displayInfo ->
+                        // No mapping needed - TransactionDisplayInfo already contains all data
                         TransactionItem(
-                            transaction = transaction,
-                            wallet = wallet
+                            transaction = displayInfo,
+                            coinType = displayInfo.coinType, // Now TransactionDisplayInfo includes coinType
+                            modifier = Modifier
                         )
 
                         if (index < 2) {
                             Divider(
                                 color = MaterialTheme.colorScheme.outline,
-                                thickness = 1.dp
+                                thickness = 1.dp,
+                                modifier = Modifier.padding(vertical = 4.dp)
                             )
                         }
                     }
@@ -1484,82 +1484,6 @@ fun formatCryptoAmount(amount: String): String {
 }
 
 @Composable
-fun TransactionsContainer(
-    transactions: List<Any>,
-    wallet: Wallet,
-    onViewAll: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            // Header with "Recent Transactions" and "See All" button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Recent Transactions",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                TextButton(
-                    onClick = onViewAll,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "See All",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Icon(
-                        imageVector = Icons.Outlined.ArrowForward,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Transaction list
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                transactions.take(3).forEachIndexed { index, transaction ->
-                    TransactionItem(
-                        transaction = transaction,
-                        wallet = wallet
-                    )
-
-                    if (index < 2) {
-                        Divider(
-                            color = MaterialTheme.colorScheme.outline,
-                            thickness = 1.dp
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun SectionHeader(
     title: String,
     actionText: String? = null,
@@ -1595,193 +1519,6 @@ fun SectionHeader(
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
-            }
-        }
-    }
-}
-
-@Composable
-fun TransactionItem(
-    transaction: Any,
-    wallet: Wallet
-) {
-    val (isIncoming, amount, symbol, status, timestamp) = when (transaction) {
-        is BitcoinTransaction -> {
-            // Find the Bitcoin coin that matches this transaction
-            val bitcoinCoin =
-                wallet.bitcoinCoins.find { it.address == transaction.toAddress || it.address == transaction.fromAddress }
-            val isIncoming = transaction.toAddress == bitcoinCoin?.address
-            TransactionDisplayData(
-                isIncoming = isIncoming,
-                amount = transaction.amountBtc,
-                symbol = "BTC",
-                status = transaction.status,
-                timestamp = transaction.timestamp
-            )
-        }
-
-        is SolanaTransaction -> {
-            // Find the Solana coin that matches this transaction
-            val solanaCoin =
-                wallet.solanaCoins.find { it.address == transaction.toAddress || it.address == transaction.fromAddress }
-            val isIncoming = transaction.toAddress == solanaCoin?.address
-            TransactionDisplayData(
-                isIncoming = isIncoming,
-                amount = transaction.amountSol,
-                symbol = if (transaction.tokenSymbol != null) transaction.tokenSymbol else "SOL",
-                status = transaction.status,
-                timestamp = transaction.timestamp
-            )
-        }
-
-        is NativeETHTransaction -> {
-            // Find any EVM token with the same address (Native ETH uses same address)
-            val evmToken =
-                wallet.evmTokens.firstOrNull { it.address == transaction.toAddress || it.address == transaction.fromAddress }
-            val isIncoming = transaction.toAddress == evmToken?.address
-            TransactionDisplayData(
-                isIncoming = isIncoming,
-                amount = transaction.amountEth,
-                symbol = "ETH",
-                status = transaction.status,
-                timestamp = transaction.timestamp
-            )
-        }
-
-        is TokenTransaction -> {
-            // Find the specific token that matches this transaction
-            val evmToken = wallet.evmTokens.find {
-                it.contractAddress == transaction.tokenContract &&
-                        (it.address == transaction.toAddress || it.address == transaction.fromAddress)
-            }
-            val isIncoming = transaction.toAddress == evmToken?.address
-            TransactionDisplayData(
-                isIncoming = isIncoming,
-                amount = transaction.amountDecimal,
-                symbol = transaction.tokenSymbol,
-                status = transaction.status,
-                timestamp = transaction.timestamp
-            )
-        }
-
-        else -> return
-    }
-
-    // Format the amount to remove unnecessary zeros
-    val formattedAmount = try {
-        val amountDecimal = amount.toBigDecimal()
-
-        // For very small amounts, show up to 6 decimal places
-        val maxDecimals = when {
-            amountDecimal < BigDecimal("0.000001") -> 8
-            amountDecimal < BigDecimal("0.001") -> 6
-            amountDecimal < BigDecimal("1") -> 4
-            else -> 2
-        }
-
-        amountDecimal.stripTrailingZeros().let {
-            if (it.scale() > maxDecimals) {
-                it.setScale(maxDecimals, RoundingMode.HALF_UP)
-            } else it
-        }.toPlainString()
-    } catch (e: Exception) {
-        amount
-    }
-
-    val (statusColor, statusBgColor) = when (status) {
-        TransactionStatus.SUCCESS -> Pair(
-            MaterialTheme.colorScheme.success,
-            MaterialTheme.colorScheme.success.copy(alpha = 0.1f)
-        )
-
-        TransactionStatus.PENDING -> Pair(
-            MaterialTheme.colorScheme.warning,
-            MaterialTheme.colorScheme.warning.copy(alpha = 0.1f)
-        )
-
-        TransactionStatus.FAILED -> Pair(
-            MaterialTheme.colorScheme.error,
-            MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-        )
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Status icon
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(statusBgColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isIncoming) Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward,
-                    contentDescription = if (isIncoming) "Received" else "Sent",
-                    tint = statusColor,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Transaction details
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = if (isIncoming) "Received $symbol" else "Sent $symbol",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1
-                )
-                Text(
-                    text = formatTimestamp(timestamp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-            }
-
-            // Amount and status
-            Column(
-                horizontalAlignment = Alignment.End,
-                modifier = Modifier.widthIn(min = 80.dp, max = 120.dp)
-            ) {
-                Text(
-                    text = "${if (isIncoming) "+" else "-"}$formattedAmount $symbol",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isIncoming) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(statusBgColor)
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = status.name,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = statusColor,
-                        maxLines = 1
-                    )
-                }
             }
         }
     }

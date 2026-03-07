@@ -204,7 +204,7 @@ private fun CoinDetailContent(
     onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Get the network display name from the enum
+    // Get the network display name
     val networkDisplayName = network?.displayName ?: when (coinType) {
         CoinType.BITCOIN -> "Bitcoin"
         CoinType.ETHEREUM -> "Ethereum"
@@ -782,15 +782,17 @@ private fun CoinDetailTransactionsContainer(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 transactions.take(3).forEachIndexed { index, transaction ->
-                    CoinDetailTransactionItem(
+                    TransactionItem(
                         transaction = transaction,
-                        coinType = coinType
+                        coinType = coinType,
+                        modifier = Modifier
                     )
 
                     if (index < 2) {
                         Divider(
                             color = MaterialTheme.colorScheme.outline,
-                            thickness = 1.dp
+                            thickness = 1.dp,
+                            modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }
                 }
