@@ -6,7 +6,6 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TransactionDisplayInfo
 import java.math.BigDecimal
 
 // Base result interface
@@ -18,7 +17,7 @@ sealed interface CoinDetailResult {
     val usdValue: Double
     val network: String
     val networkDisplayName: String
-    val transactions: List<TransactionDisplayInfo>
+    val rawTransactions: List<Any>
 }
 
 // Bitcoin specific result
@@ -30,7 +29,7 @@ data class BitcoinDetailResult(
     override val usdValue: Double,
     override val network: String,
     override val networkDisplayName: String,
-    override val transactions: List<TransactionDisplayInfo>,
+    override val rawTransactions: List<Any>,
     val bitcoinCoin: BitcoinCoin,
     val availableNetworks: List<BitcoinNetwork>
 ) : CoinDetailResult
@@ -44,7 +43,7 @@ data class EthereumDetailResult(
     override val usdValue: Double,
     override val network: String,
     override val networkDisplayName: String,
-    override val transactions: List<TransactionDisplayInfo>,
+    override val rawTransactions: List<Any>,
     val token: EVMToken,
     val externalTokenId: String,
     val ethGasBalance: BigDecimal? = null,
@@ -61,7 +60,7 @@ data class SolanaDetailResult(
     override val usdValue: Double,
     override val network: String,
     override val networkDisplayName: String,
-    override val transactions: List<TransactionDisplayInfo>,
+    override val rawTransactions: List<Any>,
     val solanaCoin: SolanaCoin,
     val splTokens: List<SPLToken>,
     val availableNetworks: List<SolanaNetwork>
