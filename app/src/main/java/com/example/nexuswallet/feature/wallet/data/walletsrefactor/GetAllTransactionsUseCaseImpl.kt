@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import javax.inject.Singleton
-
 @Singleton
 class GetAllTransactionsUseCaseImpl @Inject constructor(
     private val walletRepository: WalletRepository,
@@ -57,8 +56,8 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
         // Bitcoin transactions from local DB only
         wallet.bitcoinCoins.forEach { coin ->
             val networkStr = when (coin.network) {
-                BitcoinNetwork.Mainnet -> "mainnet"
-                BitcoinNetwork.Testnet -> "testnet"
+                BitcoinNetwork.Mainnet -> BitcoinNetwork.Mainnet.name
+                BitcoinNetwork.Testnet -> BitcoinNetwork.Testnet.name
             }
             val transactions = bitcoinTransactionRepository.getTransactionsSync(walletId, networkStr)
             allTransactions.addAll(transactions)
@@ -74,8 +73,8 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
         // Solana transactions from local DB only
         wallet.solanaCoins.forEach { coin ->
             val networkStr = when (coin.network) {
-                SolanaNetwork.Mainnet -> "mainnet"
-                SolanaNetwork.Devnet -> "devnet"
+                SolanaNetwork.Mainnet -> SolanaNetwork.Mainnet.name
+                SolanaNetwork.Devnet -> SolanaNetwork.Devnet.name
             }
             val nativeTransactions = solanaTransactionRepository.getNativeTransactionsSync(walletId, networkStr)
             val tokenTransactions = solanaTransactionRepository.getTransactionsSync(walletId, networkStr)
@@ -133,11 +132,11 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
         logger.d(tag, "Setting up transaction observation for wallet: $walletId")
 
         return combine(
-            bitcoinTransactionRepository.getTransactions(walletId, "mainnet"),
-            bitcoinTransactionRepository.getTransactions(walletId, "testnet"),
+            bitcoinTransactionRepository.getTransactions(walletId, BitcoinNetwork.Mainnet.name),
+            bitcoinTransactionRepository.getTransactions(walletId, BitcoinNetwork.Testnet.name),
             evmTransactionRepository.getTransactions(walletId),
-            solanaTransactionRepository.getTransactions(walletId, "mainnet"),
-            solanaTransactionRepository.getTransactions(walletId, "devnet")
+            solanaTransactionRepository.getTransactions(walletId, SolanaNetwork.Mainnet.name),
+            solanaTransactionRepository.getTransactions(walletId, SolanaNetwork.Devnet.name)
         ) { btcMainnet, btcTestnet, evm, solMainnet, solDevnet ->
             val allTransactions = mutableListOf<Any>()
 
@@ -176,6 +175,13 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
 
             when (result) {
                 is Result.Success -> {
+                    // Delete old transactions for this network first
+                    val networkStr = when (coin.network) {
+                        BitcoinNetwork.Mainnet -> BitcoinNetwork.Mainnet.name
+                        BitcoinNetwork.Testnet -> BitcoinNetwork.Testnet.name
+                    }
+                    bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, networkStr)
+
                     val transactions = result.data.map { dto ->
                         BitcoinTransaction(
                             id = dto.txid,
@@ -294,6 +300,13 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
 
             when (result) {
                 is Result.Success -> {
+                    // Delete old transactions for this network first
+                    val networkStr = when (coin.network) {
+                        SolanaNetwork.Mainnet -> SolanaNetwork.Mainnet.name
+                        SolanaNetwork.Devnet -> SolanaNetwork.Devnet.name
+                    }
+                    solanaTransactionRepository.deleteForWalletAndNetwork(walletId, networkStr)
+
                     val transactions = result.data.mapNotNull { (sigInfo, details) ->
                         if (details == null) return@mapNotNull null
 
