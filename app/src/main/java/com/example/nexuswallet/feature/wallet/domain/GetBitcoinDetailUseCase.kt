@@ -52,7 +52,6 @@ class GetBitcoinDetailUseCaseImpl @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-    private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
     private val logger: Logger
 ) : GetBitcoinDetailUseCase {
 
@@ -120,15 +119,10 @@ class GetBitcoinDetailUseCaseImpl @Inject constructor(
             val coinBalance = balance?.bitcoinBalances?.get(networkKey)
             logger.d(tag, "Balance for $networkKey: ${coinBalance?.btc ?: "0"} BTC")
 
-            // 5. Get transactions from local DB
+            // 5. Get raw transactions from local DB
             logger.d(tag, "Querying transactions with walletId=$walletId, network=$networkParam")
-            val transactions = bitcoinTransactionRepository.getTransactionsSync(walletId, networkParam)
-            logger.d(tag, "Retrieved ${transactions.size} transactions from DB for $networkParam")
-
-            val displayTransactions = formatTransactionDisplayUseCase.formatTransactionList(
-                transactions,
-                CoinType.BITCOIN
-            )
+            val rawTransactions = bitcoinTransactionRepository.getTransactionsSync(walletId, networkParam)
+            logger.d(tag, "Retrieved ${rawTransactions.size} raw transactions from DB for $networkParam")
 
             val result = BitcoinDetailResult(
                 walletId = walletId,
@@ -138,12 +132,12 @@ class GetBitcoinDetailUseCaseImpl @Inject constructor(
                 usdValue = coinBalance?.usdValue ?: 0.0,
                 network = bitcoinCoin.network.name,
                 networkDisplayName = if (bitcoinCoin.network == BitcoinNetwork.Mainnet) "Mainnet" else "Testnet",
-                transactions = displayTransactions,
+                rawTransactions = rawTransactions,
                 bitcoinCoin = bitcoinCoin,
                 availableNetworks = wallet.bitcoinCoins.map { it.network }
             )
 
-            logger.d(tag, "Successfully retrieved Bitcoin details with ${displayTransactions.size} transactions")
+            logger.d(tag, "Successfully retrieved Bitcoin details with ${rawTransactions.size} raw transactions")
             Result.Success(result)
 
         } catch (e: Exception) {

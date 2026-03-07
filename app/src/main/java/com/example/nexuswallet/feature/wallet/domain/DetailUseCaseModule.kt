@@ -37,7 +37,6 @@ object DetailUseCaseModule {
             walletRepository = walletRepository,
             bitcoinTransactionRepository = bitcoinTransactionRepository,
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
-            formatTransactionDisplayUseCase = formatTransactionDisplayUseCase,
             logger = logger
         )
     }
@@ -55,7 +54,6 @@ object DetailUseCaseModule {
             walletRepository = walletRepository,
             evmTransactionRepository = evmTransactionRepository,
             evmBlockchainRepository = evmBlockchainRepository,
-            formatTransactionDisplayUseCase = formatTransactionDisplayUseCase,
             logger = logger
         )
     }
@@ -73,7 +71,6 @@ object DetailUseCaseModule {
             walletRepository = walletRepository,
             solanaTransactionRepository = solanaTransactionRepository,
             solanaBlockchainRepository = solanaBlockchainRepository,
-            formatTransactionDisplayUseCase = formatTransactionDisplayUseCase,
             logger = logger
         )
     }

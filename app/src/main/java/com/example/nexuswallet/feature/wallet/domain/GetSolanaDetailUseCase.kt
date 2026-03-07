@@ -57,7 +57,6 @@ class GetSolanaDetailUseCaseImpl @Inject constructor(
     private val walletRepository: WalletRepository,
     private val solanaTransactionRepository: SolanaTransactionRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
-    private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
     private val logger: Logger
 ) : GetSolanaDetailUseCase {
 
@@ -149,14 +148,11 @@ class GetSolanaDetailUseCaseImpl @Inject constructor(
             }
             val coinBalance = balance?.solanaBalances?.get(networkKey)
 
-            // 5. Get transactions from local DB
+            // 5. Get raw transactions from local DB
             val transactions = solanaTransactionRepository.getTransactionsSync(walletId, networkParam)
             val solTxs = transactions.filter { it.tokenSymbol == null }
-            val displayTransactions = formatTransactionDisplayUseCase.formatTransactionList(
-                solTxs,
-                CoinType.SOLANA
-            )
 
+            // Return raw transactions instead of formatted ones
             val result = SolanaDetailResult(
                 walletId = walletId,
                 address = solanaCoin.address,
@@ -168,13 +164,13 @@ class GetSolanaDetailUseCaseImpl @Inject constructor(
                     SolanaNetwork.Mainnet -> "Mainnet"
                     SolanaNetwork.Devnet -> "Devnet"
                 },
-                transactions = displayTransactions,
+                rawTransactions = solTxs,
                 solanaCoin = solanaCoin,
                 splTokens = solanaCoin.splTokens,
                 availableNetworks = wallet.solanaCoins.map { it.network }
             )
 
-            logger.d(tag, "Successfully retrieved Solana details")
+            logger.d(tag, "Successfully retrieved Solana details with ${solTxs.size} raw transactions")
             Result.Success(result)
 
         } catch (e: Exception) {

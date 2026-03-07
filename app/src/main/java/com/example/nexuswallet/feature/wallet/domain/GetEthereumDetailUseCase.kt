@@ -58,7 +58,6 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
     private val walletRepository: WalletRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
-    private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
     private val logger: Logger
 ) : GetEthereumDetailUseCase {
 
@@ -162,7 +161,7 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
                 }
             }
 
-            // 7. Get transactions from local DB
+            // 7. Get raw transactions from local DB
             val allTxs = evmTransactionRepository.getTransactionsSync(walletId)
             val filteredTxs = when (coinType) {
                 CoinType.ETHEREUM -> {
@@ -180,11 +179,6 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
                 else -> emptyList()
             }
 
-            val displayTransactions = formatTransactionDisplayUseCase.formatTransactionList(
-                filteredTxs,
-                coinType
-            )
-
             val result = EthereumDetailResult(
                 walletId = walletId,
                 address = token.address,
@@ -198,7 +192,7 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
                 usdValue = tokenBalance?.usdValue ?: 0.0,
                 network = targetNetwork.displayName,
                 networkDisplayName = targetNetwork.displayName,
-                transactions = displayTransactions,
+                rawTransactions = filteredTxs,
                 token = token,
                 externalTokenId = token.externalId,
                 ethGasBalance = ethGasBalance,
@@ -206,7 +200,7 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
                 chainId = targetNetwork.chainId
             )
 
-            logger.d(tag, "Successfully retrieved $coinType details for ${targetNetwork.displayName} with ${filteredTxs.size} transactions")
+            logger.d(tag, "Successfully retrieved $coinType details for ${targetNetwork.displayName} with ${filteredTxs.size} raw transactions")
             Result.Success(result)
 
         } catch (e: Exception) {

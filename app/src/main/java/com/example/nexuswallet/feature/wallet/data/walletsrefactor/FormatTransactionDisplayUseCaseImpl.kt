@@ -50,7 +50,8 @@ class FormatTransactionDisplayUseCaseImpl @Inject constructor() : FormatTransact
             status = tx.status,
             timestamp = tx.timestamp,
             formattedTime = formatTimestamp(tx.timestamp),
-            hash = tx.txHash
+            hash = tx.txHash,
+            coinType = coinType
         )
     }
 
@@ -66,7 +67,8 @@ class FormatTransactionDisplayUseCaseImpl @Inject constructor() : FormatTransact
             status = tx.status,
             timestamp = tx.timestamp,
             formattedTime = formatTimestamp(tx.timestamp),
-            hash = tx.txHash
+            hash = tx.txHash,
+            coinType = coinType
         )
     }
 
@@ -82,7 +84,8 @@ class FormatTransactionDisplayUseCaseImpl @Inject constructor() : FormatTransact
             status = tx.status,
             timestamp = tx.timestamp,
             formattedTime = formatTimestamp(tx.timestamp),
-            hash = tx.txHash
+            hash = tx.txHash,
+            coinType = coinType
         )
     }
 
@@ -98,7 +101,8 @@ class FormatTransactionDisplayUseCaseImpl @Inject constructor() : FormatTransact
             status = tx.status,
             timestamp = tx.timestamp,
             formattedTime = formatTimestamp(tx.timestamp),
-            hash = tx.signature
+            hash = tx.signature,
+            coinType = coinType
         )
     }
 
@@ -145,6 +149,7 @@ class FormatTransactionDisplayUseCaseImpl @Inject constructor() : FormatTransact
 
 data class TransactionDisplayInfo(
     val id: String,
+    val coinType: CoinType,
     val isIncoming: Boolean,
     val amount: String,
     val formattedAmount: String,
