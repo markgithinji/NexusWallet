@@ -49,6 +49,7 @@ class SolanaSendViewModel @Inject constructor(
         val amountValue: BigDecimal = BigDecimal.ZERO,
         val feeLevel: FeeLevel = FeeLevel.NORMAL,
         val feeEstimate: SolanaFeeEstimate? = null,
+        val isFeeLoading: Boolean = false,
         val validationResult: SendValidationResult = SendValidationResult(isValid = false),
         val isLoading: Boolean = false,
         val error: String? = null,
@@ -67,7 +68,7 @@ class SolanaSendViewModel @Inject constructor(
 
     fun init(walletId: String, network: SolanaNetwork? = null) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            _state.update { it.copy(isLoading = true, isFeeLoading = true, error = null) }
 
             // Load wallet
             wallet = walletRepository.getWallet(walletId)
@@ -226,17 +227,30 @@ class SolanaSendViewModel @Inject constructor(
     private suspend fun loadFeeEstimate(network: SolanaNetwork) {
         val currentState = _state.value
         if (currentState.walletId.isNotEmpty()) {
+            // Set fee loading state
+            _state.update { it.copy(isFeeLoading = true) }
+
             when (val feeResult = getSolanaFeeEstimateUseCase(
                 feeLevel = currentState.feeLevel,
                 network = network
             )) {
                 is Result.Success -> {
-                    _state.update { it.copy(feeEstimate = feeResult.data) }
+                    _state.update {
+                        it.copy(
+                            feeEstimate = feeResult.data,
+                            isFeeLoading = false
+                        )
+                    }
                     validateInputs()
                 }
 
                 is Result.Error -> {
-                    _state.update { it.copy(error = "Failed to load fee: ${feeResult.message}") }
+                    _state.update {
+                        it.copy(
+                            error = "Failed to load fee: ${feeResult.message}",
+                            isFeeLoading = false
+                        )
+                    }
                 }
 
                 Result.Loading -> {}

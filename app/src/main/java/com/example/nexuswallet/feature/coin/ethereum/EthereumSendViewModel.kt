@@ -57,6 +57,7 @@ class EthereumSendViewModel @Inject constructor(
         val note: String = "",
         val feeLevel: FeeLevel = FeeLevel.NORMAL,
         val feeEstimate: EVMFeeEstimate? = null,
+        val isFeeLoading: Boolean = false,
         val validationResult: SendValidationResult = SendValidationResult(isValid = false),
         val isLoading: Boolean = false,
         val error: String? = null,
@@ -79,6 +80,7 @@ class EthereumSendViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isLoading = true,
+                    isFeeLoading = true,
                     error = null,
                     isInitialized = false,
                     balancesLoaded = false
@@ -310,6 +312,15 @@ class EthereumSendViewModel @Inject constructor(
         val state = _uiState.value
         val currentToken = state.selectedToken
 
+        // Set fee loading state
+        _uiState.update { currentState ->
+            if (currentState.selectedToken?.externalId == currentToken?.externalId) {
+                currentState.copy(isFeeLoading = true)
+            } else {
+                currentState
+            }
+        }
+
         Log.d("EthereumVM", "loadFeeEstimate() for network: ${state.network}, isToken: ${state.selectedToken !is NativeETH}")
 
         val feeEstimateResult = getFeeEstimateUseCase(
@@ -322,7 +333,10 @@ class EthereumSendViewModel @Inject constructor(
             is Result.Success -> {
                 _uiState.update { currentState ->
                     if (currentState.selectedToken?.externalId == currentToken?.externalId) {
-                        currentState.copy(feeEstimate = feeEstimateResult.data)
+                        currentState.copy(
+                            feeEstimate = feeEstimateResult.data,
+                            isFeeLoading = false
+                        )
                     } else {
                         currentState
                     }
@@ -332,7 +346,10 @@ class EthereumSendViewModel @Inject constructor(
             is Result.Error -> {
                 _uiState.update { currentState ->
                     if (currentState.selectedToken?.externalId == currentToken?.externalId) {
-                        currentState.copy(error = "Failed to load fee: ${feeEstimateResult.message}")
+                        currentState.copy(
+                            error = "Failed to load fee: ${feeEstimateResult.message}",
+                            isFeeLoading = false
+                        )
                     } else {
                         currentState
                     }
