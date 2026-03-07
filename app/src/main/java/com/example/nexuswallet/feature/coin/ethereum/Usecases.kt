@@ -198,14 +198,14 @@ class ValidateEVMSendUseCaseImpl @Inject constructor(
             )
         }
 
-        // Validate address format
-//        if (!validateEthereumAddressUseCase(toAddress)) {
-//            logger.w(tag, "Invalid address format")
-//            return SendValidationResult(
-//                isValid = false,
-//                addressError = "Invalid Ethereum address"
-//            )
-//        }
+        // Validate address format using web3j
+        if (!isValidEthereumAddress(toAddress)) {
+            logger.w(tag, "Invalid Ethereum address format: $toAddress")
+            return SendValidationResult(
+                isValid = false,
+                addressError = "Invalid Ethereum address format"
+            )
+        }
 
         // Validate not sending to self
         if (toAddress.equals(fromAddress, ignoreCase = true)) {
@@ -281,6 +281,15 @@ class ValidateEVMSendUseCaseImpl @Inject constructor(
 
         // All validations passed
         return SendValidationResult(isValid = true)
+    }
+
+    private fun isValidEthereumAddress(address: String): Boolean {
+        return try {
+            Address(address)
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 }
 
