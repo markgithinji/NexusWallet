@@ -125,6 +125,7 @@ fun WalletDetailScreen(
     onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToAllTransactions: (String) -> Unit,
+    onNavigateToTransactionDetail: (String, String, CoinType) -> Unit,
     walletId: String,
     walletViewModel: WalletDetailViewModel = hiltViewModel(),
 ) {
@@ -223,7 +224,7 @@ fun WalletDetailScreen(
             WalletDetailContent(
                 wallet = currentWallet,
                 balance = uiState.balance,
-                transactions = uiState.transactions, // Now List<TransactionDisplayInfo>
+                transactions = uiState.transactions,
                 pricePercentages = uiState.pricePercentages,
                 totalUsdValue = walletViewModel.getTotalUsdValue(),
                 hasSyncError = uiState.hasSyncError,
@@ -235,6 +236,7 @@ fun WalletDetailScreen(
                 onNavigateToReceive = onNavigateToReceive,
                 onNavigateToSend = onNavigateToSend,
                 onNavigateToAllTransactions = onNavigateToAllTransactions,
+                onNavigateToTransactionDetail = onNavigateToTransactionDetail,
                 onSwap = { /* Handle swap action */ },
                 onMore = { /* Handle more actions */ },
                 padding = padding
@@ -251,7 +253,7 @@ fun WalletDetailScreen(
 fun WalletDetailContent(
     wallet: Wallet,
     balance: WalletBalance?,
-    transactions: List<TransactionDisplayInfo>, // Changed from List<Any> to List<TransactionDisplayInfo>
+    transactions: List<TransactionDisplayInfo>,
     pricePercentages: Map<String, Double>,
     totalUsdValue: Double,
     hasSyncError: Boolean,
@@ -263,6 +265,7 @@ fun WalletDetailContent(
     onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToAllTransactions: (String) -> Unit,
+    onNavigateToTransactionDetail: (String, String, CoinType) -> Unit,
     onSwap: () -> Unit,
     onMore: () -> Unit,
     padding: PaddingValues
@@ -454,12 +457,133 @@ fun WalletDetailContent(
         // ============ TRANSACTIONS ============
         item {
             TransactionsContainer(
-                transactions = transactions, // Now passing List<TransactionDisplayInfo>
+                transactions = transactions,
                 wallet = wallet,
                 isLoading = isLoadingTransactions,
                 loadingMessage = transactionsLoadingMessage,
-                onViewAll = { onNavigateToAllTransactions(wallet.id) }
+                onViewAll = { onNavigateToAllTransactions(wallet.id) },
+                onTransactionClick = { transaction, coinType ->
+                    onNavigateToTransactionDetail(wallet.id, transaction.id, coinType)
+                }
             )
+        }
+    }
+}
+
+@Composable
+fun TransactionsContainer(
+    transactions: List<TransactionDisplayInfo>,
+    wallet: Wallet,
+    isLoading: Boolean = false,
+    loadingMessage: String = "Loading transactions...",
+    onViewAll: () -> Unit,
+    onTransactionClick: (TransactionDisplayInfo, CoinType) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Header with "Recent Transactions" and "See All" button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Recent Transactions",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                TextButton(
+                    onClick = onViewAll,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    enabled = !isLoading
+                ) {
+                    Text(
+                        text = "See All",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isLoading)
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        else
+                            MaterialTheme.colorScheme.primary
+                    )
+                    Icon(
+                        imageVector = Icons.Outlined.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = if (isLoading)
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        else
+                            MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Transaction list or loading state
+            if (isLoading && transactions.isEmpty()) {
+                // Show loading skeletons
+                repeat(3) { index ->
+                    TransactionLoadingSkeleton()
+                    if (index < 2) {
+                        Divider(
+                            color = MaterialTheme.colorScheme.outline,
+                            thickness = 1.dp,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                }
+
+                // Show loading message
+                Text(
+                    text = loadingMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    textAlign = TextAlign.Center
+                )
+            } else if (transactions.isNotEmpty()) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    transactions.take(3).forEachIndexed { index, displayInfo ->
+                        TransactionItem(
+                            transaction = displayInfo,
+                            coinType = displayInfo.coinType,
+                            modifier = Modifier
+                                .clickable {
+                                    onTransactionClick(displayInfo, displayInfo.coinType)
+                                }
+                        )
+
+                        if (index < 2) {
+                            Divider(
+                                color = MaterialTheme.colorScheme.outline,
+                                thickness = 1.dp,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            } else {
+                EmptyTransactionsView()
+            }
         }
     }
 }
@@ -730,7 +854,7 @@ fun BitcoinCoinCard(
 
 @Composable
 fun TransactionsContainer(
-    transactions: List<TransactionDisplayInfo>, // Now takes formatted transactions directly
+    transactions: List<TransactionDisplayInfo>,
     wallet: Wallet,
     isLoading: Boolean = false,
     loadingMessage: String = "Loading transactions...",
@@ -816,15 +940,13 @@ fun TransactionsContainer(
                     textAlign = TextAlign.Center
                 )
             } else if (transactions.isNotEmpty()) {
-                // Show actual transactions - directly using pre-formatted TransactionDisplayInfo
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     transactions.take(3).forEachIndexed { index, displayInfo ->
-                        // No mapping needed - TransactionDisplayInfo already contains all data
                         TransactionItem(
                             transaction = displayInfo,
-                            coinType = displayInfo.coinType, // Now TransactionDisplayInfo includes coinType
+                            coinType = displayInfo.coinType,
                             modifier = Modifier
                         )
 
@@ -891,7 +1013,6 @@ fun TransactionLoadingSkeleton() {
     }
 }
 
-// Simple shimmer effect composable
 @Composable
 fun Modifier.shimmer(): Modifier = this.then(
     Modifier.background(

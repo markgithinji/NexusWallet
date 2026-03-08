@@ -58,6 +58,7 @@ fun CoinDetailScreen(
     onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToAllTransactions: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToTransactionDetail: (String, String, CoinType) -> Unit,
     walletId: String,
     coinType: CoinType,
     network: NetworkType? = null,
@@ -120,6 +121,7 @@ fun CoinDetailScreen(
             onSend = onNavigateToSend,
             onViewAllTransactions = onNavigateToAllTransactions,
             onNavigateToSend = onNavigateToSend,
+            onNavigateToTransactionDetail = onNavigateToTransactionDetail,
             modifier = Modifier.padding(padding)
         )
     }
@@ -202,6 +204,7 @@ private fun CoinDetailContent(
     onSend: (String, CoinType, NetworkType?) -> Unit,
     onViewAllTransactions: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToTransactionDetail: (String, String, CoinType) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Get the network display name
@@ -289,7 +292,10 @@ private fun CoinDetailContent(
             CoinDetailTransactionsContainer(
                 transactions = state.transactions,
                 coinType = coinType,
-                onViewAll = { onViewAllTransactions(state.walletId, coinType, network) }
+                onViewAll = { onViewAllTransactions(state.walletId, coinType, network) },
+                onTransactionClick = { transaction ->
+                    onNavigateToTransactionDetail(state.walletId, transaction.id, coinType)
+                }
             )
         }
     }
@@ -717,7 +723,8 @@ private fun CoinDetailEthGasBalanceCard(ethBalance: BigDecimal?) {
 private fun CoinDetailTransactionsContainer(
     transactions: List<TransactionDisplayInfo>,
     coinType: CoinType,
-    onViewAll: () -> Unit
+    onViewAll: () -> Unit,
+    onTransactionClick: (TransactionDisplayInfo) -> Unit
 ) {
     if (transactions.isEmpty()) {
         Card(
@@ -786,6 +793,7 @@ private fun CoinDetailTransactionsContainer(
                         transaction = transaction,
                         coinType = coinType,
                         modifier = Modifier
+                            .clickable { onTransactionClick(transaction) }
                     )
 
                     if (index < 2) {
