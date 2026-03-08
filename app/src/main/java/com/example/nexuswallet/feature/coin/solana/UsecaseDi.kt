@@ -121,8 +121,9 @@ object SolanaUseCaseModule {
     @Provides
     @Singleton
     fun provideSolanaTransactionRepository(
-        solanaTransactionDao: SolanaTransactionDao
+        solanaTransactionDao: SolanaTransactionDao,
+        logger: Logger
     ): SolanaTransactionRepository {
-        return SolanaTransactionRepositoryImpl(solanaTransactionDao)
+        return SolanaTransactionRepositoryImpl(solanaTransactionDao,logger)
     }
 }
