@@ -30,6 +30,8 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.GetAllTransac
 import com.example.nexuswallet.feature.wallet.domain.CreateWalletUseCase
 import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.GetAllTransactionsUseCase
+import com.example.nexuswallet.feature.wallet.domain.GetTransactionDetailUseCase
+import com.example.nexuswallet.feature.wallet.domain.GetTransactionDetailUseCaseImpl
 import com.example.nexuswallet.feature.wallet.domain.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.Module
@@ -82,6 +84,10 @@ object AllUsecasesModule {
         )
     }
 
+    @Provides
+    fun provideGetTransactionDetailUseCase(
+        impl: GetTransactionDetailUseCaseImpl
+    ): GetTransactionDetailUseCase = impl
 
     @Provides
     @Singleton

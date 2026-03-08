@@ -73,3 +73,10 @@ data class AuthenticateRoute(
 data class BackupRoute(
     val walletId: String
 )
+
+@Serializable
+data class TransactionDetailRoute(
+    val walletId: String,
+    val transactionId: String,
+    val coinType: CoinType
+)

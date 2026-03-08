@@ -44,6 +44,8 @@ import com.example.nexuswallet.feature.coin.solana.SolanaSendScreen
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.ui.TransactionDetailScreen
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun Navigation() {
@@ -240,6 +242,10 @@ fun Navigation() {
                     Log.d("Navigation", "WalletDetailScreen: navigate to AllTransactions - walletId: $walletId (TODO)")
                     // TODO: Navigate to all transactions screen
                 },
+                onNavigateToTransactionDetail = { walletId, transactionId, coinType ->
+                    Log.d("Navigation", "WalletDetailScreen: navigate to TransactionDetailRoute - walletId: $walletId, transactionId: $transactionId, coinType: $coinType")
+                    navController.navigate(TransactionDetailRoute(walletId, transactionId, coinType))
+                },
                 walletId = args.walletId
             )
         }
@@ -265,9 +271,28 @@ fun Navigation() {
                     Log.d("Navigation", "CoinDetailScreen: navigate to AllTransactions - walletId: $walletId, coinType: $coinType, network: $network")
                     // TODO: Navigate to all transactions screen
                 },
+                onNavigateToTransactionDetail = { walletId, transactionId, coinType ->
+                    Log.d("Navigation", "CoinDetailScreen: navigate to TransactionDetailRoute - walletId: $walletId, transactionId: $transactionId, coinType: $coinType")
+                    navController.navigate(TransactionDetailRoute(walletId, transactionId, coinType))
+                },
                 walletId = args.walletId,
                 coinType = args.coinType,
                 network = args.network
+            )
+        }
+
+        composable<TransactionDetailRoute> { backStackEntry ->
+            val args = backStackEntry.toRoute<TransactionDetailRoute>()
+            Log.d("Navigation", "Navigated to TransactionDetailRoute - walletId: ${args.walletId}, transactionId: ${args.transactionId}, coinType: ${args.coinType}")
+
+            TransactionDetailScreen(
+                onNavigateUp = {
+                    Log.d("Navigation", "TransactionDetailScreen: navigate up")
+                    navController.navigateUp()
+                },
+                walletId = args.walletId,
+                transactionId = args.transactionId,
+                coinType = args.coinType
             )
         }
 
