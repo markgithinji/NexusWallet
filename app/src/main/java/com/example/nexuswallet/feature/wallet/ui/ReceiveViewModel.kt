@@ -3,7 +3,9 @@ package com.example.nexuswallet.feature.wallet.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
@@ -17,7 +19,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
 @HiltViewModel
 class ReceiveViewModel @Inject constructor(
     private val walletRepository: WalletRepository
@@ -28,7 +29,7 @@ class ReceiveViewModel @Inject constructor(
         val walletName: String = "",
         val address: String = "",
         val coinType: CoinType = CoinType.BITCOIN,
-        val network: String = "Mainnet",
+        val network: NetworkType? = null,
         val networkDisplayName: String = "",
         val isLoading: Boolean = false,
         val error: String? = null,
@@ -39,7 +40,7 @@ class ReceiveViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ReceiveUiState())
     val uiState: StateFlow<ReceiveUiState> = _uiState.asStateFlow()
 
-    fun initialize(walletId: String, coinType: CoinType? = null) {
+    fun initialize(walletId: String, coinType: CoinType, network: NetworkType?) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
@@ -55,28 +56,24 @@ class ReceiveViewModel @Inject constructor(
                     return@launch
                 }
 
-                // If coinType is specified, try to get that specific coin
-                val result = if (coinType != null) {
-                    getAddressForCoinType(wallet, coinType)
-                } else {
-                    // Get first available address
-                    getFirstAvailableAddress(wallet)
-                }
+                // Get address for the specific coin type and network
+                val addressResult = getAddressForCoinTypeAndNetwork(wallet, coinType, network)
 
-                if (result == null) {
+                if (addressResult == null) {
+                    val networkDisplay = network?.displayName ?: "default"
                     _uiState.update {
                         it.copy(
-                            error = "No receive address available for this wallet",
+                            error = "No receive address available for $coinType on $networkDisplay",
                             isLoading = false
                         )
                     }
                     return@launch
                 }
 
-                val (address, resolvedCoinType, network, networkDisplayName) = result
+                val (address, networkDisplayName) = addressResult
 
                 // Create share URL based on coin type
-                val shareUrl = when (resolvedCoinType) {
+                val shareUrl = when (coinType) {
                     CoinType.BITCOIN -> "bitcoin:$address"
                     CoinType.ETHEREUM, CoinType.USDC -> "ethereum:$address"
                     CoinType.SOLANA -> "solana:$address"
@@ -87,7 +84,7 @@ class ReceiveViewModel @Inject constructor(
                         walletId = walletId,
                         walletName = wallet.name,
                         address = address,
-                        coinType = resolvedCoinType,
+                        coinType = coinType,
                         network = network,
                         networkDisplayName = networkDisplayName,
                         shareUrl = shareUrl,
@@ -106,107 +103,63 @@ class ReceiveViewModel @Inject constructor(
         }
     }
 
-    private fun getFirstAvailableAddress(wallet: Wallet): Quadruple<String, CoinType, String, String>? {
-        // Check Bitcoin coins
-        wallet.bitcoinCoins.firstOrNull()?.let { coin ->
-            val networkName = when (coin.network) {
-                BitcoinNetwork.Mainnet -> "Mainnet"
-                BitcoinNetwork.Testnet -> "Testnet"
-            }
-            return Quadruple(
-                coin.address,
-                CoinType.BITCOIN,
-                networkName,
-                coin.network.toString()
-            )
-        }
-
-        // Check EVM tokens (Native ETH)
-        wallet.evmTokens.firstOrNull { it is NativeETH }?.let { token ->
-            return Quadruple(
-                token.address,
-                CoinType.ETHEREUM,
-                token.network.displayName,
-                token.network.toString()
-            )
-        }
-
-        // Check Solana coins
-        wallet.solanaCoins.firstOrNull()?.let { coin ->
-            val networkName = when (coin.network) {
-                SolanaNetwork.Mainnet -> "Mainnet"
-                SolanaNetwork.Devnet -> "Devnet"
-            }
-            return Quadruple(
-                coin.address,
-                CoinType.SOLANA,
-                networkName,
-                coin.network.toString()
-            )
-        }
-
-        // Check USDC tokens
-        wallet.evmTokens.firstOrNull { it is USDCToken }?.let { token ->
-            return Quadruple(
-                token.address,
-                CoinType.USDC,
-                token.network.displayName,
-                token.network.toString()
-            )
-        }
-
-        return null
-    }
-
-    private fun getAddressForCoinType(wallet: Wallet, coinType: CoinType): Quadruple<String, CoinType, String, String>? {
+    private fun getAddressForCoinTypeAndNetwork(
+        wallet: Wallet,
+        coinType: CoinType,
+        network: NetworkType?
+    ): Pair<String, String>? {
         return when (coinType) {
             CoinType.BITCOIN -> {
-                wallet.bitcoinCoins.firstOrNull()?.let { coin ->
-                    val networkName = when (coin.network) {
-                        BitcoinNetwork.Mainnet -> "Mainnet"
-                        BitcoinNetwork.Testnet -> "Testnet"
+                val bitcoinNetwork = when (network) {
+                    NetworkType.BITCOIN_MAINNET -> BitcoinNetwork.Mainnet
+                    NetworkType.BITCOIN_TESTNET -> BitcoinNetwork.Testnet
+                    else -> BitcoinNetwork.Mainnet // Default to Mainnet
+                }
+                wallet.bitcoinCoins.find { it.network == bitcoinNetwork }?.let { coin ->
+                    val displayName = when (coin.network) {
+                        BitcoinNetwork.Mainnet -> "Bitcoin Mainnet"
+                        BitcoinNetwork.Testnet -> "Bitcoin Testnet"
                     }
-                    Quadruple(
-                        coin.address,
-                        CoinType.BITCOIN,
-                        networkName,
-                        coin.network.toString()
-                    )
+                    Pair(coin.address, displayName)
                 }
             }
             CoinType.ETHEREUM -> {
-                wallet.evmTokens.firstOrNull { it is NativeETH }?.let { token ->
-                    Quadruple(
-                        token.address,
-                        CoinType.ETHEREUM,
-                        token.network.displayName,
-                        token.network.toString()
-                    )
+                val ethNetwork = when (network) {
+                    NetworkType.ETHEREUM_MAINNET -> EthereumNetwork.Mainnet
+                    NetworkType.ETHEREUM_SEPOLIA -> EthereumNetwork.Sepolia
+                    else -> EthereumNetwork.Mainnet // Default to Mainnet
                 }
+                wallet.evmTokens.filterIsInstance<NativeETH>()
+                    .find { it.network == ethNetwork }
+                    ?.let { token ->
+                        Pair(token.address, token.network.displayName)
+                    }
             }
             CoinType.SOLANA -> {
-                wallet.solanaCoins.firstOrNull()?.let { coin ->
-                    val networkName = when (coin.network) {
-                        SolanaNetwork.Mainnet -> "Mainnet"
-                        SolanaNetwork.Devnet -> "Devnet"
+                val solanaNetwork = when (network) {
+                    NetworkType.SOLANA_MAINNET -> SolanaNetwork.Mainnet
+                    NetworkType.SOLANA_DEVNET -> SolanaNetwork.Devnet
+                    else -> SolanaNetwork.Mainnet // Default to Mainnet
+                }
+                wallet.solanaCoins.find { it.network == solanaNetwork }?.let { coin ->
+                    val displayName = when (coin.network) {
+                        SolanaNetwork.Mainnet -> "Solana Mainnet"
+                        SolanaNetwork.Devnet -> "Solana Devnet"
                     }
-                    Quadruple(
-                        coin.address,
-                        CoinType.SOLANA,
-                        networkName,
-                        coin.network.toString()
-                    )
+                    Pair(coin.address, displayName)
                 }
             }
             CoinType.USDC -> {
-                wallet.evmTokens.firstOrNull { it is USDCToken }?.let { token ->
-                    Quadruple(
-                        token.address,
-                        CoinType.USDC,
-                        token.network.displayName,
-                        token.network.toString()
-                    )
+                val ethNetwork = when (network) {
+                    NetworkType.ETHEREUM_MAINNET -> EthereumNetwork.Mainnet
+                    NetworkType.ETHEREUM_SEPOLIA -> EthereumNetwork.Sepolia
+                    else -> EthereumNetwork.Mainnet // Default to Mainnet
                 }
+                wallet.evmTokens.filterIsInstance<USDCToken>()
+                    .find { it.network == ethNetwork }
+                    ?.let { token ->
+                        Pair(token.address, "${token.symbol} on ${token.network.displayName}")
+                    }
             }
         }
     }

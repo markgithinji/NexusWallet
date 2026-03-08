@@ -306,7 +306,8 @@ fun Navigation() {
                     navController.navigateUp()
                 },
                 walletId = args.walletId,
-                coinType = args.coinType
+                coinType = args.coinType,
+                network = args.network
             )
         }
 
