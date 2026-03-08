@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.CurrencyBitcoin
 import androidx.compose.material.icons.outlined.Dashboard
@@ -162,6 +163,7 @@ fun WalletDashboardScreen(
                                 viewModel.refresh()
                                 isRefreshing = false
                             },
+                            onCreateWallet = onNavigateToCreateWallet, // Add this
                             isRefreshing = isRefreshing || isOperationLoading
                         )
                     },
@@ -213,6 +215,7 @@ fun WalletDashboardScreen(
 @Composable
 fun DashboardTopBar(
     onRefresh: () -> Unit,
+    onCreateWallet: () -> Unit,
     isRefreshing: Boolean
 ) {
     TopAppBar(
@@ -235,21 +238,15 @@ fun DashboardTopBar(
             }
         },
         actions = {
-            IconButton(onClick = onRefresh) {
-                if (isRefreshing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Outlined.Refresh,
-                        contentDescription = "Refresh",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+            // Plus icon for creating new wallet
+            IconButton(
+                onClick = onCreateWallet
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = "Create Wallet",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(

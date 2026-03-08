@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -37,8 +38,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
@@ -343,23 +342,6 @@ fun CoinSelectionStep(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        Text(
-            text = "Select Assets & Networks",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Choose which cryptocurrencies and networks to include",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
         // ============ BITCOIN SECTION ============
         Text(
             text = "Bitcoin",
@@ -646,7 +628,6 @@ fun NetworkToggleCard(
                 .clickable { onSelectedChange(!isSelected) },
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon with no background
             Box(
                 modifier = Modifier.size(48.dp),
                 contentAlignment = Alignment.Center
@@ -676,13 +657,14 @@ fun NetworkToggleCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
             Checkbox(
                 checked = isSelected,
                 onCheckedChange = onSelectedChange,
-                colors = CheckboxDefaults.colors(
-                    checkedColor = color,
-                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                colors = CustomCheckboxDefaults.colors(
+                    checkedBackgroundColor = color,
+                    checkedBorderColor = color,
+                    uncheckedBorderColor = MaterialTheme.colorScheme.outline,
+                    checkedIconColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         }
@@ -924,22 +906,13 @@ fun MnemonicDisplayStep(
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp)
             ) {
-                Text(
-                    text = "🔐 Your Recovery Phrase",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
                 // Critical warning
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -950,11 +923,12 @@ fun MnemonicDisplayStep(
                             Icon(
                                 imageVector = Icons.Default.Warning,
                                 contentDescription = "Warning",
-                                tint = MaterialTheme.colorScheme.onErrorContainer
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Critical Security Step",
+                                text = "Critical Security Step:",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                                 fontWeight = FontWeight.Bold
@@ -1002,13 +976,14 @@ fun MnemonicDisplayStep(
                     .padding(horizontal = 16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "📝 Safety Checklist:",
+                        text = "Safety Checklist:",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -1017,19 +992,19 @@ fun MnemonicDisplayStep(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     SafetyChecklistItem(
-                        text = "✓ Write on paper (not digital)",
+                        text = "Write on paper (not digital)",
                         checked = true
                     )
                     SafetyChecklistItem(
-                        text = "✓ Store in secure location",
+                        text = "Store in secure location",
                         checked = true
                     )
                     SafetyChecklistItem(
-                        text = "✓ Never share with anyone",
+                        text = "Never share with anyone",
                         checked = true
                     )
                     SafetyChecklistItem(
-                        text = "✓ Keep away from moisture/fire",
+                        text = "Keep away from moisture/fire",
                         checked = true
                     )
                 }
@@ -1043,47 +1018,146 @@ fun MnemonicDisplayStep(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                // Written down checkbox
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (hasWrittenDown)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+                        else
+                            MaterialTheme.colorScheme.surface
+                    ),
+                    border = if (hasWrittenDown)
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                    else
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    Checkbox(
-                        checked = hasWrittenDown,
-                        onCheckedChange = { hasWrittenDown = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = MaterialTheme.colorScheme.primary
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .clickable { hasWrittenDown = !hasWrittenDown },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (hasWrittenDown)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        Color.Transparent
+                                )
+                                .border(
+                                    width = 2.dp,
+                                    color = if (hasWrittenDown)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.outline,
+                                    shape = RoundedCornerShape(6.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (hasWrittenDown) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Checked",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Text(
+                            text = "I have written down all 12 words on paper",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (hasWrittenDown)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
                         )
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "I have written down all 12 words on paper",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                // Stored safely checkbox
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (hasStoredSafely)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+                        else
+                            MaterialTheme.colorScheme.surface
+                    ),
+                    border = if (hasStoredSafely)
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                    else
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    Checkbox(
-                        checked = hasStoredSafely,
-                        onCheckedChange = { hasStoredSafely = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = MaterialTheme.colorScheme.primary
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .clickable { hasStoredSafely = !hasStoredSafely },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Custom checkbox
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (hasStoredSafely)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        Color.Transparent
+                                )
+                                .border(
+                                    width = 2.dp,
+                                    color = if (hasStoredSafely)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.outline,
+                                    shape = RoundedCornerShape(6.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (hasStoredSafely) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Checked",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Text(
+                            text = "I have stored them in a secure location",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (hasStoredSafely)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
                         )
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "I have stored them in a secure location",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    }
                 }
             }
         }
 
-        // Spacer to separate from buttons
         item {
             Spacer(modifier = Modifier.height(20.dp))
         }
@@ -1120,7 +1194,8 @@ fun MnemonicDisplayStep(
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.primary
-                    )
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
                     Text("Back")
                 }
@@ -1133,7 +1208,8 @@ fun MnemonicDisplayStep(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
                     Text("I've Backed It Up")
                 }
@@ -1156,7 +1232,7 @@ fun MnemonicDisplayChip(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -1224,42 +1300,6 @@ fun MnemonicVerificationStep(
             .verticalScroll(rememberScrollState())
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Back button
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(
-                onClick = onBack,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Back")
-            }
-
-            Text(
-                text = "Step 2/3",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Title
-        Text(
-            text = "Verify Recovery Phrase",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
         Text(
             text = "Tap words in the correct order",
             style = MaterialTheme.typography.bodyMedium,
@@ -1702,7 +1742,7 @@ fun WalletSuccessStep(
                         coin.splTokens.take(3).forEach { token ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(start = 28.dp, top = 2.dp, bottom = 2.dp) // FIXED: Individual padding
+                                modifier = Modifier.padding(start = 28.dp, top = 2.dp, bottom = 2.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -1877,4 +1917,101 @@ fun WalletSuccessStep(
             Text("Go to Dashboard")
         }
     }
+}
+
+@Composable
+fun Checkbox(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    colors: CustomCheckboxColors = CustomCheckboxDefaults.colors()
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> colors.disabledBackgroundColor
+            checked -> colors.checkedBackgroundColor
+            else -> colors.uncheckedBackgroundColor
+        },
+        label = "checkbox_bg"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> colors.disabledBorderColor
+            checked -> colors.checkedBorderColor
+            else -> colors.uncheckedBorderColor
+        },
+        label = "checkbox_border"
+    )
+
+    val iconTintColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> colors.disabledIconColor
+            else -> colors.checkedIconColor
+        },
+        label = "checkbox_icon"
+    )
+
+    Box(
+        modifier = modifier
+            .size(24.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(backgroundColor)
+            .border(
+                width = 2.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(6.dp)
+            )
+            .clickable(
+                enabled = enabled,
+                interactionSource = interactionSource,
+                indication = ripple(bounded = true)
+            ) { onCheckedChange(!checked) },
+        contentAlignment = Alignment.Center
+    ) {
+        if (checked) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = "Checked",
+                tint = iconTintColor,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+data class CustomCheckboxColors(
+    val checkedBackgroundColor: Color,
+    val uncheckedBackgroundColor: Color,
+    val disabledBackgroundColor: Color,
+    val checkedBorderColor: Color,
+    val uncheckedBorderColor: Color,
+    val disabledBorderColor: Color,
+    val checkedIconColor: Color,
+    val disabledIconColor: Color
+)
+
+object CustomCheckboxDefaults {
+    @Composable
+    fun colors(
+        checkedBackgroundColor: Color = MaterialTheme.colorScheme.primary,
+        uncheckedBackgroundColor: Color = Color.Transparent,
+        disabledBackgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        checkedBorderColor: Color = MaterialTheme.colorScheme.primary,
+        uncheckedBorderColor: Color = MaterialTheme.colorScheme.outline,
+        disabledBorderColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+        checkedIconColor: Color = MaterialTheme.colorScheme.onPrimary,
+        disabledIconColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+    ) = CustomCheckboxColors(
+        checkedBackgroundColor = checkedBackgroundColor,
+        uncheckedBackgroundColor = uncheckedBackgroundColor,
+        disabledBackgroundColor = disabledBackgroundColor,
+        checkedBorderColor = checkedBorderColor,
+        uncheckedBorderColor = uncheckedBorderColor,
+        disabledBorderColor = disabledBorderColor,
+        checkedIconColor = checkedIconColor,
+        disabledIconColor = disabledIconColor
+    )
 }
