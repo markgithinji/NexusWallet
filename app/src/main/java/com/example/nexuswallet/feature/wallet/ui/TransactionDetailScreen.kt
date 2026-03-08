@@ -423,13 +423,13 @@ fun TransactionStatusCard(
             ) {
                 Text(
                     text = statusText,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = statusColor
                 )
                 Text(
                     text = formattedTime,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -458,6 +458,13 @@ fun TransactionAmountCard(
     coinColor: Color,
     iconRes: Int
 ) {
+    val coinSymbol = when (transaction.coinType) {
+        CoinType.BITCOIN -> "BTC"
+        CoinType.ETHEREUM -> "ETH"
+        CoinType.SOLANA -> "SOL"
+        CoinType.USDC -> "USDC"
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -501,7 +508,7 @@ fun TransactionAmountCard(
 
                 Column {
                     Text(
-                        text = formattedAmount,
+                        text = "$formattedAmount $coinSymbol",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = if (transaction.isIncoming)
