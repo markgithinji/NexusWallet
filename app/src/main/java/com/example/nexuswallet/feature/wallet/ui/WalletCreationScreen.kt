@@ -1306,9 +1306,9 @@ fun MnemonicVerificationStep(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Selected words
+        // Selected words container
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -1316,7 +1316,9 @@ fun MnemonicVerificationStep(
             shape = RoundedCornerShape(12.dp)
         ) {
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
             ) {
                 Text(
                     text = "Selected Words (${enteredWords.size}/${mnemonic.size})",
@@ -1324,18 +1326,18 @@ fun MnemonicVerificationStep(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 if (enteredWords.isEmpty()) {
+                    // Compact empty state
                     Text(
                         text = "No words selected yet",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.padding(vertical = 8.dp)
                     )
                 } else {
-                    // Vertical FlowRow for selected words
+                    // FlowRow for selected words
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1355,42 +1357,65 @@ fun MnemonicVerificationStep(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Available words
+        // Available words section
         Text(
-            text = "Tap to select:",
+            text = "Available Words",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Manual 4-column grid
-        Column(
-            modifier = Modifier.fillMaxWidth()
+        // Available words container
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         ) {
-            for (row in 0 until 3) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    for (col in 0 until 4) {
-                        val index = row * 4 + col
-                        if (index < shuffledWords.size) {
-                            val word = shuffledWords[index]
-                            Box(modifier = Modifier.weight(1f)) {
-                                if (!enteredWords.contains(word)) {
-                                    SimpleWordChip(
-                                        word = word,
-                                        onClick = { onAddWord(word) }
-                                    )
-                                } else {
-                                    Spacer(modifier = Modifier.height(44.dp))
-                                }
-                            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
+            ) {
+                // Get remaining words
+                val remainingWords = shuffledWords.filter { word -> !enteredWords.contains(word) }
+
+                if (remainingWords.isEmpty()) {
+                    // Compact success state
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Success",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "All words selected",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                } else {
+                    // FlowRow for available words
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        remainingWords.forEach { word ->
+                            SimpleWordChip(
+                                word = word,
+                                onClick = { onAddWord(word) }
+                            )
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
             }
         }
 
@@ -1461,7 +1486,8 @@ fun SimpleSelectedChip(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -1479,7 +1505,6 @@ fun SimpleSelectedChip(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -1504,23 +1529,16 @@ fun SimpleWordChip(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = word,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
+        Text(
+            text = word,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -1533,23 +1551,6 @@ fun WalletNameStep(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        Text(
-            text = "Name Your Wallet",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Give your wallet a name for easy identification",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
         OutlinedTextField(
             value = walletName,
             onValueChange = onNameChange,
