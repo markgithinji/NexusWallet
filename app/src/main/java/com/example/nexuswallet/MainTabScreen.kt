@@ -43,57 +43,6 @@ fun MainTabScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = when (selectedTab) {
-                                0 -> Icons.Outlined.AccountBalanceWallet
-                                1 -> Icons.Outlined.ShowChart
-                                2 -> Icons.Outlined.Settings
-                                else -> Icons.Outlined.Wallet
-                            },
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = when (selectedTab) {
-                                0 -> "Wallets"
-                                1 -> "Market"
-                                2 -> "Settings"
-                                else -> "Nexus Wallet"
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                },
-                actions = {
-                    if (selectedTab == 0) {
-                        IconButton(
-                            onClick = onNavigateToCreateWallet
-                        ) {
-                            Icon(
-                                Icons.Outlined.Add,
-                                contentDescription = "Create Wallet",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        },
         bottomBar = {
             Card(
                 modifier = Modifier
@@ -219,7 +168,7 @@ fun MainTabScreen(
                 )
             )
             1 -> MarketScreen(
-                onNavigateUp = { /* Handle market screen back navigation*/ },
+                onNavigateUp = { /* Handle market screen back navigation */ },
                 onNavigateToTokenDetail = onNavigateToTokenDetail,
                 padding = PaddingValues(
                     top = scaffoldPadding.calculateTopPadding(),

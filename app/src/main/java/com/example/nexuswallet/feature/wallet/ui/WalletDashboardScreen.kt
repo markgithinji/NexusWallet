@@ -135,7 +135,7 @@ fun WalletDashboardScreen(
     // Show error snackbar if operation fails
     LaunchedEffect(operationError) {
         operationError?.let {
-            // Handle error (show snackbar, etc.)
+            // TODO: Handle error (show snackbar, etc.)
             viewModel.clearOperationError()
         }
     }
@@ -154,43 +154,181 @@ fun WalletDashboardScreen(
                     onCreateWallet = onNavigateToCreateWallet
                 )
             } else {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // Background
+                Scaffold(
+                    topBar = {
+                        DashboardTopBar(
+                            onRefresh = {
+                                isRefreshing = true
+                                viewModel.refresh()
+                                isRefreshing = false
+                            },
+                            isRefreshing = isRefreshing || isOperationLoading
+                        )
+                    },
+                    containerColor = Color.Transparent
+                ) { scaffoldPadding ->
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background)
-                    )
+                            .padding(scaffoldPadding)
+                            .padding(padding)
+                    ) {
+                        // Background
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background)
+                        )
 
-                    // Main content
-                    DashboardContent(
-                        wallets = state.data,
-                        totalPortfolio = totalPortfolio,
-                        balances = balances,
-                        isOperationLoading = isOperationLoading,
-                        onWalletClick = { wallet ->
-                            onNavigateToWalletDetail(wallet.id)
-                        },
-                        onCoinClick = { walletId, coinType, network ->
-                            onNavigateToCoinDetail(walletId, coinType, network)
-                        },
-                        onReceiveClick = { walletId, coinType, network ->
-                            onNavigateToReceive(walletId, coinType, network)
-                        },
-                        onSendClick = { walletId, coinType, network ->
-                            onNavigateToSend(walletId, coinType, network)
-                        },
-                        onDeleteWallet = { walletId ->
-                            viewModel.deleteWallet(walletId)
-                        },
-                        onRefresh = {
-                            isRefreshing = true
-                            viewModel.refresh()
-                            isRefreshing = false
-                        },
-                        isRefreshing = isRefreshing
+                        // Main content
+                        DashboardContent(
+                            wallets = state.data,
+                            totalPortfolio = totalPortfolio,
+                            balances = balances,
+                            isOperationLoading = isOperationLoading,
+                            onWalletClick = { wallet ->
+                                onNavigateToWalletDetail(wallet.id)
+                            },
+                            onCoinClick = { walletId, coinType, network ->
+                                onNavigateToCoinDetail(walletId, coinType, network)
+                            },
+                            onReceiveClick = { walletId, coinType, network ->
+                                onNavigateToReceive(walletId, coinType, network)
+                            },
+                            onSendClick = { walletId, coinType, network ->
+                                onNavigateToSend(walletId, coinType, network)
+                            },
+                            onDeleteWallet = { walletId ->
+                                viewModel.deleteWallet(walletId)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DashboardTopBar(
+    onRefresh: () -> Unit,
+    isRefreshing: Boolean
+) {
+    TopAppBar(
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AccountBalanceWallet,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Wallets",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = onRefresh) {
+                if (isRefreshing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Refresh,
+                        contentDescription = "Refresh",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface
+        )
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DashboardContent(
+    wallets: List<Wallet>,
+    totalPortfolio: BigDecimal,
+    balances: Map<String, WalletBalance>,
+    isOperationLoading: Boolean,
+    onWalletClick: (Wallet) -> Unit,
+    onCoinClick: (String, CoinType, NetworkType?) -> Unit,
+    onReceiveClick: (String, CoinType, NetworkType?) -> Unit,
+    onSendClick: (String, CoinType, NetworkType?) -> Unit,
+    onDeleteWallet: (String) -> Unit
+) {
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp > 600
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Portfolio Summary Header
+        item {
+            AnimatedPortfolioHeader(
+                totalPortfolio = totalPortfolio,
+                walletCount = wallets.size,
+                isTablet = isTablet
+            )
+        }
+
+        // Wallets Section Header
+        item {
+            Text(
+                text = "Your Wallets",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+
+        // Wallets Grid/List
+        if (isTablet) {
+            // Grid layout for tablets
+            items(wallets.chunked(2)) { walletPair ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    walletPair.forEach { wallet ->
+                        WalletCard(
+                            wallet = wallet,
+                            balance = balances[wallet.id],
+                            onWalletClick = { onWalletClick(wallet) },
+                            onDelete = { onDeleteWallet(wallet.id) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        } else {
+            // List layout for phones
+            items(wallets) { wallet ->
+                WalletCard(
+                    wallet = wallet,
+                    balance = balances[wallet.id],
+                    onWalletClick = { onWalletClick(wallet) },
+                    onDelete = { onDeleteWallet(wallet.id) }
+                )
             }
         }
     }
@@ -596,100 +734,6 @@ fun SimpleBalanceRow(
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DashboardContent(
-    wallets: List<Wallet>,
-    totalPortfolio: BigDecimal,
-    balances: Map<String, WalletBalance>,
-    isOperationLoading: Boolean,
-    onWalletClick: (Wallet) -> Unit,
-    onCoinClick: (String, CoinType, NetworkType?) -> Unit,
-    onReceiveClick: (String, CoinType, NetworkType?) -> Unit,
-    onSendClick: (String, CoinType, NetworkType?) -> Unit,
-    onDeleteWallet: (String) -> Unit,
-    onRefresh: () -> Unit,
-    isRefreshing: Boolean
-) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val configuration = LocalConfiguration.current
-    val isTablet = configuration.screenWidthDp > 600
-
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            DashboardTopBar(
-                scrollBehavior = scrollBehavior,
-                onRefresh = onRefresh,
-                isRefreshing = isRefreshing || isOperationLoading
-            )
-        },
-        floatingActionButton = {},
-        containerColor = Color.Transparent
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Portfolio Summary Header
-            item {
-                AnimatedPortfolioHeader(
-                    totalPortfolio = totalPortfolio,
-                    walletCount = wallets.size,
-                    isTablet = isTablet
-                )
-            }
-
-            // Wallets Section Header
-            item {
-                Text(
-                    text = "Your Wallets",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
-
-            // Wallets Grid/List
-            if (isTablet) {
-                // Grid layout for tablets
-                items(wallets.chunked(2)) { walletPair ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        walletPair.forEach { wallet ->
-                            WalletCard(
-                                wallet = wallet,
-                                balance = balances[wallet.id],
-                                onWalletClick = { onWalletClick(wallet) },
-                                onDelete = { onDeleteWallet(wallet.id) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
-            } else {
-                // List layout for phones
-                items(wallets) { wallet ->
-                    WalletCard(
-                        wallet = wallet,
-                        balance = balances[wallet.id],
-                        onWalletClick = { onWalletClick(wallet) },
-                        onDelete = { onDeleteWallet(wallet.id) }
-                    )
-                }
-            }
-        }
     }
 }
 

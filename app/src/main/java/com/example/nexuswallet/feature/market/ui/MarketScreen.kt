@@ -15,8 +15,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -71,146 +73,118 @@ fun MarketScreen(
     val isWebSocketConnected by viewModel.isWebSocketConnected.collectAsState()
     val isLoadingMore by viewModel.isLoadingMore.collectAsState()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(padding)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
+    Scaffold(
+        topBar = {
+            MarketTopBar(
+                onNavigateUp = onNavigateUp,
+                isWebSocketConnected = isWebSocketConnected,
+                coinCount = tokens.size
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { scaffoldPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(scaffoldPadding)
+                .padding(padding)
         ) {
-            // Header with title and connection status
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text(
-                    text = "Market",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                // Search bar
+                MarketSearchBar(
+                    query = searchQuery,
+                    onQueryChange = { viewModel.updateSearchQuery(it) },
+                    onClear = { viewModel.clearSearch() },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Connection status
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        LiveIndicator(isConnected = isWebSocketConnected)
-                        Text(
-                            text = if (isWebSocketConnected) "Live" else "Offline",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isWebSocketConnected)
-                                MaterialTheme.colorScheme.success
-                            else
-                                MaterialTheme.colorScheme.error
-                        )
-                    }
-
-                    // Coin count
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        elevation = CardDefaults.cardElevation(0.dp)
-                    ) {
-                        Text(
-                            text = "${tokens.size} coins",
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-
-            // Search bar
-            MarketSearchBar(
-                query = searchQuery,
-                onQueryChange = { viewModel.updateSearchQuery(it) },
-                onClear = { viewModel.clearSearch() }
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Content
-            Box(modifier = Modifier.weight(1f)) {
-                when (uiState) {
-                    com.example.nexuswallet.feature.coin.Result.Loading -> {
-                        if (tokens.isEmpty()) {
-                            LoadingView()
-                        } else {
-                            MarketList(
-                                tokens = tokens,
-                                isLoadingMore = isLoadingMore,
-                                onTokenClick = { token ->
-                                    onNavigateToTokenDetail(token.id)
-                                },
-                                onLoadMore = { viewModel.loadNextPage() }
-                            )
+                // Content
+                Box(modifier = Modifier.weight(1f)) {
+                    when (uiState) {
+                        Result.Loading -> {
+                            if (tokens.isEmpty()) {
+                                LoadingView()
+                            } else {
+                                MarketList(
+                                    tokens = tokens,
+                                    isLoadingMore = isLoadingMore,
+                                    onTokenClick = { token ->
+                                        onNavigateToTokenDetail(token.id)
+                                    },
+                                    onLoadMore = { viewModel.loadNextPage() }
+                                )
+                            }
                         }
-                    }
 
-                    is com.example.nexuswallet.feature.coin.Result.Error -> {
-                        if (tokens.isEmpty()) {
-                            ErrorView(
-                                message = (uiState as com.example.nexuswallet.feature.coin.Result.Error).message,
-                                onRetry = { viewModel.refreshData() }
-                            )
-                        } else {
-                            Column {
-                                // Error banner
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.errorContainer
-                                    )
-                                ) {
-                                    Row(
+                        is com.example.nexuswallet.feature.coin.Result.Error -> {
+                            if (tokens.isEmpty()) {
+                                ErrorView(
+                                    message = (uiState as com.example.nexuswallet.feature.coin.Result.Error).message,
+                                    onRetry = { viewModel.refreshData() }
+                                )
+                            } else {
+                                Column {
+                                    // Error banner
+                                    Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.errorContainer
+                                        )
                                     ) {
-                                        Icon(
-                                            Icons.Outlined.Error,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Text(
-                                            text = "Connection issues. Showing cached data.",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        IconButton(
-                                            onClick = { viewModel.refreshData() },
-                                            modifier = Modifier.size(24.dp)
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             Icon(
-                                                Icons.Outlined.Refresh,
-                                                contentDescription = "Retry",
+                                                Icons.Outlined.Error,
+                                                contentDescription = null,
                                                 tint = MaterialTheme.colorScheme.error,
-                                                modifier = Modifier.size(14.dp)
+                                                modifier = Modifier.size(16.dp)
                                             )
+                                            Text(
+                                                text = "Connection issues. Showing cached data.",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            IconButton(
+                                                onClick = { viewModel.refreshData() },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Outlined.Refresh,
+                                                    contentDescription = "Retry",
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            }
                                         }
                                     }
-                                }
 
+                                    MarketList(
+                                        tokens = tokens,
+                                        isLoadingMore = isLoadingMore,
+                                        onTokenClick = { token ->
+                                            onNavigateToTokenDetail(token.id)
+                                        },
+                                        onLoadMore = { viewModel.loadNextPage() }
+                                    )
+                                }
+                            }
+                        }
+
+                        is Result.Success -> {
+                            if (tokens.isEmpty() && !isLoadingMore) {
+                                EmptySearchResult()
+                            } else {
                                 MarketList(
                                     tokens = tokens,
                                     isLoadingMore = isLoadingMore,
@@ -222,37 +196,88 @@ fun MarketScreen(
                             }
                         }
                     }
-
-                    is Result.Success -> {
-                        if (tokens.isEmpty() && !isLoadingMore) {
-                            EmptySearchResult()
-                        } else {
-                            MarketList(
-                                tokens = tokens,
-                                isLoadingMore = isLoadingMore,
-                                onTokenClick = { token ->
-                                    onNavigateToTokenDetail(token.id)
-                                },
-                                onLoadMore = { viewModel.loadNextPage() }
-                            )
-                        }
-                    }
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MarketTopBar(
+    onNavigateUp: () -> Unit,
+    isWebSocketConnected: Boolean,
+    coinCount: Int
+) {
+    TopAppBar(
+        title = {
+            Text(
+                text = "Market",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onNavigateUp) {
+                Icon(
+                    Icons.Default.ArrowBack,
+                    "Back",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        actions = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Connection status
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    LiveIndicator(isConnected = isWebSocketConnected)
+                    Text(
+                        text = if (isWebSocketConnected) "Live" else "Offline",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isWebSocketConnected)
+                            MaterialTheme.colorScheme.success
+                        else
+                            MaterialTheme.colorScheme.error
+                    )
+                }
+
+                // Coin count
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ) {
+                    Text(
+                        text = "$coinCount coins",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface
+        )
+    )
+}
+
 @Composable
 fun MarketSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
