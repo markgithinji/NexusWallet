@@ -10,9 +10,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 interface SolanaBlockchainRepository {
+    // ===== RPC Methods (using sol4k) =====
     suspend fun getRecentBlockhash(network: SolanaNetwork): Result<String>
+
     suspend fun getBalance(
         address: String,
+        network: SolanaNetwork
+    ): Result<BigDecimal>
+
+    suspend fun getTokenBalance(
+        address: String,
+        mintAddress: String,
         network: SolanaNetwork
     ): Result<BigDecimal>
 
@@ -33,33 +41,22 @@ interface SolanaBlockchainRepository {
         network: SolanaNetwork
     ): Result<BroadcastResult>
 
-    suspend fun getTransactionSignatures(
+    fun validateAddress(address: String): Result<Boolean>
+
+    // ===== HELIUS API METHODS =====
+    suspend fun getTransactions(
         address: String,
         network: SolanaNetwork,
-        limit: Int
-    ): Result<List<SolanaTransactionResponse>>
+        limit: Int = 50
+    ): Result<List<HeliusTransaction>>
 
-    suspend fun getTransactionDetails(
+    suspend fun getTransaction(
         signature: String,
         network: SolanaNetwork
-    ): Result<SolanaTransactionDetailsResponse>
+    ): Result<HeliusTransaction>
 
-    suspend fun getFullTransactionHistory(
-        address: String,
-        network: SolanaNetwork,
-        limit: Int
-    ): Result<List<Pair<SolanaTransactionResponse, SolanaTransactionDetailsResponse?>>>
-
-    fun parseTransferFromDetails(
-        details: SolanaTransactionDetailsResponse,
+    fun parseTransfer(
+        transaction: HeliusTransaction,
         walletAddress: String
     ): TransferInfo?
-
-    suspend fun getTokenBalance(
-        address: String,
-        mintAddress: String,
-        network: SolanaNetwork
-    ): Result<BigDecimal>
-
-    fun validateAddress(address: String): Result<Boolean>
 }
