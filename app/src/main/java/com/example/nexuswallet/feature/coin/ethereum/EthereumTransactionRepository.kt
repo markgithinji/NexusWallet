@@ -95,4 +95,18 @@ class EVMTransactionRepositoryImpl @Inject constructor(
     override suspend fun updateTransactionStatus(transactionId: String, status: TransactionStatus) {
         evmTransactionDao.updateStatus(transactionId, status.name)
     }
+
+    override suspend fun getNativeTransaction(id: String): NativeETHTransaction? {
+        val entity = evmTransactionDao.getById(id)
+        return if (entity?.tokenContract == null) {
+            entity?.toDomain() as? NativeETHTransaction
+        } else null
+    }
+
+    override suspend fun getTokenTransaction(id: String): TokenTransaction? {
+        val entity = evmTransactionDao.getById(id)
+        return if (entity?.tokenContract != null) {
+            entity.toDomain() as? TokenTransaction
+        } else null
+    }
 }
