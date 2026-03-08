@@ -44,13 +44,13 @@ class WalletDetailViewModel @Inject constructor(
     private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
     private val getAllTransactionsUseCase: GetAllTransactionsUseCase,
     private val marketRepository: MarketRepository,
-    private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase // Already have this
+    private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase
 ) : ViewModel() {
 
     data class WalletDetailUiState(
         val wallet: Wallet? = null,
         val balance: WalletBalance? = null,
-        val transactions: List<TransactionDisplayInfo> = emptyList(), // Already formatted
+        val transactions: List<TransactionDisplayInfo> = emptyList(),
         val pricePercentages: Map<String, Double> = emptyMap(),
 
         // Granular loading states
@@ -77,8 +77,8 @@ class WalletDetailViewModel @Inject constructor(
 
     // Cache expiration times
     private companion object {
-        const val BALANCE_CACHE_TIME = 2 * 60 * 1000      // 2 minutes
-        const val TRANSACTIONS_CACHE_TIME = 5 * 60 * 1000 // 5 minutes
+        const val BALANCE_CACHE_TIME = 0 * 60 * 1000      // 2 minutes
+        const val TRANSACTIONS_CACHE_TIME = 0 * 60 * 1000 // 5 minutes
     }
 
     fun loadWallet(walletId: String) {

@@ -291,8 +291,8 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
         try {
             logger.d(tag, "Fetching Solana transactions for ${coin.address} on ${coin.network}")
 
-            // Get full transaction history
-            val result = solanaBlockchainRepository.getFullTransactionHistory(
+            // Get transactions from Helius API
+            val result = solanaBlockchainRepository.getTransactions(
                 address = coin.address,
                 network = coin.network,
                 limit = 50 // Fetch last 50 transactions
@@ -307,49 +307,47 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
                     }
                     solanaTransactionRepository.deleteForWalletAndNetwork(walletId, networkStr)
 
-                    val transactions = result.data.mapNotNull { (sigInfo, details) ->
-                        if (details == null) return@mapNotNull null
-
-                        val transferInfo = solanaBlockchainRepository.parseTransferFromDetails(
-                            details = details,
+                    val transactions = result.data.mapNotNull { heliusTx ->
+                        // Parse transfer info from Helius transaction
+                        val transferInfo = solanaBlockchainRepository.parseTransfer(
+                            transaction = heliusTx,
                             walletAddress = coin.address
                         ) ?: return@mapNotNull null
 
-                        // Check if this is a token transfer or native SOL
-                        val isTokenTransfer = details.transaction.message.accountKeys.any { key ->
-                            coin.splTokens.any { it.mintAddress == key }
-                        }
+                        // Check if this is a token transfer (has token transfers)
+                        val isTokenTransfer = heliusTx.tokenTransfers.isNotEmpty()
 
                         if (isTokenTransfer) {
                             // TODO: Handle SPL token transactions
                             // For now, we'll skip token transactions
+                            logger.d(tag, "Skipping token transaction: ${heliusTx.signature.take(8)}...")
                             null
                         } else {
                             // Native SOL transfer
                             SolanaTransaction(
-                                id = sigInfo.signature,
+                                id = heliusTx.signature,
                                 walletId = walletId,
                                 fromAddress = transferInfo.from,
                                 toAddress = transferInfo.to,
-                                status = if (sigInfo.confirmationStatus == "finalized")
+                                status = if (heliusTx.transactionError == null)
                                     TransactionStatus.SUCCESS
                                 else
-                                    TransactionStatus.PENDING,
-                                timestamp = (sigInfo.blockTime ?: 0) * 1000,
-                                note = null,
-                                feeLevel = FeeLevel.NORMAL, // Default
+                                    TransactionStatus.FAILED,
+                                timestamp = heliusTx.timestamp * 1000, // Convert to milliseconds
+                                note = heliusTx.description,
+                                feeLevel = FeeLevel.NORMAL,
                                 amountLamports = transferInfo.amount,
                                 amountSol = (transferInfo.amount.toDouble() / 1_000_000_000).toString(),
-                                feeLamports = transferInfo.fee,
-                                feeSol = (transferInfo.fee.toDouble() / 1_000_000_000).toString(),
-                                signature = sigInfo.signature,
+                                feeLamports = heliusTx.fee,
+                                feeSol = (heliusTx.fee.toDouble() / 1_000_000_000).toString(),
+                                signature = heliusTx.signature,
                                 network = coin.network,
                                 isIncoming = transferInfo.isIncoming,
                                 tokenMint = null,
                                 tokenSymbol = null,
                                 tokenDecimals = null,
-                                slot = sigInfo.slot,
-                                blockTime = sigInfo.blockTime
+                                slot = heliusTx.slot,
+                                blockTime = heliusTx.timestamp
                             )
                         }
                     }
