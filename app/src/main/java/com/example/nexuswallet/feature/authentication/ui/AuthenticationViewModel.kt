@@ -6,6 +6,7 @@ import com.example.nexuswallet.feature.authentication.domain.AuthType
 import com.example.nexuswallet.feature.authentication.domain.RecordAuthenticationUseCase
 import com.example.nexuswallet.feature.authentication.domain.VerifyPinUseCase
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.settings.ui.IsPinSetUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +17,8 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthenticationViewModel @Inject constructor(
     private val verifyPinUseCase: VerifyPinUseCase,
-    private val recordAuthenticationUseCase: RecordAuthenticationUseCase
+    private val recordAuthenticationUseCase: RecordAuthenticationUseCase,
+    private val isPinSetUseCase: IsPinSetUseCase
 ) : ViewModel() {
 
     private val _authenticationResult = MutableStateFlow<Result<AuthType>?>(null)
@@ -27,6 +29,30 @@ class AuthenticationViewModel @Inject constructor(
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    private val _isPinAvailable = MutableStateFlow(false)
+    val isPinAvailable: StateFlow<Boolean> = _isPinAvailable.asStateFlow()
+
+    init {
+        checkPinAvailability()
+    }
+
+    private fun checkPinAvailability() {
+        viewModelScope.launch {
+            when (val result = isPinSetUseCase()) {
+                is Result.Success -> {
+                    _isPinAvailable.value = result.data
+                }
+                is Result.Error -> {
+                    _isPinAvailable.value = false
+                    _errorMessage.value = "Failed to check PIN status"
+                }
+                Result.Loading -> {
+                    // Do nothing
+                }
+            }
+        }
+    }
 
     fun showPinDialog() {
         _showPinDialog.value = true
@@ -51,7 +77,7 @@ class AuthenticationViewModel @Inject constructor(
                 }
 
                 Result.Loading -> {
-                    // Show loading if needed
+                    // NO-OP
                 }
             }
         }
