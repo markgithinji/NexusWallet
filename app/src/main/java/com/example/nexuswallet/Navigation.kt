@@ -154,6 +154,10 @@ fun Navigation() {
                     Log.d("Navigation", "MainTabScreen: navigate to SendRoute - walletId: $walletId, coinType: $coinType, network: $network")
                     navController.navigate(SendRoute(walletId, coinType, network))
                 },
+                onNavigateToSecurity = {
+                    Log.d("Navigation", "MainTabScreen: navigate to SecuritySettingsRoute")
+                    navController.navigate(SecuritySettingsRoute)
+                },
                 padding = PaddingValues(0.dp)
             )
         }
@@ -161,10 +165,6 @@ fun Navigation() {
         composable<MarketRoute> {
             Log.d("Navigation", "Navigated to MarketRoute")
             MarketScreen(
-                onNavigateUp = {
-                    Log.d("Navigation", "MarketScreen: navigate up")
-                    navController.navigateUp()
-                },
                 onNavigateToTokenDetail = { tokenId ->
                     Log.d("Navigation", "MarketScreen: navigate to TokenDetailRoute - tokenId: $tokenId")
                     navController.navigate(TokenDetailRoute(tokenId))
@@ -196,10 +196,6 @@ fun Navigation() {
         composable<SettingsRoute> {
             Log.d("Navigation", "Navigated to SettingsRoute")
             SettingsScreen(
-                onNavigateUp = {
-                    Log.d("Navigation", "SettingsScreen: navigate up")
-                    navController.navigateUp()
-                },
                 onNavigateToSecurity = {
                     Log.d("Navigation", "SettingsScreen: navigate to SecuritySettingsRoute")
                     navController.navigate(SecuritySettingsRoute)

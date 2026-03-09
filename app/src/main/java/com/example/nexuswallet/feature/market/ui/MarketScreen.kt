@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.filled.ArrowBack
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
@@ -62,7 +64,6 @@ import com.example.nexuswallet.ui.theme.success
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MarketScreen(
-    onNavigateUp: () -> Unit,
     onNavigateToTokenDetail: (String) -> Unit,
     padding: PaddingValues
 ) {
@@ -76,7 +77,6 @@ fun MarketScreen(
     Scaffold(
         topBar = {
             MarketTopBar(
-                onNavigateUp = onNavigateUp,
                 isWebSocketConnected = isWebSocketConnected,
                 coinCount = tokens.size
             )
@@ -205,61 +205,44 @@ fun MarketScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MarketTopBar(
-    onNavigateUp: () -> Unit,
     isWebSocketConnected: Boolean,
     coinCount: Int
 ) {
     TopAppBar(
         title = {
-            Text(
-                text = "Market",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = onNavigateUp) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Market icon in title
                 Icon(
-                    Icons.Default.ArrowBack,
-                    "Back",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    imageVector = Icons.AutoMirrored.Outlined.ShowChart,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = "Market",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         },
         actions = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Connection status
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    LiveIndicator(isConnected = isWebSocketConnected)
-                    Text(
-                        text = if (isWebSocketConnected) "Live" else "Offline",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (isWebSocketConnected)
-                            MaterialTheme.colorScheme.success
-                        else
-                            MaterialTheme.colorScheme.error
-                    )
-                }
+                // Live connection indicator
+                ConnectionStatus(
+                    isConnected = isWebSocketConnected
+                )
 
-                // Coin count
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ) {
-                    Text(
-                        text = "$coinCount coins",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
-                }
+                // Coin count badge
+                CoinCountBadge(
+                    count = coinCount
+                )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -267,6 +250,72 @@ fun MarketTopBar(
             scrolledContainerColor = MaterialTheme.colorScheme.surface
         )
     )
+}
+
+@Composable
+fun ConnectionStatus(
+    isConnected: Boolean
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        // Live pulsing indicator
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(
+                    color = if (isConnected)
+                        MaterialTheme.colorScheme.success
+                    else
+                        MaterialTheme.colorScheme.error
+                )
+                .then(
+                    if (isConnected) {
+                        Modifier.graphicsLayer {
+                            alpha = 0.8f
+                        }
+                    } else {
+                        Modifier
+                    }
+                )
+        )
+
+        Text(
+            text = if (isConnected) "LIVE" else "OFFLINE",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = if (isConnected)
+                MaterialTheme.colorScheme.success
+            else
+                MaterialTheme.colorScheme.error,
+            letterSpacing = 0.5.sp
+        )
+    }
+}
+
+@Composable
+fun CoinCountBadge(
+    count: Int
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+        contentColor = MaterialTheme.colorScheme.primary
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "$count coins",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
 }
 
 @Composable

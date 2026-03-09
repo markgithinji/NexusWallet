@@ -28,7 +28,6 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.contentColorFor
 import com.example.nexuswallet.feature.coin.NetworkType
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTabScreen(
@@ -38,6 +37,7 @@ fun MainTabScreen(
     onNavigateToTokenDetail: (String) -> Unit,
     onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToSecurity: () -> Unit,
     padding: PaddingValues
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -168,7 +168,6 @@ fun MainTabScreen(
                 )
             )
             1 -> MarketScreen(
-                onNavigateUp = { /* Handle market screen back navigation */ },
                 onNavigateToTokenDetail = onNavigateToTokenDetail,
                 padding = PaddingValues(
                     top = scaffoldPadding.calculateTopPadding(),
@@ -176,8 +175,7 @@ fun MainTabScreen(
                 )
             )
             2 -> SettingsScreen(
-                onNavigateUp = { /* Handle settings screen back navigation */ },
-                onNavigateToSecurity = { /* Navigate to security settings */ }
+                onNavigateToSecurity = onNavigateToSecurity
             )
         }
     }
