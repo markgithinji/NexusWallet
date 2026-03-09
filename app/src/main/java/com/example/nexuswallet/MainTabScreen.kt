@@ -38,6 +38,7 @@ fun MainTabScreen(
     onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToSecurity: () -> Unit,
+    onRequestAuthentication: (String, String) -> Unit,
     padding: PaddingValues
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -61,7 +62,6 @@ fun MainTabScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Wallets Tab
                     NavigationBarItem(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
@@ -91,7 +91,6 @@ fun MainTabScreen(
                         )
                     )
 
-                    // Market Tab
                     NavigationBarItem(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
@@ -121,7 +120,6 @@ fun MainTabScreen(
                         )
                     )
 
-                    // Settings Tab
                     NavigationBarItem(
                         selected = selectedTab == 2,
                         onClick = { selectedTab = 2 },
@@ -162,6 +160,7 @@ fun MainTabScreen(
                 onNavigateToReceive = onNavigateToReceive,
                 onNavigateToSend = onNavigateToSend,
                 onNavigateToCreateWallet = onNavigateToCreateWallet,
+                onRequestAuthentication = onRequestAuthentication,
                 padding = PaddingValues(
                     top = scaffoldPadding.calculateTopPadding(),
                     bottom = scaffoldPadding.calculateBottomPadding()

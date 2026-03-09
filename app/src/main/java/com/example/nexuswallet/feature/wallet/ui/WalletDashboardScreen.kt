@@ -123,6 +123,7 @@ fun WalletDashboardScreen(
     onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToCreateWallet: () -> Unit,
+    onRequestAuthentication: (String, String) -> Unit,
     padding: PaddingValues,
     viewModel: WalletDashboardViewModel = hiltViewModel()
 ) {
@@ -134,10 +135,8 @@ fun WalletDashboardScreen(
 
     var isRefreshing by remember { mutableStateOf(false) }
 
-    // Show error snackbar if operation fails
     LaunchedEffect(operationError) {
         operationError?.let {
-            // TODO: Handle error (show snackbar, etc.)
             viewModel.clearOperationError()
         }
     }
@@ -176,21 +175,19 @@ fun WalletDashboardScreen(
                             .padding(scaffoldPadding)
                             .padding(padding)
                     ) {
-                        // Background
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(MaterialTheme.colorScheme.background)
                         )
 
-                        // Main content
                         DashboardContent(
                             wallets = state.data,
                             totalPortfolio = totalPortfolio,
                             balances = balances,
                             isOperationLoading = isOperationLoading,
                             onWalletClick = { wallet ->
-                                onNavigateToWalletDetail(wallet.id)
+                                onRequestAuthentication("walletDetail", wallet.id)
                             },
                             onCoinClick = { walletId, coinType, network ->
                                 onNavigateToCoinDetail(walletId, coinType, network)
