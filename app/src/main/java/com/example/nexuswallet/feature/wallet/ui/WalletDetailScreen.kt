@@ -651,23 +651,13 @@ fun WalletHeaderCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isLoadingBalance && numericBalance == 0.0) {
-                    // Show shimmer loading effect
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(36.dp)
-                            .shimmer()
-                    )
-                } else {
-                    Text(
-                        text = NumberFormat.getCurrencyInstance(Locale.US).format(animatedValue.value),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                Text(
+                    text = NumberFormat.getCurrencyInstance(Locale.US).format(animatedValue.value),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
 
                 // Show warning icon if there's a sync error
                 if (hasSyncError) {
@@ -713,7 +703,7 @@ fun WalletHeaderCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // In WalletHeaderCard
+            // Quick action buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -723,14 +713,14 @@ fun WalletHeaderCard(
                     icon = Icons.Outlined.ArrowDownward,
                     label = "Receive",
                     onClick = onReceive,
-                    color = MaterialTheme.colorScheme.success, // Green for receive
+                    color = MaterialTheme.colorScheme.success,
                     modifier = Modifier.weight(1f)
                 )
                 QuickActionItem(
                     icon = Icons.Outlined.ArrowUpward,
                     label = "Send",
                     onClick = onSend,
-                    color = MaterialTheme.colorScheme.primary, // Blue for send
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
                 QuickActionItem(
@@ -1100,91 +1090,6 @@ fun QuickActionItem(
 }
 
 @Composable
-fun BitcoinCoinCard(
-    coin: BitcoinCoin,
-    balance: BitcoinBalance?,
-    onClick: () -> Unit,
-    priceChangePercentage: Double? = null
-) {
-    val balanceAmount = balance?.btc ?: "0"
-    val usdValue = balance?.usdValue ?: 0.0
-
-    val formattedBalance = formatCryptoAmount(balanceAmount)
-    val formattedUsd = NumberFormat.getCurrencyInstance(Locale.US).format(usdValue)
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 1.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Coin icon
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.bitcoin),
-                    contentDescription = "BTC",
-                    modifier = Modifier.size(20.dp),
-                    tint = Color.Unspecified
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Coin info
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "BTC${if (coin.network != BitcoinNetwork.Mainnet) " (Testnet)" else ""}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "$formattedBalance BTC",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // USD Value and percentage
-            Column(
-                horizontalAlignment = Alignment.End
-            ) {
-                Text(
-                    text = formattedUsd,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1
-                )
-
-                if (priceChangePercentage != null) {
-                    PriceChangeIndicator(priceChangePercentage)
-                }
-            }
-        }
-    }
-}
-@Composable
 fun SolanaCoinCard(
     coin: SolanaCoin,
     balance: SolanaBalance?,
@@ -1209,7 +1114,6 @@ fun SolanaCoinCard(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Coin icon
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -1226,7 +1130,6 @@ fun SolanaCoinCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Coin info
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -1237,25 +1140,15 @@ fun SolanaCoinCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.5f)
-                            .height(20.dp)
-                            .shimmer()
-                    )
-                } else {
-                    Text(
-                        text = "${formatCryptoAmount(balance?.sol ?: "0")} SOL",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = "${formatCryptoAmount(balance?.sol ?: "0")} SOL",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
 
-                // Show SPL token count if any
-                if (coin.splTokens.isNotEmpty() && !isLoading) {
+                if (coin.splTokens.isNotEmpty()) {
                     Text(
                         text = "+${coin.splTokens.size} tokens",
                         style = MaterialTheme.typography.labelSmall,
@@ -1264,28 +1157,18 @@ fun SolanaCoinCard(
                 }
             }
 
-            // USD Value and percentage
             Column(
                 horizontalAlignment = Alignment.End
             ) {
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier
-                            .width(80.dp)
-                            .height(20.dp)
-                            .shimmer()
-                    )
-                } else {
-                    Text(
-                        text = NumberFormat.getCurrencyInstance(Locale.US).format(balance?.usdValue ?: 0.0),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1
-                    )
-                }
+                Text(
+                    text = NumberFormat.getCurrencyInstance(Locale.US).format(balance?.usdValue ?: 0.0),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1
+                )
 
-                if (priceChangePercentage != null && !isLoading) {
+                if (priceChangePercentage != null) {
                     PriceChangeIndicator(priceChangePercentage)
                 }
             }
@@ -1312,7 +1195,7 @@ fun EVMTokenCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 1.dp)
-            .clickable(enabled = !isLoading) { onClick() },
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -1325,7 +1208,6 @@ fun EVMTokenCard(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Token icon
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -1350,7 +1232,6 @@ fun EVMTokenCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Token info
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -1361,26 +1242,15 @@ fun EVMTokenCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.5f)
-                            .height(20.dp)
-                            .shimmer()
-                    )
-                } else {
-                    Text(
-                        text = "${
-                            formatCryptoAmount(balance?.balanceDecimal ?: "0")
-                        } ${token.symbol}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = "${formatCryptoAmount(balance?.balanceDecimal ?: "0")} ${token.symbol}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
 
-                if (token.network != EthereumNetwork.Mainnet && !isLoading) {
+                if (token.network != EthereumNetwork.Mainnet) {
                     Text(
                         text = token.network.displayName,
                         style = MaterialTheme.typography.labelSmall,
@@ -1389,28 +1259,18 @@ fun EVMTokenCard(
                 }
             }
 
-            // USD Value and percentage
             Column(
                 horizontalAlignment = Alignment.End
             ) {
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier
-                            .width(80.dp)
-                            .height(20.dp)
-                            .shimmer()
-                    )
-                } else {
-                    Text(
-                        text = NumberFormat.getCurrencyInstance(Locale.US).format(balance?.usdValue ?: 0.0),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1
-                    )
-                }
+                Text(
+                    text = NumberFormat.getCurrencyInstance(Locale.US).format(balance?.usdValue ?: 0.0),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1
+                )
 
-                if (priceChangePercentage != null && !isLoading) {
+                if (priceChangePercentage != null) {
                     PriceChangeIndicator(priceChangePercentage)
                 }
             }
@@ -1660,15 +1520,6 @@ fun formatTimestamp(timestamp: Long): String {
         }
     }
 }
-
-// Helper data class for transaction display
-data class TransactionDisplayData(
-    val isIncoming: Boolean,
-    val amount: String,
-    val symbol: String,
-    val status: TransactionStatus,
-    val timestamp: Long
-)
 
 @Composable
 fun EmptyTransactionsView() {
