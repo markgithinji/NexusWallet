@@ -98,11 +98,29 @@ class GetTransactionDetailUseCaseImpl @Inject constructor(
         return solanaTransactionRepository.getTransaction(transactionId)
     }
 
-    private fun getEthereumNetworkFromString(networkStr: String): EthereumNetwork? {
-        return when (networkStr) {
+    // Extension function to get EthereumNetwork from chain ID
+    private fun Long.toEthereumNetwork(): EthereumNetwork? {
+        val chainIdStr = this.toString()
+        return when (chainIdStr) {
             EthereumNetwork.Mainnet.chainId -> EthereumNetwork.Mainnet
             EthereumNetwork.Sepolia.chainId -> EthereumNetwork.Sepolia
-            else -> null
+            else -> {
+                logger.w(tag, "Unknown chain ID: $this")
+                null
+            }
+        }
+    }
+
+    // Extension function to get display name from chain ID
+    private fun Long.toEthereumDisplayName(): String {
+        val chainIdStr = this.toString()
+        return when (chainIdStr) {
+            EthereumNetwork.Mainnet.chainId -> EthereumNetwork.Mainnet.displayName
+            EthereumNetwork.Sepolia.chainId -> EthereumNetwork.Sepolia.displayName
+            else -> {
+                logger.w(tag, "Unknown chain ID: $this, defaulting to Ethereum")
+                "Ethereum"
+            }
         }
     }
 
@@ -164,7 +182,6 @@ class GetTransactionDetailUseCaseImpl @Inject constructor(
         tx: NativeETHTransaction,
         coinType: CoinType
     ): TransactionDetail {
-        val ethereumNetwork = getEthereumNetworkFromString(tx.network)
         val gasPriceGwei = tx.gasPriceGwei.toDoubleOrNull() ?: 0.0
         val gasUsed = tx.gasLimit
         val feeEth = (gasPriceGwei * gasUsed / 1_000_000_000).toString()
@@ -173,7 +190,7 @@ class GetTransactionDetailUseCaseImpl @Inject constructor(
             id = tx.id,
             walletId = tx.walletId,
             coinType = coinType,
-            network = ethereumNetwork?.displayName ?: "Ethereum",
+            network = tx.chainId.toEthereumDisplayName(), // Now works with Long
             hash = tx.txHash ?: tx.id,
             status = tx.status,
             timestamp = tx.timestamp,
@@ -194,7 +211,6 @@ class GetTransactionDetailUseCaseImpl @Inject constructor(
         tx: TokenTransaction,
         coinType: CoinType
     ): TransactionDetail {
-        val ethereumNetwork = getEthereumNetworkFromString(tx.network)
         val gasPriceGwei = tx.gasPriceGwei.toDoubleOrNull() ?: 0.0
         val gasUsed = tx.gasLimit
         val feeEth = (gasPriceGwei * gasUsed / 1_000_000_000).toString()
@@ -203,7 +219,7 @@ class GetTransactionDetailUseCaseImpl @Inject constructor(
             id = tx.id,
             walletId = tx.walletId,
             coinType = coinType,
-            network = ethereumNetwork?.displayName ?: "Ethereum",
+            network = tx.chainId.toEthereumDisplayName(),
             hash = tx.txHash ?: tx.id,
             status = tx.status,
             timestamp = tx.timestamp,
