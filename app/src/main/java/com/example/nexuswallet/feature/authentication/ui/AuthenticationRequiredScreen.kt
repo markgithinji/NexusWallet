@@ -85,6 +85,7 @@ fun AuthenticationRequiredScreen(
     val showPinDialog by viewModel.showPinDialog.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val isPinAvailable by viewModel.isPinAvailable.collectAsState()
+    val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
 
     val biometricPrompt = remember(activity) {
         if (activity != null) {
@@ -93,13 +94,11 @@ fun AuthenticationRequiredScreen(
                 object : BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                         super.onAuthenticationSucceeded(result)
-                        Timber.d(" Biometric authentication succeeded")
                         viewModel.onBiometricSuccess()
                     }
 
                     override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                         super.onAuthenticationError(errorCode, errString)
-                        Timber.d(" Biometric authentication error: $errString")
                         if (errorCode != BiometricPrompt.ERROR_CANCELED &&
                             errorCode != BiometricPrompt.ERROR_USER_CANCELED) {
                             viewModel.setErrorMessage(errString.toString())
@@ -108,7 +107,6 @@ fun AuthenticationRequiredScreen(
 
                     override fun onAuthenticationFailed() {
                         super.onAuthenticationFailed()
-                        Timber.d(" Biometric authentication failed")
                         viewModel.setErrorMessage("Authentication failed. Please try again.")
                     }
                 })
@@ -127,6 +125,11 @@ fun AuthenticationRequiredScreen(
     }
 
     val coroutineScope = rememberCoroutineScope()
+
+    // Refresh auth status when screen becomes visible
+    LaunchedEffect(Unit) {
+        viewModel.refreshAuthStatus()
+    }
 
     if (showPinDialog) {
         AuthenticationPinDialog(
@@ -157,9 +160,10 @@ fun AuthenticationRequiredScreen(
             description = description,
             errorMessage = errorMessage,
             isPinAvailable = isPinAvailable,
-            canAuthenticate = canAuthenticate && biometricPrompt != null,
+            isBiometricEnabled = isBiometricEnabled,
+            biometricHardwareAvailable = canAuthenticate,
             onBiometricClick = {
-                if (canAuthenticate && biometricPrompt != null) {
+                if (biometricPrompt != null) {
                     biometricPrompt.authenticate(promptInfo)
                 } else {
                     viewModel.setErrorMessage("Biometric authentication not available")
@@ -174,12 +178,10 @@ fun AuthenticationRequiredScreen(
     LaunchedEffect(authenticationResult) {
         when (val result = authenticationResult) {
             is Result.Success<AuthType> -> {
-                Timber.d("Authentication successful: ${result.data}")
                 onAuthenticated()
                 viewModel.clearState()
             }
             is Result.Error -> {
-                Timber.d("Authentication error: ${result.message}")
                 viewModel.setErrorMessage(result.message)
             }
             else -> {}
@@ -226,7 +228,8 @@ private fun AuthenticationContent(
     description: String,
     errorMessage: String?,
     isPinAvailable: Boolean,
-    canAuthenticate: Boolean,
+    isBiometricEnabled: Boolean,
+    biometricHardwareAvailable: Boolean,
     onBiometricClick: () -> Unit,
     onPinClick: () -> Unit,
     onCancel: () -> Unit,
@@ -254,7 +257,8 @@ private fun AuthenticationContent(
             onBiometricClick = onBiometricClick,
             onPinClick = onPinClick,
             isPinAvailable = isPinAvailable,
-            canAuthenticate = canAuthenticate
+            isBiometricEnabled = isBiometricEnabled,
+            biometricHardwareAvailable = biometricHardwareAvailable
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -368,10 +372,12 @@ private fun AuthenticationMethodsCard(
     onBiometricClick: () -> Unit,
     onPinClick: () -> Unit,
     isPinAvailable: Boolean,
-    canAuthenticate: Boolean
+    isBiometricEnabled: Boolean,
+    biometricHardwareAvailable: Boolean,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -383,7 +389,14 @@ private fun AuthenticationMethodsCard(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            // Biometric button
+            // Biometric button - enabled only if hardware available AND user enabled it
+            val biometricEnabled = biometricHardwareAvailable && isBiometricEnabled
+            val biometricError = when {
+                !biometricHardwareAvailable -> "Biometric hardware not available"
+                !isBiometricEnabled -> "Biometric not enabled in settings"
+                else -> null
+            }
+
             Button(
                 onClick = onBiometricClick,
                 modifier = Modifier
@@ -391,33 +404,52 @@ private fun AuthenticationMethodsCard(
                     .height(56.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 ),
-                enabled = canAuthenticate
+                enabled = biometricEnabled
             ) {
                 Icon(
                     imageVector = Icons.Default.Fingerprint,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Use Biometric",
+                    text = if (biometricEnabled) "Use Biometric" else "Biometric Unavailable",
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onPrimary
+                    fontWeight = FontWeight.Medium
                 )
             }
 
-            if (!canAuthenticate) {
+            if (biometricError != null) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "⚠️ Biometric not available",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.warning,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.warning.copy(alpha = 0.1f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.warning,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = biometricError,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.warning
+                        )
+                    }
+                }
             }
 
             if (isPinAvailable) {
