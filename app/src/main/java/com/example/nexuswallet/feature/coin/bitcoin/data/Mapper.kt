@@ -86,7 +86,7 @@ fun EsploraTransactionResponse.toDomain(
         feeSatoshis = fee,
         feeBtc = feeBtc,
         feePerByte = if (size > 0) fee.toDouble() / size else 0.0,
-        estimatedSize = size.toLong() ?: 0,
+        estimatedSize = size.toLong(),
         signedHex = "",
         txHash = txid,
         status = if (status.confirmed) TransactionStatus.SUCCESS else TransactionStatus.PENDING,

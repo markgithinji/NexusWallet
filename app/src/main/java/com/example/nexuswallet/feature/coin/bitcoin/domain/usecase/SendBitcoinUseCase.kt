@@ -43,7 +43,10 @@ class SendBitcoinUseCase @Inject constructor(
         walletId: String,
         network: BitcoinNetwork
     ): Result<SendBitcoinResult> = withContext(Dispatchers.IO) {
-        logger.d(tag, "Sending prepared transaction: ${preparedTransaction.transactionId} | walletId=$walletId | network=$network")
+        logger.d(
+            tag,
+            "Sending prepared transaction: ${preparedTransaction.transactionId} | walletId=$walletId | network=$network"
+        )
 
         // Get wallet
         val wallet = walletRepository.getWallet(walletId) ?: run {
@@ -69,53 +72,50 @@ class SendBitcoinUseCase @Inject constructor(
             return@withContext Result.Error("No private key found")
         }
 
-        return@withContext try {
-            val privateKeyWIF = keyStoreRepository.decryptString(
-                encryptedData.first,
-                encryptedData.second.toHex()
-            )
+        val privateKeyWIF = keyStoreRepository.decryptString(
+            encryptedData.first,
+            encryptedData.second.toHex()
+        )
 
-            val networkParams = when (bitcoinCoin.network) {
-                BitcoinNetwork.Mainnet -> MainNetParams.get()
-                BitcoinNetwork.Testnet -> TestNet3Params.get()
+        val networkParams = when (bitcoinCoin.network) {
+            BitcoinNetwork.Mainnet -> MainNetParams.get()
+            BitcoinNetwork.Testnet -> TestNet3Params.get()
+        }
+
+        val ecKey = DumpedPrivateKey.fromBase58(networkParams, privateKeyWIF).key
+
+        // Verify key matches address
+        if (LegacyAddress.fromKey(networkParams, ecKey).toString() != bitcoinCoin.address) {
+            logger.e(tag, "Private key does not match wallet address")
+            return@withContext Result.Error("Private key does not match wallet address")
+        }
+
+        // Create and sign transaction using prepared data
+        when (val signResult = bitcoinBlockchainRepository.createAndSignTransaction(
+            fromKey = ecKey,
+            toAddress = preparedTransaction.toAddress,
+            satoshis = preparedTransaction.amountSatoshis,
+            feeLevel = preparedTransaction.feeLevel,
+            network = bitcoinCoin.network
+        )) {
+            is Result.Success -> {
+                val signedTx = signResult.data
+
+                // Broadcast and save after successful broadcast
+                broadcastAndSaveTransaction(
+                    signedTx = signedTx,
+                    preparedTx = preparedTransaction,
+                    walletId = walletId,
+                    network = bitcoinCoin.network
+                )
             }
 
-            val ecKey = DumpedPrivateKey.fromBase58(networkParams, privateKeyWIF).key
-
-            // Verify key matches address
-            if (LegacyAddress.fromKey(networkParams, ecKey).toString() != bitcoinCoin.address) {
-                logger.e(tag, "Private key does not match wallet address")
-                return@withContext Result.Error("Private key does not match wallet address")
+            is Result.Error -> {
+                logger.e(tag, "Failed to create signed transaction: ${signResult.message}")
+                Result.Error("Failed to create signed transaction: ${signResult.message}")
             }
 
-            // Create and sign transaction using prepared data
-            when (val signResult = bitcoinBlockchainRepository.createAndSignTransaction(
-                fromKey = ecKey,
-                toAddress = preparedTransaction.toAddress,
-                satoshis = preparedTransaction.amountSatoshis,
-                feeLevel = preparedTransaction.feeLevel,
-                network = bitcoinCoin.network
-            )) {
-                is Result.Success -> {
-                    val signedTx = signResult.data
-
-                    // Broadcast and save after successful broadcast
-                    broadcastAndSaveTransaction(
-                        signedTx = signedTx,
-                        preparedTx = preparedTransaction,
-                        walletId = walletId,
-                        network = bitcoinCoin.network
-                    )
-                }
-                is Result.Error -> {
-                    logger.e(tag, "Failed to create signed transaction: ${signResult.message}")
-                    Result.Error("Failed to create signed transaction: ${signResult.message}")
-                }
-                else -> Result.Error("Unknown signing error")
-            }
-        } catch (e: Exception) {
-            logger.e(tag, "Error signing transaction", e)
-            Result.Error("Signing failed: ${e.message}")
+            else -> Result.Error("Unknown signing error")
         }
     }
 

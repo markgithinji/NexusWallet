@@ -1,22 +1,17 @@
 package com.example.nexuswallet.feature.coin.bitcoin.domain.usecase
 
-import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.BTC_PRIVATE_KEY_TYPE
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_INPUT_COUNT
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_OUTPUT_COUNT
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
-import com.example.nexuswallet.toSatoshis
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
+import com.example.nexuswallet.toSatoshis
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
