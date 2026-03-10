@@ -2,16 +2,15 @@ package com.example.nexuswallet.feature.coin.bitcoin.data.repository
 
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
-import com.example.nexuswallet.feature.coin.bitcoin.data.remote.api.BitcoinApi
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionDto
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.bitcoin.data.model.ParsedTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.data.model.UTXO
+import com.example.nexuswallet.feature.coin.bitcoin.data.remote.api.BitcoinApi
 import com.example.nexuswallet.feature.coin.bitcoin.data.remote.model.EsploraTransactionResponse
 import com.example.nexuswallet.feature.coin.bitcoin.data.toDomain
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
+import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.CoroutineDispatcher
@@ -35,7 +34,6 @@ import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
-import kotlin.collections.mapNotNull
 
 @Singleton
 class BitcoinBlockchainRepositoryImpl @Inject constructor(
