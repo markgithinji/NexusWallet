@@ -1,15 +1,18 @@
-package com.example.nexuswallet.feature.coin.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.PreparedBitcoinTransaction
+import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
+import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
+import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinWalletUseCase
+import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.PrepareBitcoinTransactionUseCase
+import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.SendBitcoinUseCase
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -96,9 +99,11 @@ class BitcoinReviewViewModel @Inject constructor(
                     // Load balance
                     loadBalance(walletInfo.walletAddress, network)
                 }
+
                 is Result.Error -> {
                     _state.update { it.copy(error = walletResult.message, isLoading = false) }
                 }
+
                 else -> {}
             }
         }
@@ -116,9 +121,16 @@ class BitcoinReviewViewModel @Inject constructor(
                 }
                 loadFeeEstimate()
             }
+
             is Result.Error -> {
-                _state.update { it.copy(error = "Failed to load balance: ${result.message}", isLoading = false) }
+                _state.update {
+                    it.copy(
+                        error = "Failed to load balance: ${result.message}",
+                        isLoading = false
+                    )
+                }
             }
+
             else -> {}
         }
     }
@@ -140,6 +152,7 @@ class BitcoinReviewViewModel @Inject constructor(
                 }
                 logger.d("BitcoinReviewVM", "Fee estimate loaded: ${result.data.totalFeeBtc} BTC")
             }
+
             is Result.Error -> {
                 _state.update {
                     it.copy(
@@ -149,6 +162,7 @@ class BitcoinReviewViewModel @Inject constructor(
                     )
                 }
             }
+
             else -> {}
         }
     }
@@ -180,10 +194,12 @@ class BitcoinReviewViewModel @Inject constructor(
                     }
                     _effect.emit(BitcoinReviewEffect.TransactionPrepared(preparedTx.transactionId))
                 }
+
                 is Result.Error -> {
                     _state.update { it.copy(isLoading = false, error = result.message) }
                     _effect.emit(BitcoinReviewEffect.ShowError(result.message))
                 }
+
                 else -> {}
             }
         }
@@ -230,6 +246,7 @@ class BitcoinReviewViewModel @Inject constructor(
                         }
                     }
                 }
+
                 is Result.Error -> {
                     _state.update {
                         it.copy(
@@ -238,6 +255,7 @@ class BitcoinReviewViewModel @Inject constructor(
                         )
                     }
                 }
+
                 else -> {}
             }
         }

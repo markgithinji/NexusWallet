@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin.ui
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
@@ -10,7 +10,6 @@ import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinWal
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.PrepareBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.SendBitcoinUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.SyncBitcoinTransactionsUseCase
-import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.ValidateBitcoinAddressUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.ValidateBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
@@ -50,7 +49,7 @@ object BitcoinUseCaseModule {
         securityPreferencesRepository: SecurityPreferencesRepository,
         logger: Logger
     ): PrepareBitcoinTransactionUseCase {
-        return PrepareBitcoinTransactionUseCaseImpl(
+        return PrepareBitcoinTransactionUseCase(
             walletRepository = walletRepository,
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
             bitcoinTransactionRepository = bitcoinTransactionRepository,
@@ -118,18 +117,9 @@ object BitcoinUseCaseModule {
 
     @Provides
     @Singleton
-    fun provideValidateBitcoinAddressUseCase(
-        logger: Logger
-    ): ValidateBitcoinAddressUseCase {
-        return ValidateBitcoinAddressUseCase(logger)
-    }
-
-    @Provides
-    @Singleton
     fun provideValidateBitcoinTransactionUseCase(
-        logger: Logger,
-        validateBitcoinAddressUseCase: ValidateBitcoinAddressUseCase
+        logger: Logger
     ): ValidateBitcoinTransactionUseCase {
-        return ValidateBitcoinTransactionUseCase(validateBitcoinAddressUseCase,logger)
+        return ValidateBitcoinTransactionUseCase(logger)
     }
 }

@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin.ui
 
 import java.math.BigDecimal
 import java.math.RoundingMode

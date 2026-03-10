@@ -29,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -41,10 +40,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinReviewEffect
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinReviewViewModel
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendEvent
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendViewModel
+import com.example.nexuswallet.feature.coin.bitcoin.ui.BitcoinReviewEffect
+import com.example.nexuswallet.feature.coin.bitcoin.ui.BitcoinReviewViewModel
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendEffect
@@ -52,7 +49,6 @@ import com.example.nexuswallet.feature.coin.ethereum.EthereumSendEvent
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendViewModel
 import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
 import com.example.nexuswallet.feature.coin.solana.SolanaSendEffect
-import com.example.nexuswallet.feature.coin.solana.SolanaSendEvent
 import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
@@ -71,7 +67,6 @@ import com.example.nexuswallet.ui.theme.warning
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.withTimeoutOrNull
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)

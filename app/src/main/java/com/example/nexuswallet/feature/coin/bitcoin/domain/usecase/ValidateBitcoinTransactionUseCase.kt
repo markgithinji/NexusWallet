@@ -5,19 +5,22 @@ import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstim
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
+import org.bitcoinj.core.Address
+import org.bitcoinj.params.MainNetParams
+import org.bitcoinj.params.TestNet3Params
 import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
 
+
 @Singleton
 class ValidateBitcoinTransactionUseCase @Inject constructor(
-    private val validateBitcoinAddressUseCase: ValidateBitcoinAddressUseCase,
     private val logger: Logger
 ) {
 
     private val tag = "ValidateBitcoinTxUC"
 
-    suspend fun invoke(
+    fun invoke(
         walletId: String,
         wallet: Wallet?,
         toAddress: String,
@@ -56,8 +59,20 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
         }
 
         // Validate address format
-        if (!validateBitcoinAddressUseCase(toAddress, network)) {
-            logger.w(tag, "Invalid address format: ${toAddress.take(8)}...")
+        val isValidAddress = try {
+            val params = when (network) {
+                BitcoinNetwork.Mainnet -> MainNetParams.get()
+                BitcoinNetwork.Testnet -> TestNet3Params.get()
+            }
+            Address.fromString(params, toAddress)
+            logger.d(tag, "Valid $network address: ${toAddress.take(8)}...")
+            true
+        } catch (e: Exception) {
+            logger.e(tag, "Invalid $network address: ${toAddress.take(8)}...")
+            false
+        }
+
+        if (!isValidAddress) {
             return SendValidationResult(
                 isValid = false,
                 addressError = "Invalid Bitcoin address for ${network.name.lowercase()}"

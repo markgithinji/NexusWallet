@@ -19,7 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredScreen
 import com.example.nexuswallet.feature.coin.CoinType
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendScreen
+import com.example.nexuswallet.feature.coin.bitcoin.ui.BitcoinSendScreen
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendScreen
 import com.example.nexuswallet.feature.coin.solana.SolanaSendScreen
@@ -34,7 +34,6 @@ import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailScreen
-import timber.log.Timber
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
