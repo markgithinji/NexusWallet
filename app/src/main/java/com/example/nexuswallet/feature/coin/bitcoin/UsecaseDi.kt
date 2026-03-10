@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTra
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinWalletUseCase
+import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.PrepareBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.SendBitcoinUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.SyncBitcoinTransactionsUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.ValidateBitcoinAddressUseCase

@@ -1,11 +1,14 @@
-package com.example.nexuswallet.feature.coin.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin.domain.usecase
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.coin.bitcoin.toSatoshis
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
@@ -17,18 +20,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class PrepareBitcoinTransactionUseCaseImpl @Inject constructor(
+class PrepareBitcoinTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val keyStoreRepository: KeyStoreRepository,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger
-) : PrepareBitcoinTransactionUseCase {
+) {
 
     private val tag = "PrepareBitcoinUC"
 
-    override suspend fun invoke(
+    suspend fun invoke(
         walletId: String,
         toAddress: String,
         amount: BigDecimal,
@@ -74,10 +77,12 @@ class PrepareBitcoinTransactionUseCaseImpl @Inject constructor(
                     feeLevel = feeLevel
                 )
             }
+
             is Result.Error -> {
                 logger.e(tag, "Failed to get fee estimate: ${feeResult.message}")
                 Result.Error("Failed to get fee estimate: ${feeResult.message}")
             }
+
             else -> {
                 Result.Error("Unknown error getting fee estimate")
             }
@@ -146,29 +151,3 @@ class PrepareBitcoinTransactionUseCaseImpl @Inject constructor(
         private const val DEFAULT_OUTPUT_COUNT = 2
     }
 }
-
-interface PrepareBitcoinTransactionUseCase {
-    suspend operator fun invoke(
-        walletId: String,
-        toAddress: String,
-        amount: BigDecimal,
-        feeLevel: FeeLevel,
-        network: BitcoinNetwork
-    ): Result<PreparedBitcoinTransaction>
-}
-
-data class PreparedBitcoinTransaction(
-    val transactionId: String,
-    val fromAddress: String,
-    val toAddress: String,
-    val amountBtc: BigDecimal,
-    val amountSatoshis: Long,
-    val feeBtc: BigDecimal,
-    val feeSatoshis: Long,
-    val feePerByte: Double,
-    val feeLevel: FeeLevel,
-    val network: BitcoinNetwork,
-    val hasPrivateKey: Boolean,
-    val estimatedSize: Int,
-    val utxoCount: Int
-)
