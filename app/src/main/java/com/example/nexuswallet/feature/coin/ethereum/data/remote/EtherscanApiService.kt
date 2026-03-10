@@ -1,5 +1,12 @@
-package com.example.nexuswallet.feature.coin.ethereum
+package com.example.nexuswallet.feature.coin.ethereum.data.remote
 
+import com.example.nexuswallet.feature.coin.ethereum.EtherscanBalanceResponse
+import com.example.nexuswallet.feature.coin.ethereum.EtherscanBroadcastResponse
+import com.example.nexuswallet.feature.coin.ethereum.EtherscanGasEstimateResponse
+import com.example.nexuswallet.feature.coin.ethereum.EtherscanTransactionCountResponse
+import com.example.nexuswallet.feature.coin.ethereum.EtherscanTransactionsResponse
+import com.example.nexuswallet.feature.coin.ethereum.data.remote.model.GasPriceProxyResponse
+import com.example.nexuswallet.feature.coin.ethereum.GasPriceResponse
 import com.example.nexuswallet.feature.coin.usdc.domain.EtherscanTokenTransfersResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
