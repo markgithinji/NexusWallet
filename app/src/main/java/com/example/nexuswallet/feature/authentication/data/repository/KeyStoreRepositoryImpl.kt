@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.authentication.data.repository
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import com.example.nexuswallet.feature.authentication.data.util.safeKeyStoreCall
 import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
 import kotlinx.coroutines.withContext
 import java.security.KeyStore

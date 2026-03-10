@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.authentication.data.repository
+package com.example.nexuswallet.feature.authentication.data.util
 
 import java.io.IOException
 

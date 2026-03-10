@@ -1,10 +1,12 @@
-package com.example.nexuswallet.feature.authentication.data.repository
+package com.example.nexuswallet.feature.authentication.data.di
 
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
+import com.example.nexuswallet.feature.authentication.data.repository.KeyStoreRepositoryImpl
+import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepositoryImpl
 import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
 import dagger.Module
