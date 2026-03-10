@@ -141,7 +141,16 @@ class BitcoinReviewViewModel @Inject constructor(
         // Set fee loading state
         _state.update { it.copy(isFeeLoading = true) }
 
-        when (val result = getBitcoinFeeEstimateUseCase(state.feeLevel)) {
+        // Default transaction structure: 1 input and 2 outputs (recipient + change)
+        // TODO: Calculate this dynamically based on UTXOs
+        val inputCount = 1 // Default to 1 input,
+        val outputCount = 2 // Recipient + change output
+
+        when (val result = getBitcoinFeeEstimateUseCase(
+            feeLevel = state.feeLevel,
+            inputCount = inputCount,
+            outputCount = outputCount
+        )) {
             is Result.Success -> {
                 _state.update {
                     it.copy(

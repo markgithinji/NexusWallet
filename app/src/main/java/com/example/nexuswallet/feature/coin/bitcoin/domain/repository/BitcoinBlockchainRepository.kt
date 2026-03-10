@@ -17,9 +17,9 @@ interface BitcoinBlockchainRepository {
     ): Result<BigDecimal>
 
     suspend fun getFeeEstimate(
-        feeLevel: FeeLevel = FeeLevel.NORMAL,
-        inputCount: Int = 1,
-        outputCount: Int = 2
+        feeLevel: FeeLevel,
+        inputCount: Int,
+        outputCount: Int
     ): Result<BitcoinFeeEstimate>
 
     suspend fun broadcastTransaction(
@@ -45,7 +45,7 @@ interface BitcoinBlockchainRepository {
         fromKey: ECKey,
         toAddress: String,
         satoshis: Long,
-        feeLevel: FeeLevel = FeeLevel.NORMAL,
+        feeLevel: FeeLevel,
         network: BitcoinNetwork
     ): Result<Transaction>
 }

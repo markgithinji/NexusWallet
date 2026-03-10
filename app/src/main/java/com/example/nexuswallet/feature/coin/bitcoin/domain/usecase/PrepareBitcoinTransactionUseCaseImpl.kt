@@ -8,7 +8,7 @@ import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstim
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.coin.bitcoin.ui.toSatoshis
+import com.example.nexuswallet.toSatoshis
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
@@ -31,7 +31,7 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
 
     private val tag = "PrepareBitcoinUC"
 
-    suspend fun invoke(
+    suspend operator fun invoke(
         walletId: String,
         toAddress: String,
         amount: BigDecimal,

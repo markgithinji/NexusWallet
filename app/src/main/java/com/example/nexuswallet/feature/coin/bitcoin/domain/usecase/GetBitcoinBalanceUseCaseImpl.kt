@@ -16,7 +16,7 @@ class GetBitcoinBalanceUseCase @Inject constructor(
 
     private val tag = "GetBitcoinBalanceUC"
 
-    suspend fun invoke(
+    suspend operator fun invoke(
         address: String,
         network: BitcoinNetwork
     ): Result<BigDecimal> {

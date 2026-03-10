@@ -16,7 +16,7 @@ class GetBitcoinFeeEstimateUseCase @Inject constructor(
 
     private val tag = "GetBitcoinFeeUC"
 
-    suspend fun invoke(
+    suspend operator fun invoke(
         feeLevel: FeeLevel,
         inputCount: Int,
         outputCount: Int
