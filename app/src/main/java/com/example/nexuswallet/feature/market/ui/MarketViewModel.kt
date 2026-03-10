@@ -10,13 +10,14 @@ import com.example.nexuswallet.feature.market.domain.Token
 import com.example.nexuswallet.feature.market.domain.WebSocketRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
 @HiltViewModel
 class MarketViewModel @Inject constructor(
     private val coinGeckoRepository: CoinGeckoRepository,
@@ -46,7 +47,10 @@ class MarketViewModel @Inject constructor(
 
     private var currentPage = 1
     private val perPage = 100
-    private var allTokensCache = emptyList<Token>() // Private cache for internal use
+    private var allTokensCache = emptyList<Token>()
+
+    // Flag to track if initial data is loaded
+    private var isInitialDataLoaded = false
 
     init {
         loadInitialData()
@@ -64,12 +68,13 @@ class MarketViewModel @Inject constructor(
                 is Result.Success -> {
                     val firstPage = result.data
                     allTokensCache = firstPage
+                    isInitialDataLoaded = true
                     _uiState.value = Result.Success(firstPage)
-                    applySearchFilter() // Apply search to update filtered list
+                    applySearchFilter()
                     currentPage = 2
 
-                    // Load next pages in background
-                    loadMorePages()
+                    // Load next pages in background without delay
+                    loadRemainingPages()
                 }
 
                 is Result.Error -> {
@@ -81,70 +86,54 @@ class MarketViewModel @Inject constructor(
         }
     }
 
-    private fun loadMorePages() {
+    private fun loadRemainingPages() {
         viewModelScope.launch {
             _isLoadingMore.value = true
 
-            // Load pages 2 and 3
-            for (page in currentPage..3) {
-                when (val result = coinGeckoRepository.getTopCryptocurrencies(
-                    perPage = perPage,
-                    page = page
-                )) {
-                    is Result.Success -> {
-                        val tokens = result.data
-                        if (tokens.isNotEmpty()) {
-                            allTokensCache = allTokensCache + tokens
-                            // Update UI state with new combined list
-                            _uiState.value = Result.Success(allTokensCache)
-                            applySearchFilter()
-                        }
-                    }
-
-                    is Result.Error -> {
-                        Log.e("MarketVM", "Error loading page $page: ${result.message}")
-                    }
-
-                    Result.Loading -> {} // Not used here
+            // Load pages 2 and 3 without delay
+            val remainingPagesJobs = (currentPage..3).map { page ->
+                async {
+                    loadPage(page)
                 }
-
-                delay(1000) // Rate limit protection
             }
 
-            currentPage = 4
+            // Wait for all pages to complete
+            remainingPagesJobs.awaitAll()
+
             _isLoadingMore.value = false
             Log.d("MarketVM", "Total tokens loaded: ${allTokensCache.size}")
         }
     }
 
-    // Load more on demand (for infinite scrolling)
+    private suspend fun loadPage(page: Int) {
+        when (val result = coinGeckoRepository.getTopCryptocurrencies(
+            perPage = perPage,
+            page = page
+        )) {
+            is Result.Success -> {
+                val tokens = result.data
+                if (tokens.isNotEmpty()) {
+                    allTokensCache = allTokensCache + tokens
+                    _uiState.value = Result.Success(allTokensCache)
+                    applySearchFilter()
+                    currentPage = page + 1
+                }
+            }
+
+            is Result.Error -> {
+                Log.e("MarketVM", "Error loading page $page: ${result.message}")
+            }
+
+            Result.Loading -> {}
+        }
+    }
+
     fun loadNextPage() {
         if (_isLoadingMore.value || currentPage > 10) return
 
         viewModelScope.launch {
             _isLoadingMore.value = true
-
-            when (val result = coinGeckoRepository.getTopCryptocurrencies(
-                perPage = perPage,
-                page = currentPage
-            )) {
-                is Result.Success -> {
-                    val tokens = result.data
-                    if (tokens.isNotEmpty()) {
-                        allTokensCache = allTokensCache + tokens
-                        _uiState.value = Result.Success(allTokensCache)
-                        applySearchFilter()
-                        currentPage++
-                    }
-                }
-
-                is Result.Error -> {
-                    Log.e("MarketVM", "Error loading page $currentPage: ${result.message}")
-                }
-
-                Result.Loading -> {}
-            }
-
+            loadPage(currentPage)
             _isLoadingMore.value = false
         }
     }
@@ -153,7 +142,9 @@ class MarketViewModel @Inject constructor(
         // Collect full token updates (price + percentage)
         webSocketCollectorJob = viewModelScope.launch {
             webSocketRepository.getTokenUpdates().collect { updatesMap ->
-                updateTokensWithLiveData(updatesMap)
+                if (isInitialDataLoaded) {
+                    updateTokensWithLiveData(updatesMap)
+                }
             }
         }
 
@@ -212,6 +203,7 @@ class MarketViewModel @Inject constructor(
         // Reset pagination
         currentPage = 1
         allTokensCache = emptyList()
+        isInitialDataLoaded = false
         loadInitialData()
     }
 
