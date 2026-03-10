@@ -14,18 +14,31 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.CurrencyBitcoin
+import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material.icons.outlined.TrendingDown
 import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.WifiOff
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -57,10 +70,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ButtonDefaults
 import com.example.nexuswallet.ui.theme.success
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun MarketScreen(
-    onNavigateUp: () -> Unit,
     onNavigateToTokenDetail: (String) -> Unit,
     padding: PaddingValues
 ) {
@@ -71,146 +83,102 @@ fun MarketScreen(
     val isWebSocketConnected by viewModel.isWebSocketConnected.collectAsState()
     val isLoadingMore by viewModel.isLoadingMore.collectAsState()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(padding)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    // Observe loading state to know when refresh is complete
+    LaunchedEffect(uiState) {
+        if (uiState is Result.Success && isRefreshing) {
+            isRefreshing = false
+        }
+    }
+
+    val refreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = {
+            isRefreshing = true
+            viewModel.refreshData()
+        }
+    )
+
+    Scaffold(
+        topBar = {
+            MarketTopBar(
+                isWebSocketConnected = isWebSocketConnected,
+                coinCount = tokens.size
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { scaffoldPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(refreshState)
+                .padding(scaffoldPadding)
+                .padding(padding)
         ) {
-            // Header with title and connection status
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text(
-                    text = "Market",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                // Show disconnected banner if WebSocket is down and we have data
+                if (!isWebSocketConnected && tokens.isNotEmpty()) {
+                    DisconnectedBanner(
+                        onRetry = { viewModel.retryWebSocket() },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                }
+
+                // Search bar
+                MarketSearchBar(
+                    query = searchQuery,
+                    onQueryChange = { viewModel.updateSearchQuery(it) },
+                    onClear = { viewModel.clearSearch() },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Connection status
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        LiveIndicator(isConnected = isWebSocketConnected)
-                        Text(
-                            text = if (isWebSocketConnected) "Live" else "Offline",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isWebSocketConnected)
-                                MaterialTheme.colorScheme.success
-                            else
-                                MaterialTheme.colorScheme.error
-                        )
-                    }
-
-                    // Coin count
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        elevation = CardDefaults.cardElevation(0.dp)
-                    ) {
-                        Text(
-                            text = "${tokens.size} coins",
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-
-            // Search bar
-            MarketSearchBar(
-                query = searchQuery,
-                onQueryChange = { viewModel.updateSearchQuery(it) },
-                onClear = { viewModel.clearSearch() }
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Content
-            Box(modifier = Modifier.weight(1f)) {
-                when (uiState) {
-                    com.example.nexuswallet.feature.coin.Result.Loading -> {
-                        if (tokens.isEmpty()) {
-                            LoadingView()
-                        } else {
-                            MarketList(
-                                tokens = tokens,
-                                isLoadingMore = isLoadingMore,
-                                onTokenClick = { token ->
-                                    onNavigateToTokenDetail(token.id)
-                                },
-                                onLoadMore = { viewModel.loadNextPage() }
-                            )
+                // Content
+                Box(modifier = Modifier.weight(1f)) {
+                    when (uiState) {
+                        Result.Loading -> {
+                            if (tokens.isEmpty()) {
+                                LoadingView()
+                            } else {
+                                MarketList(
+                                    tokens = tokens,
+                                    isLoadingMore = isLoadingMore,
+                                    onTokenClick = { token ->
+                                        onNavigateToTokenDetail(token.id)
+                                    },
+                                    onLoadMore = { viewModel.loadNextPage() }
+                                )
+                            }
                         }
-                    }
 
-                    is com.example.nexuswallet.feature.coin.Result.Error -> {
-                        if (tokens.isEmpty()) {
-                            ErrorView(
-                                message = (uiState as com.example.nexuswallet.feature.coin.Result.Error).message,
-                                onRetry = { viewModel.refreshData() }
-                            )
-                        } else {
-                            Column {
-                                // Error banner
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.errorContainer
-                                    )
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Outlined.Error,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Text(
-                                            text = "Connection issues. Showing cached data.",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        IconButton(
-                                            onClick = { viewModel.refreshData() },
-                                            modifier = Modifier.size(24.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.Outlined.Refresh,
-                                                contentDescription = "Retry",
-                                                tint = MaterialTheme.colorScheme.error,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                        }
+                        is Result.Error -> {
+                            if (tokens.isEmpty()) {
+                                ErrorView(
+                                    message = (uiState as Result.Error).message,
+                                    onRetry = {
+                                        isRefreshing = true
+                                        viewModel.refreshData()
                                     }
-                                }
+                                )
+                            } else {
+                                // Show data with error banner at top
+                                MarketList(
+                                    tokens = tokens,
+                                    isLoadingMore = isLoadingMore,
+                                    onTokenClick = { token ->
+                                        onNavigateToTokenDetail(token.id)
+                                    },
+                                    onLoadMore = { viewModel.loadNextPage() }
+                                )
+                            }
+                        }
 
+                        is Result.Success -> {
+                            if (tokens.isEmpty() && !isLoadingMore) {
+                                EmptySearchResult()
+                            } else {
                                 MarketList(
                                     tokens = tokens,
                                     isLoadingMore = isLoadingMore,
@@ -222,23 +190,181 @@ fun MarketScreen(
                             }
                         }
                     }
-
-                    is Result.Success -> {
-                        if (tokens.isEmpty() && !isLoadingMore) {
-                            EmptySearchResult()
-                        } else {
-                            MarketList(
-                                tokens = tokens,
-                                isLoadingMore = isLoadingMore,
-                                onTokenClick = { token ->
-                                    onNavigateToTokenDetail(token.id)
-                                },
-                                onLoadMore = { viewModel.loadNextPage() }
-                            )
-                        }
-                    }
                 }
             }
+
+            PullRefreshIndicator(
+                refreshing = isRefreshing,
+                state = refreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+fun DisconnectedBanner(
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Outlined.WifiOff,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(16.dp)
+            )
+
+            Text(
+                text = "Live updates disconnected",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.weight(1f)
+            )
+
+            TextButton(
+                onClick = onRetry,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text(
+                    "Reconnect",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MarketTopBar(
+    isWebSocketConnected: Boolean,
+    coinCount: Int
+) {
+    TopAppBar(
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Market icon in title
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ShowChart,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = "Market",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        },
+        actions = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Live connection indicator
+                ConnectionStatus(
+                    isConnected = isWebSocketConnected
+                )
+
+                // Coin count badge
+                CoinCountBadge(
+                    count = coinCount
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface
+        )
+    )
+}
+
+@Composable
+fun ConnectionStatus(
+    isConnected: Boolean
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        // Live pulsing indicator
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(
+                    color = if (isConnected)
+                        MaterialTheme.colorScheme.success
+                    else
+                        MaterialTheme.colorScheme.error
+                )
+                .then(
+                    if (isConnected) {
+                        Modifier.graphicsLayer {
+                            alpha = 0.8f
+                        }
+                    } else {
+                        Modifier
+                    }
+                )
+        )
+
+        Text(
+            text = if (isConnected) "LIVE" else "OFFLINE",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = if (isConnected)
+                MaterialTheme.colorScheme.success
+            else
+                MaterialTheme.colorScheme.error,
+            letterSpacing = 0.5.sp
+        )
+    }
+}
+
+@Composable
+fun CoinCountBadge(
+    count: Int
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+        contentColor = MaterialTheme.colorScheme.primary
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "$count coins",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
@@ -247,12 +373,11 @@ fun MarketScreen(
 fun MarketSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -589,45 +714,144 @@ fun EmptySearchResult() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
         Card(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(0.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(32.dp)
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Search,
-                    contentDescription = "No results",
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                // Animated search icon with background
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.SearchOff,
+                        contentDescription = "No results",
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
+                // Main message
                 Text(
                     text = "No matching coins",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // Secondary message
                 Text(
-                    text = "Try adjusting your search",
+                    text = "We couldn't find any coins matching your search.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Search tips
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "💡 Search Tips",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.CurrencyBitcoin,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Try using the coin name (e.g., 'Bitcoin')",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Sell,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Or use the symbol (e.g., 'BTC')",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Clear search to see all coins",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
             }
         }
     }

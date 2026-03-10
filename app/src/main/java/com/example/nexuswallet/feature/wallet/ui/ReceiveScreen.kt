@@ -6,6 +6,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import com.example.nexuswallet.R
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +50,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -64,6 +66,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -71,6 +74,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -78,22 +82,22 @@ import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReceiveScreen(
     onNavigateUp: () -> Unit,
     walletId: String,
     coinType: CoinType,
+    network: NetworkType? = null,
     viewModel: ReceiveViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Initialize once with coin type
+    // Initialize with coin type and network from navigation
     LaunchedEffect(Unit) {
-        viewModel.initialize(walletId, coinType)
+        viewModel.initialize(walletId, coinType, network)
     }
 
     // Show success snackbar when copied
@@ -106,14 +110,15 @@ fun ReceiveScreen(
         }
     }
 
-    val (coinColor, icon) = getCoinTypeConfig(uiState.coinType)
+    val (coinColor, iconRes) = getCoinTypeConfig(uiState.coinType)
 
     Scaffold(
         topBar = {
             ReceiveScreenTopBar(
-                icon = icon,
+                iconRes = iconRes,
                 coinColor = coinColor,
                 coinName = uiState.coinType.name.lowercase().replaceFirstChar { it.uppercase() },
+                networkDisplayName = uiState.networkDisplayName,
                 onNavigateUp = onNavigateUp
             )
         },
@@ -125,13 +130,14 @@ fun ReceiveScreen(
         } else if (uiState.error != null) {
             ErrorView(
                 error = uiState.error,
-                onRetry = { viewModel.initialize(walletId, coinType) },
+                onRetry = { viewModel.initialize(walletId, coinType, network) },
                 modifier = Modifier.padding(paddingValues)
             )
         } else {
             ReceiveContent(
                 address = uiState.address,
                 coinType = uiState.coinType,
+                networkDisplayName = uiState.networkDisplayName,
                 copiedToClipboard = uiState.copiedToClipboard,
                 onCopy = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -140,7 +146,7 @@ fun ReceiveScreen(
                     viewModel.onCopyClicked()
                 },
                 coinColor = coinColor,
-                icon = icon,
+                iconRes = iconRes,
                 modifier = Modifier.padding(paddingValues)
             )
         }
@@ -150,26 +156,31 @@ fun ReceiveScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ReceiveScreenTopBar(
-    icon: ImageVector,
+    iconRes: Int,
     coinColor: Color,
     coinName: String,
+    networkDisplayName: String,
     onNavigateUp: () -> Unit
 ) {
     TopAppBar(
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(id = iconRes),
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    tint = coinColor
+                    tint = Color.Unspecified
                 )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Receive $coinName",
+                    text = "Receive $coinName ($networkDisplayName)",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         },
@@ -193,10 +204,11 @@ private fun ReceiveScreenTopBar(
 private fun ReceiveContent(
     address: String,
     coinType: CoinType,
+    networkDisplayName: String,
     copiedToClipboard: Boolean,
     onCopy: () -> Unit,
     coinColor: Color,
-    icon: ImageVector,
+    iconRes: Int,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -220,14 +232,16 @@ private fun ReceiveContent(
             ReceiveAddressCard(
                 address = address,
                 coinType = coinType,
+                networkDisplayName = networkDisplayName,
                 onCopy = onCopy,
-                copiedToClipboard = copiedToClipboard
+                copiedToClipboard = copiedToClipboard,
+                iconRes = iconRes
             )
         }
 
         // Security Tips
         item {
-            ReceiveSecurityTips(coinType = coinType)
+            ReceiveSecurityTips(coinType = coinType, networkDisplayName = networkDisplayName)
         }
     }
 }
@@ -283,7 +297,7 @@ private fun ReceiveQrCodeSection(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Scan to receive",
+                text = "Scan QR Code",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -295,14 +309,16 @@ private fun ReceiveQrCodeSection(
 private fun ReceiveAddressCard(
     address: String,
     coinType: CoinType,
+    networkDisplayName: String,
     onCopy: () -> Unit,
-    copiedToClipboard: Boolean
+    copiedToClipboard: Boolean,
+    iconRes: Int
 ) {
-    val (coinColor, _, displayName) = when (coinType) {
-        CoinType.BITCOIN -> Triple(bitcoinLight, Icons.Outlined.CurrencyBitcoin, "BTC")
-        CoinType.ETHEREUM -> Triple(ethereumLight, Icons.Outlined.Diamond, "ETH")
-        CoinType.SOLANA -> Triple(solanaLight, Icons.Outlined.FlashOn, "SOL")
-        CoinType.USDC -> Triple(usdcLight, Icons.Outlined.AttachMoney, "USDC")
+    val (coinColor, displayName) = when (coinType) {
+        CoinType.BITCOIN -> Pair(bitcoinLight, "BTC")
+        CoinType.ETHEREUM -> Pair(ethereumLight, "ETH")
+        CoinType.SOLANA -> Pair(solanaLight, "SOL")
+        CoinType.USDC -> Pair(usdcLight, "USDC")
     }
 
     Card(
@@ -318,15 +334,16 @@ private fun ReceiveAddressCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+            // Header with icon
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    Icons.Outlined.AccountBalanceWallet,
+                    painter = painterResource(id = iconRes),
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.Unspecified
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -334,6 +351,19 @@ private fun ReceiveAddressCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Spacer(modifier = Modifier.weight(1f))
+                // Network chip
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = coinColor.copy(alpha = 0.1f),
+                    contentColor = coinColor
+                ) {
+                    Text(
+                        text = networkDisplayName,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -375,7 +405,7 @@ private fun ReceiveAddressCard(
 }
 
 @Composable
-private fun ReceiveSecurityTips(coinType: CoinType) {
+private fun ReceiveSecurityTips(coinType: CoinType, networkDisplayName: String) {
     val displayName = when (coinType) {
         CoinType.BITCOIN -> "BTC"
         CoinType.ETHEREUM -> "ETH"
@@ -405,11 +435,11 @@ private fun ReceiveSecurityTips(coinType: CoinType) {
             )
 
             SecurityTip(
-                text = "Only send $displayName to this address",
+                text = "Only send $displayName on $networkDisplayName to this address",
                 icon = Icons.Outlined.Info
             )
             SecurityTip(
-                text = "Double-check the address before sending",
+                text = "Double-check the address and network before sending",
                 icon = Icons.Outlined.Visibility
             )
             SecurityTip(
@@ -533,12 +563,12 @@ private fun ErrorView(
     }
 }
 
-private fun getCoinTypeConfig(coinType: CoinType): Pair<Color, ImageVector> {
+private fun getCoinTypeConfig(coinType: CoinType): Pair<Color, Int> {
     return when (coinType) {
-        CoinType.BITCOIN -> Pair(bitcoinLight, Icons.Outlined.CurrencyBitcoin)
-        CoinType.ETHEREUM -> Pair(ethereumLight, Icons.Outlined.Diamond)
-        CoinType.SOLANA -> Pair(solanaLight, Icons.Outlined.FlashOn)
-        CoinType.USDC -> Pair(usdcLight, Icons.Outlined.AttachMoney)
+        CoinType.BITCOIN -> Pair(bitcoinLight, R.drawable.bitcoin)
+        CoinType.ETHEREUM -> Pair(ethereumLight, R.drawable.ethereum)
+        CoinType.SOLANA -> Pair(solanaLight, R.drawable.solana)
+        CoinType.USDC -> Pair(usdcLight, R.drawable.usdc)
     }
 }
 

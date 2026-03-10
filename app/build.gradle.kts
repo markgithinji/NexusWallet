@@ -36,6 +36,7 @@ android {
         val alchemyKey = localProperties.getProperty("ALCHEMY_API_KEY") ?: ""
         val coingeckoKey = localProperties.getProperty("COINGECKO_API_KEY") ?: ""
         val cryptoPanicApiKey = localProperties.getProperty("CRYPTOPANIC_API_KEY") ?: ""
+        val heliusApiKey = localProperties.getProperty("HELIUS_API_KEY") ?: ""
 
 
         buildConfigField("String", "ETHERSCAN_API_KEY", "\"$etherscanKey\"")
@@ -43,6 +44,7 @@ android {
         buildConfigField("String", "ALCHEMY_API_KEY", "\"$alchemyKey\"")
         buildConfigField("String", "COINGECKO_API_KEY", "\"$coingeckoKey\"")
         buildConfigField("String", "CRYPTOPANIC_API_KEY", "\"$cryptoPanicApiKey\"")
+        buildConfigField("String", "HELIUS_API_KEY", "\"$heliusApiKey\"")
     }
 
     buildTypes {
@@ -131,6 +133,8 @@ dependencies {
     // QR Code
     implementation("com.google.zxing:core:3.5.2")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+
+    implementation("androidx.appcompat:appcompat:1.6.1")
 
     implementation(libs.timber)
 

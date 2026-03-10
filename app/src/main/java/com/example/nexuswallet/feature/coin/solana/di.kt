@@ -1,17 +1,19 @@
 package com.example.nexuswallet.feature.coin.solana
 
+import android.content.Context
+import com.example.nexuswallet.BuildConfig
+import com.example.nexuswallet.feature.logging.Logger
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient.Builder
-import okhttp3.logging.HttpLoggingInterceptor
+import okhttp3.OkHttpClient
 import org.sol4k.Connection
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
-import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
 
@@ -21,49 +23,75 @@ object SolanaModule {
 
     @Provides
     @Singleton
-    fun provideSolanaRpcService(json: Json): SolanaRpcService {
-        val client = Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
-            })
-            .build()
+    fun provideHeliusApiKey(@ApplicationContext context: Context): String {
+        return BuildConfig.HELIUS_API_KEY
+    }
+
+    // ===== HELIUS RPC (for sol4k Connection) =====
+    @Provides
+    @Singleton
+    @Named("heliusRpcDevnet")
+    fun provideHeliusRpcDevnetConnection(apiKey: String): Connection {
+        return Connection("https://devnet.helius-rpc.com/?api-key=$apiKey")
+    }
+
+    @Provides
+    @Singleton
+    @Named("heliusRpcMainnet")
+    fun provideHeliusRpcMainnetConnection(apiKey: String): Connection {
+        return Connection("https://mainnet.helius-rpc.com/?api-key=$apiKey")
+    }
+
+    // ===== HELIUS REST API (Retrofit) =====
+    @Provides
+    @Singleton
+    @Named("heliusApiDevnet")
+    fun provideHeliusDevnetBaseUrl(): String {
+        return "https://api-devnet.helius-rpc.com/v0/"
+    }
+
+    @Provides
+    @Singleton
+    @Named("heliusApiMainnet")
+    fun provideHeliusMainnetBaseUrl(): String {
+        return "https://api-mainnet.helius-rpc.com/v0/"
+    }
+
+    @Provides
+    @Singleton
+    fun provideHeliusApi(
+        @Named("heliusApiDevnet") devnetBaseUrl: String,
+        @Named("heliusApiMainnet") mainnetBaseUrl: String,
+        @ApplicationContext context: Context,
+        okHttpClient: OkHttpClient,
+        json: Json
+    ): HeliusApi {
+        // Use appropriate URL based on build type or config
+        val baseUrl = if (BuildConfig.DEBUG) devnetBaseUrl else mainnetBaseUrl
 
         return Retrofit.Builder()
-            .baseUrl("https://api.devnet.solana.com/")
-            .client(client)
+            .baseUrl(baseUrl)
+            .client(okHttpClient)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
-            .create(SolanaRpcService::class.java)
+            .create(HeliusApi::class.java)
     }
 
     @Provides
     @Singleton
     fun provideSolanaBlockchainRepository(
-        @Named("solanaDevnet") devnetConnection: Connection,
-        @Named("solanaMainnet") mainnetConnection: Connection,
-        solanaRpcService: SolanaRpcService
+        @Named("heliusRpcDevnet") rpcDevnetConnection: Connection,
+        @Named("heliusRpcMainnet") rpcMainnetConnection: Connection,
+        heliusApi: HeliusApi,
+        apiKey: String,
+        logger: Logger
     ): SolanaBlockchainRepository {
         return SolanaBlockchainRepositoryImpl(
-            devnetConnection = devnetConnection,
-            mainnetConnection = mainnetConnection,
-            solanaRpcService = solanaRpcService
+            rpcDevnetConnection = rpcDevnetConnection,
+            rpcMainnetConnection = rpcMainnetConnection,
+            heliusApi = heliusApi,
+            apiKey = apiKey,
+            logger = logger
         )
-    }
-
-    @Provides
-    @Singleton
-    @Named("solanaDevnet")
-    fun provideSolanaConnection(): Connection {
-        return Connection("https://api.devnet.solana.com")
-    }
-
-    @Provides
-    @Singleton
-    @Named("solanaMainnet")
-    fun provideSolanaMainnetConnection(): Connection {
-        return Connection("https://api.mainnet-beta.solana.com")
     }
 }

@@ -10,20 +10,19 @@ import com.example.nexuswallet.feature.market.domain.Token
 import com.example.nexuswallet.feature.market.domain.WebSocketRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
 @HiltViewModel
 class MarketViewModel @Inject constructor(
     private val coinGeckoRepository: CoinGeckoRepository,
     private val webSocketRepository: WebSocketRepository
 ) : ViewModel() {
-
-    // Using Result for UI state
     private val _uiState = MutableStateFlow<Result<List<Token>>>(Result.Loading)
     val uiState: StateFlow<Result<List<Token>>> = _uiState.asStateFlow()
 
@@ -40,13 +39,17 @@ class MarketViewModel @Inject constructor(
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
     private var webSocketCollectorJob: Job? = null
+    private var connectionStateJob: Job? = null
 
     private val _isLoadingMore = MutableStateFlow(false)
     val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
 
     private var currentPage = 1
     private val perPage = 100
-    private var allTokensCache = emptyList<Token>() // Private cache for internal use
+    private var allTokensCache = emptyList<Token>()
+
+    // Flag to track if initial data is loaded
+    private var isInitialDataLoaded = false
 
     init {
         loadInitialData()
@@ -64,12 +67,13 @@ class MarketViewModel @Inject constructor(
                 is Result.Success -> {
                     val firstPage = result.data
                     allTokensCache = firstPage
+                    isInitialDataLoaded = true
                     _uiState.value = Result.Success(firstPage)
-                    applySearchFilter() // Apply search to update filtered list
+                    applySearchFilter()
                     currentPage = 2
 
                     // Load next pages in background
-                    loadMorePages()
+                    loadRemainingPages()
                 }
 
                 is Result.Error -> {
@@ -81,86 +85,77 @@ class MarketViewModel @Inject constructor(
         }
     }
 
-    private fun loadMorePages() {
+    private fun loadRemainingPages() {
         viewModelScope.launch {
             _isLoadingMore.value = true
 
             // Load pages 2 and 3
-            for (page in currentPage..3) {
-                when (val result = coinGeckoRepository.getTopCryptocurrencies(
-                    perPage = perPage,
-                    page = page
-                )) {
-                    is Result.Success -> {
-                        val tokens = result.data
-                        if (tokens.isNotEmpty()) {
-                            allTokensCache = allTokensCache + tokens
-                            // Update UI state with new combined list
-                            _uiState.value = Result.Success(allTokensCache)
-                            applySearchFilter()
-                        }
-                    }
-
-                    is Result.Error -> {
-                        Log.e("MarketVM", "Error loading page $page: ${result.message}")
-                    }
-
-                    Result.Loading -> {} // Not used here
+            val remainingPagesJobs = (currentPage..3).map { page ->
+                async {
+                    loadPage(page)
                 }
-
-                delay(1000) // Rate limit protection
             }
 
-            currentPage = 4
+            // Wait for all pages to complete
+            remainingPagesJobs.awaitAll()
+
             _isLoadingMore.value = false
             Log.d("MarketVM", "Total tokens loaded: ${allTokensCache.size}")
         }
     }
 
-    // Load more on demand (for infinite scrolling)
+    private suspend fun loadPage(page: Int) {
+        when (val result = coinGeckoRepository.getTopCryptocurrencies(
+            perPage = perPage,
+            page = page
+        )) {
+            is Result.Success -> {
+                val tokens = result.data
+                if (tokens.isNotEmpty()) {
+                    allTokensCache = allTokensCache + tokens
+                    _uiState.value = Result.Success(allTokensCache)
+                    applySearchFilter()
+                    currentPage = page + 1
+                }
+            }
+
+            is Result.Error -> {
+                Log.e("MarketVM", "Error loading page $page: ${result.message}")
+            }
+
+            Result.Loading -> {}
+        }
+    }
+
     fun loadNextPage() {
         if (_isLoadingMore.value || currentPage > 10) return
 
         viewModelScope.launch {
             _isLoadingMore.value = true
-
-            when (val result = coinGeckoRepository.getTopCryptocurrencies(
-                perPage = perPage,
-                page = currentPage
-            )) {
-                is Result.Success -> {
-                    val tokens = result.data
-                    if (tokens.isNotEmpty()) {
-                        allTokensCache = allTokensCache + tokens
-                        _uiState.value = Result.Success(allTokensCache)
-                        applySearchFilter()
-                        currentPage++
-                    }
-                }
-
-                is Result.Error -> {
-                    Log.e("MarketVM", "Error loading page $currentPage: ${result.message}")
-                }
-
-                Result.Loading -> {}
-            }
-
+            loadPage(currentPage)
             _isLoadingMore.value = false
         }
     }
 
     private fun setupWebSocketObservers() {
+        // Cancel existing collectors
+        webSocketCollectorJob?.cancel()
+        connectionStateJob?.cancel()
+
         // Collect full token updates (price + percentage)
         webSocketCollectorJob = viewModelScope.launch {
             webSocketRepository.getTokenUpdates().collect { updatesMap ->
-                updateTokensWithLiveData(updatesMap)
+                if (isInitialDataLoaded) {
+                    updateTokensWithLiveData(updatesMap)
+                }
             }
         }
 
         // Collect connection state
-        viewModelScope.launch {
+        connectionStateJob = viewModelScope.launch {
             webSocketRepository.getConnectionState().collect { isConnected ->
                 _isWebSocketConnected.value = isConnected
+                Log.d("MarketVM", "WebSocket connection state: $isConnected")
             }
         }
     }
@@ -209,21 +204,62 @@ class MarketViewModel @Inject constructor(
     }
 
     fun refreshData() {
-        // Reset pagination
-        currentPage = 1
-        allTokensCache = emptyList()
-        loadInitialData()
+        viewModelScope.launch {
+            // Reset pagination but keep WebSocket connections
+            currentPage = 1
+            allTokensCache = emptyList()
+            isInitialDataLoaded = false
+
+            // Load fresh data
+            _uiState.value = Result.Loading
+
+            when (val result = coinGeckoRepository.getTopCryptocurrencies(
+                perPage = perPage,
+                page = 1
+            )) {
+                is Result.Success -> {
+                    val firstPage = result.data
+                    allTokensCache = firstPage
+                    isInitialDataLoaded = true
+                    _uiState.value = Result.Success(firstPage)
+                    applySearchFilter()
+                    currentPage = 2
+
+                    // Load remaining pages in background
+                    loadRemainingPages()
+                }
+                is Result.Error -> {
+                    _uiState.value = Result.Error(result.message, result.throwable)
+                }
+                Result.Loading -> {}
+            }
+        }
     }
 
     fun retryWebSocket() {
-        webSocketCollectorJob?.cancel()
-        webSocketRepository.reconnect()
-        setupWebSocketObservers()
+        // Only reconnect if disconnected
+        if (!_isWebSocketConnected.value) {
+            viewModelScope.launch {
+                Log.d("MarketVM", "Reconnecting WebSocket...")
+
+                // Cancel existing collectors
+                webSocketCollectorJob?.cancel()
+                connectionStateJob?.cancel()
+
+                // Disconnect and reconnect
+                webSocketRepository.disconnect()
+                webSocketRepository.reconnect()
+
+                // Re-setup observers
+                setupWebSocketObservers()
+            }
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
         webSocketCollectorJob?.cancel()
+        connectionStateJob?.cancel()
         webSocketRepository.disconnect()
     }
 }

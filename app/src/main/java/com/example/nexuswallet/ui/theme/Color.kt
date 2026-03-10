@@ -79,7 +79,7 @@ val outlineVariantLight = Color(0xFFD1D5DB) // Slightly darker outline
 // Coin-specific colors
 val bitcoinLight = Color(0xFFF7931A)
 val ethereumLight = Color(0xFF627EEA)
-val solanaLight = Color(0xFF00FFA3)
+val solanaLight = Color(0xFF009966)
 val usdcLight = Color(0xFF2775CA)
 
 // Text colors

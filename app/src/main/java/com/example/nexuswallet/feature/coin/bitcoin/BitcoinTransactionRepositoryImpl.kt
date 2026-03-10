@@ -33,6 +33,11 @@ class BitcoinTransactionRepositoryImpl @Inject constructor(
             .map { entities -> entities.map { it.toDomain() } }
     }
 
+    override suspend fun getTransactionsSync(walletId: String, network: String): List<BitcoinTransaction> {
+        return bitcoinTransactionDao.getByWalletIdAndNetworkSync(walletId, network)
+            .map { it.toDomain() }
+    }
+
     override suspend fun getPendingTransactions(): List<BitcoinTransaction> {
         return bitcoinTransactionDao.getPendingTransactions()
             .map { it.toDomain() }

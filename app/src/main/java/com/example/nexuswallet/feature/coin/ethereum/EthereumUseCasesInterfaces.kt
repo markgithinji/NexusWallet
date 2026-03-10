@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.SendValidationResult
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
@@ -36,17 +37,7 @@ interface ValidateEVMSendUseCase {
         ethBalance: BigDecimal,
         feeLevel: FeeLevel,
         token: EVMToken
-    ): ValidateEVMSendUseCase.ValidationResult
-
-    data class ValidationResult(
-        val isValid: Boolean,
-        val addressError: String? = null,
-        val amountError: String? = null,
-        val balanceError: String? = null,
-        val selfSendError: String? = null,
-        val gasError: String? = null,
-        val feeEstimate: EVMFeeEstimate? = null
-    )
+    ): SendValidationResult
 }
 
 interface GetFeeEstimateUseCase {

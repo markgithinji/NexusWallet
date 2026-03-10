@@ -44,6 +44,7 @@ class BitcoinReviewViewModel @Inject constructor(
         val balance: BigDecimal = BigDecimal.ZERO,
         val balanceFormatted: String = "0 BTC",
         val feeEstimate: BitcoinFeeEstimate? = null,
+        val isFeeLoading: Boolean = false,
         val preparedTransaction: PreparedBitcoinTransaction? = null,
         val transactionPrepared: Boolean = false,
         val isLoading: Boolean = false,
@@ -75,7 +76,8 @@ class BitcoinReviewViewModel @Inject constructor(
                     amountValue = amountValue,
                     feeLevel = feeLevel,
                     network = network,
-                    isLoading = true
+                    isLoading = true,
+                    isFeeLoading = true
                 )
             }
 
@@ -122,18 +124,29 @@ class BitcoinReviewViewModel @Inject constructor(
 
     private suspend fun loadFeeEstimate() {
         val state = _state.value
+
+        // Set fee loading state
+        _state.update { it.copy(isFeeLoading = true) }
+
         when (val result = getBitcoinFeeEstimateUseCase(state.feeLevel)) {
             is Result.Success -> {
                 _state.update {
                     it.copy(
                         feeEstimate = result.data,
+                        isFeeLoading = false,
                         isLoading = false
                     )
                 }
                 logger.d("BitcoinReviewVM", "Fee estimate loaded: ${result.data.totalFeeBtc} BTC")
             }
             is Result.Error -> {
-                _state.update { it.copy(error = "Failed to load fee: ${result.message}", isLoading = false) }
+                _state.update {
+                    it.copy(
+                        error = "Failed to load fee: ${result.message}",
+                        isFeeLoading = false,
+                        isLoading = false
+                    )
+                }
             }
             else -> {}
         }

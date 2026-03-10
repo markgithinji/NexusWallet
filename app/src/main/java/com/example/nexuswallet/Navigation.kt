@@ -7,44 +7,40 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import androidx.navigation.toRoute
 import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredScreen
 import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendScreen
+import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.ethereum.EthereumSendScreen
+import com.example.nexuswallet.feature.coin.solana.SolanaSendScreen
 import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
+import com.example.nexuswallet.feature.wallet.ui.CoinDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.ReceiveScreen
-import com.example.nexuswallet.feature.wallet.ui.SendScreen
+import com.example.nexuswallet.feature.wallet.ui.TransactionDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailScreen
-import com.example.nexuswallet.feature.wallet.ui.WalletDetailViewModel
-import com.example.nexuswallet.feature.wallet.ui.CoinDetailScreen
-
-import androidx.compose.material3.MaterialTheme
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
+import timber.log.Timber
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun Navigation() {
+fun Navigation(
+    canAuthenticate: Boolean
+) {
     Log.d("Navigation", "=== Navigation Composable Recomposition ===")
 
     val navController = rememberNavController()
@@ -61,6 +57,36 @@ fun Navigation() {
         if (wallets.isNotEmpty()) {
             wallets.forEachIndexed { index, wallet ->
                 Log.d("Navigation", "  Wallet $index: id=${wallet.id}, name=${wallet.name}")
+            }
+        }
+    }
+
+    val handleDirectNavigation = { screen: String, walletId: String ->
+        when (screen) {
+            "walletDetail" -> {
+                Log.d("Navigation", "Direct navigation to WalletDetailRoute - walletId: $walletId")
+                navController.navigate(WalletDetailRoute(walletId)) {
+                    // Pop up to the authentication screen and remove it
+                    popUpTo<AuthenticateRoute> { inclusive = true }
+                }
+            }
+            "send" -> {
+                Log.d("Navigation", "Direct navigation to SendRoute - walletId: $walletId")
+                navController.navigate(SendRoute(walletId, CoinType.BITCOIN)) {
+                    popUpTo<AuthenticateRoute> { inclusive = true }
+                }
+            }
+            "backup" -> {
+                Log.d("Navigation", "Direct navigation to BackupRoute - walletId: $walletId")
+                navController.navigate(BackupRoute(walletId)) {
+                    popUpTo<AuthenticateRoute> { inclusive = true }
+                }
+            }
+            else -> {
+                Log.d("Navigation", "Direct navigation to MainRoute")
+                navController.navigate(MainRoute) {
+                    popUpTo<AuthenticateRoute> { inclusive = true }
+                }
             }
         }
     }
@@ -112,7 +138,7 @@ fun Navigation() {
                 },
                 onImportWallet = {
                     Log.d("Navigation", "WelcomeScreen: onImportWallet clicked")
-                    // TODO
+                    // TODO: Navigate to import wallet screen
                 },
                 onSkip = {
                     Log.d("Navigation", "WelcomeScreen: onSkip clicked")
@@ -132,36 +158,38 @@ fun Navigation() {
                 },
                 onNavigateToWalletDetail = { walletId ->
                     Log.d("Navigation", "MainTabScreen: navigate to WalletDetailRoute - walletId: $walletId")
-                    navController.navigate(WalletDetailRoute(walletId))
+                    handleDirectNavigation("walletDetail", walletId)
                 },
-                onNavigateToCoinDetail = { walletId, coinType ->
-                    Log.d("Navigation", "MainTabScreen: navigate to CoinDetailRoute - walletId: $walletId, coinType: $coinType")
-                    navController.navigate(CoinDetailRoute(walletId, coinType))
+                onNavigateToCoinDetail = { walletId, coinType, network ->
+                    Log.d("Navigation", "MainTabScreen: navigate to CoinDetailRoute - walletId: $walletId, coinType: $coinType, network: $network")
+                    navController.navigate(CoinDetailRoute(walletId, coinType, network))
                 },
                 onNavigateToTokenDetail = { tokenId ->
                     Log.d("Navigation", "MainTabScreen: navigate to TokenDetailRoute - tokenId: $tokenId")
                     navController.navigate(TokenDetailRoute(tokenId))
                 },
-                onNavigateToReceive = { walletId, coinType ->
-                    Log.d("Navigation", "MainTabScreen: navigate to ReceiveRoute - walletId: $walletId, coinType: $coinType")
-                    navController.navigate(ReceiveRoute(walletId, coinType))
+                onNavigateToReceive = { walletId, coinType, network ->
+                    Log.d("Navigation", "MainTabScreen: navigate to ReceiveRoute - walletId: $walletId, coinType: $coinType, network: $network")
+                    navController.navigate(ReceiveRoute(walletId, coinType, network))
                 },
-                onNavigateToSend = { walletId, coinType ->
-                    Log.d("Navigation", "MainTabScreen: navigate to SendRoute - walletId: $walletId, coinType: $coinType")
-                    navController.navigate(SendRoute(walletId, coinType))
+                onNavigateToSend = { walletId, coinType, network ->
+                    Log.d("Navigation", "MainTabScreen: navigate to SendRoute - walletId: $walletId, coinType: $coinType, network: $network")
+                    navController.navigate(SendRoute(walletId, coinType, network))
                 },
-                padding = PaddingValues(0.dp),
-                navigationViewModel = navigationViewModel
+                onNavigateToSecurity = {
+                    Log.d("Navigation", "MainTabScreen: navigate to SecuritySettingsRoute")
+                    navController.navigate(SecuritySettingsRoute)
+                },
+                onRequestAuthentication = { screen, walletId ->
+                    navigationViewModel.requestAuthentication(screen, walletId)
+                },
+                padding = PaddingValues(0.dp)
             )
         }
 
         composable<MarketRoute> {
             Log.d("Navigation", "Navigated to MarketRoute")
             MarketScreen(
-                onNavigateUp = {
-                    Log.d("Navigation", "MarketScreen: navigate up")
-                    navController.navigateUp()
-                },
                 onNavigateToTokenDetail = { tokenId ->
                     Log.d("Navigation", "MarketScreen: navigate to TokenDetailRoute - tokenId: $tokenId")
                     navController.navigate(TokenDetailRoute(tokenId))
@@ -193,10 +221,6 @@ fun Navigation() {
         composable<SettingsRoute> {
             Log.d("Navigation", "Navigated to SettingsRoute")
             SettingsScreen(
-                onNavigateUp = {
-                    Log.d("Navigation", "SettingsScreen: navigate up")
-                    navController.navigateUp()
-                },
                 onNavigateToSecurity = {
                     Log.d("Navigation", "SettingsScreen: navigate to SecuritySettingsRoute")
                     navController.navigate(SecuritySettingsRoute)
@@ -227,9 +251,9 @@ fun Navigation() {
                     Log.d("Navigation", "WalletDetailScreen: navigate to CoinDetailRoute - walletId: $walletId, coinType: $coinType, network: $network")
                     navController.navigate(CoinDetailRoute(walletId, coinType, network))
                 },
-                onNavigateToReceive = { walletId, coinType ->
-                    Log.d("Navigation", "WalletDetailScreen: navigate to ReceiveRoute - walletId: $walletId, coinType: $coinType")
-                    navController.navigate(ReceiveRoute(walletId, coinType))
+                onNavigateToReceive = { walletId, coinType, network ->
+                    Log.d("Navigation", "WalletDetailScreen: navigate to ReceiveRoute - walletId: $walletId, coinType: $coinType, network: $network")
+                    navController.navigate(ReceiveRoute(walletId, coinType, network))
                 },
                 onNavigateToSend = { walletId, coinType, network ->
                     Log.d("Navigation", "WalletDetailScreen: navigate to SendRoute - walletId: $walletId, coinType: $coinType, network: $network")
@@ -238,6 +262,10 @@ fun Navigation() {
                 onNavigateToAllTransactions = { walletId ->
                     Log.d("Navigation", "WalletDetailScreen: navigate to AllTransactions - walletId: $walletId (TODO)")
                     // TODO: Navigate to all transactions screen
+                },
+                onNavigateToTransactionDetail = { walletId, transactionId, coinType ->
+                    Log.d("Navigation", "WalletDetailScreen: navigate to TransactionDetailRoute - walletId: $walletId, transactionId: $transactionId, coinType: $coinType")
+                    navController.navigate(TransactionDetailRoute(walletId, transactionId, coinType))
                 },
                 walletId = args.walletId
             )
@@ -264,15 +292,34 @@ fun Navigation() {
                     Log.d("Navigation", "CoinDetailScreen: navigate to AllTransactions - walletId: $walletId, coinType: $coinType, network: $network")
                     // TODO: Navigate to all transactions screen
                 },
+                onNavigateToTransactionDetail = { walletId, transactionId, coinType ->
+                    Log.d("Navigation", "CoinDetailScreen: navigate to TransactionDetailRoute - walletId: $walletId, transactionId: $transactionId, coinType: $coinType")
+                    navController.navigate(TransactionDetailRoute(walletId, transactionId, coinType))
+                },
                 walletId = args.walletId,
                 coinType = args.coinType,
                 network = args.network
             )
         }
 
+        composable<TransactionDetailRoute> { backStackEntry ->
+            val args = backStackEntry.toRoute<TransactionDetailRoute>()
+            Log.d("Navigation", "Navigated to TransactionDetailRoute - walletId: ${args.walletId}, transactionId: ${args.transactionId}, coinType: ${args.coinType}")
+
+            TransactionDetailScreen(
+                onNavigateUp = {
+                    Log.d("Navigation", "TransactionDetailScreen: navigate up")
+                    navController.navigateUp()
+                },
+                walletId = args.walletId,
+                transactionId = args.transactionId,
+                coinType = args.coinType
+            )
+        }
+
         composable<ReceiveRoute> { backStackEntry ->
             val args = backStackEntry.toRoute<ReceiveRoute>()
-            Log.d("Navigation", "Navigated to ReceiveRoute - walletId: ${args.walletId}, coinType: ${args.coinType}")
+            Log.d("Navigation", "Navigated to ReceiveRoute - walletId: ${args.walletId}, coinType: ${args.coinType}, network: ${args.network}")
 
             ReceiveScreen(
                 onNavigateUp = {
@@ -280,59 +327,102 @@ fun Navigation() {
                     navController.navigateUp()
                 },
                 walletId = args.walletId,
-                coinType = args.coinType
+                coinType = args.coinType,
+                network = args.network
             )
         }
 
         composable<SendRoute> { backStackEntry ->
             val args = backStackEntry.toRoute<SendRoute>()
-            Log.d("Navigation", "Navigated to SendRoute - walletId: ${args.walletId}, coinType: ${args.coinType}")
+            Log.d("Navigation", "Navigated to SendRoute - walletId: ${args.walletId}, coinType: ${args.coinType}, network: ${args.network}")
 
-            SendScreen(
-                onNavigateUp = {
-                    Log.d("Navigation", "SendScreen: navigate up")
-                    navController.navigateUp()
-                },
-                onNavigateToReview = { walletId, coinType, toAddress, amount, feeLevel, networkObject ->
-                    Log.d("Navigation", "SendScreen: navigate to ReviewRoute - " +
-                            "walletId: $walletId, coinType: $coinType, toAddress: $toAddress, " +
-                            "amount: $amount, feeLevel: $feeLevel, network: $networkObject")
-
-                    // Convert network object to string for routing
-                    val networkString = when (networkObject) {
-                        is EthereumNetwork -> when (networkObject) {
-                            EthereumNetwork.Mainnet -> "mainnet"
-                            EthereumNetwork.Sepolia -> "sepolia"
-                        }
-                        is SolanaNetwork -> when (networkObject) {
-                            SolanaNetwork.Mainnet -> "mainnet"
-                            SolanaNetwork.Devnet -> "devnet"
-                        }
-                        is BitcoinNetwork -> when (networkObject) {
-                            BitcoinNetwork.Mainnet -> "mainnet"
-                            BitcoinNetwork.Testnet -> "testnet"
-                        }
-                        else -> ""
-                    }
-
-                    navController.navigate(
-                        ReviewRoute(
-                            walletId = walletId,
-                            coinType = coinType,
-                            toAddress = toAddress,
-                            amount = amount,
-                            feeLevel = feeLevel?.name,
-                            network = networkString
-                        )
+            when (args.coinType) {
+                CoinType.BITCOIN -> {
+                    BitcoinSendScreen(
+                        onNavigateUp = {
+                            Log.d("Navigation", "BitcoinSendScreen: navigate up")
+                            navController.navigateUp()
+                        },
+                        onNavigateToReview = { walletId, coinType, toAddress, amount, feeLevel, network ->
+                            Log.d("Navigation", "BitcoinSendScreen: navigate to ReviewRoute")
+                            navController.navigate(
+                                ReviewRoute(
+                                    walletId = walletId,
+                                    coinType = coinType,
+                                    toAddress = toAddress,
+                                    amount = amount,
+                                    feeLevel = feeLevel?.name,
+                                    network = network
+                                )
+                            ) {
+                                // Remove the send screen from back stack
+                                popUpTo<SendRoute> { inclusive = true }
+                            }
+                        },
+                        walletId = args.walletId,
+                        network = args.network
                     )
-                },
-                walletId = args.walletId,
-                coinType = args.coinType
-            )
+                }
+                CoinType.ETHEREUM, CoinType.USDC -> {
+                    EthereumSendScreen(
+                        onNavigateUp = {
+                            Log.d("Navigation", "EthereumSendScreen: navigate up")
+                            navController.navigateUp()
+                        },
+                        onNavigateToReview = { walletId, coinType, toAddress, amount, feeLevel, network ->
+                            Log.d("Navigation", "EthereumSendScreen: navigate to ReviewRoute")
+                            navController.navigate(
+                                ReviewRoute(
+                                    walletId = walletId,
+                                    coinType = coinType,
+                                    toAddress = toAddress,
+                                    amount = amount,
+                                    feeLevel = feeLevel?.name,
+                                    network = network
+                                )
+                            ) {
+                                // Remove the send screen from back stack
+                                popUpTo<SendRoute> { inclusive = true }
+                            }
+                        },
+                        walletId = args.walletId,
+                        coinType = args.coinType,
+                        network = args.network
+                    )
+                }
+                CoinType.SOLANA -> {
+                    SolanaSendScreen(
+                        onNavigateUp = {
+                            Log.d("Navigation", "SolanaSendScreen: navigate up")
+                            navController.navigateUp()
+                        },
+                        onNavigateToReview = { walletId, coinType, toAddress, amount, feeLevel, network ->
+                            Log.d("Navigation", "SolanaSendScreen: navigate to ReviewRoute")
+                            navController.navigate(
+                                ReviewRoute(
+                                    walletId = walletId,
+                                    coinType = coinType,
+                                    toAddress = toAddress,
+                                    amount = amount,
+                                    feeLevel = feeLevel?.name,
+                                    network = network
+                                )
+                            ) {
+                                // Remove the send screen from back stack
+                                popUpTo<SendRoute> { inclusive = true }
+                            }
+                        },
+                        walletId = args.walletId,
+                        network = args.network
+                    )
+                }
+            }
         }
 
         composable<ReviewRoute> { backStackEntry ->
             val args = backStackEntry.toRoute<ReviewRoute>()
+            val feeLevel = args.feeLevel?.let { FeeLevel.valueOf(it) }
+
             Log.d("Navigation", "Navigated to ReviewRoute - " +
                     "walletId: ${args.walletId}, coinType: ${args.coinType}, " +
                     "toAddress: ${args.toAddress}, amount: ${args.amount}, feeLevel: ${args.feeLevel}, network: ${args.network}")
@@ -340,7 +430,10 @@ fun Navigation() {
             TransactionReviewScreen(
                 onNavigateUp = {
                     Log.d("Navigation", "TransactionReviewScreen: navigate up")
-                    navController.navigateUp()
+                    // Navigate up to wallet detail
+                    navController.navigate(WalletDetailRoute(args.walletId)) {
+                        popUpTo(WalletDetailRoute(args.walletId)) { inclusive = true }
+                    }
                 },
                 onNavigateToWalletDetail = { walletId ->
                     Log.d("Navigation", "TransactionReviewScreen: navigate to WalletDetailRoute - walletId: $walletId")
@@ -352,7 +445,7 @@ fun Navigation() {
                 coinType = args.coinType,
                 toAddress = args.toAddress,
                 amount = args.amount,
-                feeLevel = args.feeLevel,
+                feeLevel = feeLevel.toString(),
                 network = args.network
             )
         }
@@ -390,34 +483,13 @@ fun Navigation() {
             AuthenticationRequiredScreen(
                 onAuthenticated = {
                     Log.d("Navigation", "Authentication successful - navigating to: ${args.screen}")
-
-                    when (args.screen) {
-                        "walletDetail" -> {
-                            navController.navigate(WalletDetailRoute(args.walletId)) {
-                                popUpTo<AuthenticateRoute> { inclusive = true }
-                            }
-                        }
-                        "send" -> {
-                            navController.navigate(SendRoute(args.walletId, CoinType.BITCOIN)) {
-                                popUpTo<AuthenticateRoute> { inclusive = true }
-                            }
-                        }
-                        "backup" -> {
-                            navController.navigate(BackupRoute(args.walletId)) {
-                                popUpTo<AuthenticateRoute> { inclusive = true }
-                            }
-                        }
-                        else -> {
-                            navController.navigate(MainRoute) {
-                                popUpTo<AuthenticateRoute> { inclusive = true }
-                            }
-                        }
-                    }
+                    handleDirectNavigation(args.screen, args.walletId)
                 },
                 onCancel = {
-                    Log.d("Navigation", "Authentication cancelled - popping back stack")
+                    Log.d("Navigation", "Authentication cancelled")
                     navController.popBackStack()
-                }
+                },
+                canAuthenticate = canAuthenticate
             )
         }
     }

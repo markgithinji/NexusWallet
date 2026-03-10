@@ -6,6 +6,8 @@ import com.example.nexuswallet.feature.authentication.domain.AuthType
 import com.example.nexuswallet.feature.authentication.domain.RecordAuthenticationUseCase
 import com.example.nexuswallet.feature.authentication.domain.VerifyPinUseCase
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.settings.ui.IsBiometricEnabledUseCase
+import com.example.nexuswallet.feature.settings.ui.IsPinSetUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +18,9 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthenticationViewModel @Inject constructor(
     private val verifyPinUseCase: VerifyPinUseCase,
-    private val recordAuthenticationUseCase: RecordAuthenticationUseCase
+    private val recordAuthenticationUseCase: RecordAuthenticationUseCase,
+    private val isPinSetUseCase: IsPinSetUseCase,
+    private val isBiometricEnabledUseCase: IsBiometricEnabledUseCase
 ) : ViewModel() {
 
     private val _authenticationResult = MutableStateFlow<Result<AuthType>?>(null)
@@ -27,6 +31,43 @@ class AuthenticationViewModel @Inject constructor(
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    private val _isPinAvailable = MutableStateFlow(false)
+    val isPinAvailable: StateFlow<Boolean> = _isPinAvailable.asStateFlow()
+
+    private val _isBiometricEnabled = MutableStateFlow(false)
+    val isBiometricEnabled: StateFlow<Boolean> = _isBiometricEnabled.asStateFlow()
+
+    init {
+        checkAuthStatus()
+    }
+
+    private fun checkAuthStatus() {
+        viewModelScope.launch {
+            // Check PIN status
+            when (val pinResult = isPinSetUseCase()) {
+                is Result.Success -> {
+                    _isPinAvailable.value = pinResult.data
+                }
+                is Result.Error -> {
+                    _isPinAvailable.value = false
+                    _errorMessage.value = "Failed to check PIN status"
+                }
+                Result.Loading -> {}
+            }
+
+            // Check biometric enabled status
+            when (val bioResult = isBiometricEnabledUseCase()) {
+                is Result.Success -> {
+                    _isBiometricEnabled.value = bioResult.data
+                }
+                is Result.Error -> {
+                    _isBiometricEnabled.value = false
+                }
+                Result.Loading -> {}
+            }
+        }
+    }
 
     fun showPinDialog() {
         _showPinDialog.value = true
@@ -45,14 +86,10 @@ class AuthenticationViewModel @Inject constructor(
                         _errorMessage.value = "Incorrect PIN"
                     }
                 }
-
                 is Result.Error -> {
                     _errorMessage.value = verifyResult.message
                 }
-
-                Result.Loading -> {
-                    // Show loading if needed
-                }
+                Result.Loading -> {}
             }
         }
     }
@@ -76,5 +113,9 @@ class AuthenticationViewModel @Inject constructor(
     fun clearState() {
         _authenticationResult.value = null
         _errorMessage.value = null
+    }
+
+    fun refreshAuthStatus() {
+        checkAuthStatus()
     }
 }

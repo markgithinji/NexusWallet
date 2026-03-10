@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -25,12 +26,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.example.nexuswallet.R
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
@@ -339,23 +343,6 @@ fun CoinSelectionStep(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        Text(
-            text = "Select Assets & Networks",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Choose which cryptocurrencies and networks to include",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
         // ============ BITCOIN SECTION ============
         Text(
             text = "Bitcoin",
@@ -367,7 +354,7 @@ fun CoinSelectionStep(
 
         // Bitcoin Mainnet
         NetworkToggleCard(
-            icon = Icons.Default.CurrencyBitcoin,
+            iconRes = R.drawable.bitcoin,
             color = bitcoinLight,
             coinName = "Bitcoin Mainnet",
             coinSymbol = "BTC",
@@ -383,7 +370,7 @@ fun CoinSelectionStep(
 
         // Bitcoin Testnet
         NetworkToggleCard(
-            icon = Icons.Default.CurrencyBitcoin,
+            iconRes = R.drawable.bitcoin,
             color = bitcoinLight.copy(alpha = 0.7f),
             coinName = "Bitcoin Testnet",
             coinSymbol = "BTC",
@@ -408,7 +395,7 @@ fun CoinSelectionStep(
 
         // Ethereum Mainnet
         NetworkToggleCard(
-            icon = Icons.Default.Diamond,
+            iconRes = R.drawable.ethereum,
             color = ethereumLight,
             coinName = "Ethereum Mainnet",
             coinSymbol = "ETH",
@@ -424,7 +411,7 @@ fun CoinSelectionStep(
 
         // Ethereum Sepolia
         NetworkToggleCard(
-            icon = Icons.Default.Diamond,
+            iconRes = R.drawable.ethereum,
             color = ethereumLight.copy(alpha = 0.7f),
             coinName = "Ethereum Sepolia",
             coinSymbol = "ETH",
@@ -449,7 +436,7 @@ fun CoinSelectionStep(
 
         // Solana Mainnet
         NetworkToggleCard(
-            icon = Icons.Default.FlashOn,
+            iconRes = R.drawable.solana,
             color = solanaLight,
             coinName = "Solana Mainnet",
             coinSymbol = "SOL",
@@ -465,7 +452,7 @@ fun CoinSelectionStep(
 
         // Solana Devnet
         NetworkToggleCard(
-            icon = Icons.Default.FlashOn,
+            iconRes = R.drawable.solana,
             color = solanaLight.copy(alpha = 0.7f),
             coinName = "Solana Devnet",
             coinSymbol = "SOL",
@@ -490,7 +477,7 @@ fun CoinSelectionStep(
 
         // USDC Mainnet
         NetworkToggleCard(
-            icon = Icons.Default.AttachMoney,
+            iconRes = R.drawable.usdc,
             color = usdcLight,
             coinName = "USDC",
             coinSymbol = "USDC",
@@ -506,7 +493,7 @@ fun CoinSelectionStep(
 
         // USDC Sepolia
         NetworkToggleCard(
-            icon = Icons.Default.AttachMoney,
+            iconRes = R.drawable.usdc,
             color = usdcLight.copy(alpha = 0.7f),
             coinName = "USDC",
             coinSymbol = "USDC",
@@ -522,7 +509,7 @@ fun CoinSelectionStep(
 
         // USDT Mainnet
         NetworkToggleCard(
-            icon = Icons.Default.AttachMoney,
+            iconRes = R.drawable.usdc,
             color = usdtLight,
             coinName = "USDT",
             coinSymbol = "USDT",
@@ -617,7 +604,7 @@ fun CoinSelectionStep(
 
 @Composable
 fun NetworkToggleCard(
-    icon: ImageVector,
+    iconRes: Int,
     color: Color,
     coinName: String,
     coinSymbol: String,
@@ -629,10 +616,11 @@ fun NetworkToggleCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) color.copy(alpha = 0.1f)
-            else MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (isSelected) color.copy(alpha = 0.05f)
+            else MaterialTheme.colorScheme.surface
         ),
-        border = if (isSelected) BorderStroke(2.dp, color) else null
+        border = if (isSelected) BorderStroke(1.dp, color) else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -642,17 +630,14 @@ fun NetworkToggleCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(color),
+                modifier = Modifier.size(48.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(id = iconRes),
                     contentDescription = coinName,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(36.dp)
                 )
             }
 
@@ -665,7 +650,7 @@ fun NetworkToggleCard(
                     text = coinName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "$coinSymbol • $networkName",
@@ -673,12 +658,14 @@ fun NetworkToggleCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
             Checkbox(
                 checked = isSelected,
                 onCheckedChange = onSelectedChange,
-                colors = CheckboxDefaults.colors(
-                    checkedColor = color
+                colors = CustomCheckboxDefaults.colors(
+                    checkedBackgroundColor = color,
+                    checkedBorderColor = color,
+                    uncheckedBorderColor = MaterialTheme.colorScheme.outline,
+                    checkedIconColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         }
@@ -859,46 +846,146 @@ fun SecurityWarningDialog(
     onAccept: () -> Unit,
     onCancel: () -> Unit
 ) {
-    AlertDialog(
+    Dialog(
         onDismissRequest = onCancel,
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = {
-            Text(
-                text = "⚠️ Security Warning",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.titleMedium
-            )
-        },
-        text = {
-            Text(
-                text = "Your recovery phrase is the ONLY way to restore your wallet. " +
-                        "If you lose it, you lose access to your funds permanently. " +
-                        "Never share it with anyone!",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onAccept,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp)
             ) {
-                Text("I Understand")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onCancel,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                // Warning Icon
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
+                        .align(Alignment.CenterHorizontally),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Security Warning",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Title
+                Text(
+                    text = "Critical Security Warning",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
-            ) {
-                Text("Cancel")
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Warning Message
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.05f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Your recovery phrase is the ONLY way to restore your wallet. If you lose it, you lose access to your funds FOREVER.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Key points as chips
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(
+                                "✕ Never share it",
+                                "✕ Never store digitally",
+                                "✓ Write on paper only"
+                            ).forEach { point ->
+                                Card(
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                                    )
+                                ) {
+                                    Text(
+                                        text = point,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Cancel button
+                    OutlinedButton(
+                        onClick = onCancel,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                    ) {
+                        Text(
+                            "Cancel",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    // Accept button
+                    Button(
+                        onClick = onAccept,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        )
+                    ) {
+                        Text(
+                            "I Understand",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
-    )
+    }
 }
 
 @Composable
@@ -920,22 +1007,13 @@ fun MnemonicDisplayStep(
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp)
             ) {
-                Text(
-                    text = "🔐 Your Recovery Phrase",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
                 // Critical warning
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -946,11 +1024,12 @@ fun MnemonicDisplayStep(
                             Icon(
                                 imageVector = Icons.Default.Warning,
                                 contentDescription = "Warning",
-                                tint = MaterialTheme.colorScheme.onErrorContainer
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Critical Security Step",
+                                text = "Critical Security Step:",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                                 fontWeight = FontWeight.Bold
@@ -998,13 +1077,14 @@ fun MnemonicDisplayStep(
                     .padding(horizontal = 16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "📝 Safety Checklist:",
+                        text = "Safety Checklist:",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -1013,19 +1093,19 @@ fun MnemonicDisplayStep(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     SafetyChecklistItem(
-                        text = "✓ Write on paper (not digital)",
+                        text = "Write on paper (not digital)",
                         checked = true
                     )
                     SafetyChecklistItem(
-                        text = "✓ Store in secure location",
+                        text = "Store in secure location",
                         checked = true
                     )
                     SafetyChecklistItem(
-                        text = "✓ Never share with anyone",
+                        text = "Never share with anyone",
                         checked = true
                     )
                     SafetyChecklistItem(
-                        text = "✓ Keep away from moisture/fire",
+                        text = "Keep away from moisture/fire",
                         checked = true
                     )
                 }
@@ -1039,47 +1119,146 @@ fun MnemonicDisplayStep(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                // Written down checkbox
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (hasWrittenDown)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+                        else
+                            MaterialTheme.colorScheme.surface
+                    ),
+                    border = if (hasWrittenDown)
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                    else
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    Checkbox(
-                        checked = hasWrittenDown,
-                        onCheckedChange = { hasWrittenDown = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = MaterialTheme.colorScheme.primary
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .clickable { hasWrittenDown = !hasWrittenDown },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (hasWrittenDown)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        Color.Transparent
+                                )
+                                .border(
+                                    width = 2.dp,
+                                    color = if (hasWrittenDown)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.outline,
+                                    shape = RoundedCornerShape(6.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (hasWrittenDown) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Checked",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Text(
+                            text = "I have written down all 12 words on paper",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (hasWrittenDown)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
                         )
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "I have written down all 12 words on paper",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                // Stored safely checkbox
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (hasStoredSafely)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+                        else
+                            MaterialTheme.colorScheme.surface
+                    ),
+                    border = if (hasStoredSafely)
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                    else
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    Checkbox(
-                        checked = hasStoredSafely,
-                        onCheckedChange = { hasStoredSafely = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = MaterialTheme.colorScheme.primary
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .clickable { hasStoredSafely = !hasStoredSafely },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Custom checkbox
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (hasStoredSafely)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        Color.Transparent
+                                )
+                                .border(
+                                    width = 2.dp,
+                                    color = if (hasStoredSafely)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.outline,
+                                    shape = RoundedCornerShape(6.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (hasStoredSafely) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Checked",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Text(
+                            text = "I have stored them in a secure location",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (hasStoredSafely)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
                         )
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "I have stored them in a secure location",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    }
                 }
             }
         }
 
-        // Spacer to separate from buttons
         item {
             Spacer(modifier = Modifier.height(20.dp))
         }
@@ -1116,7 +1295,8 @@ fun MnemonicDisplayStep(
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.primary
-                    )
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
                     Text("Back")
                 }
@@ -1129,7 +1309,8 @@ fun MnemonicDisplayStep(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
                     Text("I've Backed It Up")
                 }
@@ -1152,7 +1333,7 @@ fun MnemonicDisplayChip(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -1220,51 +1401,15 @@ fun MnemonicVerificationStep(
             .verticalScroll(rememberScrollState())
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Back button
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(
-                onClick = onBack,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Back")
-            }
-
-            Text(
-                text = "Step 2/3",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Title
-        Text(
-            text = "Verify Recovery Phrase",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
         Text(
             text = "Tap words in the correct order",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Selected words
+        // Selected words container
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -1272,7 +1417,9 @@ fun MnemonicVerificationStep(
             shape = RoundedCornerShape(12.dp)
         ) {
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
             ) {
                 Text(
                     text = "Selected Words (${enteredWords.size}/${mnemonic.size})",
@@ -1280,18 +1427,18 @@ fun MnemonicVerificationStep(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 if (enteredWords.isEmpty()) {
+                    // Compact empty state
                     Text(
                         text = "No words selected yet",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.padding(vertical = 8.dp)
                     )
                 } else {
-                    // Vertical FlowRow for selected words
+                    // FlowRow for selected words
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1311,42 +1458,65 @@ fun MnemonicVerificationStep(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Available words
+        // Available words section
         Text(
-            text = "Tap to select:",
+            text = "Available Words",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Manual 4-column grid
-        Column(
-            modifier = Modifier.fillMaxWidth()
+        // Available words container
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         ) {
-            for (row in 0 until 3) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    for (col in 0 until 4) {
-                        val index = row * 4 + col
-                        if (index < shuffledWords.size) {
-                            val word = shuffledWords[index]
-                            Box(modifier = Modifier.weight(1f)) {
-                                if (!enteredWords.contains(word)) {
-                                    SimpleWordChip(
-                                        word = word,
-                                        onClick = { onAddWord(word) }
-                                    )
-                                } else {
-                                    Spacer(modifier = Modifier.height(44.dp))
-                                }
-                            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
+            ) {
+                // Get remaining words
+                val remainingWords = shuffledWords.filter { word -> !enteredWords.contains(word) }
+
+                if (remainingWords.isEmpty()) {
+                    // Compact success state
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Success",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "All words selected",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                } else {
+                    // FlowRow for available words
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        remainingWords.forEach { word ->
+                            SimpleWordChip(
+                                word = word,
+                                onClick = { onAddWord(word) }
+                            )
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
             }
         }
 
@@ -1417,7 +1587,8 @@ fun SimpleSelectedChip(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -1435,7 +1606,6 @@ fun SimpleSelectedChip(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -1460,23 +1630,16 @@ fun SimpleWordChip(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = word,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
+        Text(
+            text = word,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -1489,23 +1652,6 @@ fun WalletNameStep(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        Text(
-            text = "Name Your Wallet",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Give your wallet a name for easy identification",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
         OutlinedTextField(
             value = walletName,
             onValueChange = onNameChange,
@@ -1563,13 +1709,20 @@ fun WalletSuccessStep(
     wallet: Wallet,
     onFinish: () -> Unit
 ) {
+    // Calculate total assets correctly
+    val totalAssets = wallet.bitcoinCoins.size +
+            wallet.solanaCoins.size +
+            wallet.evmTokens.size +
+            wallet.solanaCoins.flatMap { it.splTokens }.size
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Success icon
         Box(
             modifier = Modifier
                 .size(100.dp)
@@ -1618,7 +1771,9 @@ fun WalletSuccessStep(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Row {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         "Name: ",
                         fontWeight = FontWeight.Medium,
@@ -1626,11 +1781,12 @@ fun WalletSuccessStep(
                     )
                     Text(
                         wallet.name,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
                     "Enabled Assets:",
@@ -1638,39 +1794,84 @@ fun WalletSuccessStep(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // Bitcoin Coins
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Bitcoin Coins with icons
                 wallet.bitcoinCoins.forEach { coin ->
                     val networkSuffix = if (coin.network != BitcoinNetwork.Mainnet) " (Testnet)" else ""
-                    Text(
-                        "• Bitcoin$networkSuffix",
-                        modifier = Modifier.padding(start = 8.dp),
-                        color = bitcoinLight
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.bitcoin),
+                            contentDescription = "Bitcoin",
+                            modifier = Modifier.size(20.dp),
+                            tint = Color.Unspecified
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Bitcoin$networkSuffix",
+                            color = bitcoinLight,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
 
-                // Solana Coins
+                // Solana Coins with icons
                 wallet.solanaCoins.forEach { coin ->
                     val networkSuffix = if (coin.network != SolanaNetwork.Mainnet) " (Devnet)" else ""
-                    Text(
-                        "• Solana$networkSuffix",
-                        modifier = Modifier.padding(start = 8.dp),
-                        color = solanaLight
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.solana),
+                            contentDescription = "Solana",
+                            modifier = Modifier.size(20.dp),
+                            tint = Color.Unspecified
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Solana$networkSuffix",
+                            color = solanaLight,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
 
                     // Show SPL tokens if any
                     if (coin.splTokens.isNotEmpty()) {
                         coin.splTokens.take(3).forEach { token ->
-                            Text(
-                                "  • ${token.symbol} (SPL)",
-                                modifier = Modifier.padding(start = 16.dp),
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 28.dp, top = 2.dp, bottom = 2.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Token,
+                                        contentDescription = token.symbol,
+                                        modifier = Modifier.size(10.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "${token.symbol} (SPL)",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
                         if (coin.splTokens.size > 3) {
                             Text(
-                                "  • +${coin.splTokens.size - 3} more",
-                                modifier = Modifier.padding(start = 16.dp),
+                                text = "  • +${coin.splTokens.size - 3} more",
+                                modifier = Modifier.padding(start = 28.dp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall
                             )
@@ -1678,20 +1879,51 @@ fun WalletSuccessStep(
                     }
                 }
 
-                // EVM Tokens
+                // EVM Tokens with icons
                 wallet.evmTokens.forEach { token ->
-                    val (color, networkSuffix) = when (token) {
-                        is NativeETH -> Pair(ethereumLight, if (token.network != EthereumNetwork.Mainnet) " (Sepolia)" else "")
-                        is USDCToken -> Pair(usdcLight, if (token.network != EthereumNetwork.Mainnet) " (Sepolia)" else "")
-                        is USDTToken -> Pair(usdtLight, if (token.network != EthereumNetwork.Mainnet) " (Sepolia)" else "")
-                        else -> Pair(MaterialTheme.colorScheme.primary, "")
+                    val (color, iconRes) = when (token) {
+                        is NativeETH -> Pair(ethereumLight, R.drawable.ethereum)
+                        is USDCToken -> Pair(usdcLight, R.drawable.usdc)
+                        is USDTToken -> Pair(usdtLight, R.drawable.tether)
+                        else -> Pair(MaterialTheme.colorScheme.primary, null)
                     }
 
-                    Text(
-                        "• ${token.symbol}$networkSuffix",
-                        modifier = Modifier.padding(start = 8.dp),
-                        color = color
-                    )
+                    val networkSuffix = if (token.network != EthereumNetwork.Mainnet) " (Sepolia)" else ""
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        if (iconRes != null) {
+                            Icon(
+                                painter = painterResource(id = iconRes),
+                                contentDescription = token.symbol,
+                                modifier = Modifier.size(20.dp),
+                                tint = Color.Unspecified
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clip(CircleShape)
+                                    .background(color.copy(alpha = 0.1f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Token,
+                                    contentDescription = token.symbol,
+                                    modifier = Modifier.size(12.dp),
+                                    tint = color
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "${token.symbol}$networkSuffix",
+                            color = color,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
 
                 // Primary Address (first available)
@@ -1700,35 +1932,68 @@ fun WalletSuccessStep(
                     ?: wallet.solanaCoins.firstOrNull()?.address
 
                 if (primaryAddress != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Row {
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.AccountBalanceWallet,
+                            contentDescription = "Address",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "Address: ",
+                            "Primary Address: ",
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Text(
-                            text = primaryAddress.take(12) + "..." + primaryAddress.takeLast(8),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
                     }
+                    Text(
+                        text = primaryAddress,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(start = 24.dp)
+                    )
                 }
 
-                // Asset count summary
-                val totalAssets = wallet.bitcoinCoins.size +
-                        wallet.solanaCoins.size +
-                        wallet.evmTokens.size
-
+                Spacer(modifier = Modifier.height(16.dp))
+                Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
-                    text = "Total Assets: $totalAssets",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.AccountBalanceWallet,
+                            contentDescription = "Total Assets",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Total Assets:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "$totalAssets",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
 
@@ -1736,14 +2001,119 @@ fun WalletSuccessStep(
 
         Button(
             onClick = onFinish,
-            modifier = Modifier.fillMaxWidth(0.8f),
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .padding(bottom = 32.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
+            Icon(
+                imageVector = Icons.Outlined.Dashboard,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Text("Go to Dashboard")
         }
     }
+}
+
+@Composable
+fun Checkbox(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    colors: CustomCheckboxColors = CustomCheckboxDefaults.colors()
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> colors.disabledBackgroundColor
+            checked -> colors.checkedBackgroundColor
+            else -> colors.uncheckedBackgroundColor
+        },
+        label = "checkbox_bg"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> colors.disabledBorderColor
+            checked -> colors.checkedBorderColor
+            else -> colors.uncheckedBorderColor
+        },
+        label = "checkbox_border"
+    )
+
+    val iconTintColor by animateColorAsState(
+        targetValue = when {
+            !enabled -> colors.disabledIconColor
+            else -> colors.checkedIconColor
+        },
+        label = "checkbox_icon"
+    )
+
+    Box(
+        modifier = modifier
+            .size(24.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(backgroundColor)
+            .border(
+                width = 2.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(6.dp)
+            )
+            .clickable(
+                enabled = enabled,
+                interactionSource = interactionSource,
+                indication = ripple(bounded = true)
+            ) { onCheckedChange(!checked) },
+        contentAlignment = Alignment.Center
+    ) {
+        if (checked) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = "Checked",
+                tint = iconTintColor,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+data class CustomCheckboxColors(
+    val checkedBackgroundColor: Color,
+    val uncheckedBackgroundColor: Color,
+    val disabledBackgroundColor: Color,
+    val checkedBorderColor: Color,
+    val uncheckedBorderColor: Color,
+    val disabledBorderColor: Color,
+    val checkedIconColor: Color,
+    val disabledIconColor: Color
+)
+
+object CustomCheckboxDefaults {
+    @Composable
+    fun colors(
+        checkedBackgroundColor: Color = MaterialTheme.colorScheme.primary,
+        uncheckedBackgroundColor: Color = Color.Transparent,
+        disabledBackgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        checkedBorderColor: Color = MaterialTheme.colorScheme.primary,
+        uncheckedBorderColor: Color = MaterialTheme.colorScheme.outline,
+        disabledBorderColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+        checkedIconColor: Color = MaterialTheme.colorScheme.onPrimary,
+        disabledIconColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+    ) = CustomCheckboxColors(
+        checkedBackgroundColor = checkedBackgroundColor,
+        uncheckedBackgroundColor = uncheckedBackgroundColor,
+        disabledBackgroundColor = disabledBackgroundColor,
+        checkedBorderColor = checkedBorderColor,
+        uncheckedBorderColor = uncheckedBorderColor,
+        disabledBorderColor = disabledBorderColor,
+        checkedIconColor = checkedIconColor,
+        disabledIconColor = disabledIconColor
+    )
 }

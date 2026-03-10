@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.ui
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateContentSize
@@ -10,11 +11,14 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
+import com.example.nexuswallet.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,26 +28,31 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.CurrencyBitcoin
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Diamond
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FlashOn
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Token
 import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -55,6 +64,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -73,17 +83,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
@@ -95,14 +111,20 @@ import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
+import com.example.nexuswallet.ui.theme.warning
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun WalletDashboardScreen(
     onNavigateToWalletDetail: (String) -> Unit,
+    onNavigateToCoinDetail: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToCreateWallet: () -> Unit,
+    onRequestAuthentication: (String, String) -> Unit,
     padding: PaddingValues,
     viewModel: WalletDashboardViewModel = hiltViewModel()
 ) {
@@ -114,56 +136,241 @@ fun WalletDashboardScreen(
 
     var isRefreshing by remember { mutableStateOf(false) }
 
-    // Show error snackbar if operation fails
     LaunchedEffect(operationError) {
         operationError?.let {
-            // Handle error (show snackbar, etc.)
             viewModel.clearOperationError()
         }
     }
 
-    when (val state = uiState) {
-        is Result.Loading -> LoadingScreen()
-
-        is Result.Error -> ErrorScreen(
-            message = state.message,
-            onRetry = { viewModel.refresh() }
-        )
-
-        is Result.Success -> {
-            if (state.data.isEmpty()) {
-                EmptyWalletsScreen(
-                    onCreateWallet = onNavigateToCreateWallet
-                )
-            } else {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // Background
+    Scaffold(
+        topBar = {
+            DashboardTopBar(
+                onRefresh = {
+                    isRefreshing = true
+                    viewModel.refresh()
+                    isRefreshing = false
+                },
+                onCreateWallet = onNavigateToCreateWallet,
+                isRefreshing = isRefreshing || isOperationLoading
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { scaffoldPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(scaffoldPadding)
+                .padding(padding)
+        ) {
+            when (val state = uiState) {
+                is Result.Loading -> {
+                    // Loading state
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background)
-                    )
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                }
 
-                    // Main content
-                    DashboardContent(
-                        wallets = state.data,
-                        totalPortfolio = totalPortfolio,
-                        balances = balances,
-                        isOperationLoading = isOperationLoading,
-                        onWalletClick = { wallet ->
-                            onNavigateToWalletDetail(wallet.id)
-                        },
-                        onDeleteWallet = { walletId ->
-                            viewModel.deleteWallet(walletId)
-                        },
-                        onRefresh = {
+                is Result.Error -> {
+                    // Error state
+                    EmptyWalletsContent(
+                        onCreateWallet = onNavigateToCreateWallet,
+                        isError = true,
+                        errorMessage = state.message,
+                        onRetry = {
                             isRefreshing = true
                             viewModel.refresh()
-                            isRefreshing = false
-                        },
-                        isRefreshing = isRefreshing
+                        }
                     )
                 }
+
+                is Result.Success -> {
+                    if (state.data.isEmpty()) {
+                        EmptyWalletsContent(
+                            onCreateWallet = onNavigateToCreateWallet
+                        )
+                    } else {
+                        // Normal state with wallets
+                        DashboardContent(
+                            wallets = state.data,
+                            totalPortfolio = totalPortfolio,
+                            balances = balances,
+                            isOperationLoading = isOperationLoading,
+                            onWalletClick = { wallet ->
+                                onRequestAuthentication("walletDetail", wallet.id)
+                            },
+                            onCoinClick = { walletId, coinType, network ->
+                                onNavigateToCoinDetail(walletId, coinType, network)
+                            },
+                            onReceiveClick = { walletId, coinType, network ->
+                                onNavigateToReceive(walletId, coinType, network)
+                            },
+                            onSendClick = { walletId, coinType, network ->
+                                onNavigateToSend(walletId, coinType, network)
+                            },
+                            onDeleteWallet = { walletId ->
+                                viewModel.deleteWallet(walletId)
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Loading overlay for operations
+            if (isOperationLoading && uiState is Result.Success && (uiState as Result.Success).data.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.3f))
+                        .clickable(enabled = false) {},
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Loading...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DashboardTopBar(
+    onRefresh: () -> Unit,
+    onCreateWallet: () -> Unit,
+    isRefreshing: Boolean
+) {
+    TopAppBar(
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AccountBalanceWallet,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Wallets",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        },
+        actions = {
+            // Plus icon for creating new wallet
+            IconButton(
+                onClick = onCreateWallet
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = "Create Wallet",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface
+        )
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DashboardContent(
+    wallets: List<Wallet>,
+    totalPortfolio: BigDecimal,
+    balances: Map<String, WalletBalance>,
+    isOperationLoading: Boolean,
+    onWalletClick: (Wallet) -> Unit,
+    onCoinClick: (String, CoinType, NetworkType?) -> Unit,
+    onReceiveClick: (String, CoinType, NetworkType?) -> Unit,
+    onSendClick: (String, CoinType, NetworkType?) -> Unit,
+    onDeleteWallet: (String) -> Unit
+) {
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp > 600
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Portfolio Summary Header
+        item {
+            AnimatedPortfolioHeader(
+                totalPortfolio = totalPortfolio,
+                walletCount = wallets.size,
+                isTablet = isTablet
+            )
+        }
+
+        // Wallets Section Header
+        item {
+            Text(
+                text = "Your Wallets",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+
+        // Wallets Grid/List
+        if (isTablet) {
+            // Grid layout for tablets
+            items(wallets.chunked(2)) { walletPair ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    walletPair.forEach { wallet ->
+                        WalletCard(
+                            wallet = wallet,
+                            balance = balances[wallet.id],
+                            onWalletClick = { onWalletClick(wallet) },
+                            onDelete = { onDeleteWallet(wallet.id) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        } else {
+            // List layout for phones
+            items(wallets) { wallet ->
+                WalletCard(
+                    wallet = wallet,
+                    balance = balances[wallet.id],
+                    onWalletClick = { onWalletClick(wallet) },
+                    onDelete = { onDeleteWallet(wallet.id) }
+                )
             }
         }
     }
@@ -174,7 +381,7 @@ fun WalletDashboardScreen(
 fun WalletCard(
     wallet: Wallet,
     balance: WalletBalance?,
-    onClick: () -> Unit,
+    onWalletClick: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -214,7 +421,9 @@ fun WalletCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onClick() }
+                .clickable {
+                    onWalletClick()
+                }
         ) {
             // Main card content
             Row(
@@ -245,45 +454,63 @@ fun WalletCard(
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        text = wallet.name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Text(
-                        text = NumberFormat.getCurrencyInstance(Locale.US).format(totalUsdValue),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    // Show coin badges as small indicators
+                    // Row for wallet name and balance
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = wallet.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Text(
+                            text = NumberFormat.getCurrencyInstance(Locale.US).format(totalUsdValue),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1
+                        )
+                    }
+
+                    // Show coin badges as small indicators with FlowRow for wrapping
+                    FlowRow(
+                        modifier = Modifier.padding(top = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(top = 4.dp)
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        maxItemsInEachRow = Int.MAX_VALUE
                     ) {
                         // Bitcoin badges
                         wallet.bitcoinCoins.forEach { coin ->
                             CoinBadge(
-                                text = "BTC${if (coin.network != BitcoinNetwork.Mainnet) " (Test)" else ""}",
-                                color = bitcoinLight
+                                text = when (coin.network) {
+                                    BitcoinNetwork.Mainnet -> "BTC"
+                                    BitcoinNetwork.Testnet -> "BTC (Test)"
+                                },
+                                color = bitcoinLight,
                             )
                         }
 
                         // Solana badges
                         wallet.solanaCoins.forEach { coin ->
                             CoinBadge(
-                                text = "SOL${if (coin.network != SolanaNetwork.Mainnet) " (Dev)" else ""}",
-                                color = solanaLight
+                                text = when (coin.network) {
+                                    SolanaNetwork.Mainnet -> "SOL"
+                                    SolanaNetwork.Devnet -> "SOL (Dev)"
+                                },
+                                color = solanaLight,
                             )
                         }
 
-                        // EVM token badges
-                        wallet.evmTokens.take(3).forEach { token ->
+                        // EVM token badges (show first 5, then +X for remaining)
+                        val visibleTokens = wallet.evmTokens.take(5)
+                        visibleTokens.forEach { token ->
                             CoinBadge(
                                 text = token.symbol,
                                 color = when (token) {
@@ -291,12 +518,15 @@ fun WalletCard(
                                     is USDCToken -> usdcLight
                                     is USDTToken -> Color(0xFF26A17B)
                                     else -> MaterialTheme.colorScheme.primary
-                                }
+                                },
                             )
                         }
-                        if (wallet.evmTokens.size > 3) {
+
+                        // Show count of remaining tokens if any
+                        val remainingCount = wallet.evmTokens.size - 5
+                        if (remainingCount > 0) {
                             CoinBadge(
-                                text = "+${wallet.evmTokens.size - 3}",
+                                text = "+$remainingCount",
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -304,7 +534,9 @@ fun WalletCard(
                 }
 
                 IconButton(
-                    onClick = { isExpanded = !isExpanded },
+                    onClick = {
+                        isExpanded = !isExpanded
+                   },
                     modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
@@ -322,7 +554,7 @@ fun WalletCard(
                 enter = expandVertically() + fadeIn(),
                 exit = shrinkVertically() + fadeOut()
             ) {
-                WalletExpandedContent(
+               WalletExpandedContent(
                     wallet = wallet,
                     balance = balance,
                     onDelete = { showDeleteDialog = true }
@@ -338,15 +570,6 @@ fun WalletExpandedContent(
     balance: WalletBalance?,
     onDelete: () -> Unit
 ) {
-    // Create maps for quick balance lookups
-    val evmBalanceMap = balance?.evmBalances?.associateBy { it.externalTokenId } ?: emptyMap()
-
-    // Group EVM tokens
-    val nativeTokens = wallet.evmTokens.filterIsInstance<NativeETH>()
-    val usdcTokens = wallet.evmTokens.filterIsInstance<USDCToken>()
-    val usdtTokens = wallet.evmTokens.filterIsInstance<USDTToken>()
-    val otherTokens = wallet.evmTokens.filter { it !is NativeETH && it !is USDCToken && it !is USDTToken }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -358,7 +581,7 @@ fun WalletExpandedContent(
             thickness = 1.dp
         )
 
-        // Bitcoin balances (all networks)
+        // Bitcoin coins
         wallet.bitcoinCoins.forEach { coin ->
             val networkKey = when (coin.network) {
                 BitcoinNetwork.Mainnet -> "mainnet"
@@ -366,18 +589,19 @@ fun WalletExpandedContent(
             }
             val btcBalance = balance?.bitcoinBalances?.get(networkKey)
 
-            btcBalance?.let {
-                CoinBalanceRow(
-                    icon = Icons.Outlined.CurrencyBitcoin,
-                    symbol = "Bitcoin${if (coin.network != BitcoinNetwork.Mainnet) " (Testnet)" else ""}",
-                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.btc.toDoubleOrNull() ?: 0.0)} BTC",
-                    usdValue = it.usdValue,
-                    color = bitcoinLight
-                )
-            }
+            SimpleBalanceRow(
+                icon = painterResource(id = R.drawable.bitcoin),
+                symbol = "Bitcoin${if (coin.network != BitcoinNetwork.Mainnet) " (Testnet)" else ""}",
+                amount = if (btcBalance != null)
+                    "${NumberFormat.getNumberInstance(Locale.US).format(btcBalance.btc.toDoubleOrNull() ?: 0.0)} BTC"
+                else "0 BTC",
+                usdValue = btcBalance?.usdValue ?: 0.0,
+                color = bitcoinLight,
+                showZeroBalance = true
+            )
         }
 
-        // Solana balances (all networks)
+        // Solana coins
         wallet.solanaCoins.forEach { coin ->
             val networkKey = when (coin.network) {
                 SolanaNetwork.Mainnet -> "mainnet"
@@ -385,71 +609,82 @@ fun WalletExpandedContent(
             }
             val solBalance = balance?.solanaBalances?.get(networkKey)
 
-            solBalance?.let {
-                CoinBalanceRow(
-                    icon = Icons.Outlined.FlashOn,
-                    symbol = "Solana${if (coin.network != SolanaNetwork.Mainnet) " (Devnet)" else ""}",
-                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.sol.toDoubleOrNull() ?: 0.0)} SOL",
-                    usdValue = it.usdValue,
-                    color = solanaLight
-                )
-            }
+            SimpleBalanceRow(
+                icon = painterResource(id = R.drawable.solana),
+                symbol = "Solana${if (coin.network != SolanaNetwork.Mainnet) " (Devnet)" else ""}",
+                amount = if (solBalance != null)
+                    "${NumberFormat.getNumberInstance(Locale.US).format(solBalance.sol.toDoubleOrNull() ?: 0.0)} SOL"
+                else "0 SOL",
+                usdValue = solBalance?.usdValue ?: 0.0,
+                color = solanaLight,
+                showZeroBalance = true
+            )
         }
+
+        // Group EVM tokens
+        val nativeTokens = wallet.evmTokens.filterIsInstance<NativeETH>()
+        val usdcTokens = wallet.evmTokens.filterIsInstance<USDCToken>()
+        val usdtTokens = wallet.evmTokens.filterIsInstance<USDTToken>()
+        val otherTokens = wallet.evmTokens.filter { it !is NativeETH && it !is USDCToken && it !is USDTToken }
 
         // Native ETH tokens
         nativeTokens.forEach { token ->
-            val tokenBalance = evmBalanceMap[token.externalId]
-            tokenBalance?.let {
-                CoinBalanceRow(
-                    icon = Icons.Outlined.Diamond,
-                    symbol = "${token.symbol} (${token.network.displayName})",
-                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} ${token.symbol}",
-                    usdValue = it.usdValue,
-                    color = ethereumLight
-                )
-            }
+            val tokenBalance = balance?.evmBalances?.find { it.externalTokenId == token.externalId }
+            SimpleBalanceRow(
+                icon = painterResource(id = R.drawable.ethereum),
+                symbol = "Ethereum${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
+                amount = if (tokenBalance != null)
+                    "${NumberFormat.getNumberInstance(Locale.US).format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)} ETH"
+                else "0 ETH",
+                usdValue = tokenBalance?.usdValue ?: 0.0,
+                color = ethereumLight,
+                showZeroBalance = true
+            )
         }
 
         // USDC tokens
         usdcTokens.forEach { token ->
-            val tokenBalance = evmBalanceMap[token.externalId]
-            tokenBalance?.let {
-                CoinBalanceRow(
-                    icon = Icons.Outlined.AttachMoney,
-                    symbol = "${token.symbol} (${token.network.displayName})",
-                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} ${token.symbol}",
-                    usdValue = it.usdValue,
-                    color = usdcLight
-                )
-            }
+            val tokenBalance = balance?.evmBalances?.find { it.externalTokenId == token.externalId }
+            SimpleBalanceRow(
+                icon = painterResource(id = R.drawable.usdc),
+                symbol = "USD Coin${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
+                amount = if (tokenBalance != null)
+                    "${NumberFormat.getNumberInstance(Locale.US).format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)} USDC"
+                else "0 USDC",
+                usdValue = tokenBalance?.usdValue ?: 0.0,
+                color = usdcLight,
+                showZeroBalance = true
+            )
         }
 
         // USDT tokens
         usdtTokens.forEach { token ->
-            val tokenBalance = evmBalanceMap[token.externalId]
-            tokenBalance?.let {
-                CoinBalanceRow(
-                    icon = Icons.Outlined.AttachMoney,
-                    symbol = "${token.symbol} (${token.network.displayName})",
-                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} ${token.symbol}",
-                    usdValue = it.usdValue,
-                    color = Color(0xFF26A17B)
-                )
-            }
+            val tokenBalance = balance?.evmBalances?.find { it.externalTokenId == token.externalId }
+            SimpleBalanceRow(
+                icon = painterResource(id = R.drawable.tether),
+                symbol = "Tether USD${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
+                amount = if (tokenBalance != null)
+                    "${NumberFormat.getNumberInstance(Locale.US).format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)} USDT"
+                else "0 USDT",
+                usdValue = tokenBalance?.usdValue ?: 0.0,
+                color = Color(0xFF26A17B),
+                showZeroBalance = true
+            )
         }
 
         // Other ERC20 tokens
         otherTokens.forEach { token ->
-            val tokenBalance = evmBalanceMap[token.externalId]
-            tokenBalance?.let {
-                CoinBalanceRow(
-                    icon = Icons.Outlined.Token,
-                    symbol = "${token.symbol} (${token.network.displayName})",
-                    amount = "${NumberFormat.getNumberInstance(Locale.US).format(it.balanceDecimal.toDoubleOrNull() ?: 0.0)} ${token.symbol}",
-                    usdValue = it.usdValue,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            val tokenBalance = balance?.evmBalances?.find { it.externalTokenId == token.externalId }
+            SimpleBalanceRow(
+                icon = Icons.Outlined.Token,
+                symbol = "${token.symbol}${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
+                amount = if (tokenBalance != null)
+                    "${NumberFormat.getNumberInstance(Locale.US).format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)} ${token.symbol}"
+                else "0 ${token.symbol}",
+                usdValue = tokenBalance?.usdValue ?: 0.0,
+                color = MaterialTheme.colorScheme.primary,
+                showZeroBalance = true
+            )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -481,13 +716,17 @@ fun WalletExpandedContent(
 }
 
 @Composable
-fun CoinBalanceRow(
-    icon: ImageVector,
+fun SimpleBalanceRow(
+    icon: Any,
     symbol: String,
     amount: String,
     usdValue: Double,
-    color: Color
+    color: Color,
+    showZeroBalance: Boolean = false
 ) {
+    // Always show if showZeroBalance is true, otherwise only show if usdValue > 0
+    if (!showZeroBalance && usdValue <= 0) return
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -500,12 +739,32 @@ fun CoinBalanceRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.weight(1f)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(20.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                when (icon) {
+                    is ImageVector -> {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = color,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    is Painter -> {
+                        Icon(
+                            painter = icon,
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+
             Column {
                 Text(
                     text = symbol,
@@ -516,109 +775,26 @@ fun CoinBalanceRow(
                 Text(
                     text = amount,
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (usdValue > 0)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             }
         }
 
         // Right side - USD value
         Text(
-            text = NumberFormat.getCurrencyInstance(Locale.US).format(usdValue),
+            text = if (usdValue > 0)
+                NumberFormat.getCurrencyInstance(Locale.US).format(usdValue)
+            else "$0.00",
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
+            fontWeight = if (usdValue > 0) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (usdValue > 0)
+                MaterialTheme.colorScheme.onSurface
+            else
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DashboardContent(
-    wallets: List<Wallet>,
-    totalPortfolio: BigDecimal,
-    balances: Map<String, WalletBalance>,
-    isOperationLoading: Boolean,
-    onWalletClick: (Wallet) -> Unit,
-    onDeleteWallet: (String) -> Unit,
-    onRefresh: () -> Unit,
-    isRefreshing: Boolean
-) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val configuration = LocalConfiguration.current
-    val isTablet = configuration.screenWidthDp > 600
-
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            DashboardTopBar(
-                scrollBehavior = scrollBehavior,
-                onRefresh = onRefresh,
-                isRefreshing = isRefreshing || isOperationLoading
-            )
-        },
-        floatingActionButton = {},
-        containerColor = Color.Transparent
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Portfolio Summary Header
-            item {
-                AnimatedPortfolioHeader(
-                    totalPortfolio = totalPortfolio,
-                    walletCount = wallets.size,
-                    isTablet = isTablet
-                )
-            }
-
-            // Wallets Section Header
-            item {
-                Text(
-                    text = "Your Wallets",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
-
-            // Wallets Grid/List
-            if (isTablet) {
-                // Grid layout for tablets
-                items(wallets.chunked(2)) { walletPair ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        walletPair.forEach { wallet ->
-                            WalletCard(
-                                wallet = wallet,
-                                balance = balances[wallet.id],
-                                onClick = { onWalletClick(wallet) },
-                                onDelete = { onDeleteWallet(wallet.id) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
-            } else {
-                // List layout for phones
-                items(wallets) { wallet ->
-                    WalletCard(
-                        wallet = wallet,
-                        balance = balances[wallet.id],
-                        onClick = { onWalletClick(wallet) },
-                        onDelete = { onDeleteWallet(wallet.id) }
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -743,21 +919,6 @@ fun AnimatedPortfolioHeader(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
-                Box(
-                    modifier = Modifier
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant,
-                            RoundedCornerShape(20.dp)
-                        )
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "Today",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -838,15 +999,17 @@ fun AnimatedPortfolioHeader(
 }
 
 @Composable
-fun EmptyWalletsScreen(
-    onCreateWallet: () -> Unit
+fun EmptyWalletsContent(
+    onCreateWallet: () -> Unit,
+    isError: Boolean = false,
+    errorMessage: String? = null,
+    onRetry: (() -> Unit)? = null
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        contentAlignment = Alignment.Center
     ) {
         Card(
             shape = RoundedCornerShape(20.dp),
@@ -854,48 +1017,134 @@ fun EmptyWalletsScreen(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             ),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(32.dp)
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = "No Wallets",
+                    imageVector = if (isError) Icons.Outlined.Error else Icons.Outlined.AccountBalanceWallet,
+                    contentDescription = if (isError) "Error" else "No Wallets",
                     modifier = Modifier.size(56.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "No Wallets Yet",
+                    text = if (isError) "Something went wrong" else "No Wallets Yet",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Create your first wallet to get started",
+                    text = if (isError && errorMessage != null)
+                        errorMessage
+                    else if (isError)
+                        "Failed to load wallets"
+                    else
+                        "Create your first wallet to get started",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = onCreateWallet,
+                    onClick = if (isError && onRetry != null) onRetry else onCreateWallet,
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
                     Text(
-                        "Create Wallet",
+                        if (isError) "Try Again" else "Create Wallet",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ErrorScreen(message: String, onRetry: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(0.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Error,
+                    contentDescription = "Error",
+                    modifier = Modifier.size(56.dp),
+                    tint = MaterialTheme.colorScheme.error
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Something went wrong",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = onRetry,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(
+                        "Try Again",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
@@ -915,72 +1164,6 @@ fun LoadingScreen() {
             modifier = Modifier.size(40.dp),
             color = MaterialTheme.colorScheme.primary
         )
-    }
-}
-
-@Composable
-fun ErrorScreen(message: String, onRetry: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            elevation = CardDefaults.cardElevation(0.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Error,
-                    contentDescription = "Error",
-                    modifier = Modifier.size(42.dp),
-                    tint = MaterialTheme.colorScheme.error
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = "Something went wrong",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Button(
-                    onClick = onRetry,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text(
-                        "Try Again",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-            }
-        }
     }
 }
 

@@ -4,9 +4,8 @@ import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.logging.Logger
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.sol4k.Base58
 import org.sol4k.Connection
@@ -22,26 +21,36 @@ import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 
 @Singleton
 class SolanaBlockchainRepositoryImpl @Inject constructor(
-    @param:Named("solanaDevnet") private val devnetConnection: Connection,
-    @param:Named("solanaMainnet") private val mainnetConnection: Connection,
-    private val solanaRpcService: SolanaRpcService
+    @param:Named("heliusRpcDevnet") private val rpcDevnetConnection: Connection,
+    @param:Named("heliusRpcMainnet") private val rpcMainnetConnection: Connection,
+    private val heliusApi: HeliusApi,
+    private val apiKey: String,
+    private val logger: Logger
 ) : SolanaBlockchainRepository {
 
-    private fun getConnection(network: SolanaNetwork): Connection {
+    private val tag = "SolanaBlockchainRepo"
+
+    private fun getRpcConnection(network: SolanaNetwork): Connection {
         return when (network) {
-            SolanaNetwork.Mainnet -> mainnetConnection
-            SolanaNetwork.Devnet -> devnetConnection
+            SolanaNetwork.Mainnet -> rpcMainnetConnection
+            SolanaNetwork.Devnet -> rpcDevnetConnection
         }
     }
 
     override suspend fun getRecentBlockhash(network: SolanaNetwork): Result<String> =
         withContext(Dispatchers.IO) {
+            logger.d(tag, "getRecentBlockhash called for network: $network")
             SafeApiCall.make {
-                val connection = getConnection(network)
-                connection.getLatestBlockhash()
+                val connection = getRpcConnection(network)
+                val blockhash = connection.getLatestBlockhash()
+                logger.d(tag, "getRecentBlockhash success: $blockhash")
+                blockhash
             }
         }
 
@@ -49,16 +58,20 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         address: String,
         network: SolanaNetwork
     ): Result<BigDecimal> = withContext(Dispatchers.IO) {
+        logger.d(tag, "getBalance called for address: ${address.take(8)}..., network: $network")
         SafeApiCall.make {
-            val connection = getConnection(network)
+            val connection = getRpcConnection(network)
             val publicKey = PublicKey(address)
             val balance = connection.getBalance(publicKey)
 
-            BigDecimal(balance).divide(
+            val balanceSol = BigDecimal(balance).divide(
                 BigDecimal(LAMPORTS_PER_SOL),
                 SOL_DECIMALS,
                 RoundingMode.HALF_UP
             )
+
+            logger.d(tag, "getBalance success: ${balance} lamports (${balanceSol} SOL)")
+            balanceSol
         }
     }
 
@@ -67,39 +80,38 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         mintAddress: String,
         network: SolanaNetwork
     ): Result<BigDecimal> = withContext(Dispatchers.IO) {
+        logger.d(tag, "getTokenBalance called for address: ${address.take(8)}..., mint: ${mintAddress.take(8)}..., network: $network")
         SafeApiCall.make {
-            val connection = getConnection(network)
+            val connection = getRpcConnection(network)
 
-            // Get the associated token account address
             val owner = PublicKey(address)
             val mint = PublicKey(mintAddress)
 
-            // Find the associated token account
             val (associatedTokenAccount, _) = PublicKey.findProgramDerivedAddress(
-                owner,
-                mint
+                holderAddress = owner,
+                tokenMintAddress = mint
             )
 
-            // Get token account balance using RPC
+            logger.d(tag, "Associated token account: ${associatedTokenAccount.toBase58()}")
+
             val tokenBalance = connection.getTokenAccountBalance(associatedTokenAccount)
 
-            BigDecimal(tokenBalance.amount).divide(
+            val balance = BigDecimal(tokenBalance.amount).divide(
                 BigDecimal.TEN.pow(tokenBalance.decimals),
                 tokenBalance.decimals,
                 RoundingMode.HALF_UP
             )
+
+            logger.d(tag, "getTokenBalance success: ${tokenBalance.amount} (${balance} tokens)")
+            balance
         }
     }
-
-    private data class TokenAccountData(
-        val mint: PublicKey,
-        val amount: Long
-    )
 
     override suspend fun getFeeEstimate(
         feeLevel: FeeLevel,
         network: SolanaNetwork
     ): Result<SolanaFeeEstimate> = withContext(Dispatchers.IO) {
+        logger.d(tag, "getFeeEstimate called for feeLevel: $feeLevel, network: $network")
         SafeApiCall.make {
             val baseFeeLamports = SOLANA_FIXED_FEE_LAMPORTS
 
@@ -135,6 +147,8 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
                 FeeLevel.FAST -> 1
             }
 
+            logger.d(tag, "getFeeEstimate success - base: $baseFeeLamports, priority: $priorityFeeRate, total: $totalFeeLamports lamports ($totalFeeSol SOL)")
+
             SolanaFeeEstimate(
                 feeLamports = totalFeeLamports,
                 feeSol = totalFeeSol,
@@ -150,8 +164,9 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         accounts: List<PublicKey> = emptyList(),
         network: SolanaNetwork
     ): Result<Int> = withContext(Dispatchers.IO) {
+        logger.d(tag, "getRecommendedPriorityFee called for percentile: $percentile, accounts: ${accounts.size}")
         SafeApiCall.make {
-            val connection = getConnection(network)
+            val connection = getRpcConnection(network)
 
             val recentFees = if (accounts.isNotEmpty()) {
                 connection.getRecentPrioritizationFees(accounts)
@@ -159,13 +174,19 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
                 connection.getRecentPrioritizationFees(emptyList())
             }
 
+            logger.d(tag, "getRecentPrioritizationFees returned ${recentFees.size} fees")
+
             if (recentFees.isEmpty()) {
+                logger.d(tag, "No recent fees, returning 0")
                 return@make 0
             }
 
             val feeValues = recentFees.map { it.prioritizationFee }.sorted()
             val index = (feeValues.size * percentile / 100).coerceIn(0, feeValues.size - 1)
-            feeValues[index].toInt()
+            val recommendedFee = feeValues[index].toInt()
+
+            logger.d(tag, "Recommended priority fee: $recommendedFee (index $index of ${feeValues.size})")
+            recommendedFee
         }
     }
 
@@ -175,10 +196,13 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         lamports: Long,
         network: SolanaNetwork
     ): Result<SolanaSignedTransaction> = withContext(Dispatchers.IO) {
+        logger.d(tag, "createAndSignTransaction called - from: ${fromKeypair.publicKey.toBase58().take(8)}..., to: ${toAddress.take(8)}..., lamports: $lamports")
         SafeApiCall.make {
-            val connection = getConnection(network)
+            val connection = getRpcConnection(network)
             val blockhash = connection.getLatestBlockhash()
             val receiver = PublicKey(toAddress)
+
+            logger.d(tag, "Got blockhash: $blockhash")
 
             val instructions = listOf(
                 TransferInstruction(fromKeypair.publicKey, receiver, lamports)
@@ -194,12 +218,15 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
             transaction.sign(fromKeypair)
 
             val serializedTx = transaction.serialize()
+
             val signature = if (serializedTx.size >= 64) {
-                serializedTx.copyOfRange(0, 64).toHexString()
+                Base58.encode(serializedTx.copyOfRange(0, 64))
             } else {
                 val hash = MessageDigest.getInstance("SHA-256").digest(serializedTx)
-                hash.copyOf(64).toHexString()
+                Base58.encode(hash)
             }
+
+            logger.d(tag, "Transaction created with signature: ${signature.take(8)}...")
 
             SolanaSignedTransaction(
                 signature = signature,
@@ -212,10 +239,13 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         signedTransaction: SolanaSignedTransaction,
         network: SolanaNetwork
     ): Result<BroadcastResult> = withContext(Dispatchers.IO) {
+        logger.d(tag, "broadcastTransaction called - signature: ${signedTransaction.signature.take(8)}...")
         SafeApiCall.make {
-            val connection = getConnection(network)
+            val connection = getRpcConnection(network)
             val serializedTx = signedTransaction.serialize()
             val signature = connection.sendTransaction(serializedTx)
+
+            logger.d(tag, "Transaction broadcast successful - signature: $signature")
 
             BroadcastResult(
                 success = true,
@@ -224,140 +254,85 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getTransactionSignatures(
+    // ============= HELIUS API (RETROFIT) =============
+
+    override suspend fun getTransactions(
         address: String,
         network: SolanaNetwork,
         limit: Int
-    ): Result<List<SolanaTransactionResponse>> = withContext(Dispatchers.IO) {
-        SafeApiCall.make {
-            val connection = getConnection(network)
-            val publicKey = PublicKey(address)
+    ): Result<List<HeliusTransaction>> = withContext(Dispatchers.IO) {
+        logger.d(tag, "=== getTransactions called ===")
+        logger.d(tag, "Address: ${address.take(8)}..., Network: $network, Limit: $limit")
 
-            val signatures = connection.getSignaturesForAddress(
-                publicKey,
-                limit = limit
+        SafeApiCall.make {
+            val transactions = heliusApi.getTransactions(
+                address = address,
+                limit = limit,
+                apiKey = apiKey
             )
 
-            signatures.map { sigInfo ->
-                SolanaTransactionResponse(
-                    signature = sigInfo.signature,
-                    slot = sigInfo.slot,
-                    blockTime = sigInfo.blockTime,
-                    confirmationStatus = sigInfo.confirmationStatus
-                )
-            }
+            logger.d(tag, "Found ${transactions.size} transactions from Helius")
+            transactions
         }
     }
 
-    override suspend fun getTransactionDetails(
+    override suspend fun getTransaction(
         signature: String,
         network: SolanaNetwork
-    ): Result<SolanaTransactionDetailsResponse> = withContext(Dispatchers.IO) {
+    ): Result<HeliusTransaction> = withContext(Dispatchers.IO) {
+        logger.d(tag, "=== getTransaction called ===")
+        logger.d(tag, "Signature: ${signature.take(8)}..., Network: $network")
+
         SafeApiCall.make {
-            val request = RpcRequest(
-                method = "getTransaction",
-                params = listOf(
-                    signature.toRpcParam(),
-                    mapOf(
-                        "commitment" to "confirmed".toRpcParam(),
-                        "encoding" to "json".toRpcParam(),
-                        "maxSupportedTransactionVersion" to 0.toRpcParam()
-                    ).toRpcParam()
-                )
+            val request = HeliusTransactionRequest(transactions = listOf(signature))
+            val transactions = heliusApi.getTransaction(
+                request = request,
+                apiKey = apiKey
             )
 
-            val response = solanaRpcService.getTransaction(request)
-
-            if (response.error != null) {
-                throw Exception("RPC error: ${response.error.message}")
-            } else if (response.result != null) {
-                response.result
-            } else {
-                throw Exception("Transaction not found on ${network.name}")
-            }
+            transactions.firstOrNull() ?: throw Exception("Transaction not found")
         }
     }
 
-    override suspend fun getFullTransactionHistory(
-        address: String,
-        network: SolanaNetwork,
-        limit: Int
-    ): Result<List<Pair<SolanaTransactionResponse, SolanaTransactionDetailsResponse?>>> =
-        withContext(Dispatchers.IO) {
-            SafeApiCall.make {
-                val signaturesResult = getTransactionSignatures(address, network, limit)
-
-                when (signaturesResult) {
-                    is Result.Success -> {
-                        val signatures = signaturesResult.data
-                        val results = mutableListOf<Pair<SolanaTransactionResponse, SolanaTransactionDetailsResponse?>>()
-
-                        signatures.forEach { sigInfo ->
-                            val details = try {
-                                val detailsResult = getTransactionDetails(sigInfo.signature, network)
-                                if (detailsResult is Result.Success) {
-                                    detailsResult.data
-                                } else null
-                            } catch (e: Exception) {
-                                null
-                            }
-                            results.add(Pair(sigInfo, details))
-                            delay(RATE_LIMIT_DELAY_MS)
-                        }
-
-                        results
-                    }
-                    is Result.Error -> throw Exception(signaturesResult.message)
-                    else -> throw Exception("Unknown error on ${network.name}")
-                }
-            }
-        }
-
-    override fun parseTransferFromDetails(
-        details: SolanaTransactionDetailsResponse,
+    override fun parseTransfer(
+        transaction: HeliusTransaction,
         walletAddress: String
     ): TransferInfo? {
+        logger.d(tag, "=== parseTransfer called ===")
+        logger.d(tag, "Wallet address: ${walletAddress.take(8)}...")
+        logger.d(tag, "Transaction type: ${transaction.type}")
+        logger.d(tag, "Description: ${transaction.description}")
+
         return try {
-            val meta = details.meta ?: return null
-            val accountKeys = details.transaction.message.accountKeys
-
-            val walletIndex = accountKeys.indexOfFirst { it == walletAddress }
-            if (walletIndex < 0) return null
-
-            if (meta.err != null) return null
-
-            val preBalance = meta.preBalances.getOrNull(walletIndex) ?: 0
-            val postBalance = meta.postBalances.getOrNull(walletIndex) ?: 0
-            val balanceChange = postBalance - preBalance
-
-            if (balanceChange == 0L) return null
-
-            val isIncoming = balanceChange > 0
-            val amount = kotlin.math.abs(balanceChange)
-
-            var counterparty = ""
-            accountKeys.forEachIndexed { index, key ->
-                if (index != walletIndex) {
-                    val otherPre = meta.preBalances.getOrNull(index) ?: 0
-                    val otherPost = meta.postBalances.getOrNull(index) ?: 0
-                    val otherChange = otherPost - otherPre
-
-                    if (otherChange == -balanceChange ||
-                        (otherChange < 0 && otherChange > -balanceChange - DUST_THRESHOLD)
-                    ) {
-                        counterparty = key
-                    }
-                }
+            val nativeTransfer = transaction.nativeTransfers.find {
+                it.fromUserAccount == walletAddress || it.toUserAccount == walletAddress
             }
 
-            TransferInfo(
-                from = if (isIncoming) counterparty else walletAddress,
-                to = if (isIncoming) walletAddress else counterparty,
-                amount = amount,
-                isIncoming = isIncoming,
-                fee = meta.fee
-            )
+            if (nativeTransfer != null) {
+                val isIncoming = nativeTransfer.toUserAccount == walletAddress
+                val amount = nativeTransfer.amount
+                val amountSol = amount.toDouble() / LAMPORTS_PER_SOL
+
+                logger.d(tag, " Found native transfer:")
+                logger.d(tag, "  isIncoming: $isIncoming")
+                logger.d(tag, "  amount: $amount lamports ($amountSol SOL)")
+                logger.d(tag, "  from: ${nativeTransfer.fromUserAccount.take(8)}...")
+                logger.d(tag, "  to: ${nativeTransfer.toUserAccount.take(8)}...")
+
+                return TransferInfo(
+                    from = nativeTransfer.fromUserAccount,
+                    to = nativeTransfer.toUserAccount,
+                    amount = amount,
+                    isIncoming = isIncoming,
+                    fee = transaction.fee
+                )
+            }
+
+            logger.d(tag, "️ No native transfer found for wallet")
+            null
+
         } catch (e: Exception) {
+            logger.e(tag, " Error parsing transfer", e)
             null
         }
     }
@@ -375,8 +350,6 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         private const val LAMPORTS_PER_SOL = 1_000_000_000L
         private const val SOLANA_FIXED_FEE_LAMPORTS = 5000L
         private const val SOL_DECIMALS = 9
-        private const val RATE_LIMIT_DELAY_MS = 50L
-        private const val DUST_THRESHOLD = 10_000L
     }
 }
 

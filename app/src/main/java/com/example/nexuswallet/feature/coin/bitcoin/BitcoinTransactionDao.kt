@@ -25,6 +25,9 @@ interface BitcoinTransactionDao {
     @Query("SELECT * FROM BitcoinTransaction WHERE walletId = :walletId AND network = :network ORDER BY timestamp DESC")
     fun getByWalletIdAndNetwork(walletId: String, network: String): Flow<List<BitcoinTransactionEntity>>
 
+    @Query("SELECT * FROM BitcoinTransaction WHERE walletId = :walletId AND network = :network ORDER BY timestamp DESC")
+    suspend fun getByWalletIdAndNetworkSync(walletId: String, network: String): List<BitcoinTransactionEntity>
+
     @Query("SELECT * FROM BitcoinTransaction WHERE walletId = :walletId AND isIncoming = :isIncoming ORDER BY timestamp DESC")
     fun getByWalletIdAndType(walletId: String, isIncoming: Boolean): Flow<List<BitcoinTransactionEntity>>
 

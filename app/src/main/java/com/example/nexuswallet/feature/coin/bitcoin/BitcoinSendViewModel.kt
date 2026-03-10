@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.coin.bitcoin
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.SendValidationResult
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
@@ -31,26 +32,6 @@ class BitcoinSendViewModel @Inject constructor(
     private val logger: Logger
 ) : ViewModel() {
 
-    data class BtcSendUiState(
-        val walletId: String = "",
-        val walletName: String = "",
-        val walletAddress: String = "",
-        val network: BitcoinNetwork = BitcoinNetwork.Testnet,
-        val availableNetworks: List<BitcoinNetwork> = emptyList(),
-        val balance: BigDecimal = BigDecimal.ZERO,
-        val balanceFormatted: String = "0 BTC",
-        val toAddress: String = "",
-        val amount: String = "",
-        val amountValue: BigDecimal = BigDecimal.ZERO,
-        val feeLevel: FeeLevel = FeeLevel.NORMAL,
-        val feeEstimate: BitcoinFeeEstimate? = null,
-        val validationResult: ValidateBitcoinTransactionUseCase.ValidationResult = ValidateBitcoinTransactionUseCase.ValidationResult(isValid = false),
-        val isValid: Boolean = false,
-        val isLoading: Boolean = false,
-        val isInitialized: Boolean = false,
-        val error: String? = null
-    )
-
     private val _state = MutableStateFlow(BtcSendUiState())
     val state: StateFlow<BtcSendUiState> = _state.asStateFlow()
 
@@ -65,7 +46,6 @@ class BitcoinSendViewModel @Inject constructor(
                 is BitcoinSendEvent.UpdateAmount -> updateAmount(event.amount)
                 is BitcoinSendEvent.UpdateFeeLevel -> updateFeeLevel(event.feeLevel)
                 is BitcoinSendEvent.SwitchNetwork -> switchNetwork(event.network)
-                else -> {} // Ignore other events
             }
         }
     }
@@ -201,31 +181,39 @@ class BitcoinSendViewModel @Inject constructor(
     private fun validateInputs() {
         val state = _state.value
         val currentWallet = wallet
-        val bitcoinCoin = bitcoinCoins[state.network]
 
-        val validationResult = validateBitcoinTransactionUseCase(
-            walletId = state.walletId,
-            wallet = currentWallet,
-            toAddress = state.toAddress,
-            amount = state.amountValue,
-            network = state.network,
-            balance = state.balance,
-            feeEstimate = state.feeEstimate
-        )
-
-        _state.update { currentState ->
-            currentState.copy(
-                validationResult = validationResult,
-                isValid = validationResult.isValid,
-                error = validationResult.addressError
-                    ?: validationResult.amountError
-                    ?: validationResult.balanceError
-                    ?: validationResult.selfSendError
-                    ?: if (!validationResult.isValid) "Invalid transaction" else null
+        viewModelScope.launch {
+            val validationResult = validateBitcoinTransactionUseCase(
+                walletId = state.walletId,
+                wallet = currentWallet,
+                toAddress = state.toAddress,
+                amount = state.amountValue,
+                network = state.network,
+                balance = state.balance,
+                feeEstimate = state.feeEstimate
             )
-        }
 
-        logger.d("BitcoinSendVM", "Validation result: $validationResult")
+            _state.update { currentState ->
+                currentState.copy(
+                    validationResult = validationResult,
+                    isValid = validationResult.isValid,
+                    error = when {
+                        !validationResult.isValid -> {
+                            validationResult.addressError
+                                ?: validationResult.selfSendError
+                                ?: validationResult.amountError
+                                ?: validationResult.balanceError
+                                ?: validationResult.gasError
+                                ?: validationResult.networkError
+                                ?: "Invalid transaction"
+                        }
+                        else -> null
+                    }
+                )
+            }
+
+            logger.d("BitcoinSendVM", "Validation result: isValid=${validationResult.isValid}")
+        }
     }
 
     private suspend fun handleError(message: String) {

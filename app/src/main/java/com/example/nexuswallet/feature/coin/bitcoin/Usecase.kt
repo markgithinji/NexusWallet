@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.coin.bitcoin
 import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.SendValidationResult
 import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
@@ -403,7 +404,7 @@ class ValidateBitcoinTransactionUseCaseImpl @Inject constructor(
 
     private val tag = "ValidateBitcoinTxUC"
 
-    override fun invoke(
+    override suspend fun invoke(
         walletId: String,
         wallet: Wallet?,
         toAddress: String,
@@ -411,18 +412,12 @@ class ValidateBitcoinTransactionUseCaseImpl @Inject constructor(
         network: BitcoinNetwork,
         balance: BigDecimal,
         feeEstimate: BitcoinFeeEstimate?
-    ): ValidateBitcoinTransactionUseCase.ValidationResult {
-
-        var addressError: String? = null
-        var amountError: String? = null
-        var balanceError: String? = null
-        var selfSendError: String? = null
-        var isValid = true
+    ): SendValidationResult {
 
         // Validate wallet exists
         if (wallet == null) {
             logger.w(tag, "Wallet not found: $walletId")
-            return ValidateBitcoinTransactionUseCase.ValidationResult(
+            return SendValidationResult(
                 isValid = false,
                 addressError = "Wallet not found"
             )
@@ -432,7 +427,7 @@ class ValidateBitcoinTransactionUseCaseImpl @Inject constructor(
         val bitcoinCoin = wallet.bitcoinCoins.find { it.network == network }
         if (bitcoinCoin == null) {
             logger.w(tag, "Bitcoin not enabled for $network in wallet: ${wallet.name}")
-            return ValidateBitcoinTransactionUseCase.ValidationResult(
+            return SendValidationResult(
                 isValid = false,
                 addressError = "Bitcoin not enabled for $network"
             )
@@ -440,29 +435,38 @@ class ValidateBitcoinTransactionUseCaseImpl @Inject constructor(
 
         // Validate address is not empty
         if (toAddress.isBlank()) {
-            addressError = "Please enter a recipient address"
-            isValid = false
             logger.w(tag, "Address is empty")
+            return SendValidationResult(
+                isValid = false,
+                addressError = "Please enter a recipient address"
+            )
         }
+
         // Validate address format
-        else if (!validateBitcoinAddressUseCase(toAddress, network)) {
-            addressError = "Invalid Bitcoin address for ${network.name.lowercase()}"
-            isValid = false
+        if (!validateBitcoinAddressUseCase(toAddress, network)) {
             logger.w(tag, "Invalid address format: ${toAddress.take(8)}...")
+            return SendValidationResult(
+                isValid = false,
+                addressError = "Invalid Bitcoin address for ${network.name.lowercase()}"
+            )
         }
 
         // Validate not sending to self
-        if (toAddress.isNotBlank() && toAddress == bitcoinCoin.address) {
-            selfSendError = "Cannot send to yourself"
-            isValid = false
+        if (toAddress == bitcoinCoin.address) {
             logger.w(tag, "Attempted self-send")
+            return SendValidationResult(
+                isValid = false,
+                selfSendError = "Cannot send to yourself"
+            )
         }
 
         // Validate amount > 0
         if (amount <= BigDecimal.ZERO) {
-            amountError = "Amount must be greater than zero"
-            isValid = false
             logger.w(tag, "Invalid amount: $amount")
+            return SendValidationResult(
+                isValid = false,
+                amountError = "Amount must be greater than zero"
+            )
         }
 
         // Calculate total required including fees
@@ -475,26 +479,15 @@ class ValidateBitcoinTransactionUseCaseImpl @Inject constructor(
         val totalRequired = amount + feeBtc
 
         // Check against user's actual balance
-        if (amount > BigDecimal.ZERO && totalRequired > balance) {
-            balanceError = "Insufficient balance. You have ${balance.setScale(8)} BTC but need ${
-                totalRequired.setScale(8)
-            } BTC (including fees)"
-            isValid = false
+        if (totalRequired > balance) {
             logger.w(tag, "Insufficient balance: have $balance BTC, need $totalRequired BTC")
+            return SendValidationResult(
+                isValid = false,
+                balanceError = "Insufficient balance. You have ${balance.setScale(8)} BTC but need ${totalRequired.setScale(8)} BTC (including fees)"
+            )
         }
 
-        // If no specific errors but isValid is false, set a generic error
-        if (!isValid && addressError == null && amountError == null && balanceError == null && selfSendError == null) {
-            // This should not happen, but just in case
-            addressError = "Invalid transaction. Please check your inputs."
-        }
-
-        return ValidateBitcoinTransactionUseCase.ValidationResult(
-            isValid = isValid,
-            addressError = addressError,
-            amountError = amountError,
-            balanceError = balanceError,
-            selfSendError = selfSendError
-        )
+        // All validations passed
+        return SendValidationResult(isValid = true)
     }
 }

@@ -4,99 +4,133 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class SolanaTransactionResponse(
+data class HeliusTransaction(
+    val description: String,
+    val type: String,
+    val source: String,
+    val fee: Long,
+    val feePayer: String,
     val signature: String,
     val slot: Long,
-    val blockTime: Long?,
-    val confirmationStatus: String?,
+    val timestamp: Long,
+    val tokenTransfers: List<HeliusTokenTransfer> = emptyList(),
+    val nativeTransfers: List<HeliusNativeTransfer> = emptyList(),
+    val accountData: List<HeliusAccountData> = emptyList(),
+    val transactionError: String? = null,
+    val instructions: List<HeliusInstruction> = emptyList(),
+    @SerialName("lighthouseData") val lighthouseData: String? = null,
+    val events: HeliusEvents? = null
 )
 
 @Serializable
-data class SolanaTransactionDetailsResponse(
-    val blockTime: Long?,
-    val meta: SolanaTransactionMetaResponse?,
-    val slot: Long,
-    val transaction: SolanaTransactionDataResponse,
-    val version: Int? = null
+data class HeliusNativeTransfer(
+    val fromUserAccount: String,
+    val toUserAccount: String,
+    val amount: Long
 )
 
 @Serializable
-sealed class TransactionError {
-    @Serializable
-    @SerialName("Ok")
-    data object Ok : TransactionError()
-
-    @Serializable
-    @SerialName("Err")
-    data class Err(val message: String) : TransactionError()
-
-    @Serializable
-    @SerialName("InstructionError")
-    data class InstructionError(val index: Int, val error: String) : TransactionError()
-
-    @Serializable
-    @SerialName("AccountNotFound")
-    data object AccountNotFound : TransactionError()
-
-    @Serializable
-    @SerialName("BlockhashNotFound")
-    data object BlockhashNotFound : TransactionError()
-
-    @Serializable
-    @SerialName("Custom")
-    data class Custom(val code: Int) : TransactionError()
-}
-
-@Serializable
-data class SolanaTransactionMetaResponse(
-    val fee: Long,
-    val err: TransactionError? = null,
-    val preBalances: List<Long>,
-    val postBalances: List<Long>,
-    val preTokenBalances: List<SolanaTokenBalanceResponse>? = null,
-    val postTokenBalances: List<SolanaTokenBalanceResponse>? = null,
-    val logMessages: List<String>? = null,
-    val innerInstructions: List<SolanaInnerInstructionResponse>? = null
+data class HeliusTokenTransfer(
+    val fromUserAccount: String,
+    val toUserAccount: String,
+    val fromTokenAccount: String,
+    val toTokenAccount: String,
+    val tokenAmount: Double,
+    val mint: String
 )
 
 @Serializable
-data class SolanaTokenBalanceResponse(
-    val accountIndex: Int,
+data class HeliusAccountData(
+    val account: String,
+    val nativeBalanceChange: Long,
+    val tokenBalanceChanges: List<HeliusTokenBalanceChange> = emptyList()
+)
+
+@Serializable
+data class HeliusTokenBalanceChange(
     val mint: String,
-    val owner: String? = null,
-    val uiTokenAmount: SolanaUiTokenAmountResponse
+    val rawTokenAmount: HeliusRawTokenAmount,
+    val tokenAccount: String
 )
 
 @Serializable
-data class SolanaUiTokenAmountResponse(
-    val amount: String,
-    val decimals: Int,
-    val uiAmount: Double? = null,
-    val uiAmountString: String
+data class HeliusRawTokenAmount(
+    val tokenAmount: String,
+    val decimals: Int
 )
 
 @Serializable
-data class SolanaInnerInstructionResponse(
-    val index: Int,
-    val instructions: List<SolanaInstructionDataResponse>
+data class HeliusInstruction(
+    val accounts: List<String>,
+    val data: String,
+    val programId: String,
+    val innerInstructions: List<HeliusInnerInstruction> = emptyList()
 )
 
 @Serializable
-data class SolanaTransactionDataResponse(
-    val message: SolanaTransactionMessageDataResponse,
-    val signatures: List<String>
+data class HeliusInnerInstruction(
+    val accounts: List<String>,
+    val data: String,
+    val programId: String
 )
 
 @Serializable
-data class SolanaTransactionMessageDataResponse(
-    val accountKeys: List<String>,
-    val instructions: List<SolanaInstructionDataResponse>,
-    val recentBlockhash: String
+data class HeliusEvents(
+    val nft: HeliusNFTEvent? = null,
+    val swap: HeliusSwapEvent? = null
 )
 
 @Serializable
-data class SolanaInstructionDataResponse(
-    val programIdIndex: Int,
-    val accounts: List<Int>? = null,
-    val data: String
+data class HeliusNFTEvent(
+    val nfts: List<HeliusNFT>,
+    val type: String,
+    val seller: String? = null,
+    val buyer: String? = null
+)
+
+@Serializable
+data class HeliusNFT(
+    val mint: String,
+    val amount: Int
+)
+
+@Serializable
+data class HeliusSwapEvent(
+    val nativeInput: HeliusNativeInput? = null,
+    val nativeOutput: HeliusNativeOutput? = null,
+    val tokenInputs: List<HeliusTokenInput> = emptyList(),
+    val tokenOutputs: List<HeliusTokenOutput> = emptyList()
+)
+
+@Serializable
+data class HeliusNativeInput(
+    val account: String,
+    val amount: Long
+)
+
+@Serializable
+data class HeliusNativeOutput(
+    val account: String,
+    val amount: Long
+)
+
+@Serializable
+data class HeliusTokenInput(
+    val fromUserAccount: String,
+    val mint: String,
+    val tokenAmount: Double,
+    val userAccount: String
+)
+
+@Serializable
+data class HeliusTokenOutput(
+    val toUserAccount: String,
+    val mint: String,
+    val tokenAmount: Double,
+    val userAccount: String
+)
+
+@Serializable
+data class HeliusTransactionRequest(
+    val transactions: List<String>
 )

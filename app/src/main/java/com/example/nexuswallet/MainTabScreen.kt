@@ -27,73 +27,23 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.contentColorFor
-
+import com.example.nexuswallet.feature.coin.NetworkType
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTabScreen(
     onNavigateToCreateWallet: () -> Unit,
     onNavigateToWalletDetail: (String) -> Unit,
-    onNavigateToCoinDetail: (String, CoinType) -> Unit,
+    onNavigateToCoinDetail: (String, CoinType, NetworkType?) -> Unit,
     onNavigateToTokenDetail: (String) -> Unit,
-    onNavigateToReceive: (String, CoinType) -> Unit,
-    onNavigateToSend: (String, CoinType) -> Unit,
-    padding: PaddingValues,
-    navigationViewModel: NavigationViewModel
+    onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToSecurity: () -> Unit,
+    onRequestAuthentication: (String, String) -> Unit,
+    padding: PaddingValues
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = when (selectedTab) {
-                                0 -> Icons.Outlined.AccountBalanceWallet
-                                1 -> Icons.Outlined.ShowChart
-                                2 -> Icons.Outlined.Settings
-                                else -> Icons.Outlined.Wallet
-                            },
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = when (selectedTab) {
-                                0 -> "Wallets"
-                                1 -> "Market"
-                                2 -> "Settings"
-                                else -> "Nexus Wallet"
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                },
-                actions = {
-                    if (selectedTab == 0) {
-                        IconButton(
-                            onClick = onNavigateToCreateWallet
-                        ) {
-                            Icon(
-                                Icons.Outlined.Add,
-                                contentDescription = "Create Wallet",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        },
         bottomBar = {
             Card(
                 modifier = Modifier
@@ -112,7 +62,6 @@ fun MainTabScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Wallets Tab
                     NavigationBarItem(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
@@ -142,7 +91,6 @@ fun MainTabScreen(
                         )
                     )
 
-                    // Market Tab
                     NavigationBarItem(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
@@ -172,7 +120,6 @@ fun MainTabScreen(
                         )
                     )
 
-                    // Settings Tab
                     NavigationBarItem(
                         selected = selectedTab == 2,
                         onClick = { selectedTab = 2 },
@@ -204,35 +151,22 @@ fun MainTabScreen(
                 }
             }
         },
-        floatingActionButton = {
-            if (selectedTab == 0) {
-                FloatingActionButton(
-                    onClick = onNavigateToCreateWallet,
-                    shape = RoundedCornerShape(16.dp),
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    elevation = FloatingActionButtonDefaults.elevation(0.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Create New Wallet",
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-            }
-        },
         containerColor = MaterialTheme.colorScheme.background
     ) { scaffoldPadding ->
         when (selectedTab) {
             0 -> WalletDashboardScreen(
                 onNavigateToWalletDetail = onNavigateToWalletDetail,
+                onNavigateToCoinDetail = onNavigateToCoinDetail,
+                onNavigateToReceive = onNavigateToReceive,
+                onNavigateToSend = onNavigateToSend,
                 onNavigateToCreateWallet = onNavigateToCreateWallet,
+                onRequestAuthentication = onRequestAuthentication,
                 padding = PaddingValues(
                     top = scaffoldPadding.calculateTopPadding(),
                     bottom = scaffoldPadding.calculateBottomPadding()
                 )
             )
             1 -> MarketScreen(
-                onNavigateUp = { /* Handle market screen back navigation if needed */ },
                 onNavigateToTokenDetail = onNavigateToTokenDetail,
                 padding = PaddingValues(
                     top = scaffoldPadding.calculateTopPadding(),
@@ -240,8 +174,7 @@ fun MainTabScreen(
                 )
             )
             2 -> SettingsScreen(
-                onNavigateUp = { /* Handle settings screen back navigation */ },
-                onNavigateToSecurity = { /* Navigate to security settings */ }
+                onNavigateToSecurity = onNavigateToSecurity
             )
         }
     }
