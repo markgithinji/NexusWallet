@@ -23,8 +23,6 @@ class MarketViewModel @Inject constructor(
     private val coinGeckoRepository: CoinGeckoRepository,
     private val webSocketRepository: WebSocketRepository
 ) : ViewModel() {
-
-    // Using Result for UI state
     private val _uiState = MutableStateFlow<Result<List<Token>>>(Result.Loading)
     val uiState: StateFlow<Result<List<Token>>> = _uiState.asStateFlow()
 
@@ -41,6 +39,7 @@ class MarketViewModel @Inject constructor(
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
     private var webSocketCollectorJob: Job? = null
+    private var connectionStateJob: Job? = null
 
     private val _isLoadingMore = MutableStateFlow(false)
     val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
@@ -73,7 +72,7 @@ class MarketViewModel @Inject constructor(
                     applySearchFilter()
                     currentPage = 2
 
-                    // Load next pages in background without delay
+                    // Load next pages in background
                     loadRemainingPages()
                 }
 
@@ -90,7 +89,7 @@ class MarketViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoadingMore.value = true
 
-            // Load pages 2 and 3 without delay
+            // Load pages 2 and 3
             val remainingPagesJobs = (currentPage..3).map { page ->
                 async {
                     loadPage(page)
@@ -139,6 +138,10 @@ class MarketViewModel @Inject constructor(
     }
 
     private fun setupWebSocketObservers() {
+        // Cancel existing collectors
+        webSocketCollectorJob?.cancel()
+        connectionStateJob?.cancel()
+
         // Collect full token updates (price + percentage)
         webSocketCollectorJob = viewModelScope.launch {
             webSocketRepository.getTokenUpdates().collect { updatesMap ->
@@ -149,9 +152,10 @@ class MarketViewModel @Inject constructor(
         }
 
         // Collect connection state
-        viewModelScope.launch {
+        connectionStateJob = viewModelScope.launch {
             webSocketRepository.getConnectionState().collect { isConnected ->
                 _isWebSocketConnected.value = isConnected
+                Log.d("MarketVM", "WebSocket connection state: $isConnected")
             }
         }
     }
@@ -200,22 +204,62 @@ class MarketViewModel @Inject constructor(
     }
 
     fun refreshData() {
-        // Reset pagination
-        currentPage = 1
-        allTokensCache = emptyList()
-        isInitialDataLoaded = false
-        loadInitialData()
+        viewModelScope.launch {
+            // Reset pagination but keep WebSocket connections
+            currentPage = 1
+            allTokensCache = emptyList()
+            isInitialDataLoaded = false
+
+            // Load fresh data
+            _uiState.value = Result.Loading
+
+            when (val result = coinGeckoRepository.getTopCryptocurrencies(
+                perPage = perPage,
+                page = 1
+            )) {
+                is Result.Success -> {
+                    val firstPage = result.data
+                    allTokensCache = firstPage
+                    isInitialDataLoaded = true
+                    _uiState.value = Result.Success(firstPage)
+                    applySearchFilter()
+                    currentPage = 2
+
+                    // Load remaining pages in background
+                    loadRemainingPages()
+                }
+                is Result.Error -> {
+                    _uiState.value = Result.Error(result.message, result.throwable)
+                }
+                Result.Loading -> {}
+            }
+        }
     }
 
     fun retryWebSocket() {
-        webSocketCollectorJob?.cancel()
-        webSocketRepository.reconnect()
-        setupWebSocketObservers()
+        // Only reconnect if disconnected
+        if (!_isWebSocketConnected.value) {
+            viewModelScope.launch {
+                Log.d("MarketVM", "Reconnecting WebSocket...")
+
+                // Cancel existing collectors
+                webSocketCollectorJob?.cancel()
+                connectionStateJob?.cancel()
+
+                // Disconnect and reconnect
+                webSocketRepository.disconnect()
+                webSocketRepository.reconnect()
+
+                // Re-setup observers
+                setupWebSocketObservers()
+            }
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
         webSocketCollectorJob?.cancel()
+        connectionStateJob?.cancel()
         webSocketRepository.disconnect()
     }
 }

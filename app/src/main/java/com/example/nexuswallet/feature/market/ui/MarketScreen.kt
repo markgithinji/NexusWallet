@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
@@ -34,6 +35,10 @@ import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material.icons.outlined.TrendingDown
 import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.WifiOff
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -65,7 +70,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ButtonDefaults
 import com.example.nexuswallet.ui.theme.success
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun MarketScreen(
     onNavigateToTokenDetail: (String) -> Unit,
@@ -77,6 +82,23 @@ fun MarketScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isWebSocketConnected by viewModel.isWebSocketConnected.collectAsState()
     val isLoadingMore by viewModel.isLoadingMore.collectAsState()
+
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    // Observe loading state to know when refresh is complete
+    LaunchedEffect(uiState) {
+        if (uiState is Result.Success && isRefreshing) {
+            isRefreshing = false
+        }
+    }
+
+    val refreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = {
+            isRefreshing = true
+            viewModel.refreshData()
+        }
+    )
 
     Scaffold(
         topBar = {
@@ -90,12 +112,21 @@ fun MarketScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .pullRefresh(refreshState)
                 .padding(scaffoldPadding)
                 .padding(padding)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
+                // Show disconnected banner if WebSocket is down and we have data
+                if (!isWebSocketConnected && tokens.isNotEmpty()) {
+                    DisconnectedBanner(
+                        onRetry = { viewModel.retryWebSocket() },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                }
+
                 // Search bar
                 MarketSearchBar(
                     query = searchQuery,
@@ -122,66 +153,25 @@ fun MarketScreen(
                             }
                         }
 
-                        is com.example.nexuswallet.feature.coin.Result.Error -> {
+                        is Result.Error -> {
                             if (tokens.isEmpty()) {
                                 ErrorView(
-                                    message = (uiState as com.example.nexuswallet.feature.coin.Result.Error).message,
-                                    onRetry = { viewModel.refreshData() }
+                                    message = (uiState as Result.Error).message,
+                                    onRetry = {
+                                        isRefreshing = true
+                                        viewModel.refreshData()
+                                    }
                                 )
                             } else {
-                                Column {
-                                    // Error banner
-                                    Card(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                                        shape = RoundedCornerShape(12.dp),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.errorContainer
-                                        )
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(12.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.Outlined.Error,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.error,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            Text(
-                                                text = "Connection issues. Showing cached data.",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.error,
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                            IconButton(
-                                                onClick = { viewModel.refreshData() },
-                                                modifier = Modifier.size(24.dp)
-                                            ) {
-                                                Icon(
-                                                    Icons.Outlined.Refresh,
-                                                    contentDescription = "Retry",
-                                                    tint = MaterialTheme.colorScheme.error,
-                                                    modifier = Modifier.size(14.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    MarketList(
-                                        tokens = tokens,
-                                        isLoadingMore = isLoadingMore,
-                                        onTokenClick = { token ->
-                                            onNavigateToTokenDetail(token.id)
-                                        },
-                                        onLoadMore = { viewModel.loadNextPage() }
-                                    )
-                                }
+                                // Show data with error banner at top
+                                MarketList(
+                                    tokens = tokens,
+                                    isLoadingMore = isLoadingMore,
+                                    onTokenClick = { token ->
+                                        onNavigateToTokenDetail(token.id)
+                                    },
+                                    onLoadMore = { viewModel.loadNextPage() }
+                                )
                             }
                         }
 
@@ -201,6 +191,63 @@ fun MarketScreen(
                         }
                     }
                 }
+            }
+
+            PullRefreshIndicator(
+                refreshing = isRefreshing,
+                state = refreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+fun DisconnectedBanner(
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Outlined.WifiOff,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(16.dp)
+            )
+
+            Text(
+                text = "Live updates disconnected",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.weight(1f)
+            )
+
+            TextButton(
+                onClick = onRetry,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text(
+                    "Reconnect",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
