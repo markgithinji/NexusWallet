@@ -85,7 +85,9 @@ object BitcoinNetworkModule {
     fun provideBitcoinTransactionRepository(
         bitcoinTransactionDao: BitcoinTransactionDao
     ): BitcoinTransactionRepository {
-        return BitcoinTransactionRepositoryImpl(bitcoinTransactionDao)
+        return BitcoinTransactionRepositoryImpl(
+            bitcoinTransactionDao = bitcoinTransactionDao
+        )
     }
 
     @Provides
@@ -95,6 +97,10 @@ object BitcoinNetworkModule {
         @Named("bitcoinTestnet") testnetApi: BitcoinApi,
         ioDispatcher: CoroutineDispatcher,
     ): BitcoinBlockchainRepository {
-        return BitcoinBlockchainRepositoryImpl(mainnetApi, testnetApi, ioDispatcher)
+        return BitcoinBlockchainRepositoryImpl(
+            mainnetApi = mainnetApi,
+            testnetApi = testnetApi,
+            ioDispatcher = ioDispatcher
+        )
     }
 }

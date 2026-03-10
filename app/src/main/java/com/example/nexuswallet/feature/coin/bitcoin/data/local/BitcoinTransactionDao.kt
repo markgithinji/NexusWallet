@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.coin.bitcoin.data.local
-
-
+l
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -19,23 +18,14 @@ interface BitcoinTransactionDao {
     @Query("SELECT * FROM BitcoinTransaction WHERE id = :id")
     suspend fun getById(id: String): BitcoinTransactionEntity?
 
-    @Query("SELECT * FROM BitcoinTransaction WHERE walletId = :walletId ORDER BY timestamp DESC")
-    fun getByWalletId(walletId: String): Flow<List<BitcoinTransactionEntity>>
-
     @Query("SELECT * FROM BitcoinTransaction WHERE walletId = :walletId AND network = :network ORDER BY timestamp DESC")
     fun getByWalletIdAndNetwork(walletId: String, network: String): Flow<List<BitcoinTransactionEntity>>
 
     @Query("SELECT * FROM BitcoinTransaction WHERE walletId = :walletId AND network = :network ORDER BY timestamp DESC")
     suspend fun getByWalletIdAndNetworkSync(walletId: String, network: String): List<BitcoinTransactionEntity>
 
-    @Query("SELECT * FROM BitcoinTransaction WHERE walletId = :walletId AND isIncoming = :isIncoming ORDER BY timestamp DESC")
-    fun getByWalletIdAndType(walletId: String, isIncoming: Boolean): Flow<List<BitcoinTransactionEntity>>
-
     @Query("SELECT * FROM BitcoinTransaction WHERE status = 'PENDING'")
     suspend fun getPendingTransactions(): List<BitcoinTransactionEntity>
-
-    @Query("SELECT * FROM BitcoinTransaction WHERE txHash = :txHash")
-    suspend fun getByTxHash(txHash: String): BitcoinTransactionEntity?
 
     @Query("DELETE FROM BitcoinTransaction WHERE id = :id")
     suspend fun deleteById(id: String)

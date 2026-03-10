@@ -32,10 +32,10 @@ object BitcoinUseDomainModule {
         logger: Logger
     ): SyncBitcoinTransactionsUseCase {
         return SyncBitcoinTransactionsUseCase(
-            bitcoinBlockchainRepository,
-            bitcoinTransactionRepository,
-            walletRepository,
-            logger
+            bitcoinBlockchainRepository = bitcoinBlockchainRepository,
+            bitcoinTransactionRepository = bitcoinTransactionRepository,
+            walletRepository = walletRepository,
+            logger = logger
         )
     }
 
@@ -44,17 +44,11 @@ object BitcoinUseDomainModule {
     fun providePrepareBitcoinTransactionUseCase(
         walletRepository: WalletRepository,
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-        bitcoinTransactionRepository: BitcoinTransactionRepository,
-        keyStoreRepository: KeyStoreRepository,
-        securityPreferencesRepository: SecurityPreferencesRepository,
         logger: Logger
     ): PrepareBitcoinTransactionUseCase {
         return PrepareBitcoinTransactionUseCase(
             walletRepository = walletRepository,
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
-            bitcoinTransactionRepository = bitcoinTransactionRepository,
-            keyStoreRepository = keyStoreRepository,
-            securityPreferencesRepository = securityPreferencesRepository,
             logger = logger
         )
     }
@@ -66,8 +60,8 @@ object BitcoinUseDomainModule {
         logger: Logger
     ): GetBitcoinWalletUseCase {
         return GetBitcoinWalletUseCase(
-            walletRepository,
-            logger
+            walletRepository = walletRepository,
+            logger = logger
         )
     }
 
@@ -82,12 +76,12 @@ object BitcoinUseDomainModule {
         logger: Logger
     ): SendBitcoinUseCase {
         return SendBitcoinUseCase(
-            walletRepository,
-            bitcoinBlockchainRepository,
-            bitcoinTransactionRepository,
-            keyStoreRepository,
-            securityPreferencesRepository,
-            logger
+            walletRepository = walletRepository,
+            bitcoinBlockchainRepository = bitcoinBlockchainRepository,
+            bitcoinTransactionRepository = bitcoinTransactionRepository,
+            keyStoreRepository = keyStoreRepository,
+            securityPreferencesRepository = securityPreferencesRepository,
+            logger = logger
         )
     }
 
@@ -98,8 +92,8 @@ object BitcoinUseDomainModule {
         logger: Logger
     ): GetBitcoinFeeEstimateUseCase {
         return GetBitcoinFeeEstimateUseCase(
-            bitcoinBlockchainRepository,
-            logger
+            bitcoinBlockchainRepository = bitcoinBlockchainRepository,
+            logger = logger
         )
     }
 
@@ -110,8 +104,8 @@ object BitcoinUseDomainModule {
         logger: Logger
     ): GetBitcoinBalanceUseCase {
         return GetBitcoinBalanceUseCase(
-            bitcoinBlockchainRepository,
-            logger
+            bitcoinBlockchainRepository = bitcoinBlockchainRepository,
+            logger = logger
         )
     }
 
@@ -120,6 +114,8 @@ object BitcoinUseDomainModule {
     fun provideValidateBitcoinTransactionUseCase(
         logger: Logger
     ): ValidateBitcoinTransactionUseCase {
-        return ValidateBitcoinTransactionUseCase(logger)
+        return ValidateBitcoinTransactionUseCase(
+            logger = logger
+        )
     }
 }
