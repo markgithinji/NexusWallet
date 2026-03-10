@@ -197,7 +197,7 @@ private fun AuthenticationTopBar(
         title = {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -383,14 +383,6 @@ private fun AuthenticationMethodsCard(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            Text(
-                text = "Choose Authentication Method",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
             // Biometric button
             Button(
                 onClick = onBiometricClick,
