@@ -3,8 +3,11 @@ package com.example.nexuswallet.feature.coin.ethereum
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepositoryImpl
+import com.example.nexuswallet.feature.coin.ethereum.data.repository.EVMBlockchainRepositoryImpl
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.data.local.EVMTransactionDao
+import com.example.nexuswallet.feature.coin.ethereum.data.remote.EtherscanApiService
+import com.example.nexuswallet.feature.coin.ethereum.data.repository.EVMTransactionRepositoryImpl
 import com.example.nexuswallet.feature.coin.usdc.Web3jFactory
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
@@ -124,32 +127,6 @@ object UseCaseModule {
             securityPreferencesRepository = securityPreferencesRepository,
             keyStoreRepository = keyStoreRepository,
             logger = logger
-        )
-    }
-
-    @Provides
-    @Singleton
-    fun provideEVMTransactionDao(database: WalletDatabase): EVMTransactionDao {
-        return database.evmTransactionDao()
-    }
-
-    @Provides
-    @Singleton
-    fun provideEVMTransactionRepository(
-        evmTransactionDao: EVMTransactionDao
-    ): EVMTransactionRepository {
-        return EVMTransactionRepositoryImpl(evmTransactionDao)
-    }
-
-    @Provides
-    @Singleton
-    fun provideEVMBlockchainRepository(
-        etherscanApiService: EtherscanApiService,
-        web3jFactory: Web3jFactory
-    ): EVMBlockchainRepository {
-        return EVMBlockchainRepositoryImpl(
-            etherscanApi = etherscanApiService,
-            web3jFactory = web3jFactory
         )
     }
 }

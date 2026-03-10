@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.nexuswallet.feature.coin.bitcoin.data.local.BitcoinTransactionDao
 import com.example.nexuswallet.feature.coin.bitcoin.data.local.BitcoinTransactionEntity
-import com.example.nexuswallet.feature.coin.ethereum.EVMTransactionDao
+import com.example.nexuswallet.feature.coin.ethereum.data.local.EVMTransactionDao
 import com.example.nexuswallet.feature.coin.ethereum.EVMTransactionEntity
 import com.example.nexuswallet.feature.coin.solana.SolanaTransactionDao
 import com.example.nexuswallet.feature.coin.solana.SolanaTransactionEntity

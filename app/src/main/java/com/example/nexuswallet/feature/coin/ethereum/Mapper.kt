@@ -1,6 +1,8 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
 import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.coin.ethereum.data.local.EVMTransactionEntity
+import com.example.nexuswallet.feature.coin.ethereum.data.remote.model.EtherscanTransactionResponse
 import com.example.nexuswallet.feature.coin.usdc.domain.TokenTransactionResponse
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
@@ -164,5 +166,130 @@ fun List<TokenTransactionResponse>.toTokenTransactionList(
 ): List<TokenTransaction> {
     return this.map { tx ->
         tx.toTokenTransaction(walletId, network, walletAddress, tokenExternalId)
+    }
+}
+
+/**
+ * Maps EVMTransactionEntity to EVMTransaction
+ */
+fun EVMTransactionEntity.toDomain(): EVMTransaction {
+    return if (tokenContract == null) {
+        NativeETHTransaction(
+            id = id,
+            walletId = walletId,
+            fromAddress = fromAddress,
+            toAddress = toAddress,
+            status = TransactionStatus.valueOf(status),
+            timestamp = timestamp,
+            note = note,
+            feeLevel = FeeLevel.valueOf(feeLevel),
+            amountWei = amountWei,
+            amountEth = amountDecimal,
+            gasPriceWei = gasPriceWei,
+            gasPriceGwei = gasPriceGwei,
+            gasLimit = gasLimit,
+            feeWei = feeWei,
+            feeEth = feeEth,
+            nonce = nonce,
+            chainId = chainId,
+            signedHex = signedHex,
+            txHash = txHash,
+            network = network,
+            isIncoming = isIncoming,
+            data = data,
+            tokenExternalId = tokenExternalId
+        )
+    } else {
+        TokenTransaction(
+            id = id,
+            walletId = walletId,
+            fromAddress = fromAddress,
+            toAddress = toAddress,
+            status = TransactionStatus.valueOf(status),
+            timestamp = timestamp,
+            note = note,
+            feeLevel = FeeLevel.valueOf(feeLevel),
+            amountWei = amountWei,
+            amountDecimal = amountDecimal,
+            gasPriceWei = gasPriceWei,
+            gasPriceGwei = gasPriceGwei,
+            gasLimit = gasLimit,
+            feeWei = feeWei,
+            feeEth = feeEth,
+            nonce = nonce,
+            chainId = chainId,
+            signedHex = signedHex,
+            txHash = txHash,
+            network = network,
+            isIncoming = isIncoming,
+            tokenContract = tokenContract,
+            tokenSymbol = tokenSymbol!!,
+            tokenDecimals = tokenDecimals!!,
+            data = data,
+            tokenExternalId = tokenExternalId ?: throw IllegalStateException("Token transaction missing tokenExternalId")
+        )
+    }
+}
+fun EVMTransaction.toEntity(): EVMTransactionEntity {
+    return when (this) {
+        is NativeETHTransaction -> EVMTransactionEntity(
+            id = id,
+            walletId = walletId,
+            fromAddress = fromAddress,
+            toAddress = toAddress,
+            amountWei = amountWei,
+            amountDecimal = amountEth,
+            timestamp = timestamp,
+            status = status.name,
+            gasPriceWei = gasPriceWei,
+            gasPriceGwei = gasPriceGwei,
+            gasLimit = gasLimit,
+            feeWei = feeWei,
+            feeEth = feeEth,
+            nonce = nonce,
+            chainId = chainId,
+            signedHex = signedHex,
+            txHash = txHash,
+            network = network,
+            data = data,
+            isIncoming = isIncoming,
+            note = note,
+            feeLevel = feeLevel.name,
+            tokenExternalId = tokenExternalId,
+            tokenSymbol = null,
+            tokenDecimals = null,
+            tokenContract = null,
+            transactionType = "NATIVE_ETH"
+        )
+
+        is TokenTransaction -> EVMTransactionEntity(
+            id = id,
+            walletId = walletId,
+            fromAddress = fromAddress,
+            toAddress = toAddress,
+            amountWei = amountWei,
+            amountDecimal = amountDecimal,
+            timestamp = timestamp,
+            status = status.name,
+            gasPriceWei = gasPriceWei,
+            gasPriceGwei = gasPriceGwei,
+            gasLimit = gasLimit,
+            feeWei = feeWei,
+            feeEth = feeEth,
+            nonce = nonce,
+            chainId = chainId,
+            signedHex = signedHex,
+            txHash = txHash,
+            network = network,
+            data = data,
+            isIncoming = isIncoming,
+            note = note,
+            feeLevel = feeLevel.name,
+            tokenExternalId = tokenExternalId,
+            tokenSymbol = tokenSymbol,
+            tokenDecimals = tokenDecimals,
+            tokenContract = tokenContract,
+            transactionType = "TOKEN"
+        )
     }
 }
