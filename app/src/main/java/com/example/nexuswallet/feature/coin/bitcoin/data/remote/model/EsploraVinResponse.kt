@@ -1,15 +1,16 @@
 package com.example.nexuswallet.feature.coin.bitcoin.data.remote.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class EsploraVinResponse(
     val txid: String,
     val vout: Int,
-    val is_coinbase: Boolean,
+    @SerialName("is_coinbase") val isCoinbase: Boolean,
     val scriptsig: String?,
-    val scriptsig_asm: String?,
+    @SerialName("scriptsig_asm") val scriptsigAsm: String?,
     val sequence: Long,
-    val witness: List<String>?= null,
+    val witness: List<String>? = null,
     val prevout: EsploraVoutResponse?
 )

@@ -373,15 +373,15 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
         tx: EsploraTransactionResponse,
         address: String
     ): ParsedTransaction? {
-        val hasOutputToUs = tx.vout.any { it.scriptpubkey_address == address }
+        val hasOutputToUs = tx.vout.any { it.scriptpubkeyAddress == address }
         val hasInputFromUs = tx.vin.any { vin ->
-            vin.prevout?.scriptpubkey_address == address
+            vin.prevout?.scriptpubkeyAddress == address
         }
 
         return when {
             hasOutputToUs && !hasInputFromUs -> {
-                val ourOutput = tx.vout.first { it.scriptpubkey_address == address }
-                val sender = tx.vin.firstOrNull()?.prevout?.scriptpubkey_address ?: "unknown"
+                val ourOutput = tx.vout.first { it.scriptpubkeyAddress == address }
+                val sender = tx.vin.firstOrNull()?.prevout?.scriptpubkeyAddress ?: "unknown"
                 ParsedTransaction(
                     fromAddress = sender,
                     toAddress = address,
@@ -392,9 +392,9 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
 
             hasInputFromUs -> {
                 val recipientOutput = tx.vout.firstOrNull {
-                    it.scriptpubkey_address != null && it.scriptpubkey_address != address
+                    it.scriptpubkeyAddress != null && it.scriptpubkeyAddress != address
                 }
-                val recipient = recipientOutput?.scriptpubkey_address ?: "unknown"
+                val recipient = recipientOutput?.scriptpubkeyAddress ?: "unknown"
                 val amount = recipientOutput?.value ?: 0
                 ParsedTransaction(
                     fromAddress = address,
