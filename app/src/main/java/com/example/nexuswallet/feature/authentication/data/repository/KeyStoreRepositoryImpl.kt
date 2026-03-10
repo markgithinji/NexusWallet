@@ -2,8 +2,11 @@ package com.example.nexuswallet.feature.authentication.data.repository
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import com.example.nexuswallet.HexUtils.hexToBytes
+import com.example.nexuswallet.HexUtils.toHex
 import com.example.nexuswallet.feature.authentication.data.util.safeKeyStoreCall
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -12,7 +15,6 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineDispatcher
 
 /**
  * Handles encryption/decryption using Android KeyStore
@@ -69,7 +71,6 @@ class KeyStoreRepositoryImpl @Inject constructor(
 
     override fun isKeyStoreAvailable(): Boolean {
         return try {
-            // Check if key exists without creating a new one
             keyStore.containsAlias(KEY_ALIAS) &&
                     keyStore.getKey(KEY_ALIAS, null) != null
         } catch (e: Exception) {
@@ -111,12 +112,6 @@ class KeyStoreRepositoryImpl @Inject constructor(
 
         keyGenerator.init(keyGenParameterSpec)
         return keyGenerator.generateKey()
-    }
-
-    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
-
-    private fun hexToBytes(hex: String): ByteArray {
-        return hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
     }
 
     companion object {

@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.example.nexuswallet.HexUtils.hexToBytes
+import com.example.nexuswallet.HexUtils.toHex
 import com.example.nexuswallet.feature.authentication.data.util.safeEdit
 import com.example.nexuswallet.feature.authentication.data.util.safeGet
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
@@ -164,12 +166,6 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             val preferences = dataStore.data.first()
             preferences[LAST_AUTH_TIME_KEY]
         }
-    }
-
-    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
-
-    private fun hexToBytes(hex: String): ByteArray {
-        return hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
     }
 
     companion object {
