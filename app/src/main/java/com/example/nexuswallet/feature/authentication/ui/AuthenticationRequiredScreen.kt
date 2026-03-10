@@ -59,13 +59,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.FragmentActivity
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.feature.authentication.domain.model.AuthType
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.ui.theme.warning
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import java.util.concurrent.Executor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
@@ -90,7 +88,8 @@ fun AuthenticationRequiredScreen(
     val biometricPrompt = remember(activity) {
         if (activity != null) {
             val executor: Executor = ContextCompat.getMainExecutor(context)
-            BiometricPrompt(activity, executor,
+            BiometricPrompt(
+                activity, executor,
                 object : BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                         super.onAuthenticationSucceeded(result)
@@ -100,7 +99,8 @@ fun AuthenticationRequiredScreen(
                     override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                         super.onAuthenticationError(errorCode, errString)
                         if (errorCode != BiometricPrompt.ERROR_CANCELED &&
-                            errorCode != BiometricPrompt.ERROR_USER_CANCELED) {
+                            errorCode != BiometricPrompt.ERROR_USER_CANCELED
+                        ) {
                             viewModel.setErrorMessage(errString.toString())
                         }
                     }
@@ -181,9 +181,11 @@ fun AuthenticationRequiredScreen(
                 onAuthenticated()
                 viewModel.clearState()
             }
+
             is Result.Error -> {
                 viewModel.setErrorMessage(result.message)
             }
+
             else -> {}
         }
     }

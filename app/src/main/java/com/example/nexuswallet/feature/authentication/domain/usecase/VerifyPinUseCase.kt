@@ -14,13 +14,13 @@ class VerifyPinUseCase @Inject constructor(
 ) {
     private val tag = "VerifyPin"
 
-    suspend operator fun invoke(pin: String): com.example.nexuswallet.feature.coin.Result<Boolean> {
+    suspend operator fun invoke(pin: String): Result<Boolean> {
         val startTime = System.currentTimeMillis()
 
         val storedHash = securityPreferencesRepository.getPinHash()
         if (storedHash == null) {
             logger.d(tag, "No PIN set")
-            return com.example.nexuswallet.feature.coin.Result.Success(false)
+            return Result.Success(false)
         }
 
         val isValid = verifyPinHash(pin, storedHash)
@@ -28,7 +28,7 @@ class VerifyPinUseCase @Inject constructor(
 
         if (isValid) {
             logger.d(tag, "PIN verified | duration=${duration}ms")
-            return com.example.nexuswallet.feature.coin.Result.Success(true)
+            return Result.Success(true)
         } else {
             logger.w(tag, "PIN verification failed | duration=${duration}ms")
             return Result.Success(false)
