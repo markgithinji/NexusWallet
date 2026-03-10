@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.bitcoin.ui
+package com.example.nexuswallet.feature.coin.bitcoin.ui.review
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,7 +11,6 @@ import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinFee
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinWalletUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.PrepareBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.SendBitcoinUseCase
-import com.example.nexuswallet.feature.coin.bitcoin.ui.SendScreen.BitcoinReviewEffect
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import dagger.hilt.android.lifecycle.HiltViewModel

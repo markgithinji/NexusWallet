@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.bitcoin.ui.SendScreen
+package com.example.nexuswallet.feature.coin.bitcoin.ui.send
 
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.SendValidationResult

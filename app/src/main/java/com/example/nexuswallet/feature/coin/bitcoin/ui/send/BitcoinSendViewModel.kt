@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.bitcoin.ui.SendScreen
+package com.example.nexuswallet.feature.coin.bitcoin.ui.send
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

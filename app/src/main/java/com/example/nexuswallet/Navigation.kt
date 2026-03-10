@@ -19,7 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredScreen
 import com.example.nexuswallet.feature.coin.CoinType
-import com.example.nexuswallet.feature.coin.bitcoin.ui.SendScreen.BitcoinSendScreen
+import com.example.nexuswallet.feature.coin.bitcoin.ui.send.BitcoinSendScreen
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendScreen
 import com.example.nexuswallet.feature.coin.solana.SolanaSendScreen
