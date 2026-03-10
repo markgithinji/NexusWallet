@@ -68,8 +68,9 @@ class KeyStoreRepositoryImpl @Inject constructor(
 
     override fun isKeyStoreAvailable(): Boolean {
         return try {
-            getSecretKey()
-            true
+            // Check if key exists without creating a new one
+            keyStore.containsAlias(KEY_ALIAS) &&
+                    keyStore.getKey(KEY_ALIAS, null) != null
         } catch (e: Exception) {
             false
         }
