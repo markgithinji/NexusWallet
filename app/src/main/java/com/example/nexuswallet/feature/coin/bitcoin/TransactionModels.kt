@@ -6,12 +6,6 @@ import org.bitcoinj.core.Coin
 import org.bitcoinj.core.TransactionOutPoint
 import org.bitcoinj.script.Script
 
-data class UTXO(
-    val outPoint: TransactionOutPoint,
-    val value: Coin,
-    val script: Script
-)
-
 enum class FeeLevel {
     SLOW, NORMAL, FAST
 }
@@ -38,13 +32,6 @@ data class SendBitcoinResult(
     val txHash: String,
     val success: Boolean,
     val error: String? = null
-)
-
-data class ParsedTransaction(
-    val fromAddress: String,
-    val toAddress: String,
-    val amount: Long,
-    val isIncoming: Boolean
 )
 
 data class BitcoinTransactionDto(

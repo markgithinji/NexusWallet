@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

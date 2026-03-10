@@ -1,12 +1,11 @@
-package com.example.nexuswallet.feature.coin.bitcoin.data
+package com.example.nexuswallet.feature.coin.bitcoin.data.repository
 
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinApi
+import com.example.nexuswallet.feature.coin.bitcoin.data.remote.api.BitcoinApi
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionDto
-import com.example.nexuswallet.feature.coin.bitcoin.EsploraTransactionResponse
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.bitcoin.UTXO
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
@@ -229,8 +228,7 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
                 return@withContext Result.Error("No UTXOs found for address: $fromAddress")
             }
 
-            val feeResult = getFeeEstimate(feeLevel, allUtxos.size, 2)
-            val feeSatoshis = when (feeResult) {
+            val feeSatoshis = when (val feeResult = getFeeEstimate(feeLevel, allUtxos.size, 2)) {
                 is Result.Success -> feeResult.data.totalFeeSatoshis
                 else -> DEFAULT_FEE_SATOSHIS
             }
@@ -410,13 +408,6 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
         }
     }
 
-    private data class ParsedTransaction(
-        val fromAddress: String,
-        val toAddress: String,
-        val amount: Long,
-        val isIncoming: Boolean
-    )
-
     companion object {
         // Bitcoin constants
         private const val SATOSHIS_PER_BTC = 100_000_000L
@@ -427,8 +418,6 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
         private const val BASE_TX_SIZE = 10L
         private const val BYTES_PER_INPUT = 148L
         private const val BYTES_PER_OUTPUT = 34L
-        private const val DEFAULT_INPUT_COUNT = 1
-        private const val DEFAULT_OUTPUT_COUNT = 2
 
         // Fee estimate targets (in blocks)
         // 144 blocks = ~24 hours, 6 blocks = ~1 hour, 2 blocks = ~20 minutes

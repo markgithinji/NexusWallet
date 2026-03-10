@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.bitcoin.SyncBitcoinTransactionsUseCase
-import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.SyncEthereumTransactionsUseCase
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction

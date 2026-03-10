@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.wallet.domain
 
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository

@@ -4,7 +4,7 @@ import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.EVMTransaction
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository

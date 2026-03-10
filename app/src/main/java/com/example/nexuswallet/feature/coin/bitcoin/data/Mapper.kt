@@ -1,8 +1,11 @@
-package com.example.nexuswallet.feature.coin.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin.data
 
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionDto
+import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.bitcoin.data.local.BitcoinTransactionEntity
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.toBitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.toStorageString
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import java.math.BigDecimal
 import java.math.RoundingMode

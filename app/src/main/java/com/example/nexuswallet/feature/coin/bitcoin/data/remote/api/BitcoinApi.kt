@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin.data.remote.api
 
 import okhttp3.ResponseBody
 import retrofit2.http.Body

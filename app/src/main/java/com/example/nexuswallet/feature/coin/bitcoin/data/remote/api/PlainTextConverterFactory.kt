@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin.data.remote.api
 
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody
@@ -7,7 +7,6 @@ import okhttp3.ResponseBody
 import retrofit2.Converter
 import retrofit2.Retrofit
 import java.lang.reflect.Type
-
 
 class PlainTextConverterFactory : Converter.Factory() {
     override fun responseBodyConverter(

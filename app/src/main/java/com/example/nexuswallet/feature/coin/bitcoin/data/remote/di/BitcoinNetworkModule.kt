@@ -1,17 +1,24 @@
-package com.example.nexuswallet.feature.coin.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin.data.remote.di
 
-
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.coin.bitcoin.data.local.BitcoinTransactionDao
+import com.example.nexuswallet.feature.coin.bitcoin.data.remote.api.BitcoinApi
+import com.example.nexuswallet.feature.coin.bitcoin.data.remote.api.PlainTextConverterFactory
+import com.example.nexuswallet.feature.coin.bitcoin.data.repository.BitcoinBlockchainRepositoryImpl
+import com.example.nexuswallet.feature.coin.bitcoin.data.repository.BitcoinTransactionRepositoryImpl
+import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
-import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
 
@@ -61,5 +68,33 @@ object BitcoinNetworkModule {
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(BitcoinApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
+
+    @Provides
+    @Singleton
+    fun provideBitcoinTransactionDao(database: WalletDatabase): BitcoinTransactionDao {
+        return database.bitcoinTransactionDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideBitcoinTransactionRepository(
+        bitcoinTransactionDao: BitcoinTransactionDao
+    ): BitcoinTransactionRepository {
+        return BitcoinTransactionRepositoryImpl(bitcoinTransactionDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideBitcoinBlockchainRepository(
+        @Named("bitcoinMainnet") mainnetApi: BitcoinApi,
+        @Named("bitcoinTestnet") testnetApi: BitcoinApi,
+        ioDispatcher: CoroutineDispatcher,
+    ): BitcoinBlockchainRepository {
+        return BitcoinBlockchainRepositoryImpl(mainnetApi, testnetApi, ioDispatcher)
     }
 }
