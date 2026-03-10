@@ -4,6 +4,9 @@ import com.example.nexuswallet.feature.authentication.domain.repository.KeyStore
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.BTC_PRIVATE_KEY_TYPE
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_INPUT_COUNT
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_OUTPUT_COUNT
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
@@ -125,7 +128,7 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
             return Result.Error("No private key found")
         }
 
-        // Return prepared transaction info with ALL data needed for later signing
+        // Return prepared transaction info with data needed for later signing
         return Result.Success(
             PreparedBitcoinTransaction(
                 transactionId = transactionId,
@@ -143,11 +146,5 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
                 utxoCount = DEFAULT_INPUT_COUNT
             )
         )
-    }
-
-    companion object {
-        private const val BTC_PRIVATE_KEY_TYPE = "BTC_PRIVATE_KEY"
-        private const val DEFAULT_INPUT_COUNT = 1
-        private const val DEFAULT_OUTPUT_COUNT = 2
     }
 }

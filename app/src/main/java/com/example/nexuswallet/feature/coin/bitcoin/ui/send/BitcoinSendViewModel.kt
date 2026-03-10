@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_INPUT_COUNT
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_OUTPUT_COUNT
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinWalletUseCase
@@ -127,7 +129,11 @@ class BitcoinSendViewModel @Inject constructor(
     }
 
     private suspend fun loadFeeEstimate(feeLevel: FeeLevel) {
-        when (val result = getBitcoinFeeEstimateUseCase(feeLevel)) {
+        when (val result = getBitcoinFeeEstimateUseCase(
+            feeLevel = feeLevel,
+            inputCount = DEFAULT_INPUT_COUNT,
+            outputCount = DEFAULT_OUTPUT_COUNT
+        )) {
             is Result.Success -> {
                 _state.update { it.copy(feeEstimate = result.data) }
                 validateInputs()
@@ -137,12 +143,12 @@ class BitcoinSendViewModel @Inject constructor(
         }
     }
 
-    private suspend fun updateAddress(address: String) {
+    private fun updateAddress(address: String) {
         _state.update { it.copy(toAddress = address) }
         validateInputs()
     }
 
-    private suspend fun updateAmount(amount: String) {
+    private fun updateAmount(amount: String) {
         val amountValue = try {
             amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
         } catch (e: Exception) {
@@ -217,7 +223,7 @@ class BitcoinSendViewModel @Inject constructor(
         }
     }
 
-    private suspend fun handleError(message: String) {
+    private fun handleError(message: String) {
         logger.e("BitcoinSendVM", message)
         _state.update { it.copy(isLoading = false, error = message) }
     }

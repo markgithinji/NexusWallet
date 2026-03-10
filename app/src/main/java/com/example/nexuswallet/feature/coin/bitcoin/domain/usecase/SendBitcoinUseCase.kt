@@ -4,7 +4,9 @@ import com.example.nexuswallet.feature.authentication.domain.repository.KeyStore
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.BTC_PRIVATE_KEY_TYPE
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.SendBitcoinResult
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
@@ -12,6 +14,7 @@ import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
+import com.example.nexuswallet.toHex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bitcoinj.core.DumpedPrivateKey
@@ -183,11 +186,5 @@ class SendBitcoinUseCase @Inject constructor(
 
             else -> Result.Error("Unknown broadcast error")
         }
-    }
-
-    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
-
-    companion object {
-        private const val BTC_PRIVATE_KEY_TYPE = "BTC_PRIVATE_KEY"
     }
 }

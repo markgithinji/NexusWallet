@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_INPUT_COUNT
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_OUTPUT_COUNT
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
@@ -138,18 +140,12 @@ class BitcoinReviewViewModel @Inject constructor(
     private suspend fun loadFeeEstimate() {
         val state = _state.value
 
-        // Set fee loading state
         _state.update { it.copy(isFeeLoading = true) }
-
-        // Default transaction structure: 1 input and 2 outputs (recipient + change)
-        // TODO: Calculate this dynamically based on UTXOs
-        val inputCount = 1 // Default to 1 input,
-        val outputCount = 2 // Recipient + change output
 
         when (val result = getBitcoinFeeEstimateUseCase(
             feeLevel = state.feeLevel,
-            inputCount = inputCount,
-            outputCount = outputCount
+            inputCount = DEFAULT_INPUT_COUNT,     // TODO: Calculate this dynamically based on UTXOs
+            outputCount = DEFAULT_OUTPUT_COUNT
         )) {
             is Result.Success -> {
                 _state.update {

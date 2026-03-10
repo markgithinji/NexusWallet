@@ -20,7 +20,7 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
 
     private val tag = "ValidateBitcoinTxUC"
 
-    fun invoke(
+    operator fun invoke(
         walletId: String,
         wallet: Wallet?,
         toAddress: String,

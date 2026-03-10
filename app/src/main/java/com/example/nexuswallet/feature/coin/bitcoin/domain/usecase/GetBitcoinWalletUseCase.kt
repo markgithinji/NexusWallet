@@ -50,7 +50,7 @@ class GetBitcoinWalletUseCase @Inject constructor(
         val bitcoinCoin = if (network != null) {
             wallet.bitcoinCoins.find { it.network == network }
         } else {
-            // Otherwise get the first one (usually Mainnet)
+            // Otherwise get the first one
             wallet.bitcoinCoins.firstOrNull()
         }
 
