@@ -26,7 +26,7 @@ class KeyStoreRepositoryImpl @Inject constructor(
 
     override suspend fun encrypt(plaintext: ByteArray): Pair<ByteArray, ByteArray> =
         withContext(ioDispatcher) {
-            try {
+            safeKeyStoreCall {
                 val cipher = Cipher.getInstance(TRANSFORMATION)
                 cipher.init(Cipher.ENCRYPT_MODE, getSecretKey())
 
@@ -34,36 +34,36 @@ class KeyStoreRepositoryImpl @Inject constructor(
                 val encrypted = cipher.doFinal(plaintext)
 
                 Pair(encrypted, iv)
-            } catch (e: Exception) {
-                throw EncryptionException("Failed to encrypt data", e)
             }
         }
 
     override suspend fun decrypt(encryptedData: ByteArray, iv: ByteArray): ByteArray =
         withContext(ioDispatcher) {
-            try {
+            safeKeyStoreCall {
                 val cipher = Cipher.getInstance(TRANSFORMATION)
                 val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
                 cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
 
                 cipher.doFinal(encryptedData)
-            } catch (e: Exception) {
-                throw EncryptionException("Failed to decrypt data", e)
             }
         }
 
     override suspend fun encryptString(plaintext: String): Pair<String, String> =
         withContext(ioDispatcher) {
-            val (encryptedBytes, iv) = encrypt(plaintext.toByteArray(Charsets.UTF_8))
-            Pair(encryptedBytes.toHex(), iv.toHex())
+            safeKeyStoreCall {
+                val (encryptedBytes, iv) = encrypt(plaintext.toByteArray(Charsets.UTF_8))
+                Pair(encryptedBytes.toHex(), iv.toHex())
+            }
         }
 
     override suspend fun decryptString(encryptedHex: String, ivHex: String): String =
         withContext(ioDispatcher) {
-            val encryptedBytes = hexToBytes(encryptedHex)
-            val iv = hexToBytes(ivHex)
-            val decryptedBytes = decrypt(encryptedBytes, iv)
-            String(decryptedBytes, Charsets.UTF_8)
+            safeKeyStoreCall {
+                val encryptedBytes = hexToBytes(encryptedHex)
+                val iv = hexToBytes(ivHex)
+                val decryptedBytes = decrypt(encryptedBytes, iv)
+                String(decryptedBytes, Charsets.UTF_8)
+            }
         }
 
     override fun isKeyStoreAvailable(): Boolean {
