@@ -5,9 +5,13 @@ import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.coin.bitcoin.data.remote.api.BitcoinApi
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
+import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionDto
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.coin.bitcoin.UTXO
+import com.example.nexuswallet.feature.coin.bitcoin.data.model.ParsedTransaction
+import com.example.nexuswallet.feature.coin.bitcoin.data.model.UTXO
+import com.example.nexuswallet.feature.coin.bitcoin.data.remote.model.EsploraTransactionResponse
+import com.example.nexuswallet.feature.coin.bitcoin.data.toDomain
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.CoroutineDispatcher
@@ -31,6 +35,7 @@ import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
+import kotlin.collections.mapNotNull
 
 @Singleton
 class BitcoinBlockchainRepositoryImpl @Inject constructor(
@@ -126,7 +131,7 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Broadcast transaction using Blockstream API
+     * Broadcast transaction using API
      */
     override suspend fun broadcastTransaction(
         signedHex: String,
@@ -170,35 +175,32 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Get all transactions for an address (both sent and received)
+     * Get all transactions for an address
      */
     override suspend fun getAddressTransactions(
+        walletId: String,
         address: String,
         network: BitcoinNetwork
-    ): Result<List<BitcoinTransactionDto>> = withContext(ioDispatcher) {
+    ): Result<List<BitcoinTransaction>> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val api = getApiForNetwork(network)
             val transactions = api.getAddressTransactions(address)
 
             transactions.mapNotNull { tx ->
                 parseTransaction(tx, address)?.let { parsed ->
-                    BitcoinTransactionDto(
-                        txid = tx.txid,
+                    tx.toDomain(
+                        walletId = walletId,
                         fromAddress = parsed.fromAddress,
                         toAddress = parsed.toAddress,
                         amount = parsed.amount,
-                        fee = tx.fee,
-                        status = if (tx.status.confirmed) TransactionStatus.SUCCESS else TransactionStatus.PENDING,
-                        timestamp = tx.status.block_time ?: (System.currentTimeMillis() / 1000),
-                        confirmations = if (tx.status.confirmed) 1 else 0,
-                        blockHash = tx.status.block_hash,
-                        blockHeight = tx.status.block_height,
-                        isIncoming = parsed.isIncoming
+                        isIncoming = parsed.isIncoming,
+                        network = network
                     )
                 }
             }
         }
     }
+
 
     /**
      * Create and sign a Bitcoin transaction using bitcoinj

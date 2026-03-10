@@ -1,5 +1,8 @@
 package com.example.nexuswallet.feature.coin.bitcoin.data.remote.api
 
+import com.example.nexuswallet.feature.coin.bitcoin.data.remote.model.AddressResponse
+import com.example.nexuswallet.feature.coin.bitcoin.data.remote.model.EsploraTransactionResponse
+import com.example.nexuswallet.feature.coin.bitcoin.data.remote.model.UTXOResponse
 import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -12,7 +15,7 @@ interface BitcoinApi {
     suspend fun getAddressInfo(@Path("address") address: String): AddressResponse
 
     @GET("address/{address}/utxo")
-    suspend fun getUtxos(@Path("address") address: String): List<UtxoResponse>
+    suspend fun getUtxos(@Path("address") address: String): List<UTXOResponse>
 
     @GET("tx/{txid}")
     suspend fun getTransaction(@Path("txid") txid: String): EsploraTransactionResponse

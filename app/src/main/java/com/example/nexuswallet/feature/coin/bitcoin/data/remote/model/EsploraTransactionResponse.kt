@@ -12,5 +12,5 @@ data class EsploraTransactionResponse(
     val fee: Long,
     val vin: List<EsploraVinResponse>,
     val vout: List<EsploraVoutResponse>,
-    val status: EsploraStatusResponse
+    val status: StatusResponse
 )

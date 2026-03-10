@@ -47,7 +47,7 @@ class GetBitcoinDetailUseCaseImpl @Inject constructor(
             } ?: wallet.bitcoinCoins.firstOrNull()
             ?: return Result.Error("Bitcoin not enabled")
 
-            // 3. Fetch fresh transactions from blockchain
+            // 3. Fetch fresh transactions from blockchain (now with walletId)
             val networkParam = when (bitcoinCoin.network) {
                 BitcoinNetwork.Mainnet -> BitcoinNetwork.Mainnet.name
                 BitcoinNetwork.Testnet -> BitcoinNetwork.Testnet.name
@@ -56,6 +56,7 @@ class GetBitcoinDetailUseCaseImpl @Inject constructor(
             logger.d(tag, "Using networkParam: $networkParam for ${bitcoinCoin.network}")
 
             val txResult = bitcoinBlockchainRepository.getAddressTransactions(
+                walletId = walletId,  // Added walletId parameter
                 address = bitcoinCoin.address,
                 network = bitcoinCoin.network
             )
@@ -67,14 +68,10 @@ class GetBitcoinDetailUseCaseImpl @Inject constructor(
                 bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, networkParam)
                 logger.d(tag, "Deleted old transactions for wallet $walletId, network $networkParam")
 
+                // Save transactions directly (they already have walletId set from repository)
                 txResult.data.forEachIndexed { index, tx ->
-                    val domainTx = tx.toDomain(
-                        walletId = walletId,
-                        isIncoming = tx.isIncoming,
-                        network = bitcoinCoin.network
-                    )
-                    bitcoinTransactionRepository.saveTransaction(domainTx)
-                    logger.d(tag, "Saved transaction $index: ${tx.txid.take(8)}... with network ${bitcoinCoin.network.name}")
+                    bitcoinTransactionRepository.saveTransaction(tx)
+                    logger.d(tag, "Saved transaction $index: ${tx.txHash?.take(8) ?: "unknown"} with network ${bitcoinCoin.network.name}")
                 }
                 logger.d(tag, "Synced ${txResult.data.size} transactions")
             }

@@ -67,6 +67,7 @@ class SyncBitcoinTransactionsUseCaseImpl @Inject constructor(
             logger.d(tag, "Syncing for ${bitcoinCoin.network}")
 
             when (val result = bitcoinBlockchainRepository.getAddressTransactions(
+                walletId = walletId,
                 address = bitcoinCoin.address,
                 network = bitcoinCoin.network
             )) {
@@ -80,13 +81,9 @@ class SyncBitcoinTransactionsUseCaseImpl @Inject constructor(
                     }
                     bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, networkParam)
 
+                    // Save transactions
                     transactions.forEach { tx ->
-                        val domainTx = tx.toDomain(
-                            walletId = walletId,
-                            isIncoming = tx.isIncoming,
-                            network = bitcoinCoin.network
-                        )
-                        bitcoinTransactionRepository.saveTransaction(domainTx)
+                        bitcoinTransactionRepository.saveTransaction(tx)
                         totalTransactions++
                     }
 

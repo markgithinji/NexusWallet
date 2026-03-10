@@ -7,7 +7,6 @@ import java.math.BigDecimal
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 
-
 interface BitcoinBlockchainRepository {
     suspend fun getBalance(
         address: String,
@@ -33,9 +32,10 @@ interface BitcoinBlockchainRepository {
 
 
     suspend fun getAddressTransactions(
+        walletId: String,
         address: String,
         network: BitcoinNetwork
-    ): Result<List<BitcoinTransactionDto>>
+    ): Result<List<BitcoinTransaction>>
 
 
     suspend fun createAndSignTransaction(

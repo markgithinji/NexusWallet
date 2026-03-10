@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.bitcoin.data
+package com.example.nexuswallet.feature.coin.bitcoin.domain.repository
 
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import kotlinx.coroutines.flow.Flow

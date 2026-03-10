@@ -1,9 +1,11 @@
 package com.example.nexuswallet.feature.coin.bitcoin.data
 
+import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionDto
 import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
 import com.example.nexuswallet.feature.coin.bitcoin.data.local.BitcoinTransactionEntity
+import com.example.nexuswallet.feature.coin.bitcoin.data.remote.model.EsploraTransactionResponse
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.toBitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
@@ -51,11 +53,15 @@ fun BitcoinTransaction.toEntity(): BitcoinTransactionEntity = BitcoinTransaction
     isIncoming = isIncoming
 )
 
-fun BitcoinTransactionDto.toDomain(
+fun EsploraTransactionResponse.toDomain(
     walletId: String,
+    fromAddress: String,
+    toAddress: String,
+    amount: Long,
     isIncoming: Boolean,
     network: BitcoinNetwork
 ): BitcoinTransaction {
+
     val btcAmount = BigDecimal(amount).divide(
         BigDecimal(100_000_000),
         8,
@@ -71,22 +77,23 @@ fun BitcoinTransactionDto.toDomain(
     } else "0"
 
     return BitcoinTransaction(
-        id = "btc_tx_${System.currentTimeMillis()}_${txid.take(8)}",
+        id = "${walletId}_${txid}_${System.currentTimeMillis()}",
         walletId = walletId,
+        coinType = CoinType.BITCOIN,
         fromAddress = fromAddress,
         toAddress = toAddress,
-        status = status,
-        timestamp = timestamp * 1000,
-        note = null,
-        feeLevel = FeeLevel.NORMAL,
         amountSatoshis = amount,
         amountBtc = btcAmount.toPlainString(),
         feeSatoshis = fee,
         feeBtc = feeBtc,
-        feePerByte = 0.0,
-        estimatedSize = 0,
-        signedHex = null,
+        feePerByte = if (size > 0) fee.toDouble() / size else 0.0,
+        estimatedSize = size.toLong() ?: 0,
+        signedHex = "",
         txHash = txid,
+        status = if (status.confirmed) TransactionStatus.SUCCESS else TransactionStatus.PENDING,
+        note = null,
+        timestamp = status.blockTime ?: (System.currentTimeMillis() / 1000),
+        feeLevel = FeeLevel.NORMAL,
         network = network,
         isIncoming = isIncoming
     )
