@@ -1,26 +1,26 @@
-package com.example.nexuswallet.feature.authentication.domain
+package com.example.nexuswallet.feature.authentication.domain.usecase
 
+import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.logging.Logger
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.example.nexuswallet.feature.coin.Result
 
 @Singleton
-class VerifyPinUseCaseImpl @Inject constructor(
+class VerifyPinUseCase @Inject constructor(
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger
-) : VerifyPinUseCase {
-
+) {
     private val tag = "VerifyPin"
 
-    override suspend fun invoke(pin: String): Result<Boolean> {
+    suspend operator fun invoke(pin: String): com.example.nexuswallet.feature.coin.Result<Boolean> {
         val startTime = System.currentTimeMillis()
 
         val storedHash = securityPreferencesRepository.getPinHash()
         if (storedHash == null) {
             logger.d(tag, "No PIN set")
-            return Result.Success(false)
+            return com.example.nexuswallet.feature.coin.Result.Success(false)
         }
 
         val isValid = verifyPinHash(pin, storedHash)
@@ -28,7 +28,7 @@ class VerifyPinUseCaseImpl @Inject constructor(
 
         if (isValid) {
             logger.d(tag, "PIN verified | duration=${duration}ms")
-            return Result.Success(true)
+            return com.example.nexuswallet.feature.coin.Result.Success(true)
         } else {
             logger.w(tag, "PIN verification failed | duration=${duration}ms")
             return Result.Success(false)
@@ -48,20 +48,4 @@ class VerifyPinUseCaseImpl @Inject constructor(
     }
 
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
-}
-
-@Singleton
-class RecordAuthenticationUseCaseImpl @Inject constructor(
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
-    private val logger: Logger
-) : RecordAuthenticationUseCase {
-
-    private val tag = "RecordAuth"
-
-    override suspend fun invoke(): Result<Unit> {
-        val timestamp = System.currentTimeMillis()
-        securityPreferencesRepository.saveLastAuthenticationTime(timestamp)
-        logger.d(tag, "Authentication recorded | timestamp=$timestamp")
-        return Result.Success(Unit)
-    }
 }

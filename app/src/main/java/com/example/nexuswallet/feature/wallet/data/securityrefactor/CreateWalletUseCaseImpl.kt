@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.wallet.data.securityrefactor
 
-import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
-import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
@@ -18,7 +18,6 @@ import com.example.nexuswallet.feature.wallet.domain.CreateWalletUseCase
 import com.example.nexuswallet.feature.wallet.domain.WalletLocalDataSource
 import org.bitcoinj.core.Address
 import org.bitcoinj.core.Context
-import org.bitcoinj.core.LegacyAddress
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
 import org.bitcoinj.script.Script

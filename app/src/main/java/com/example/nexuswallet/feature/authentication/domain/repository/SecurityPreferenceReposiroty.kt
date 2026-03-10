@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.authentication.domain
+package com.example.nexuswallet.feature.authentication.domain.repository
 
 interface SecurityPreferencesRepository {
     suspend fun storeEncryptedMnemonic(walletId: String, encryptedMnemonic: String, iv: ByteArray)

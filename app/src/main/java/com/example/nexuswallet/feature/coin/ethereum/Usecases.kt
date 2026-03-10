@@ -1,8 +1,7 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
-import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
-import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.coin.BroadcastResult
+import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.coin.SendValidationResult
@@ -35,7 +34,6 @@ import org.web3j.crypto.TransactionEncoder
 import org.web3j.utils.Numeric
 import java.math.BigDecimal
 import java.math.BigInteger
-import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Singleton
 @Singleton

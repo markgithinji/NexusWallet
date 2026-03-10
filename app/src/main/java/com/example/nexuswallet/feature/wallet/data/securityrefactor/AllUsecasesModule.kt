@@ -1,9 +1,9 @@
 package com.example.nexuswallet.feature.wallet.data.securityrefactor
 
-import com.example.nexuswallet.feature.authentication.domain.KeyStoreRepository
-import com.example.nexuswallet.feature.authentication.domain.RecordAuthenticationUseCase
+import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.authentication.domain.usecase.RecordAuthenticationUseCase
 import com.example.nexuswallet.feature.authentication.domain.RecordAuthenticationUseCaseImpl
-import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.data.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository

@@ -2,8 +2,8 @@ package com.example.nexuswallet.feature.authentication.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.authentication.domain.AuthType
-import com.example.nexuswallet.feature.authentication.domain.RecordAuthenticationUseCase
+import com.example.nexuswallet.feature.authentication.domain.model.AuthType
+import com.example.nexuswallet.feature.authentication.domain.usecase.RecordAuthenticationUseCase
 import com.example.nexuswallet.feature.authentication.domain.VerifyPinUseCase
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.settings.ui.IsBiometricEnabledUseCase
