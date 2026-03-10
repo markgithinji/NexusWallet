@@ -65,19 +65,28 @@ fun Navigation(
         when (screen) {
             "walletDetail" -> {
                 Log.d("Navigation", "Direct navigation to WalletDetailRoute - walletId: $walletId")
-                navController.navigate(WalletDetailRoute(walletId))
+                navController.navigate(WalletDetailRoute(walletId)) {
+                    // Pop up to the authentication screen and remove it
+                    popUpTo<AuthenticateRoute> { inclusive = true }
+                }
             }
             "send" -> {
                 Log.d("Navigation", "Direct navigation to SendRoute - walletId: $walletId")
-                navController.navigate(SendRoute(walletId, CoinType.BITCOIN))
+                navController.navigate(SendRoute(walletId, CoinType.BITCOIN)) {
+                    popUpTo<AuthenticateRoute> { inclusive = true }
+                }
             }
             "backup" -> {
                 Log.d("Navigation", "Direct navigation to BackupRoute - walletId: $walletId")
-                navController.navigate(BackupRoute(walletId))
+                navController.navigate(BackupRoute(walletId)) {
+                    popUpTo<AuthenticateRoute> { inclusive = true }
+                }
             }
             else -> {
                 Log.d("Navigation", "Direct navigation to MainRoute")
-                navController.navigate(MainRoute)
+                navController.navigate(MainRoute) {
+                    popUpTo<AuthenticateRoute> { inclusive = true }
+                }
             }
         }
     }
