@@ -40,7 +40,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
-import com.example.nexuswallet.feature.coin.bitcoin.ui.BitcoinReviewEffect
+import com.example.nexuswallet.feature.coin.bitcoin.ui.SendScreen.BitcoinReviewEffect
 import com.example.nexuswallet.feature.coin.bitcoin.ui.BitcoinReviewViewModel
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate

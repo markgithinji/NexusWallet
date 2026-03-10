@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.bitcoin.ui
+package com.example.nexuswallet.feature.coin.bitcoin.ui.SendScreen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
