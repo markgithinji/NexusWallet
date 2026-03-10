@@ -6,14 +6,11 @@ import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_INPUT_COUNT
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_OUTPUT_COUNT
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinWalletUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.PrepareBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.SendBitcoinUseCase
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -34,29 +31,8 @@ class BitcoinReviewViewModel @Inject constructor(
     private val sendBitcoinUseCase: SendBitcoinUseCase,
     private val getBitcoinWalletUseCase: GetBitcoinWalletUseCase,
     private val getBitcoinBalanceUseCase: GetBitcoinBalanceUseCase,
-    private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase,
-    private val logger: Logger
+    private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase
 ) : ViewModel() {
-
-    data class BitcoinReviewUiState(
-        val walletId: String = "",
-        val walletName: String = "",
-        val fromAddress: String = "",
-        val toAddress: String = "",
-        val amount: String = "",
-        val amountValue: BigDecimal = BigDecimal.ZERO,
-        val feeLevel: FeeLevel = FeeLevel.NORMAL,
-        val network: BitcoinNetwork = BitcoinNetwork.Testnet,
-        val balance: BigDecimal = BigDecimal.ZERO,
-        val balanceFormatted: String = "0 BTC",
-        val feeEstimate: BitcoinFeeEstimate? = null,
-        val isFeeLoading: Boolean = false,
-        val preparedTransaction: PreparedBitcoinTransaction? = null,
-        val transactionPrepared: Boolean = false,
-        val isLoading: Boolean = false,
-        val error: String? = null,
-        val step: String = ""
-    )
 
     private val _state = MutableStateFlow(BitcoinReviewUiState())
     val state: StateFlow<BitcoinReviewUiState> = _state.asStateFlow()
@@ -155,7 +131,6 @@ class BitcoinReviewViewModel @Inject constructor(
                         isLoading = false
                     )
                 }
-                logger.d("BitcoinReviewVM", "Fee estimate loaded: ${result.data.totalFeeBtc} BTC")
             }
 
             is Result.Error -> {

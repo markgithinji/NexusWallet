@@ -10,7 +10,6 @@ import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinBal
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinWalletUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.ValidateBitcoinTransactionUseCase
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
@@ -32,7 +31,6 @@ class BitcoinSendViewModel @Inject constructor(
     private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase,
     private val validateBitcoinTransactionUseCase: ValidateBitcoinTransactionUseCase,
     private val walletRepository: WalletRepository,
-    private val logger: Logger
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BtcSendUiState())
@@ -54,14 +52,14 @@ class BitcoinSendViewModel @Inject constructor(
     }
 
     private suspend fun initialize(walletId: String, network: BitcoinNetwork?) {
-        _state.update { it.copy(
-            walletId = walletId,
-            isLoading = true,
-            error = null,
-            isInitialized = false
-        ) }
-
-        logger.d("BitcoinSendVM", "init started for walletId: $walletId")
+        _state.update {
+            it.copy(
+                walletId = walletId,
+                isLoading = true,
+                error = null,
+                isInitialized = false
+            )
+        }
 
         wallet = walletRepository.getWallet(walletId)
 
@@ -123,6 +121,7 @@ class BitcoinSendViewModel @Inject constructor(
                 }
                 validateInputs()
             }
+
             is Result.Error -> handleError("Failed to load balance: ${result.message}")
             else -> {}
         }
@@ -138,6 +137,7 @@ class BitcoinSendViewModel @Inject constructor(
                 _state.update { it.copy(feeEstimate = result.data) }
                 validateInputs()
             }
+
             is Result.Error -> handleError("Failed to load fee: ${result.message}")
             else -> {}
         }
@@ -214,17 +214,15 @@ class BitcoinSendViewModel @Inject constructor(
                                 ?: validationResult.networkError
                                 ?: "Invalid transaction"
                         }
+
                         else -> null
                     }
                 )
             }
-
-            logger.d("BitcoinSendVM", "Validation result: isValid=${validationResult.isValid}")
         }
     }
 
     private fun handleError(message: String) {
-        logger.e("BitcoinSendVM", message)
         _state.update { it.copy(isLoading = false, error = message) }
     }
 
