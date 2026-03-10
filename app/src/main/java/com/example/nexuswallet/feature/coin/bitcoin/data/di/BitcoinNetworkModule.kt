@@ -1,6 +1,6 @@
-package com.example.nexuswallet.feature.coin.bitcoin.data.remote.di
+package com.example.nexuswallet.feature.coin.bitcoin.data.di
 
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.data.local.BitcoinTransactionDao
 import com.example.nexuswallet.feature.coin.bitcoin.data.remote.api.BitcoinApi
 import com.example.nexuswallet.feature.coin.bitcoin.data.remote.api.PlainTextConverterFactory
