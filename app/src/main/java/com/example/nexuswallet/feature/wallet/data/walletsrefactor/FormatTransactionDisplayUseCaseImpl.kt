@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.wallet.data.walletsrefactor
 
 import com.example.nexuswallet.feature.coin.CoinType
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction

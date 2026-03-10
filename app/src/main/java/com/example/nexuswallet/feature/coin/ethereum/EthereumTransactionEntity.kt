@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.local.WalletEntity
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import java.math.BigDecimal

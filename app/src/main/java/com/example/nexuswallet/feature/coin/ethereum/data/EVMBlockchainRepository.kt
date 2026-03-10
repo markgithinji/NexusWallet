@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.coin.ethereum.data
 
 import com.example.nexuswallet.feature.coin.BroadcastResult
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate
 import com.example.nexuswallet.feature.coin.ethereum.GasPrice
 import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction

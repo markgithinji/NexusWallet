@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 
 sealed class EthereumSendEvent {
     data class ToAddressChanged(val address: String) : EthereumSendEvent()

@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.coin.usdc
 //import androidx.lifecycle.ViewModel
 //import androidx.lifecycle.viewModelScope
 //import com.example.nexuswallet.feature.coin.Result
-//import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+//import com.example.nexuswallet.feature.coin.FeeLevel
 //import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 //import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
 //import com.example.nexuswallet.feature.coin.usdc.domain.GetUSDCBalanceUseCase

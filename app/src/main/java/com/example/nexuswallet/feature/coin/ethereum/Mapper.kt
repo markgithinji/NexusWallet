@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.usdc.domain.TokenTransactionResponse
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus

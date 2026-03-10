@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.coin.solana
 
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.serialization.SerialName

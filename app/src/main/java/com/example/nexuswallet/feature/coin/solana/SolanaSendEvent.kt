@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.coin.solana
 
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 
 
 sealed class SolanaSendEvent {

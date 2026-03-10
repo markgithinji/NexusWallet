@@ -1,10 +1,11 @@
-package com.example.nexuswallet.feature.coin.bitcoin
+package com.example.nexuswallet.feature.coin.bitcoin.domain.model
 
 import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.serialization.Serializable
-import java.math.BigDecimal
+
 @Serializable
 data class BitcoinTransaction(
     val id: String,

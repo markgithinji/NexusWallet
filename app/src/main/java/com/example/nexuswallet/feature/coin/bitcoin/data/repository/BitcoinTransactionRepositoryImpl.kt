@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.coin.bitcoin.data.repository
 
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.data.local.BitcoinTransactionDao
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.coin.bitcoin.data.toDomain

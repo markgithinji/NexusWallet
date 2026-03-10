@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.coin.usdc
 
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 
 import java.math.BigDecimal
 

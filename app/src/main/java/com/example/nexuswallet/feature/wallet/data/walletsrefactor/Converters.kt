@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.wallet.data.walletsrefactor
 
 import android.util.Log
 import androidx.room.TypeConverter
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.serialization.json.Json
 

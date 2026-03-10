@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.coin.bitcoin
 
+import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.SendValidationResult
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import java.math.BigDecimal

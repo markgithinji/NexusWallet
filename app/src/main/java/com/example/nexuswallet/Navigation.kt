@@ -20,7 +20,7 @@ import androidx.navigation.toRoute
 import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredScreen
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinSendScreen
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EthereumSendScreen
 import com.example.nexuswallet.feature.coin.solana.SolanaSendScreen
 import com.example.nexuswallet.feature.market.ui.MarketScreen

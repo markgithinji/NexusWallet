@@ -4,6 +4,13 @@ import com.example.nexuswallet.feature.authentication.domain.repository.KeyStore
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
+import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
+import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinWalletUseCase
+import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.SendBitcoinUseCase
+import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.SyncBitcoinTransactionsUseCase
+import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.ValidateBitcoinAddressUseCase
+import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.ValidateBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.Module
@@ -24,7 +31,7 @@ object BitcoinUseCaseModule {
         walletRepository: WalletRepository,
         logger: Logger
     ): SyncBitcoinTransactionsUseCase {
-        return SyncBitcoinTransactionsUseCaseImpl(
+        return SyncBitcoinTransactionsUseCase(
             bitcoinBlockchainRepository,
             bitcoinTransactionRepository,
             walletRepository,
@@ -58,7 +65,7 @@ object BitcoinUseCaseModule {
         walletRepository: WalletRepository,
         logger: Logger
     ): GetBitcoinWalletUseCase {
-        return GetBitcoinWalletUseCaseImpl(
+        return GetBitcoinWalletUseCase(
             walletRepository,
             logger
         )
@@ -74,7 +81,7 @@ object BitcoinUseCaseModule {
         securityPreferencesRepository: SecurityPreferencesRepository,
         logger: Logger
     ): SendBitcoinUseCase {
-        return SendBitcoinUseCaseImpl(
+        return SendBitcoinUseCase(
             walletRepository,
             bitcoinBlockchainRepository,
             bitcoinTransactionRepository,
@@ -90,7 +97,7 @@ object BitcoinUseCaseModule {
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
         logger: Logger
     ): GetBitcoinFeeEstimateUseCase {
-        return GetBitcoinFeeEstimateUseCaseImpl(
+        return GetBitcoinFeeEstimateUseCase(
             bitcoinBlockchainRepository,
             logger
         )
@@ -102,7 +109,7 @@ object BitcoinUseCaseModule {
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
         logger: Logger
     ): GetBitcoinBalanceUseCase {
-        return GetBitcoinBalanceUseCaseImpl(
+        return GetBitcoinBalanceUseCase(
             bitcoinBlockchainRepository,
             logger
         )
@@ -113,7 +120,7 @@ object BitcoinUseCaseModule {
     fun provideValidateBitcoinAddressUseCase(
         logger: Logger
     ): ValidateBitcoinAddressUseCase {
-        return ValidateBitcoinAddressUseCaseImpl(logger)
+        return ValidateBitcoinAddressUseCase(logger)
     }
 
     @Provides
@@ -122,6 +129,6 @@ object BitcoinUseCaseModule {
         logger: Logger,
         validateBitcoinAddressUseCase: ValidateBitcoinAddressUseCase
     ): ValidateBitcoinTransactionUseCase {
-        return ValidateBitcoinTransactionUseCaseImpl(validateBitcoinAddressUseCase,logger)
+        return ValidateBitcoinTransactionUseCase(validateBitcoinAddressUseCase,logger)
     }
 }

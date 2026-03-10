@@ -83,7 +83,7 @@ import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.SendValidationResult
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate
 import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken

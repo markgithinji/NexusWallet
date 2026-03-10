@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.coin.solana
 
 import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 import org.sol4k.Keypair
 import java.math.BigDecimal
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork

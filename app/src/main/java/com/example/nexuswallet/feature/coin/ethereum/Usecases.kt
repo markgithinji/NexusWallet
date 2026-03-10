@@ -5,7 +5,7 @@ import com.example.nexuswallet.feature.authentication.domain.repository.Security
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.coin.SendValidationResult
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger

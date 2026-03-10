@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.coin.ethereum
 
 import com.example.nexuswallet.feature.coin.BroadcastResult
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 import java.math.BigDecimal
 import com.example.nexuswallet.feature.coin.Result
 

@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.coin.ethereum
 
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SendValidationResult
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import kotlinx.coroutines.flow.Flow

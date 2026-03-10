@@ -1,9 +1,9 @@
 package com.example.nexuswallet.feature.coin.bitcoin.data
 
 import com.example.nexuswallet.feature.coin.CoinType
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionDto
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.bitcoin.data.local.BitcoinTransactionEntity
 import com.example.nexuswallet.feature.coin.bitcoin.data.remote.model.EsploraTransactionResponse
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork

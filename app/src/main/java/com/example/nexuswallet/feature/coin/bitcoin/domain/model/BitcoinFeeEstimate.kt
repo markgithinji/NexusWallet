@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.coin.bitcoin.domain.model
 
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
+import com.example.nexuswallet.feature.coin.FeeLevel
 
 data class BitcoinFeeEstimate(
     val feePerByte: Double,           // Satoshis per byte
