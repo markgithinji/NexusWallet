@@ -44,13 +44,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
+private const val PIN_MAX_LENGTH = 6
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PinEntryDialog(
     showDialog: Boolean,
     title: String = "Enter PIN",
     subtitle: String = "Enter your PIN to continue",
-    maxLength: Int = 6,
+    maxLength: Int = PIN_MAX_LENGTH,
     onPinEntered: (String) -> Unit,
     onDismiss: () -> Unit
 ) {

@@ -2,7 +2,6 @@ package com.example.nexuswallet.feature.authentication.data.util
 
 import java.io.IOException
 
-// Safe storage call helpers
 suspend inline fun <T> safeGet(
     defaultValue: T? = null,
     crossinline block: suspend () -> T?
