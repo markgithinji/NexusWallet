@@ -4,6 +4,7 @@ import com.example.nexuswallet.feature.authentication.domain.repository.KeyStore
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.BTC_PRIVATE_KEY_TYPE
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_INPUT_COUNT
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_OUTPUT_COUNT
@@ -26,9 +27,6 @@ import javax.inject.Singleton
 class PrepareBitcoinTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-    private val bitcoinTransactionRepository: BitcoinTransactionRepository,
-    private val keyStoreRepository: KeyStoreRepository,
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger
 ) {
 
@@ -72,7 +70,6 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
             is Result.Success -> {
                 val feeEstimate = feeResult.data
                 prepareTransaction(
-                    walletId = walletId,
                     bitcoinCoin = bitcoinCoin,
                     toAddress = toAddress,
                     amount = amount,
@@ -94,8 +91,7 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
         return@withContext result
     }
 
-    private suspend fun prepareTransaction(
-        walletId: String,
+    private fun prepareTransaction(
         bitcoinCoin: BitcoinCoin,
         toAddress: String,
         amount: BigDecimal,
@@ -107,26 +103,7 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
         // Generate a transaction ID
         val transactionId = "btc_tx_${System.currentTimeMillis()}"
 
-        logger.d(tag, "Transaction prepared (not saved): $transactionId")
-
-        // Check if private key exists (but don't use it yet)
-        val keyType = when (bitcoinCoin.network) {
-            BitcoinNetwork.Mainnet -> "BTC_MAINNET_PRIVATE_KEY"
-            BitcoinNetwork.Testnet -> "BTC_TESTNET_PRIVATE_KEY"
-        }
-
-        val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
-            walletId = walletId,
-            keyType = keyType
-        ) ?: securityPreferencesRepository.getEncryptedPrivateKey(
-            walletId = walletId,
-            keyType = BTC_PRIVATE_KEY_TYPE
-        )
-
-        if (encryptedData == null) {
-            logger.e(tag, "No private key found for wallet: $walletId")
-            return Result.Error("No private key found")
-        }
+        logger.d(tag, "Transaction prepared: $transactionId")
 
         // Return prepared transaction info with data needed for later signing
         return Result.Success(
