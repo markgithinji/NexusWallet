@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -141,46 +142,57 @@ fun WalletDashboardScreen(
         }
     }
 
-    when (val state = uiState) {
-        is Result.Loading -> LoadingScreen()
-
-        is Result.Error -> ErrorScreen(
-            message = state.message,
-            onRetry = { viewModel.refresh() }
-        )
-
-        is Result.Success -> {
-            if (state.data.isEmpty()) {
-                EmptyWalletsScreen(
-                    onCreateWallet = onNavigateToCreateWallet
-                )
-            } else {
-                Scaffold(
-                    topBar = {
-                        DashboardTopBar(
-                            onRefresh = {
-                                isRefreshing = true
-                                viewModel.refresh()
-                                isRefreshing = false
-                            },
-                            onCreateWallet = onNavigateToCreateWallet,
-                            isRefreshing = isRefreshing || isOperationLoading
-                        )
-                    },
-                    containerColor = Color.Transparent
-                ) { scaffoldPadding ->
+    Scaffold(
+        topBar = {
+            DashboardTopBar(
+                onRefresh = {
+                    isRefreshing = true
+                    viewModel.refresh()
+                    isRefreshing = false
+                },
+                onCreateWallet = onNavigateToCreateWallet,
+                isRefreshing = isRefreshing || isOperationLoading
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { scaffoldPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(scaffoldPadding)
+                .padding(padding)
+        ) {
+            when (val state = uiState) {
+                is Result.Loading -> {
+                    // Loading state
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(scaffoldPadding)
-                            .padding(padding)
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background)
-                        )
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                }
 
+                is Result.Error -> {
+                    // Error state
+                    EmptyWalletsContent(
+                        onCreateWallet = onNavigateToCreateWallet,
+                        isError = true,
+                        errorMessage = state.message,
+                        onRetry = {
+                            isRefreshing = true
+                            viewModel.refresh()
+                        }
+                    )
+                }
+
+                is Result.Success -> {
+                    if (state.data.isEmpty()) {
+                        EmptyWalletsContent(
+                            onCreateWallet = onNavigateToCreateWallet
+                        )
+                    } else {
+                        // Normal state with wallets
                         DashboardContent(
                             wallets = state.data,
                             totalPortfolio = totalPortfolio,
@@ -202,6 +214,41 @@ fun WalletDashboardScreen(
                                 viewModel.deleteWallet(walletId)
                             }
                         )
+                    }
+                }
+            }
+
+            // Loading overlay for operations
+            if (isOperationLoading && uiState is Result.Success && (uiState as Result.Success).data.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.3f))
+                        .clickable(enabled = false) {},
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Loading...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
             }
@@ -952,15 +999,17 @@ fun AnimatedPortfolioHeader(
 }
 
 @Composable
-fun EmptyWalletsScreen(
-    onCreateWallet: () -> Unit
+fun EmptyWalletsContent(
+    onCreateWallet: () -> Unit,
+    isError: Boolean = false,
+    errorMessage: String? = null,
+    onRetry: (() -> Unit)? = null
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        contentAlignment = Alignment.Center
     ) {
         Card(
             shape = RoundedCornerShape(20.dp),
@@ -968,48 +1017,134 @@ fun EmptyWalletsScreen(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             ),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(32.dp)
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = "No Wallets",
+                    imageVector = if (isError) Icons.Outlined.Error else Icons.Outlined.AccountBalanceWallet,
+                    contentDescription = if (isError) "Error" else "No Wallets",
                     modifier = Modifier.size(56.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "No Wallets Yet",
+                    text = if (isError) "Something went wrong" else "No Wallets Yet",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Create your first wallet to get started",
+                    text = if (isError && errorMessage != null)
+                        errorMessage
+                    else if (isError)
+                        "Failed to load wallets"
+                    else
+                        "Create your first wallet to get started",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = onCreateWallet,
+                    onClick = if (isError && onRetry != null) onRetry else onCreateWallet,
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
                     Text(
-                        "Create Wallet",
+                        if (isError) "Try Again" else "Create Wallet",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ErrorScreen(message: String, onRetry: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(0.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Error,
+                    contentDescription = "Error",
+                    modifier = Modifier.size(56.dp),
+                    tint = MaterialTheme.colorScheme.error
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Something went wrong",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = onRetry,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(
+                        "Try Again",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
@@ -1029,72 +1164,6 @@ fun LoadingScreen() {
             modifier = Modifier.size(40.dp),
             color = MaterialTheme.colorScheme.primary
         )
-    }
-}
-
-@Composable
-fun ErrorScreen(message: String, onRetry: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            elevation = CardDefaults.cardElevation(0.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Error,
-                    contentDescription = "Error",
-                    modifier = Modifier.size(42.dp),
-                    tint = MaterialTheme.colorScheme.error
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = "Something went wrong",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Button(
-                    onClick = onRetry,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text(
-                        "Try Again",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-            }
-        }
     }
 }
 
