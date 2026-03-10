@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.bitcoin.ui
+package com.example.nexuswallet.feature.coin.bitcoin.domain.di
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
@@ -21,7 +21,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object BitcoinUseCaseModule {
+object BitcoinUseDomainModule {
 
     @Provides
     @Singleton

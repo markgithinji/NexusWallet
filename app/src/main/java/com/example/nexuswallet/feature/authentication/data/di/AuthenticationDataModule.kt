@@ -20,7 +20,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object AuthModule {
+object AuthenticationDataModule {
     @Provides
     @Singleton
     fun provideKeyStoreRepository(
