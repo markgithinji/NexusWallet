@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.usdc.domain
+package com.example.nexuswallet.feature.usdc.domain
 
 import kotlinx.serialization.Serializable
 
@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 data class EtherscanTokenTransfersResponse(
     val status: String,
     val message: String,
-    val result: List<TokenTransactionResponse>
+    val result: List<com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse>
 )
 
 @Serializable

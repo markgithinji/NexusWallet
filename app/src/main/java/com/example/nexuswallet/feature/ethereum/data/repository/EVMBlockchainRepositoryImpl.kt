@@ -16,7 +16,7 @@ import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockc
 import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
 import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
 import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.USDT_GAS_LIMIT
-import com.example.nexuswallet.feature.coin.usdc.Web3jFactory
+import com.example.nexuswallet.feature.usdc.Web3jFactory
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TokenType
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +44,7 @@ import javax.inject.Singleton
 @Singleton
 class EVMBlockchainRepositoryImpl @Inject constructor(
     private val etherscanApi: EtherscanApiService,
-    private val web3jFactory: Web3jFactory
+    private val web3jFactory: com.example.nexuswallet.feature.usdc.Web3jFactory
 ) : EVMBlockchainRepository {
 
     // Gas price cache - stores gas price per network with timestamp

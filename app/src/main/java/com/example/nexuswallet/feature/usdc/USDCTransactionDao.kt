@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.usdc
+package com.example.nexuswallet.feature.usdc
 
 import androidx.room.Dao
 import androidx.room.Insert

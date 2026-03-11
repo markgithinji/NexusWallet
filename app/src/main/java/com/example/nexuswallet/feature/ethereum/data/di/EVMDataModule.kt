@@ -7,7 +7,7 @@ import com.example.nexuswallet.feature.ethereum.data.repository.EVMBlockchainRep
 import com.example.nexuswallet.feature.ethereum.data.repository.EVMTransactionRepositoryImpl
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
-import com.example.nexuswallet.feature.coin.usdc.Web3jFactory
+import com.example.nexuswallet.feature.usdc.Web3jFactory
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import dagger.Module
 import dagger.Provides
@@ -87,7 +87,7 @@ object EVMDataModule {
     @Singleton
     fun provideEVMBlockchainRepository(
         etherscanApiService: EtherscanApiService,
-        web3jFactory: Web3jFactory
+        web3jFactory: com.example.nexuswallet.feature.usdc.Web3jFactory
     ): EVMBlockchainRepository {
         return EVMBlockchainRepositoryImpl(
             etherscanApi = etherscanApiService,

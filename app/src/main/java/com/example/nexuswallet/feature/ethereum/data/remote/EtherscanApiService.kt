@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.ethereum.data.remote
 
 import com.example.nexuswallet.feature.coin.ethereum.data.remote.model.EtherscanBroadcastResponse
 import com.example.nexuswallet.feature.coin.ethereum.data.remote.model.EtherscanTransactionsResponse
-import com.example.nexuswallet.feature.coin.usdc.domain.EtherscanTokenTransfersResponse
+import com.example.nexuswallet.feature.usdc.domain.EtherscanTokenTransfersResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 
@@ -36,5 +36,5 @@ interface EtherscanApiService {
         @Query("address") address: String,
         @Query("contractaddress") contractAddress: String,
         @Query("sort") sort: String = "desc"
-    ): EtherscanTokenTransfersResponse
+    ): com.example.nexuswallet.feature.usdc.domain.EtherscanTokenTransfersResponse
 }

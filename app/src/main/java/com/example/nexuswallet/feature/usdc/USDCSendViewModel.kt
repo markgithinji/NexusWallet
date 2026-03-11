@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.usdc
+package com.example.nexuswallet.feature.usdc
 //
 //import androidx.lifecycle.ViewModel
 //import androidx.lifecycle.viewModelScope

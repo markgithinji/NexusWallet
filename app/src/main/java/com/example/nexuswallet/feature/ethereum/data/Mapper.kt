@@ -6,7 +6,7 @@ import com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTrans
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction
 import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
-import com.example.nexuswallet.feature.coin.usdc.domain.TokenTransactionResponse
+import com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse
 import com.example.nexuswallet.feature.ethereum.data.toNativeETHTransaction
 import com.example.nexuswallet.feature.ethereum.data.toTokenTransaction
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
@@ -98,7 +98,7 @@ fun List<com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTra
 /**
  * Maps token transaction to domain model
  */
-fun TokenTransactionResponse.toTokenTransaction(
+fun com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse.toTokenTransaction(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,
@@ -159,7 +159,7 @@ fun TokenTransactionResponse.toTokenTransaction(
 /**
  * Maps list of token transactions to domain models
  */
-fun List<TokenTransactionResponse>.toTokenTransactionList(
+fun List<com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse>.toTokenTransactionList(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,

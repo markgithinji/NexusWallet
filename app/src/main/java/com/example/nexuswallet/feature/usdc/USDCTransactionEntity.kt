@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.usdc
+package com.example.nexuswallet.feature.usdc
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

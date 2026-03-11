@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.usdc
+package com.example.nexuswallet.feature.usdc
 
 //import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCase
 //import com.example.nexuswallet.feature.coin.usdc.domain.GetETHBalanceForGasUseCaseImpl

@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.usdc.domain
+package com.example.nexuswallet.feature.usdc.domain
 
 import kotlinx.coroutines.flow.Flow
 //
