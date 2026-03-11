@@ -1,10 +1,10 @@
-package com.example.nexuswallet.feature.coin.solana
+package com.example.nexuswallet.feature.coin.solana.data.remote
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class HeliusTransaction(
+data class HeliusTransactionResponse(
     val description: String,
     val type: String,
     val source: String,
@@ -13,24 +13,24 @@ data class HeliusTransaction(
     val signature: String,
     val slot: Long,
     val timestamp: Long,
-    val tokenTransfers: List<HeliusTokenTransfer> = emptyList(),
-    val nativeTransfers: List<HeliusNativeTransfer> = emptyList(),
-    val accountData: List<HeliusAccountData> = emptyList(),
+    val tokenTransfers: List<HeliusTokenTransferResponse> = emptyList(),
+    val nativeTransfers: List<HeliusNativeTransferResponse> = emptyList(),
+    val accountData: List<HeliusAccountDataResponse> = emptyList(),
     val transactionError: String? = null,
-    val instructions: List<HeliusInstruction> = emptyList(),
+    val instructions: List<HeliusInstructionResponse> = emptyList(),
     @SerialName("lighthouseData") val lighthouseData: String? = null,
-    val events: HeliusEvents? = null
+    val events: HeliusEventsResponse? = null
 )
 
 @Serializable
-data class HeliusNativeTransfer(
+data class HeliusNativeTransferResponse(
     val fromUserAccount: String,
     val toUserAccount: String,
     val amount: Long
 )
 
 @Serializable
-data class HeliusTokenTransfer(
+data class HeliusTokenTransferResponse(
     val fromUserAccount: String,
     val toUserAccount: String,
     val fromTokenAccount: String,
@@ -40,82 +40,82 @@ data class HeliusTokenTransfer(
 )
 
 @Serializable
-data class HeliusAccountData(
+data class HeliusAccountDataResponse(
     val account: String,
     val nativeBalanceChange: Long,
-    val tokenBalanceChanges: List<HeliusTokenBalanceChange> = emptyList()
+    val tokenBalanceChanges: List<HeliusTokenBalanceChangeResponse> = emptyList()
 )
 
 @Serializable
-data class HeliusTokenBalanceChange(
+data class HeliusTokenBalanceChangeResponse(
     val mint: String,
-    val rawTokenAmount: HeliusRawTokenAmount,
+    val rawTokenAmount: HeliusRawTokenAmountResponse,
     val tokenAccount: String
 )
 
 @Serializable
-data class HeliusRawTokenAmount(
+data class HeliusRawTokenAmountResponse(
     val tokenAmount: String,
     val decimals: Int
 )
 
 @Serializable
-data class HeliusInstruction(
+data class HeliusInstructionResponse(
     val accounts: List<String>,
     val data: String,
     val programId: String,
-    val innerInstructions: List<HeliusInnerInstruction> = emptyList()
+    val innerInstructions: List<HeliusInnerInstructionResponse> = emptyList()
 )
 
 @Serializable
-data class HeliusInnerInstruction(
+data class HeliusInnerInstructionResponse(
     val accounts: List<String>,
     val data: String,
     val programId: String
 )
 
 @Serializable
-data class HeliusEvents(
-    val nft: HeliusNFTEvent? = null,
-    val swap: HeliusSwapEvent? = null
+data class HeliusEventsResponse(
+    val nft: HeliusNFTEventResponse? = null,
+    val swap: HeliusSwapEventResponse? = null
 )
 
 @Serializable
-data class HeliusNFTEvent(
-    val nfts: List<HeliusNFT>,
+data class HeliusNFTEventResponse(
+    val nfts: List<HeliusNFTResponse>,
     val type: String,
     val seller: String? = null,
     val buyer: String? = null
 )
 
 @Serializable
-data class HeliusNFT(
+data class HeliusNFTResponse(
     val mint: String,
     val amount: Int
 )
 
 @Serializable
-data class HeliusSwapEvent(
-    val nativeInput: HeliusNativeInput? = null,
-    val nativeOutput: HeliusNativeOutput? = null,
-    val tokenInputs: List<HeliusTokenInput> = emptyList(),
-    val tokenOutputs: List<HeliusTokenOutput> = emptyList()
+data class HeliusSwapEventResponse(
+    val nativeInput: HeliusNativeInputResponse? = null,
+    val nativeOutput: HeliusNativeOutputResponse? = null,
+    val tokenInputs: List<HeliusTokenInputResponse> = emptyList(),
+    val tokenOutputs: List<HeliusTokenOutputResponse> = emptyList()
 )
 
 @Serializable
-data class HeliusNativeInput(
+data class HeliusNativeInputResponse(
     val account: String,
     val amount: Long
 )
 
 @Serializable
-data class HeliusNativeOutput(
+data class HeliusNativeOutputResponse(
     val account: String,
     val amount: Long
 )
 
 @Serializable
-data class HeliusTokenInput(
+data class HeliusTokenInputResponse(
     val fromUserAccount: String,
     val mint: String,
     val tokenAmount: Double,
@@ -123,7 +123,7 @@ data class HeliusTokenInput(
 )
 
 @Serializable
-data class HeliusTokenOutput(
+data class HeliusTokenOutputResponse(
     val toUserAccount: String,
     val mint: String,
     val tokenAmount: Double,
