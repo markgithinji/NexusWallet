@@ -30,7 +30,7 @@ class GetSolanaWalletUseCase @Inject constructor(
         val solanaCoin = if (network != null) {
             wallet.solanaCoins.find { it.network == network }
         } else {
-            // Otherwise get the first one (usually Mainnet)
+            // Otherwise get the first one
             wallet.solanaCoins.firstOrNull()
         }
 

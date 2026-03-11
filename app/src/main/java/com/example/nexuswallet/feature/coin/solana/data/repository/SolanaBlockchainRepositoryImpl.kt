@@ -4,13 +4,14 @@ import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
-import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
-import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
-import com.example.nexuswallet.feature.coin.solana.TransferInfo
 import com.example.nexuswallet.feature.coin.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.coin.solana.data.remote.HeliusApi
 import com.example.nexuswallet.feature.coin.solana.data.remote.HeliusTransactionRequest
 import com.example.nexuswallet.feature.coin.solana.data.remote.HeliusTransactionResponse
+import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaFeeEstimate
+import com.example.nexuswallet.feature.coin.solana.domain.model.TransferInfo
+import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.coin.solana.util.SolanaConstants.LAMPORTS_PER_SOL
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -300,7 +301,6 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     }
 
     companion object {
-        private const val LAMPORTS_PER_SOL = 1_000_000_000L
         private const val SOLANA_FIXED_FEE_LAMPORTS = 5000L
         private const val SOL_DECIMALS = 9
         private const val MICRO_LAMPORTS_PER_LAMPORT = 1_000_000L

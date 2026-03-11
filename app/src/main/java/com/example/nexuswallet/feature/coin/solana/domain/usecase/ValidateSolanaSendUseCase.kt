@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.coin.solana.domain.usecase
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SendValidationResult
 import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaFeeEstimate
+import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger
 import java.math.BigDecimal
 import javax.inject.Inject
@@ -10,7 +11,7 @@ import javax.inject.Singleton
 
 @Singleton
 class ValidateSolanaSendUseCase @Inject constructor(
-    private val validateSolanaAddressUseCase: ValidateSolanaAddressUseCase,
+    private val solanaBlockchainRepository: SolanaBlockchainRepository,
     private val logger: Logger
 ) {
 
@@ -34,7 +35,7 @@ class ValidateSolanaSendUseCase @Inject constructor(
         }
 
         // Validate address format
-        val addressValid = validateSolanaAddressUseCase(toAddress)
+        val addressValid = solanaBlockchainRepository.validateAddress(toAddress)
         if (addressValid is Result.Error || addressValid is Result.Success && !addressValid.data) {
             logger.w(tag, "Invalid address format")
             return SendValidationResult(

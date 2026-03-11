@@ -11,11 +11,14 @@ import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaFeeEstimat
 import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
+import com.example.nexuswallet.feature.coin.solana.util.SolanaConstants.LAMPORTS_PER_SOL
+import com.example.nexuswallet.feature.coin.solana.util.SolanaConstants.SOLANA_PRIVATE_KEY_TYPE
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
+import com.example.nexuswallet.toHex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.sol4k.Keypair
@@ -70,38 +73,12 @@ class SendSolanaUseCase @Inject constructor(
         val lamports = amount.multiply(BigDecimal(LAMPORTS_PER_SOL)).toLong()
 
         // 2. Get private key
-        val keyType = when (network) {
-            SolanaNetwork.Mainnet -> "SOL_MAINNET_PRIVATE_KEY"
-            SolanaNetwork.Devnet -> "SOL_DEVNET_PRIVATE_KEY"
-        }
+        logger.d(tag, "Looking for key with type: ${SOLANA_PRIVATE_KEY_TYPE}")
 
-        logger.d(tag, "Looking for key with type: $keyType")
-
-        var encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
+        val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
             walletId = walletId,
-            keyType = keyType
+            keyType = SOLANA_PRIVATE_KEY_TYPE
         )
-
-        // Try fallback key types if not found
-        if (encryptedData == null) {
-            val fallbackKeys = listOf(
-                "SOLANA_PRIVATE_KEY",
-                "SOLANA_MAINNET_PRIVATE_KEY",
-                "SOLANA_DEVNET_PRIVATE_KEY"
-            )
-
-            for (fallbackKey in fallbackKeys) {
-                logger.d(tag, "Trying fallback key type: $fallbackKey")
-                encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
-                    walletId = walletId,
-                    keyType = fallbackKey
-                )
-                if (encryptedData != null) {
-                    logger.d(tag, "Found key with fallback type: $fallbackKey")
-                    break
-                }
-            }
-        }
 
         if (encryptedData == null) {
             logger.e(tag, "No private key found for wallet: $walletId")
@@ -162,7 +139,7 @@ class SendSolanaUseCase @Inject constructor(
             logger.d(
                 tag,
                 "Transaction saved after successful broadcast: ${transaction.id} with signature ${
-                    signedTx.signature?.take(8)
+                    signedTx.signature.take(SIGNATURE_PREVIEW_LENGTH)
                 }..."
             )
         } else {
@@ -170,7 +147,7 @@ class SendSolanaUseCase @Inject constructor(
         }
 
         val sendResult = SendSolanaResult(
-            transactionId = "sol_tx_${System.currentTimeMillis()}", // Generate ID even if failed for UI feedback
+            transactionId = "sol_tx_${System.currentTimeMillis()}",
             txHash = signedTx.signature ?: "",
             success = broadcastResult.success,
             error = broadcastResult.error
@@ -179,7 +156,7 @@ class SendSolanaUseCase @Inject constructor(
         if (sendResult.success) {
             logger.d(
                 tag,
-                "Send successful on $network: tx ${sendResult.txHash.take(8)}..."
+                "Send successful on $network: tx ${sendResult.txHash.take(SIGNATURE_PREVIEW_LENGTH)}..."
             )
         } else {
             logger.e(tag, "Send failed on $network: ${sendResult.error}")
@@ -249,15 +226,15 @@ class SendSolanaUseCase @Inject constructor(
     }
 
     private fun createSolanaKeypair(privateKeyHex: String): Keypair? = try {
-        val cleanPrivateKeyHex = if (privateKeyHex.startsWith("0x")) {
-            privateKeyHex.substring(2)
+        val cleanPrivateKeyHex = if (privateKeyHex.startsWith(HEX_PREFIX)) {
+            privateKeyHex.substring(HEX_PREFIX.length)
         } else {
             privateKeyHex
         }
         val privateKeyBytes = cleanPrivateKeyHex.hexToByteArray()
         when (privateKeyBytes.size) {
-            64 -> Keypair.fromSecretKey(privateKeyBytes)
-            32 -> Keypair.fromSecretKey(privateKeyBytes + ByteArray(32))
+            KEYPAIR_64_BYTES -> Keypair.fromSecretKey(privateKeyBytes)
+            KEYPAIR_32_BYTES -> Keypair.fromSecretKey(privateKeyBytes + ByteArray(KEYPAIR_32_BYTES))
             else -> null
         }
     } catch (e: Exception) {
@@ -265,13 +242,10 @@ class SendSolanaUseCase @Inject constructor(
         null
     }
 
-    private fun String.hexToByteArray(): ByteArray {
-        return chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-    }
-
-    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
-
-    companion object {
-        private const val LAMPORTS_PER_SOL = 1_000_000_000L
+    companion object{
+        private const val SIGNATURE_PREVIEW_LENGTH = 8
+        private const val HEX_PREFIX = "0x"
+        private const val KEYPAIR_64_BYTES = 64
+        private const val KEYPAIR_32_BYTES = 32
     }
 }
