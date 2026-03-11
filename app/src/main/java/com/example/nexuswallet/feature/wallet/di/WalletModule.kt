@@ -7,7 +7,6 @@ import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlock
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.dao.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
-import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSourceImpl
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepositoryImpl
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoinDao
