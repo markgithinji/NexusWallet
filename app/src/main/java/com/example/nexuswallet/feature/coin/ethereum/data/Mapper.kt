@@ -3,6 +3,9 @@ package com.example.nexuswallet.feature.coin.ethereum.data
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.data.local.EVMTransactionEntity
 import com.example.nexuswallet.feature.coin.ethereum.data.remote.model.EtherscanTransactionResponse
+import com.example.nexuswallet.feature.coin.ethereum.domain.model.EVMTransaction
+import com.example.nexuswallet.feature.coin.ethereum.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.coin.ethereum.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.coin.usdc.domain.TokenTransactionResponse
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
@@ -226,10 +229,12 @@ fun EVMTransactionEntity.toDomain(): EVMTransaction {
             tokenSymbol = tokenSymbol!!,
             tokenDecimals = tokenDecimals!!,
             data = data,
-            tokenExternalId = tokenExternalId ?: throw IllegalStateException("Token transaction missing tokenExternalId")
+            tokenExternalId = tokenExternalId
+                ?: throw IllegalStateException("Token transaction missing tokenExternalId")
         )
     }
 }
+
 fun EVMTransaction.toEntity(): EVMTransactionEntity {
     return when (this) {
         is NativeETHTransaction -> EVMTransactionEntity(

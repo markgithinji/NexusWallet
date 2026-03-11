@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.coin.ethereum.domain.usecase
 
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.ethereum.EVMTransaction
+import com.example.nexuswallet.feature.coin.ethereum.domain.model.EVMTransaction
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import javax.inject.Inject

@@ -5,9 +5,9 @@ import com.example.nexuswallet.feature.authentication.domain.repository.Security
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
-import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
-import com.example.nexuswallet.feature.coin.ethereum.SendEthereumResult
-import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
+import com.example.nexuswallet.feature.coin.ethereum.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.coin.ethereum.domain.model.SendEthereumResult
+import com.example.nexuswallet.feature.coin.ethereum.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
@@ -223,8 +223,6 @@ class SendEVMAssetUseCase @Inject constructor(
                                     )
                                     FunctionEncoder.encode(function)
                                 }
-
-                                else -> ""
                             },
                             tokenExternalId = token.externalId
                         )
