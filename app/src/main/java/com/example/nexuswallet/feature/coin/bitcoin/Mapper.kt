@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.ethereum
+package com.example.nexuswallet.feature.coin.bitcoin
 
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.data.local.EVMTransactionEntity

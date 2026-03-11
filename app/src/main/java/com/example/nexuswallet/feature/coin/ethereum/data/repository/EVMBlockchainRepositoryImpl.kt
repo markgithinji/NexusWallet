@@ -10,8 +10,8 @@ import com.example.nexuswallet.feature.coin.ethereum.GasPrice
 import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.toNativeETHTransactionList
-import com.example.nexuswallet.feature.coin.ethereum.toTokenTransactionList
+import com.example.nexuswallet.feature.coin.bitcoin.toNativeETHTransactionList
+import com.example.nexuswallet.feature.coin.bitcoin.toTokenTransactionList
 import com.example.nexuswallet.feature.coin.usdc.Web3jFactory
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TokenType
