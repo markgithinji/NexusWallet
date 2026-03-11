@@ -80,8 +80,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.coin.NetworkType
-import com.example.nexuswallet.feature.coin.SendValidationResult
+import com.example.nexuswallet.feature.core.domain.model.NetworkType
+import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate

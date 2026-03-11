@@ -1,7 +1,7 @@
 package com.example.nexuswallet
 
 import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.coin.NetworkType
+import com.example.nexuswallet.feature.core.domain.model.NetworkType
 import kotlinx.serialization.Serializable
 
 @Serializable

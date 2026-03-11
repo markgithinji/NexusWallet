@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin
+package com.example.nexuswallet.feature.core.domain.model
 
 // Common validation result for all coin types
 data class SendValidationResult(

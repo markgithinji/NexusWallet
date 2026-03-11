@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.ethereum.ui
 
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.coin.SendValidationResult
+import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork

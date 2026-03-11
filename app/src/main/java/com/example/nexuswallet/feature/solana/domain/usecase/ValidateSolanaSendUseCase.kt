@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.solana.domain.usecase
 
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.SendValidationResult
+import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger

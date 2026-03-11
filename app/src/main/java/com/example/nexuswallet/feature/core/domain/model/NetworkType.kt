@@ -1,6 +1,4 @@
-package com.example.nexuswallet.feature.coin
-
-import com.example.nexuswallet.feature.core.domain.model.CoinType
+package com.example.nexuswallet.feature.core.domain.model
 
 enum class NetworkType(val displayName: String, val apiValue: String) {
     BITCOIN_MAINNET("Bitcoin Mainnet", "mainnet"),
