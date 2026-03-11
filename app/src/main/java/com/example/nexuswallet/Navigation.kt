@@ -21,7 +21,7 @@ import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredS
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.bitcoin.ui.send.BitcoinSendScreen
 import com.example.nexuswallet.feature.coin.FeeLevel
-import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendScreen
+import com.example.nexuswallet.feature.ethereum.ui.EthereumSendScreen
 import com.example.nexuswallet.feature.coin.solana.ui.SolanaSendScreen
 import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
@@ -363,7 +363,7 @@ fun Navigation(
                     )
                 }
                 CoinType.ETHEREUM, CoinType.USDC -> {
-                    EthereumSendScreen(
+                    _root_ide_package_.com.example.nexuswallet.feature.ethereum.ui.EthereumSendScreen(
                         onNavigateUp = {
                             Log.d("Navigation", "EthereumSendScreen: navigate up")
                             navController.navigateUp()
