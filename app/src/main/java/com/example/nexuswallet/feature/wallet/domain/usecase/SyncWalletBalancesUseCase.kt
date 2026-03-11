@@ -19,7 +19,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
-import com.example.nexuswallet.feature.wallet.domain.WalletDataSource
+import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject

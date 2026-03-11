@@ -22,7 +22,6 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLTokenDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoinDao
 import com.example.nexuswallet.feature.wallet.domain.SyncWalletBalancesUseCaseImpl
-import com.example.nexuswallet.feature.wallet.domain.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.Module
 import dagger.Provides

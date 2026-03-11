@@ -12,7 +12,7 @@ import com.example.nexuswallet.feature.wallet.data.securityrefactor.GenerateMnem
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.ValidateMnemonicUseCase
 import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUseCaseImpl
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetTransactionDetailUseCase
-import com.example.nexuswallet.feature.wallet.domain.WalletDataSource
+import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetBitcoinDetailUseCase

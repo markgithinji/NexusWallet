@@ -8,7 +8,7 @@ import com.example.nexuswallet.feature.wallet.data.local.dao.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.mapper.toDomain
 import com.example.nexuswallet.feature.wallet.data.local.mapper.toEntity
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
-import com.example.nexuswallet.feature.wallet.domain.WalletDataSource
+import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
