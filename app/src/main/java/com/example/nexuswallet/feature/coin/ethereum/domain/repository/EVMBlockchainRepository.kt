@@ -1,17 +1,17 @@
-package com.example.nexuswallet.feature.coin.ethereum.data
+package com.example.nexuswallet.feature.coin.ethereum.domain.repository
 
 import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.FeeLevel
-import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate
-import com.example.nexuswallet.feature.coin.ethereum.GasPrice
-import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
-import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
+import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.ethereum.data.model.GasPrice
+import com.example.nexuswallet.feature.coin.ethereum.domain.model.EVMFeeEstimate
+import com.example.nexuswallet.feature.coin.ethereum.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.coin.ethereum.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TokenType
 import org.web3j.crypto.RawTransaction
 import java.math.BigDecimal
 import java.math.BigInteger
-import com.example.nexuswallet.feature.coin.Result
 
 interface EVMBlockchainRepository {
     suspend fun getNativeBalance(

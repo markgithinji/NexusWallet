@@ -8,8 +8,8 @@ import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.SendEthereumResult
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.ERC20Token
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken

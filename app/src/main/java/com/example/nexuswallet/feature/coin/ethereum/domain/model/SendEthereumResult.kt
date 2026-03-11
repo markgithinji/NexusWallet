@@ -8,4 +8,4 @@ data class SendEthereumResult(
     val txHash: String,
     val success: Boolean,
     val error: String? = null
-)}
+)

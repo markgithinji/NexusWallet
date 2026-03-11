@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.coin.ethereum.domain.usecase
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SendValidationResult
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH

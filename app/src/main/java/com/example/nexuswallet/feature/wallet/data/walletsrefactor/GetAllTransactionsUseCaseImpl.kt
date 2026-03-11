@@ -6,8 +6,8 @@ import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransact
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.EVMTransaction
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
 import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository

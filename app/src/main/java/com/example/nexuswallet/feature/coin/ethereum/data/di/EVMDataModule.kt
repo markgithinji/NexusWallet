@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.coin.ethereum.data.di
 
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.data.local.EVMTransactionDao
 import com.example.nexuswallet.feature.coin.ethereum.data.remote.EtherscanApiService
 import com.example.nexuswallet.feature.coin.ethereum.data.repository.EVMBlockchainRepositoryImpl

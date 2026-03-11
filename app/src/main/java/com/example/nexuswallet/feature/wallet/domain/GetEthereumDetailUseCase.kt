@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.wallet.domain
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
@@ -13,7 +13,7 @@ import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
 
 interface GetEthereumDetailUseCase {

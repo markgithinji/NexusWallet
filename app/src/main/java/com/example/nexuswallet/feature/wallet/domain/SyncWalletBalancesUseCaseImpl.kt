@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.wallet.domain
 
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalance
@@ -16,7 +16,6 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalance
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SyncWalletBalancesUseCase
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TokenType
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet

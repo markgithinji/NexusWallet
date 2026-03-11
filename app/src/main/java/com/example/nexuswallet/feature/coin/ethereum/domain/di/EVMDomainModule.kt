@@ -2,8 +2,8 @@ package com.example.nexuswallet.feature.coin.ethereum.domain.di
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetEthereumWalletUseCase
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetPendingTransactionsUseCase
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetTransactionUseCase

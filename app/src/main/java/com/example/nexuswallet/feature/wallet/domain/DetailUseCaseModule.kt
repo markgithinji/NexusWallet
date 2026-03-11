@@ -2,8 +2,8 @@ package com.example.nexuswallet.feature.wallet.domain
 
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
@@ -11,13 +11,6 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Retrofit
-import retrofit2.converter.kotlinx.serialization.asConverterFactory
-import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module

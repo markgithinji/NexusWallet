@@ -4,24 +4,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.CoinType
-import com.example.nexuswallet.feature.coin.NetworkType
-import com.example.nexuswallet.feature.coin.bitcoin.SyncBitcoinTransactionsUseCase
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
-import com.example.nexuswallet.feature.coin.ethereum.SyncEthereumTransactionsUseCase
-import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
-import com.example.nexuswallet.feature.coin.solana.SyncSolanaTransactionsUseCase
-import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.domain.BitcoinDetailResult
 import com.example.nexuswallet.feature.wallet.domain.EthereumDetailResult
 import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUseCase
@@ -29,8 +15,6 @@ import com.example.nexuswallet.feature.wallet.domain.GetBitcoinDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.GetEthereumDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.GetSolanaDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.SolanaDetailResult
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,12 +22,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
-import java.text.NumberFormat
-import java.util.Locale
 import javax.inject.Inject
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
 
 @HiltViewModel
 class CoinDetailViewModel @Inject constructor(

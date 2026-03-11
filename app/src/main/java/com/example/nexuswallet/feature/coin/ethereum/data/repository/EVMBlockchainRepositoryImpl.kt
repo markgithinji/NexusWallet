@@ -4,14 +4,14 @@ import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
-import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.data.model.GasPrice
 import com.example.nexuswallet.feature.coin.ethereum.data.remote.EtherscanApiService
-import com.example.nexuswallet.feature.coin.ethereum.GasPrice
-import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
-import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
-import com.example.nexuswallet.feature.coin.bitcoin.toNativeETHTransactionList
-import com.example.nexuswallet.feature.coin.bitcoin.toTokenTransactionList
+import com.example.nexuswallet.feature.coin.ethereum.data.toNativeETHTransactionList
+import com.example.nexuswallet.feature.coin.ethereum.data.toTokenTransactionList
+import com.example.nexuswallet.feature.coin.ethereum.domain.model.EVMFeeEstimate
+import com.example.nexuswallet.feature.coin.ethereum.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.coin.ethereum.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.coin.usdc.Web3jFactory
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TokenType
@@ -456,6 +456,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         private const val WEI_PER_ETH = "1000000000000000000"
         private const val ETH_DECIMALS = 18
         private const val GWEI_TO_WEI = 1_000_000_000L
+
         // Price multipliers
         private val SLOW_PRICE_MULTIPLIER = BigDecimal("0.9")
         private val FAST_PRICE_MULTIPLIER = BigDecimal("1.2")

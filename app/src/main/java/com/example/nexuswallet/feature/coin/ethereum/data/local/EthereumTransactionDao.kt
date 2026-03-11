@@ -5,8 +5,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.example.nexuswallet.feature.coin.ethereum.EVMTransactionEntity
 import kotlinx.coroutines.flow.Flow
+
 @Dao
 interface EVMTransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -22,10 +22,16 @@ interface EVMTransactionDao {
     fun getByWalletId(walletId: String): Flow<List<EVMTransactionEntity>>
 
     @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId AND tokenContract = :tokenContract ORDER BY timestamp DESC")
-    fun getByWalletIdAndToken(walletId: String, tokenContract: String?): Flow<List<EVMTransactionEntity>>
+    fun getByWalletIdAndToken(
+        walletId: String,
+        tokenContract: String?
+    ): Flow<List<EVMTransactionEntity>>
 
     @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId AND tokenExternalId = :tokenExternalId ORDER BY timestamp DESC")
-    fun getByWalletIdAndTokenExternalId(walletId: String, tokenExternalId: String): Flow<List<EVMTransactionEntity>>
+    fun getByWalletIdAndTokenExternalId(
+        walletId: String,
+        tokenExternalId: String
+    ): Flow<List<EVMTransactionEntity>>
 
     @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId AND tokenContract IS NULL ORDER BY timestamp DESC")
     fun getNativeTransactions(walletId: String): Flow<List<EVMTransactionEntity>>
@@ -49,7 +55,10 @@ interface EVMTransactionDao {
     suspend fun updateStatus(transactionId: String, status: String)
 
     @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId AND tokenExternalId = :tokenExternalId ORDER BY timestamp DESC")
-    suspend fun getTransactionsForToken(walletId: String, tokenExternalId: String): List<EVMTransactionEntity>
+    suspend fun getTransactionsForToken(
+        walletId: String,
+        tokenExternalId: String
+    ): List<EVMTransactionEntity>
 
     @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId ORDER BY timestamp DESC")
     suspend fun getByWalletIdSync(walletId: String): List<EVMTransactionEntity>

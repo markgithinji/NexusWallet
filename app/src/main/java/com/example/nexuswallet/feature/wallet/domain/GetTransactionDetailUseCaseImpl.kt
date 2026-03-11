@@ -2,32 +2,18 @@ package com.example.nexuswallet.feature.wallet.domain
 
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.EVMTransaction
 import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
-import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
 import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TransactionDisplayInfo
-import com.example.nexuswallet.feature.wallet.domain.GetAllTransactionsUseCase
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.WalletRepository
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flowOn
-import java.math.BigDecimal
-import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Singleton
 
