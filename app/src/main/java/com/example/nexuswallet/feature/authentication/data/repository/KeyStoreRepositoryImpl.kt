@@ -2,7 +2,6 @@ package com.example.nexuswallet.feature.authentication.data.repository
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import com.example.nexuswallet.HexUtils.hexToBytes
 import com.example.nexuswallet.feature.authentication.data.util.safeKeyStoreCall
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.toHex
@@ -62,8 +61,8 @@ class KeyStoreRepositoryImpl @Inject constructor(
     override suspend fun decryptString(encryptedHex: String, ivHex: String): String =
         withContext(ioDispatcher) {
             safeKeyStoreCall {
-                val encryptedBytes = hexToBytes(encryptedHex)
-                val iv = hexToBytes(ivHex)
+                val encryptedBytes = encryptedHex.hexToByteArray()
+                val iv = ivHex.toByteArray()
                 val decryptedBytes = decrypt(encryptedBytes, iv)
                 String(decryptedBytes, Charsets.UTF_8)
             }

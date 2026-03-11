@@ -6,11 +6,10 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.example.nexuswallet.HexUtils.hexToBytes
-import com.example.nexuswallet.HexUtils.toHex
 import com.example.nexuswallet.feature.authentication.data.util.safeEdit
 import com.example.nexuswallet.feature.authentication.data.util.safeGet
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.toHex
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -46,7 +45,7 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             val ivHex = preferences[ivKey]
 
             if (encrypted != null && ivHex != null) {
-                Pair(encrypted, hexToBytes(ivHex))
+                Pair(encrypted,ivHex.hexToByteArray())
             } else {
                 null
             }
@@ -83,7 +82,7 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             val ivHex = preferences[ivKey]
 
             if (encrypted != null && ivHex != null) {
-                Pair(encrypted, hexToBytes(ivHex))
+                Pair(encrypted, ivHex.hexToByteArray())
             } else {
                 null
             }
@@ -100,7 +99,7 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             val ivHex = preferences[ivKey]
 
             if (encrypted != null && ivHex != null) {
-                Pair(encrypted, hexToBytes(ivHex))
+                Pair(encrypted, ivHex.hexToByteArray())
             } else {
                 null
             }
