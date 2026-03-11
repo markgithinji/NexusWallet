@@ -14,6 +14,11 @@ import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUse
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetTransactionDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetBitcoinDetailUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetEthereumDetailUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetEthereumDetailUseCaseImpl
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetSolanaDetailUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,7 +27,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object AllUsecasesModule {
+object WalletDomainModule {
 
     @Provides
     @Singleton
@@ -216,5 +221,56 @@ object AllUsecasesModule {
     @Singleton
     fun provideFormatTransactionDisplayUseCase(): FormatTransactionDisplayUseCaseImpl {
         return FormatTransactionDisplayUseCase()
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetBitcoinDetailUseCase(
+        walletRepository: WalletRepository,
+        bitcoinTransactionRepository: BitcoinTransactionRepository,
+        bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+        formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
+        logger: Logger
+    ): GetBitcoinDetailUseCase {
+        return GetBitcoinDetailUseCaseImpl(
+            walletRepository = walletRepository,
+            bitcoinTransactionRepository = bitcoinTransactionRepository,
+            bitcoinBlockchainRepository = bitcoinBlockchainRepository,
+            logger = logger
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetEthereumDetailUseCase(
+        walletRepository: WalletRepository,
+        evmTransactionRepository: EVMTransactionRepository,
+        evmBlockchainRepository: EVMBlockchainRepository,
+        formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
+        logger: Logger
+    ): GetEthereumDetailUseCase {
+        return GetEthereumDetailUseCaseImpl(
+            walletRepository = walletRepository,
+            evmTransactionRepository = evmTransactionRepository,
+            evmBlockchainRepository = evmBlockchainRepository,
+            logger = logger
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetSolanaDetailUseCase(
+        walletRepository: WalletRepository,
+        solanaTransactionRepository: SolanaTransactionRepository,
+        solanaBlockchainRepository: SolanaBlockchainRepository,
+        formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
+        logger: Logger
+    ): GetSolanaDetailUseCase {
+        return GetSolanaDetailUseCaseImpl(
+            walletRepository = walletRepository,
+            solanaTransactionRepository = solanaTransactionRepository,
+            solanaBlockchainRepository = solanaBlockchainRepository,
+            logger = logger
+        )
     }
 }
