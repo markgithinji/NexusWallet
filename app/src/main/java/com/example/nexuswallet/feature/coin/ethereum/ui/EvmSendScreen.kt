@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.coin.ethereum.ui
 
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,8 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.coin.CoinType
-import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
@@ -55,7 +54,6 @@ import com.example.nexuswallet.ui.theme.usdcLight
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import java.math.RoundingMode
-import kotlin.compareTo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,9 +166,11 @@ fun EthereumSendScreen(
                             NetworkType.ETHEREUM_MAINNET -> {
                                 viewModel.switchNetwork(EthereumNetwork.Mainnet)
                             }
+
                             NetworkType.ETHEREUM_SEPOLIA -> {
                                 viewModel.switchNetwork(EthereumNetwork.Sepolia)
                             }
+
                             else -> {}
                         }
                         showNetworkSelector = false
@@ -180,7 +180,7 @@ fun EthereumSendScreen(
             }
 
             // Token Selector Dialog
-            if (showTokenSelector && state.availableTokens.size compareTo 1) {
+            if (showTokenSelector && state.availableTokens.size > 1) {
                 TokenSelectorDialog(
                     availableTokens = state.availableTokens,
                     selectedToken = selectedToken,
@@ -208,7 +208,7 @@ fun EthereumSendScreen(
                 )
 
                 // Token Selector (if multiple tokens available)
-                if (state.availableTokens.size compareTo 1) {
+                if (state.availableTokens.size > 1) {
                     TokenSelectorCard(
                         selectedToken = selectedToken,
                         onClick = { showTokenSelector = true }
@@ -221,9 +221,19 @@ fun EthereumSendScreen(
                     balanceFormatted = if (selectedToken is NativeETH)
                         "${state.ethBalance.setScale(6, RoundingMode.HALF_UP)} ETH"
                     else if (selectedToken is USDCToken || selectedToken is USDTToken)
-                        "$${state.tokenBalance.setScale(2, RoundingMode.HALF_UP)} ${selectedToken?.symbol}"
+                        "$${
+                            state.tokenBalance.setScale(
+                                2,
+                                RoundingMode.HALF_UP
+                            )
+                        } ${selectedToken?.symbol}"
                     else
-                        "${state.tokenBalance.setScale(6, RoundingMode.HALF_UP)} ${selectedToken?.symbol ?: "ETH"}",
+                        "${
+                            state.tokenBalance.setScale(
+                                6,
+                                RoundingMode.HALF_UP
+                            )
+                        } ${selectedToken?.symbol ?: "ETH"}",
                     coinColor = coinColor,
                     iconRes = iconRes,
                     address = state.fromAddress,
@@ -233,7 +243,10 @@ fun EthereumSendScreen(
                 // Show ETH balance for gas if this is a token
                 if (selectedToken !is NativeETH) {
                     Text(
-                        text = "ETH for gas: ${state.ethBalance.setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} ETH",
+                        text = "ETH for gas: ${
+                            state.ethBalance.setScale(4, RoundingMode.HALF_UP).stripTrailingZeros()
+                                .toPlainString()
+                        } ETH",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp)
@@ -272,7 +285,7 @@ fun EthereumSendScreen(
                     focusRequester = addressFocusRequester
                 )
 
-                // Amount Input - FIXED: Use currentCoinType instead of hardcoded BITCOIN
+                // Amount Input
                 SendAmountInput(
                     amount = state.amount,
                     coinType = currentCoinType,
