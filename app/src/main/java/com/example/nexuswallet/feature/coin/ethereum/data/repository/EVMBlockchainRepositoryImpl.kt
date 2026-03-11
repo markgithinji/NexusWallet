@@ -4,6 +4,7 @@ import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
+import com.example.nexuswallet.feature.coin.ethereum.data.model.CachedGasPrice
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.data.model.GasPrice
 import com.example.nexuswallet.feature.coin.ethereum.data.remote.EtherscanApiService
@@ -48,7 +49,6 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
 
     // Gas price cache - stores gas price per network with timestamp
     private val gasPriceCache = mutableMapOf<String, CachedGasPrice>()
-    private val confirmationTimeCache = mutableMapOf<String, CachedConfirmationTime>()
 
     // ============ BALANCE METHODS ============
 
@@ -437,16 +437,6 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         val hashPattern = Regex("0x[a-fA-F0-9]{64}")
         return hashPattern.find(error)?.value
     }
-
-    private data class CachedGasPrice(
-        val price: GasPrice,
-        val timestamp: Long
-    )
-
-    private data class CachedConfirmationTime(
-        val seconds: Int,
-        val timestamp: Long
-    )
 
     companion object {
         private const val WEI_PER_ETH = "1000000000000000000"
