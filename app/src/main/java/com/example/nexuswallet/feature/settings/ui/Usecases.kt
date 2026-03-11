@@ -10,12 +10,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class ClearAllSecurityDataUseCaseImpl @Inject constructor(
+class ClearAllSecurityDataUseCase @Inject constructor(
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val keyStoreRepository: KeyStoreRepository,
     private val logger: Logger
-) : ClearAllSecurityDataUseCase {
-    override suspend operator fun invoke(): Result<Unit> {
+) {
+    suspend operator fun invoke(): Result<Unit> {
         securityPreferencesRepository.clearAll()
         keyStoreRepository.clearKey()
         logger.d("ClearAllSecurityDataUseCase", "Successfully cleared all security data")
@@ -24,11 +24,11 @@ class ClearAllSecurityDataUseCaseImpl @Inject constructor(
 }
 
 @Singleton
-class SetBiometricEnabledUseCaseImpl @Inject constructor(
+class SetBiometricEnabledUseCase @Inject constructor(
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger
-) : SetBiometricEnabledUseCase {
-    override suspend operator fun invoke(enabled: Boolean): Result<Unit> {
+) {
+    suspend operator fun invoke(enabled: Boolean): Result<Unit> {
         securityPreferencesRepository.setBiometricEnabled(enabled)
         logger.d("SetBiometricEnabledUseCase", "Biometric enabled set to: $enabled")
         return Result.Success(Unit)
@@ -36,11 +36,11 @@ class SetBiometricEnabledUseCaseImpl @Inject constructor(
 }
 
 @Singleton
-class IsBiometricEnabledUseCaseImpl @Inject constructor(
+class IsBiometricEnabledUseCase @Inject constructor(
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger
-) : IsBiometricEnabledUseCase {
-    override suspend operator fun invoke(): Result<Boolean> {
+) {
+    suspend operator fun invoke(): Result<Boolean> {
         val isEnabled = securityPreferencesRepository.isBiometricEnabled()
         logger.d("IsBiometricEnabledUseCase", "Biometric enabled check: $isEnabled")
         return Result.Success(isEnabled)
@@ -48,11 +48,11 @@ class IsBiometricEnabledUseCaseImpl @Inject constructor(
 }
 
 @Singleton
-class SetPinUseCaseImpl @Inject constructor(
+class SetPinUseCase @Inject constructor(
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger
-) : SetPinUseCase {
-    override suspend operator fun invoke(pin: String): Result<Boolean> {
+) {
+    suspend operator fun invoke(pin: String): Result<Boolean> {
         val pinHash = hashPin(pin)
         securityPreferencesRepository.storePinHash(pinHash)
         val success = securityPreferencesRepository.getPinHash() != null
@@ -75,11 +75,11 @@ class SetPinUseCaseImpl @Inject constructor(
 }
 
 @Singleton
-class IsPinSetUseCaseImpl @Inject constructor(
+class IsPinSetUseCase @Inject constructor(
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger
-) : IsPinSetUseCase {
-    override suspend operator fun invoke(): Result<Boolean> {
+) {
+    suspend operator fun invoke(): Result<Boolean> {
         val isSet = securityPreferencesRepository.getPinHash() != null
         logger.d("IsPinSetUseCase", "PIN set check: $isSet")
         return Result.Success(isSet)
@@ -87,11 +87,11 @@ class IsPinSetUseCaseImpl @Inject constructor(
 }
 
 @Singleton
-class ClearPinUseCaseImpl @Inject constructor(
+class ClearPinUseCase @Inject constructor(
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger
-) : ClearPinUseCase {
-    override suspend operator fun invoke(): Result<Unit> {
+) {
+    suspend operator fun invoke(): Result<Unit> {
         securityPreferencesRepository.clearPinHash()
         logger.d("ClearPinUseCase", "PIN cleared successfully")
         return Result.Success(Unit)
@@ -99,11 +99,11 @@ class ClearPinUseCaseImpl @Inject constructor(
 }
 
 @Singleton
-class GetAuthStatusUseCaseImpl @Inject constructor(
+class GetAuthStatusUseCase @Inject constructor(
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger
-) : GetAuthStatusUseCase {
-    override suspend operator fun invoke(): Result<AuthStatus> {
+) {
+    suspend operator fun invoke(): Result<AuthStatus> {
         val pinSet = securityPreferencesRepository.getPinHash() != null
         val biometricEnabled = securityPreferencesRepository.isBiometricEnabled()
 
