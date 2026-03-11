@@ -12,7 +12,7 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
 import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
 

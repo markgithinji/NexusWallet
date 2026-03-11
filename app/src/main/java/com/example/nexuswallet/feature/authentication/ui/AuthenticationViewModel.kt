@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.authentication.domain.model.AuthType
 import com.example.nexuswallet.feature.authentication.domain.usecase.RecordAuthenticationUseCase
 import com.example.nexuswallet.feature.authentication.domain.usecase.VerifyPinUseCase
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.settings.ui.IsBiometricEnabledUseCase
 import com.example.nexuswallet.feature.settings.ui.IsPinSetUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel

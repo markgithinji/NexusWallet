@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.settings.ui
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
 import java.security.MessageDigest
 import java.security.SecureRandom

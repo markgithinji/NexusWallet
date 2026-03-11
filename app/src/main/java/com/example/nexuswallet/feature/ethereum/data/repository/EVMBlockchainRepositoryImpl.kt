@@ -2,8 +2,8 @@ package com.example.nexuswallet.feature.ethereum.data.repository
 
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.SafeApiCall
+import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.SafeApiCall
 import com.example.nexuswallet.feature.coin.ethereum.data.model.CachedGasPrice
 import com.example.nexuswallet.feature.coin.ethereum.data.model.GasPrice
 import com.example.nexuswallet.feature.coin.ethereum.data.remote.EtherscanApiService
@@ -16,7 +16,6 @@ import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockc
 import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
 import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
 import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.USDT_GAS_LIMIT
-import com.example.nexuswallet.feature.usdc.Web3jFactory
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TokenType
 import kotlinx.coroutines.Dispatchers

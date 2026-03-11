@@ -5,8 +5,8 @@ import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
 import com.example.nexuswallet.feature.market.domain.Token
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.SafeApiCall
+import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.SafeApiCall
 import com.example.nexuswallet.feature.market.domain.CoinGeckoRepository
 
 @Singleton

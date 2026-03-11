@@ -7,7 +7,7 @@ import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.core.util.Result
 
 @Singleton
 class GetFeeEstimateUseCase @Inject constructor(

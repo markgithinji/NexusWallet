@@ -1,9 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain
 
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 
 interface CreateWalletUseCase {

@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.wallet.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.GenerateMnemonicUseCase
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.ValidateMnemonicUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet

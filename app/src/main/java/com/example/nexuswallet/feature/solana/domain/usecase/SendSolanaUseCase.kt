@@ -4,13 +4,11 @@ import com.example.nexuswallet.feature.authentication.domain.repository.KeyStore
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.domain.model.SendSolanaResult
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
-import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
-import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.SOLANA_PRIVATE_KEY_TYPE
 import com.example.nexuswallet.feature.logging.Logger
@@ -45,7 +43,7 @@ class SendSolanaUseCase @Inject constructor(
         feeLevel: FeeLevel,
         network: SolanaNetwork,
         note: String?
-    ): Result<com.example.nexuswallet.feature.solana.domain.model.SendSolanaResult> = withContext(Dispatchers.IO) {
+    ): Result<SendSolanaResult> = withContext(Dispatchers.IO) {
         logger.d(tag, "Sending $amount SOL to $toAddress on $network")
 
         val wallet = walletRepository.getWallet(walletId) ?: run {

@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin
+package com.example.nexuswallet.feature.core.domain.di
 
 import dagger.Module
 import dagger.Provides
@@ -12,10 +12,9 @@ import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
-
 @Module
 @InstallIn(SingletonComponent::class)
-object CommonDI {
+object CoreDI {
     @Provides
     @Singleton
     fun provideBitcoinJson(): Json {

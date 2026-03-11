@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.authentication.domain.usecase
 
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.toHex
 import java.security.MessageDigest

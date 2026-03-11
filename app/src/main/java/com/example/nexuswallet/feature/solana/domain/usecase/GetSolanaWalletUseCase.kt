@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.solana.domain.usecase
 
 
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.solana.domain.model.SolanaWalletInfo
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
@@ -20,7 +20,7 @@ class GetSolanaWalletUseCase @Inject constructor(
     suspend operator fun invoke(
         walletId: String,
         network: SolanaNetwork?
-    ): Result<com.example.nexuswallet.feature.solana.domain.model.SolanaWalletInfo> {
+    ): Result<SolanaWalletInfo> {
         val wallet = walletRepository.getWallet(walletId) ?: run {
             logger.e(tag, "Wallet not found: $walletId")
             return Result.Error("Wallet not found")
@@ -46,7 +46,7 @@ class GetSolanaWalletUseCase @Inject constructor(
         )
 
         return Result.Success(
-            _root_ide_package_.com.example.nexuswallet.feature.solana.domain.model.SolanaWalletInfo(
+            SolanaWalletInfo(
                 walletId = wallet.id,
                 walletName = wallet.name,
                 walletAddress = solanaCoin.address,

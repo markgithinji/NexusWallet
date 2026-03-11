@@ -2,11 +2,10 @@ package com.example.nexuswallet.feature.solana.domain.repository
 
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
-import com.example.nexuswallet.feature.solana.domain.model.TransferInfo
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import org.sol4k.Keypair
 import java.math.BigDecimal
@@ -28,14 +27,14 @@ interface SolanaBlockchainRepository {
     suspend fun getFeeEstimate(
         feeLevel: FeeLevel,
         network: SolanaNetwork
-    ): Result<com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate>
+    ): Result<SolanaFeeEstimate>
 
     suspend fun createAndSignTransaction(
         fromKeypair: Keypair,
         toAddress: String,
         lamports: Long,
         network: SolanaNetwork
-    ): Result<com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction>
+    ): Result<SolanaSignedTransaction>
 
     suspend fun broadcastTransaction(
         signedTransaction: com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction,
@@ -48,12 +47,12 @@ interface SolanaBlockchainRepository {
         address: String,
         network: SolanaNetwork,
         limit: Int = 50
-    ): Result<List<com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse>>
+    ): Result<List<HeliusTransactionResponse>>
 
     suspend fun getTransaction(
         signature: String,
         network: SolanaNetwork
-    ): Result<com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse>
+    ): Result<HeliusTransactionResponse>
 
     fun parseTransfer(
         transaction: com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse,

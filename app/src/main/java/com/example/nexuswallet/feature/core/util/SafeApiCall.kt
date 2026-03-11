@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin
+package com.example.nexuswallet.feature.core.util
 
 import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException

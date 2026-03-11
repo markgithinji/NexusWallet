@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin
+package com.example.nexuswallet.feature.core.util
 
 sealed class Result<out T> {
     data class Success<T>(val data: T) : Result<T>()

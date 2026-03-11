@@ -2,15 +2,12 @@ package com.example.nexuswallet.feature.solana.data.repository
 
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.SafeApiCall
+import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.SafeApiCall
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
-import com.example.nexuswallet.feature.solana.data.remote.HeliusApi
 import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionRequest
 import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
-import com.example.nexuswallet.feature.solana.domain.model.TransferInfo
-import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import kotlinx.coroutines.Dispatchers
@@ -100,7 +97,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     override suspend fun getFeeEstimate(
         feeLevel: FeeLevel,
         network: SolanaNetwork
-    ): Result<com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate> = withContext(Dispatchers.IO) {
+    ): Result<SolanaFeeEstimate> = withContext(Dispatchers.IO) {
         SafeApiCall.make {
             val baseFeeLamports = SOLANA_FIXED_FEE_LAMPORTS
 
@@ -137,7 +134,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
                 FeeLevel.FAST -> FAST_ESTIMATED_TIME_SECONDS
             }
 
-            _root_ide_package_.com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate(
+            SolanaFeeEstimate(
                 feeLamports = totalFeeLamports,
                 feeSol = totalFeeSol,
                 estimatedTime = estimatedTime,
@@ -181,7 +178,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         toAddress: String,
         lamports: Long,
         network: SolanaNetwork
-    ): Result<com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction> = withContext(Dispatchers.IO) {
+    ): Result<SolanaSignedTransaction> = withContext(Dispatchers.IO) {
         SafeApiCall.make {
             val connection = getRpcConnection(network)
             val blockhash = connection.getLatestBlockhash()
@@ -209,7 +206,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
                 Base58.encode(hash)
             }
 
-            _root_ide_package_.com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction(
+            SolanaSignedTransaction(
                 signature = signature,
                 serialize = { serializedTx }
             )
@@ -236,7 +233,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         address: String,
         network: SolanaNetwork,
         limit: Int
-    ): Result<List<com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse>> = withContext(Dispatchers.IO) {
+    ): Result<List<HeliusTransactionResponse>> = withContext(Dispatchers.IO) {
 
         SafeApiCall.make {
             val transactions = heliusApi.getTransactions(
@@ -250,11 +247,11 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     override suspend fun getTransaction(
         signature: String,
         network: SolanaNetwork
-    ): Result<com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse> = withContext(Dispatchers.IO) {
+    ): Result<HeliusTransactionResponse> = withContext(Dispatchers.IO) {
 
         SafeApiCall.make {
             val request =
-                _root_ide_package_.com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionRequest(
+                HeliusTransactionRequest(
                     transactions = listOf(signature)
                 )
             val transactions = heliusApi.getTransaction(

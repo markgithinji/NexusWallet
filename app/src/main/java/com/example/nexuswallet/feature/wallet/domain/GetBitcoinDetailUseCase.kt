@@ -6,8 +6,7 @@ import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.bitcoin.data.toDomain
+import com.example.nexuswallet.feature.core.util.Result
 
 interface GetBitcoinDetailUseCase {
     suspend operator fun invoke(
