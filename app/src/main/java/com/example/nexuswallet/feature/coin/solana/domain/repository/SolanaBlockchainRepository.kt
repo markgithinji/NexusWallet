@@ -3,10 +3,10 @@ package com.example.nexuswallet.feature.coin.solana.domain.repository
 import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
-import com.example.nexuswallet.feature.coin.solana.TransferInfo
 import com.example.nexuswallet.feature.coin.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.coin.solana.data.remote.HeliusTransactionResponse
+import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaFeeEstimate
+import com.example.nexuswallet.feature.coin.solana.domain.model.TransferInfo
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import org.sol4k.Keypair
 import java.math.BigDecimal

@@ -14,7 +14,7 @@ import com.example.nexuswallet.feature.coin.solana.SyncSolanaTransactionsUseCase
 import com.example.nexuswallet.feature.coin.solana.SyncSolanaTransactionsUseCaseImpl
 import com.example.nexuswallet.feature.coin.solana.ValidateSolanaAddressUseCase
 import com.example.nexuswallet.feature.coin.solana.ValidateSolanaAddressUseCaseImpl
-import com.example.nexuswallet.feature.coin.solana.ValidateSolanaSendUseCase
+import com.example.nexuswallet.feature.coin.solana.domain.usecase.ValidateSolanaSendUseCase
 import com.example.nexuswallet.feature.coin.solana.ValidateSolanaSendUseCaseImpl
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
