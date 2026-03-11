@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.bitcoin.domain.usecase
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.util.BitcoinConstants.BTC_PRIVATE_KEY_TYPE
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction

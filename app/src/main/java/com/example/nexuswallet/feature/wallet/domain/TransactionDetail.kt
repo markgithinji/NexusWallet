@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain
 
-import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.core.domain.model.CoinType
 
 data class TransactionDetail(
     val id: String,

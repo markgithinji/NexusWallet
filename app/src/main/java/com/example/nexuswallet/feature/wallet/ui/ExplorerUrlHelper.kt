@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.wallet.ui
 
-import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.core.domain.model.CoinType
 
 object ExplorerUrlHelper {
     fun getExplorerUrl(txHash: String, coinType: CoinType, network: String?): String {

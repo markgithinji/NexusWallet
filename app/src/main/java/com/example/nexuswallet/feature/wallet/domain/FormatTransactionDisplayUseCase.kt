@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain
 
-import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TransactionDisplayInfo
 
 interface FormatTransactionDisplayUseCase {
