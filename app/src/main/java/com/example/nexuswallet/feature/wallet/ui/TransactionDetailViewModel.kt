@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
 import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction

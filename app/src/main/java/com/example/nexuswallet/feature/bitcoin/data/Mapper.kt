@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.bitcoin.data
 
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionEntity
 import com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransactionResponse
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork

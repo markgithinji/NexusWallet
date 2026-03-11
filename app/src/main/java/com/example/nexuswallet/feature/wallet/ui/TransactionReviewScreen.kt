@@ -42,7 +42,7 @@ import com.example.nexuswallet.feature.coin.NetworkType
 import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.ui.review.BitcoinReviewEffect
 import com.example.nexuswallet.feature.coin.bitcoin.ui.review.BitcoinReviewViewModel
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate
 import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendEffect
 import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendEvent

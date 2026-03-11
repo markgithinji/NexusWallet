@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.solana.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.solana.ui.SolanaSendEvent
 import com.example.nexuswallet.feature.coin.solana.domain.usecase.GetSolanaBalanceUseCase

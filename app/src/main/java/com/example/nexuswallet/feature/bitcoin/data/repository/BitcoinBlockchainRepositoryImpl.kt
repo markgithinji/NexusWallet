@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.bitcoin.data.repository
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.bitcoin.data.model.ParsedTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.data.model.UTXO
 import com.example.nexuswallet.feature.coin.bitcoin.data.remote.api.BitcoinApi

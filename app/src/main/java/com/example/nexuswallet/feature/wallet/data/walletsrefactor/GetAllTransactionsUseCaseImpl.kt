@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.wallet.data.walletsrefactor
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.EVMTransaction
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository

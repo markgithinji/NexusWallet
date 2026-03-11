@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.ethereum.domain.usecase
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.SendEthereumResult

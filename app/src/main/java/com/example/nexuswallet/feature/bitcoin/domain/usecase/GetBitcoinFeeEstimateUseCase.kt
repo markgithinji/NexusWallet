@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.bitcoin.domain.usecase
 
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger

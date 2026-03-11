@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.usdc
 
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 //import com.example.nexuswallet.feature.coin.ethereum.EthereumNetwork
 //import com.example.nexuswallet.feature.coin.usdc.domain.USDCFeeEstimate
 //import com.example.nexuswallet.feature.coin.usdc.domain.USDCTransaction

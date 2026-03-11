@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.usdc
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 //

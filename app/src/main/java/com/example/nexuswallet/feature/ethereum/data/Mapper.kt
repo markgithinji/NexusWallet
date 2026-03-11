@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.ethereum.data
 
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity
 import com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionResponse
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction

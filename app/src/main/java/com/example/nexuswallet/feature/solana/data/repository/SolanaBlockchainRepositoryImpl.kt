@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.solana.data.repository
 
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction

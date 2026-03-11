@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.solana.domain.usecase
 
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository

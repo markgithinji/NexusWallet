@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.solana.ui
 
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 
 sealed class SolanaSendEvent {
     data class ToAddressChanged(val address: String) : SolanaSendEvent()

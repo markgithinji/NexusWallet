@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.usdc
 
-import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 
 sealed class USDCSendEvent {
     data class ToAddressChanged(val address: String) : com.example.nexuswallet.feature.usdc.USDCSendEvent()

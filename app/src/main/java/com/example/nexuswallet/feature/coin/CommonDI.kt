@@ -41,5 +41,4 @@ object CommonDI {
     @Provides
     @Singleton
     fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
-
 }
