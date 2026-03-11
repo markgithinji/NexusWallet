@@ -30,7 +30,7 @@ object SolanaDataModule {
 
     @Provides
     @Singleton
-    fun provideHeliusApiKey(@ApplicationContext context: Context): String {
+    fun provideHeliusApiKey(): String {
         return BuildConfig.HELIUS_API_KEY
     }
 

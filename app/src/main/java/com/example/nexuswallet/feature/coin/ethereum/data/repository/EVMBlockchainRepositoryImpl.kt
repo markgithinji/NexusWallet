@@ -5,7 +5,6 @@ import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.coin.ethereum.data.model.CachedGasPrice
-import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.data.model.GasPrice
 import com.example.nexuswallet.feature.coin.ethereum.data.remote.EtherscanApiService
 import com.example.nexuswallet.feature.coin.ethereum.data.toNativeETHTransactionList
@@ -13,6 +12,7 @@ import com.example.nexuswallet.feature.coin.ethereum.data.toTokenTransactionList
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
 import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
 import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.USDT_GAS_LIMIT
@@ -122,12 +122,10 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
     ): Result<List<NativeETHTransaction>> = withContext(Dispatchers.IO) {
         SafeApiCall.make {
             val chainId = network.chainId
-            val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
             val response = etherscanApi.getEthereumTransactions(
                 chainId = chainId,
                 address = address,
-                apiKey = apiKey
             )
 
             if (response.status == "1") {
@@ -152,13 +150,11 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
     ): Result<List<TokenTransaction>> = withContext(Dispatchers.IO) {
         SafeApiCall.make {
             val chainId = network.chainId
-            val apiKey = BuildConfig.ETHERSCAN_API_KEY
 
             val response = etherscanApi.getTokenTransfers(
                 chainId = chainId,
                 address = address,
                 contractAddress = tokenContract,
-                apiKey = apiKey
             )
 
             if (response.status == "1") {

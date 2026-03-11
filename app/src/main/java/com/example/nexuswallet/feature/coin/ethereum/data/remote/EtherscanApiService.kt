@@ -16,9 +16,8 @@ interface EtherscanApiService {
         @Query("startblock") startblock: Int = 0,
         @Query("endblock") endblock: Int = 999999999,
         @Query("page") page: Int = 1,
-        @Query("offset") offset: Int = 100,  // Get up to 100 transactions
-        @Query("sort") sort: String = "desc",
-        @Query("apikey") apiKey: String
+        @Query("offset") offset: Int = 100, // Get up to 100 transactions
+        @Query("sort") sort: String = "desc"
     ): EtherscanTransactionsResponse
 
     @GET("v2/api")
@@ -26,8 +25,7 @@ interface EtherscanApiService {
         @Query("chainid") chainId: String,
         @Query("module") module: String = "proxy",
         @Query("action") action: String = "eth_sendRawTransaction",
-        @Query("hex") hex: String,
-        @Query("apikey") apiKey: String
+        @Query("hex") hex: String
     ): EtherscanBroadcastResponse
 
     @GET("v2/api")
@@ -37,7 +35,6 @@ interface EtherscanApiService {
         @Query("action") action: String = "tokentx",
         @Query("address") address: String,
         @Query("contractaddress") contractAddress: String,
-        @Query("sort") sort: String = "desc",
-        @Query("apikey") apiKey: String
+        @Query("sort") sort: String = "desc"
     ): EtherscanTokenTransfersResponse
 }

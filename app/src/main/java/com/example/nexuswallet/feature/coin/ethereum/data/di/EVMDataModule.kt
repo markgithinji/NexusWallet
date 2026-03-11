@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.coin.ethereum.data.di
 
 import com.example.nexuswallet.feature.coin.ethereum.data.local.EVMTransactionDao
+import com.example.nexuswallet.feature.coin.ethereum.data.remote.EtherscanApiKeyInterceptor
 import com.example.nexuswallet.feature.coin.ethereum.data.remote.EtherscanApiService
 import com.example.nexuswallet.feature.coin.ethereum.data.repository.EVMBlockchainRepositoryImpl
 import com.example.nexuswallet.feature.coin.ethereum.data.repository.EVMTransactionRepositoryImpl
@@ -17,6 +18,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -27,7 +29,31 @@ object EVMDataModule {
 
     @Provides
     @Singleton
-    fun provideDefaultEtherscanApi(
+    fun provideEtherscanApiKey(): String {
+        return BuildConfig.ETHERSCAN_API_KEY
+    }
+
+    @Provides
+    @Singleton
+    fun provideEtherscanApiKeyInterceptor(apiKey: String): EtherscanApiKeyInterceptor {
+        return EtherscanApiKeyInterceptor(apiKey)
+    }
+
+    @Provides
+    @Singleton
+    fun provideEtherscanOkHttpClient(
+        apiKeyInterceptor: EtherscanApiKeyInterceptor
+    ): OkHttpClient {
+        return OkHttpClient.Builder()
+            .addInterceptor(apiKeyInterceptor)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideEtherscanApi(
         client: OkHttpClient,
         json: Json
     ): EtherscanApiService {
