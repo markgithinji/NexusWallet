@@ -8,6 +8,7 @@ import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionReposito
 import com.example.nexuswallet.feature.coin.ethereum.data.local.EVMTransactionDao
 import com.example.nexuswallet.feature.coin.ethereum.data.remote.EtherscanApiService
 import com.example.nexuswallet.feature.coin.ethereum.data.repository.EVMTransactionRepositoryImpl
+import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.SendEVMAssetUseCase
 import com.example.nexuswallet.feature.coin.usdc.Web3jFactory
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
