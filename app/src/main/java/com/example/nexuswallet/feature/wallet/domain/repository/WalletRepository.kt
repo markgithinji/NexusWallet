@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.domain
+package com.example.nexuswallet.feature.wallet.domain.repository
 
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance

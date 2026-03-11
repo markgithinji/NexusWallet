@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.bitcoin.domain.model
 
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.serialization.Serializable
 

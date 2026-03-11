@@ -50,7 +50,7 @@ import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendViewModel
 import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
 import com.example.nexuswallet.feature.coin.solana.ui.SolanaSendEffect
 import com.example.nexuswallet.feature.coin.solana.ui.SolanaSendViewModel
-import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH

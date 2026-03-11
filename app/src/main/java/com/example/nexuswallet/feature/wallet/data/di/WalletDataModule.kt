@@ -11,7 +11,7 @@ import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaBalanceDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaCoinDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.WalletDao
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepositoryImpl
-import com.example.nexuswallet.feature.wallet.domain.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

@@ -10,7 +10,7 @@ import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransactio
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
 import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 
 @Singleton
 class GetSolanaDetailUseCase @Inject constructor(

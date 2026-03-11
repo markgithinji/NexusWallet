@@ -5,7 +5,7 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.solana.domain.model.SolanaWalletInfo
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 

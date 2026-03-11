@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.wallet.data.local.mapper
 
 import com.example.nexuswallet.feature.wallet.data.local.entity.BitcoinCoinEntity
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
-import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import java.util.UUID
 
 fun BitcoinCoinEntity.toDomain(): BitcoinCoin =

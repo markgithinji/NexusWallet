@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.bitcoin.domain.model
 
-import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 
 data class BitcoinWalletInfo(
     val walletId: String,

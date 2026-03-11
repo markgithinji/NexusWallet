@@ -3,8 +3,8 @@ package com.example.nexuswallet.feature.bitcoin.domain.usecase
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinWalletInfo
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.WalletRepository
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 

@@ -15,7 +15,7 @@ import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.toHex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

@@ -12,7 +12,7 @@ import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.SendBitcoinUs
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.SyncBitcoinTransactionsUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.ValidateBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.domain.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

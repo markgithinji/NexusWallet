@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.bitcoin.ui.send
 
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 
 sealed class BitcoinSendEvent {
     data class Initialize(val walletId: String, val network: BitcoinNetwork?) : BitcoinSendEvent()

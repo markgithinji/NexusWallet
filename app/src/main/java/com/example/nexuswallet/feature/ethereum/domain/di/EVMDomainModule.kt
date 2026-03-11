@@ -13,7 +13,7 @@ import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.SendEVMAsset
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.SyncEthereumTransactionsUseCase
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.ValidateEVMSendUseCase
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.domain.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
