@@ -166,34 +166,27 @@ class SecuritySettingsViewModel @Inject constructor(
         _pinSetupError.value = null
     }
 
-    suspend fun setNewPin(pin: String): Boolean {
-        _operationState.value = SecurityOperation.UPDATING
+    fun setNewPin(pin: String) {
+        viewModelScope.launch {
+            _operationState.value = SecurityOperation.UPDATING
 
-        return try {
             when (val result = setPinUseCase(pin)) {
                 is Result.Success -> {
                     if (result.data) {
                         refreshAuthStatus()
                         _showPinSetupDialog.value = false
-                        true
                     } else {
                         _pinSetupError.value = "Failed to set PIN"
-                        false
                     }
                 }
                 is Result.Error -> {
                     _pinSetupError.value = "Failed to set PIN: ${result.message}"
-                    false
                 }
                 Result.Loading -> {
                     _pinSetupError.value = "Setting PIN..."
-                    false
                 }
             }
-        } catch (e: Exception) {
-            _pinSetupError.value = "Failed to set PIN: ${e.message}"
-            false
-        } finally {
+
             _operationState.value = SecurityOperation.IDLE
         }
     }
