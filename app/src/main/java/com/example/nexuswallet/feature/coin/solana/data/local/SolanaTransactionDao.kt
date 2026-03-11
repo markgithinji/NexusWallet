@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.solana
+package com.example.nexuswallet.feature.coin.solana.data.local
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -6,9 +6,10 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
+
 @Dao
 interface SolanaTransactionDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insert(transaction: SolanaTransactionEntity)
 
     @Update

@@ -2,6 +2,8 @@ package com.example.nexuswallet.feature.coin.solana
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.coin.solana.data.local.SolanaTransactionDao
+import com.example.nexuswallet.feature.coin.solana.data.repository.SolanaTransactionRepositoryImpl
 import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
@@ -110,20 +112,5 @@ object SolanaUseCaseModule {
             validateSolanaAddressUseCase,
             logger
         )
-    }
-
-    @Provides
-    @Singleton
-    fun provideSolanaTransactionDao(database: WalletDatabase): SolanaTransactionDao {
-        return database.solanaTransactionDao()
-    }
-
-    @Provides
-    @Singleton
-    fun provideSolanaTransactionRepository(
-        solanaTransactionDao: SolanaTransactionDao,
-        logger: Logger
-    ): SolanaTransactionRepository {
-        return SolanaTransactionRepositoryImpl(solanaTransactionDao,logger)
     }
 }

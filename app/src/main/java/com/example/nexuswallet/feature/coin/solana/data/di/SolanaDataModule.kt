@@ -1,8 +1,14 @@
-package com.example.nexuswallet.feature.coin.solana
+package com.example.nexuswallet.feature.coin.solana.data.di
 
 import android.content.Context
-import com.example.nexuswallet.BuildConfig
+import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.coin.solana.data.local.SolanaTransactionDao
+import com.example.nexuswallet.feature.coin.solana.data.remote.HeliusApi
+import com.example.nexuswallet.feature.coin.solana.data.repository.SolanaBlockchainRepositoryImpl
+import com.example.nexuswallet.feature.coin.solana.data.repository.SolanaTransactionRepositoryImpl
+import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,7 +25,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object SolanaModule {
+object SolanaDataModule {
 
     @Provides
     @Singleton
@@ -93,5 +99,20 @@ object SolanaModule {
             apiKey = apiKey,
             logger = logger
         )
+    }
+
+    @Provides
+    @Singleton
+    fun provideSolanaTransactionDao(database: WalletDatabase): SolanaTransactionDao {
+        return database.solanaTransactionDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSolanaTransactionRepository(
+        solanaTransactionDao: SolanaTransactionDao,
+        logger: Logger
+    ): SolanaTransactionRepository {
+        return SolanaTransactionRepositoryImpl(solanaTransactionDao, logger)
     }
 }
