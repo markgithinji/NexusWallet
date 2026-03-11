@@ -10,17 +10,18 @@ import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Singleton
 @Singleton
-class SyncWalletBalancesUseCaseImpl @Inject constructor(
-    private val localDataSource: WalletLocalDataSource,
+class SyncWalletBalancesUseCase @Inject constructor(
+    private val walletDataSource: WalletDataSource,
+    private val balanceDataSource: BalanceDataSource,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
     private val logger: Logger
-) : SyncWalletBalancesUseCase {
+) {
 
     private val tag = "SyncBalancesUC"
 
-    override suspend operator fun invoke(wallet: Wallet): Result<Unit> {
+    suspend operator fun invoke(wallet: Wallet): Result<Unit> {
         logger.d(tag, "Syncing balances for wallet: ${wallet.name}")
 
         val errors = mutableListOf<String>()
@@ -73,7 +74,7 @@ class SyncWalletBalancesUseCaseImpl @Inject constructor(
                         (btcBalance * BigDecimal("100000000")).toBigInteger().toString()
                     val usdValue = calculateUsdValue(btcBalance, "BTC")
 
-                    val currentBalance = localDataSource.loadWalletBalance(walletId)
+                    val currentBalance = balanceDataSource.loadWalletBalance(walletId)
                         ?: WalletBalance(
                             walletId = walletId,
                             lastUpdated = System.currentTimeMillis()
@@ -97,7 +98,7 @@ class SyncWalletBalancesUseCaseImpl @Inject constructor(
                         lastUpdated = System.currentTimeMillis()
                     )
 
-                    localDataSource.saveWalletBalance(updatedBalance)
+                    balanceDataSource.saveWalletBalance(updatedBalance)
                     logger.d(tag, "Bitcoin ${coin.network} balance updated: ${btcBalance} BTC")
                     Result.Success(Unit)
                 }
@@ -127,7 +128,7 @@ class SyncWalletBalancesUseCaseImpl @Inject constructor(
                         (solBalance * BigDecimal("1000000000")).toBigInteger().toString()
                     val usdValue = calculateUsdValue(solBalance, "SOL")
 
-                    val currentBalance = localDataSource.loadWalletBalance(walletId)
+                    val currentBalance = balanceDataSource.loadWalletBalance(walletId)
                         ?: WalletBalance(
                             walletId = walletId,
                             lastUpdated = System.currentTimeMillis()
@@ -155,7 +156,7 @@ class SyncWalletBalancesUseCaseImpl @Inject constructor(
                         splBalances = currentBalance.splBalances
                     )
 
-                    localDataSource.saveWalletBalance(updatedBalance)
+                    balanceDataSource.saveWalletBalance(updatedBalance)
                     logger.d(tag, "Solana ${coin.network} balance updated: ${solBalance} SOL")
                     Result.Success(Unit)
                 }
@@ -230,7 +231,7 @@ class SyncWalletBalancesUseCaseImpl @Inject constructor(
 
         // Save all EVM balances that succeeded
         if (evmBalances.isNotEmpty()) {
-            val currentBalance = localDataSource.loadWalletBalance(walletId)
+            val currentBalance = balanceDataSource.loadWalletBalance(walletId)
                 ?: WalletBalance(walletId, System.currentTimeMillis())
 
             val updatedBalance = currentBalance.copy(
@@ -238,7 +239,7 @@ class SyncWalletBalancesUseCaseImpl @Inject constructor(
                 lastUpdated = System.currentTimeMillis()
             )
 
-            localDataSource.saveWalletBalance(updatedBalance)
+            balanceDataSource.saveWalletBalance(updatedBalance)
             logger.d(tag, "Saved ${evmBalances.size} EVM balances for wallet $walletId")
         }
 
@@ -310,7 +311,7 @@ class SyncWalletBalancesUseCaseImpl @Inject constructor(
                     )
 
                     // Update just this token's balance
-                    val currentBalance = localDataSource.loadWalletBalance(walletId)
+                    val currentBalance = balanceDataSource.loadWalletBalance(walletId)
                     val updatedEvmBalances = currentBalance?.evmBalances?.toMutableList() ?: mutableListOf()
 
                     // Remove old balance for this token if exists
@@ -323,7 +324,7 @@ class SyncWalletBalancesUseCaseImpl @Inject constructor(
                             lastUpdated = System.currentTimeMillis()
                         )
 
-                    localDataSource.saveWalletBalance(updatedBalance)
+                    balanceDataSource.saveWalletBalance(updatedBalance)
                     logger.d(tag, "Updated ${token.symbol} balance: $balance")
 
                     Result.Success(evmBalance)

@@ -7,24 +7,17 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.core.util.Result
 
-interface GetBitcoinDetailUseCase {
-    suspend operator fun invoke(
-        walletId: String,
-        network: String = ""
-    ): Result<BitcoinDetailResult>
-}
-
 @Singleton
-class GetBitcoinDetailUseCaseImpl @Inject constructor(
+class GetBitcoinDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val logger: Logger
-) : GetBitcoinDetailUseCase {
+) {
 
     private val tag = "GetBitcoinDetailUC"
 
-    override suspend operator fun invoke(
+    suspend operator fun invoke(
         walletId: String,
         network: String
     ): Result<BitcoinDetailResult> {

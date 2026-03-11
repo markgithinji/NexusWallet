@@ -14,9 +14,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class FormatTransactionDisplayUseCaseImpl @Inject constructor() : FormatTransactionDisplayUseCase {
+class FormatTransactionDisplayUseCase @Inject constructor() {
 
-    override operator fun invoke(
+    operator fun invoke(
         transaction: Any,
         coinType: CoinType
     ): TransactionDisplayInfo {
@@ -29,7 +29,7 @@ class FormatTransactionDisplayUseCaseImpl @Inject constructor() : FormatTransact
         }
     }
 
-    override fun formatTransactionList(
+    fun formatTransactionList(
         transactions: List<Any>,
         coinType: CoinType
     ): List<TransactionDisplayInfo> {

@@ -7,14 +7,14 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class IsSessionValidUseCaseImpl @Inject constructor(
+class IsSessionValidUseCase @Inject constructor(
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger
-) : IsSessionValidUseCase {
+) {
 
     private val tag = "IsSessionValidUC"
 
-    override suspend fun invoke(): Result<Boolean> {
+    suspend operator fun invoke(): Result<Boolean> {
         val lastAuthTime = securityPreferencesRepository.getLastAuthenticationTime()
 
         if (lastAuthTime == null) {

@@ -17,9 +17,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
-import javax.inject.Singleton
-@Singleton
-class GetAllTransactionsUseCaseImpl @Inject constructor(
+import javax.inject.Singleton@Singleton
+class GetAllTransactionsUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
@@ -28,12 +27,12 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
     private val logger: Logger
-) : GetAllTransactionsUseCase {
+) {
 
     private val tag = "GetAllTransactionsUC"
 
     // Fetches from network and returns combined list
-    override suspend operator fun invoke(walletId: String): List<Any> {
+    suspend operator fun invoke(walletId: String): List<Any> {
         logger.d(tag, "Fetching all transactions for wallet: $walletId")
 
         // This will do network calls and save to DB
@@ -44,7 +43,7 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
     }
 
     // Only gets from local DB, no network calls
-    override suspend fun getCachedTransactions(walletId: String): List<Any> {
+    suspend fun getCachedTransactions(walletId: String): List<Any> {
         logger.d(tag, "Getting cached transactions for wallet: $walletId")
 
         val wallet = walletRepository.getWallet(walletId) ?: return emptyList()
@@ -91,7 +90,7 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
     }
 
     // Only does network calls, doesn't return data
-    override suspend fun refreshTransactions(walletId: String) {
+    suspend fun refreshTransactions(walletId: String) {
         logger.d(tag, "Refreshing transactions for wallet: $walletId")
 
         val wallet = walletRepository.getWallet(walletId) ?: return
@@ -125,7 +124,7 @@ class GetAllTransactionsUseCaseImpl @Inject constructor(
         logger.d(tag, "Transaction refresh completed")
     }
 
-    override fun observeTransactions(walletId: String): Flow<List<Any>> {
+    fun observeTransactions(walletId: String): Flow<List<Any>> {
         logger.d(tag, "Setting up transaction observation for wallet: $walletId")
 
         return combine(

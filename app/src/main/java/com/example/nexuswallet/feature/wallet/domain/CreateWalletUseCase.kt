@@ -19,16 +19,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class CreateWalletUseCaseImpl @Inject constructor(
-    private val walletLocalDataSource: WalletLocalDataSource,
+class CreateWalletUseCase @Inject constructor(
+    private val walletDataSource: WalletDataSource,
     private val keyStoreRepository: KeyStoreRepository,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger
-) : CreateWalletUseCase {
+) {
 
     private val tag = "CreateWalletUC"
 
-    override suspend fun invoke(
+    suspend operator fun invoke(
         mnemonic: List<String>,
         name: String,
         // Bitcoin networks
@@ -217,7 +217,7 @@ class CreateWalletUseCaseImpl @Inject constructor(
         // ============ SAVE WALLET TO DATABASE ============
 
         try {
-            walletLocalDataSource.saveWallet(wallet)
+            walletDataSource.saveWallet(wallet)
             logger.d(tag, "Wallet saved to database successfully: $walletId")
         } catch (e: Exception) {
             logger.e(tag, "Failed to save wallet to database", e)

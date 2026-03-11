@@ -13,26 +13,18 @@ import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTrans
 import com.example.nexuswallet.feature.logging.Logger
 import javax.inject.Inject
 import javax.inject.Singleton
-
-interface GetTransactionDetailUseCase {
-    suspend operator fun invoke(
-        walletId: String,
-        transactionId: String,
-        coinType: CoinType
-    ): Result<TransactionDetail>
-}
 @Singleton
-class GetTransactionDetailUseCaseImpl @Inject constructor(
+class GetTransactionDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
     private val solanaTransactionRepository: SolanaTransactionRepository,
     private val logger: Logger
-) : GetTransactionDetailUseCase {
+) {
 
     private val tag = "GetTransactionDetailUC"
 
-    override suspend fun invoke(
+    suspend operator fun invoke(
         walletId: String,
         transactionId: String,
         coinType: CoinType

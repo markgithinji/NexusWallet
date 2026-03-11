@@ -8,25 +8,17 @@ import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
 
-
-interface GetSolanaDetailUseCase {
-    suspend operator fun invoke(
-        walletId: String,
-        network: String = ""
-    ): Result<SolanaDetailResult>
-}
-
 @Singleton
-class GetSolanaDetailUseCaseImpl @Inject constructor(
+class GetSolanaDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val solanaTransactionRepository: SolanaTransactionRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
     private val logger: Logger
-) : GetSolanaDetailUseCase {
+) {
 
     private val tag = "GetSolanaDetailUC"
 
-    override suspend operator fun invoke(
+    suspend operator fun invoke(
         walletId: String,
         network: String
     ): Result<SolanaDetailResult> {
