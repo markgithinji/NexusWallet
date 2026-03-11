@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.coin.solana
 import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.coin.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.coin.solana.data.remote.HeliusTransactionResponse
 import com.example.nexuswallet.feature.coin.solana.data.repository.SolanaSignedTransaction
 import org.sol4k.Keypair

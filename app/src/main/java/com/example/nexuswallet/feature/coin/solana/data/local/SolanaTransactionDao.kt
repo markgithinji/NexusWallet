@@ -27,9 +27,6 @@ interface SolanaTransactionDao {
     @Query("SELECT * FROM solana_transactions WHERE walletId = :walletId AND tokenMint IS NULL AND network = :network ORDER BY timestamp DESC")
     fun getNativeTransactions(walletId: String, network: String): Flow<List<SolanaTransactionEntity>>
 
-    @Query("SELECT * FROM solana_transactions WHERE walletId = :walletId ORDER BY timestamp DESC")
-    fun getByWalletId(walletId: String): Flow<List<SolanaTransactionEntity>>
-
     @Query("SELECT * FROM solana_transactions WHERE status = 'PENDING'")
     fun observePendingTransactions(): Flow<List<SolanaTransactionEntity>>
 
