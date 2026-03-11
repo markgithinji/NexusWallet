@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.domain
+package com.example.nexuswallet.feature.wallet.domain.usecase
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import javax.inject.Inject
@@ -7,6 +7,10 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
+import com.example.nexuswallet.feature.wallet.domain.SolanaDetailResult
+import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 
 @Singleton
 class GetSolanaDetailUseCase @Inject constructor(

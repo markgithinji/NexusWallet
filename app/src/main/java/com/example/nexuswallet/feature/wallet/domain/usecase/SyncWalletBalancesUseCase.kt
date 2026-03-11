@@ -1,10 +1,25 @@
-package com.example.nexuswallet.feature.wallet.domain
+package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.wallet.domain.BitcoinBalance
+import com.example.nexuswallet.feature.wallet.domain.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.ERC20Token
+import com.example.nexuswallet.feature.wallet.domain.EVMBalance
+import com.example.nexuswallet.feature.wallet.domain.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.SolanaBalance
+import com.example.nexuswallet.feature.wallet.domain.SolanaCoin
+import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.USDTToken
+import com.example.nexuswallet.feature.wallet.domain.Wallet
+import com.example.nexuswallet.feature.wallet.domain.WalletBalance
+import com.example.nexuswallet.feature.wallet.domain.WalletDataSource
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
@@ -318,7 +333,10 @@ class SyncWalletBalancesUseCase @Inject constructor(
                     updatedEvmBalances.removeAll { it.externalTokenId == token.externalId }
                     updatedEvmBalances.add(evmBalance)
 
-                    val updatedBalance = (currentBalance ?: WalletBalance(walletId, System.currentTimeMillis()))
+                    val updatedBalance = (currentBalance ?: WalletBalance(
+                        walletId,
+                        System.currentTimeMillis()
+                    ))
                         .copy(
                             evmBalances = updatedEvmBalances,
                             lastUpdated = System.currentTimeMillis()

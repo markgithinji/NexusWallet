@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.domain
+package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import com.example.nexuswallet.feature.logging.Logger
 import org.web3j.crypto.MnemonicUtils

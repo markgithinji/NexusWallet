@@ -7,6 +7,11 @@ import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransa
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetBitcoinDetailUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetEthereumDetailUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetEthereumDetailUseCaseImpl
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetSolanaDetailUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

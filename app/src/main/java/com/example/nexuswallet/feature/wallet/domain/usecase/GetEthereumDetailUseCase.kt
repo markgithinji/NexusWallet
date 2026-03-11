@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.domain
+package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
@@ -10,6 +10,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
+import com.example.nexuswallet.feature.wallet.domain.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.EthereumDetailResult
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.USDTToken
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 
 interface GetEthereumDetailUseCase {
     suspend fun getEthDetails(
@@ -154,7 +161,10 @@ class GetEthereumDetailUseCaseImpl @Inject constructor(
                 balance = tokenBalance?.balanceDecimal ?: "0",
                 balanceFormatted = when (token) {
                     is USDCToken, is USDTToken ->
-                        "$${tokenBalance?.balanceDecimal?.toBigDecimalOrNull()?.setScale(2) ?: "0"} ${token.symbol}"
+                        "$${
+                            tokenBalance?.balanceDecimal?.toBigDecimalOrNull()?.setScale(2) ?: "0"
+                        } ${token.symbol}"
+
                     else ->
                         "${tokenBalance?.balanceDecimal ?: "0"} ${token.symbol}"
                 },

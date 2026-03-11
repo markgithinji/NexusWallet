@@ -1,11 +1,11 @@
-package com.example.nexuswallet.feature.wallet.domain
+package com.example.nexuswallet.feature.wallet.domain.usecase
 
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.wallet.domain.BitcoinDetailResult
+import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.example.nexuswallet.feature.core.util.Result
 
 @Singleton
 class GetBitcoinDetailUseCase @Inject constructor(
@@ -20,13 +20,13 @@ class GetBitcoinDetailUseCase @Inject constructor(
     suspend operator fun invoke(
         walletId: String,
         network: String
-    ): Result<BitcoinDetailResult> {
+    ): com.example.nexuswallet.feature.core.util.Result<BitcoinDetailResult> {
         return try {
             logger.d(tag, "Getting Bitcoin details for wallet: $walletId, network: $network")
 
             // 1. Get wallet
             val wallet = walletRepository.getWallet(walletId)
-                ?: return Result.Error("Wallet not found")
+                ?: return com.example.nexuswallet.feature.core.util.Result.Error("Wallet not found")
 
             // 2. Find the specific Bitcoin coin
             val bitcoinCoin = wallet.bitcoinCoins.find {
@@ -36,7 +36,7 @@ class GetBitcoinDetailUseCase @Inject constructor(
                     else -> true
                 }
             } ?: wallet.bitcoinCoins.firstOrNull()
-            ?: return Result.Error("Bitcoin not enabled")
+            ?: return com.example.nexuswallet.feature.core.util.Result.Error("Bitcoin not enabled")
 
             // 3. Fetch fresh transactions from blockchain (now with walletId)
             val networkParam = when (bitcoinCoin.network) {
@@ -95,11 +95,11 @@ class GetBitcoinDetailUseCase @Inject constructor(
             )
 
             logger.d(tag, "Successfully retrieved Bitcoin details with ${rawTransactions.size} raw transactions")
-            Result.Success(result)
+            com.example.nexuswallet.feature.core.util.Result.Success(result)
 
         } catch (e: Exception) {
             logger.e(tag, "Error getting Bitcoin details", e)
-            Result.Error(e.message ?: "Unknown error")
+            com.example.nexuswallet.feature.core.util.Result.Error(e.message ?: "Unknown error")
         }
     }
 }

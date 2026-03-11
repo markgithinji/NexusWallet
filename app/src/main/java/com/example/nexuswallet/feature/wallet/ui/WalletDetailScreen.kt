@@ -86,7 +86,7 @@ import com.example.nexuswallet.feature.wallet.domain.SPLToken
 import com.example.nexuswallet.feature.wallet.domain.SolanaBalance
 import com.example.nexuswallet.feature.wallet.domain.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.TransactionDisplayInfo
+import com.example.nexuswallet.feature.wallet.domain.usecase.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.Wallet

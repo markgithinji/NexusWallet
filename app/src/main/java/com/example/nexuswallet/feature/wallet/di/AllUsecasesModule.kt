@@ -3,19 +3,16 @@ package com.example.nexuswallet.feature.wallet.di
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.authentication.domain.usecase.RecordAuthenticationUseCase
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.settings.domain.usecase.GetAuthStatusUseCase
-import com.example.nexuswallet.feature.wallet.domain.CreateWalletUseCaseImpl
+import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.GenerateMnemonicUseCase
-import com.example.nexuswallet.feature.wallet.domain.GenerateMnemonicUseCaseImpl
-import com.example.nexuswallet.feature.wallet.domain.IsSessionValidUseCaseImpl
 import com.example.nexuswallet.feature.wallet.data.securityrefactor.ValidateMnemonicUseCase
-import com.example.nexuswallet.feature.wallet.domain.ValidateMnemonicUseCaseImpl
 import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUseCaseImpl
-import com.example.nexuswallet.feature.wallet.domain.GetAllTransactionsUseCaseImpl
-import com.example.nexuswallet.feature.wallet.domain.GetTransactionDetailUseCase
-import com.example.nexuswallet.feature.wallet.domain.GetTransactionDetailUseCaseImpl
-import com.example.nexuswallet.feature.wallet.domain.WalletLocalDataSource
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetTransactionDetailUseCase
+import com.example.nexuswallet.feature.wallet.domain.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.Module
 import dagger.Provides
@@ -31,17 +28,21 @@ object AllUsecasesModule {
     @Singleton
     fun provideGenerateMnemonicUseCase(
         logger: Logger
-    ): GenerateMnemonicUseCase = GenerateMnemonicUseCaseImpl(
-        logger
-    )
+    ): GenerateMnemonicUseCase {
+        return GenerateMnemonicUseCase(
+            logger = logger
+        )
+    }
 
     @Provides
     @Singleton
     fun provideValidateMnemonicUseCase(
         logger: Logger
-    ): ValidateMnemonicUseCase = ValidateMnemonicUseCaseImpl(
-        logger
-    )
+    ): ValidateMnemonicUseCase {
+        return ValidateMnemonicUseCase(
+            logger = logger
+        )
+    }
 
     @Provides
     @Singleton
@@ -55,7 +56,7 @@ object AllUsecasesModule {
         solanaBlockchainRepository: SolanaBlockchainRepository,
         logger: Logger
     ): GetAllTransactionsUseCase {
-        return GetAllTransactionsUseCaseImpl(
+        return GetAllTransactionsUseCase(
             walletRepository = walletRepository,
             bitcoinTransactionRepository = bitcoinTransactionRepository,
             evmTransactionRepository = evmTransactionRepository,
@@ -68,9 +69,22 @@ object AllUsecasesModule {
     }
 
     @Provides
+    @Singleton
     fun provideGetTransactionDetailUseCase(
-        impl: GetTransactionDetailUseCaseImpl
-    ): GetTransactionDetailUseCase = impl
+        walletRepository: WalletRepository,
+        bitcoinTransactionRepository: BitcoinTransactionRepository,
+        evmTransactionRepository: EVMTransactionRepository,
+        solanaTransactionRepository: SolanaTransactionRepository,
+        logger: Logger
+    ): GetTransactionDetailUseCase {
+        return GetTransactionDetailUseCase(
+            walletRepository = walletRepository,
+            bitcoinTransactionRepository = bitcoinTransactionRepository,
+            evmTransactionRepository = evmTransactionRepository,
+            solanaTransactionRepository = solanaTransactionRepository,
+            logger = logger
+        )
+    }
 
     @Provides
     @Singleton
@@ -79,10 +93,10 @@ object AllUsecasesModule {
         keyStoreRepository: KeyStoreRepository,
         logger: Logger
     ): ClearAllSecurityDataUseCase {
-        return ClearAllSecurityDataUseCaseImpl(
-            securityPreferencesRepository,
-            keyStoreRepository,
-            logger
+        return ClearAllSecurityDataUseCase(
+            securityPreferencesRepository = securityPreferencesRepository,
+            keyStoreRepository = keyStoreRepository,
+            logger = logger
         )
     }
 
@@ -92,9 +106,9 @@ object AllUsecasesModule {
         securityPreferencesRepository: SecurityPreferencesRepository,
         logger: Logger
     ): SetBiometricEnabledUseCase {
-        return SetBiometricEnabledUseCaseImpl(
-            securityPreferencesRepository,
-            logger
+        return SetBiometricEnabledUseCase(
+            securityPreferencesRepository = securityPreferencesRepository,
+            logger = logger
         )
     }
 
@@ -104,9 +118,9 @@ object AllUsecasesModule {
         securityPreferencesRepository: SecurityPreferencesRepository,
         logger: Logger
     ): IsBiometricEnabledUseCase {
-        return IsBiometricEnabledUseCaseImpl(
-            securityPreferencesRepository,
-            logger
+        return IsBiometricEnabledUseCase(
+            securityPreferencesRepository = securityPreferencesRepository,
+            logger = logger
         )
     }
 
@@ -116,9 +130,9 @@ object AllUsecasesModule {
         securityPreferencesRepository: SecurityPreferencesRepository,
         logger: Logger
     ): SetPinUseCase {
-        return SetPinUseCaseImpl(
-            securityPreferencesRepository,
-            logger
+        return SetPinUseCase(
+            securityPreferencesRepository = securityPreferencesRepository,
+            logger = logger
         )
     }
 
@@ -128,9 +142,9 @@ object AllUsecasesModule {
         securityPreferencesRepository: SecurityPreferencesRepository,
         logger: Logger
     ): IsPinSetUseCase {
-        return IsPinSetUseCaseImpl(
-            securityPreferencesRepository,
-            logger
+        return IsPinSetUseCase(
+            securityPreferencesRepository = securityPreferencesRepository,
+            logger = logger
         )
     }
 
@@ -140,9 +154,9 @@ object AllUsecasesModule {
         securityPreferencesRepository: SecurityPreferencesRepository,
         logger: Logger
     ): ClearPinUseCase {
-        return ClearPinUseCaseImpl(
-            securityPreferencesRepository,
-            logger
+        return ClearPinUseCase(
+            securityPreferencesRepository = securityPreferencesRepository,
+            logger = logger
         )
     }
 
@@ -152,9 +166,9 @@ object AllUsecasesModule {
         securityPreferencesRepository: SecurityPreferencesRepository,
         logger: Logger
     ): GetAuthStatusUseCase {
-        return GetAuthStatusUseCaseImpl(
-            securityPreferencesRepository,
-            logger
+        return GetAuthStatusUseCase(
+            securityPreferencesRepository = securityPreferencesRepository,
+            logger = logger
         )
     }
 
@@ -164,9 +178,9 @@ object AllUsecasesModule {
         securityPreferencesRepository: SecurityPreferencesRepository,
         logger: Logger
     ): IsSessionValidUseCase {
-        return IsSessionValidUseCaseImpl(
-            securityPreferencesRepository,
-            logger
+        return IsSessionValidUseCase(
+            securityPreferencesRepository = securityPreferencesRepository,
+            logger = logger
         )
     }
 
@@ -176,31 +190,31 @@ object AllUsecasesModule {
         securityPreferencesRepository: SecurityPreferencesRepository,
         logger: Logger
     ): RecordAuthenticationUseCase {
-        return RecordAuthenticationUseCaseImpl(
-            securityPreferencesRepository,
-            logger
+        return RecordAuthenticationUseCase(
+            securityPreferencesRepository = securityPreferencesRepository,
+            logger = logger
         )
     }
 
     @Provides
     @Singleton
     fun provideCreateWalletUseCase(
-        walletLocalDataSource: WalletLocalDataSource,
+        walletDataSource: WalletDataSource,
         keyStoreRepository: KeyStoreRepository,
         securityPreferencesRepository: SecurityPreferencesRepository,
         logger: Logger
     ): CreateWalletUseCase {
-        return CreateWalletUseCaseImpl(
-            walletLocalDataSource,
-            keyStoreRepository,
-            securityPreferencesRepository,
-            logger
+        return CreateWalletUseCase(
+            walletDataSource = walletDataSource,
+            keyStoreRepository = keyStoreRepository,
+            securityPreferencesRepository = securityPreferencesRepository,
+            logger = logger
         )
     }
 
     @Provides
     @Singleton
-    fun provideVerifyPinUseCase(): FormatTransactionDisplayUseCase {
-        return FormatTransactionDisplayUseCaseImpl()
+    fun provideFormatTransactionDisplayUseCase(): FormatTransactionDisplayUseCaseImpl {
+        return FormatTransactionDisplayUseCase()
     }
 }

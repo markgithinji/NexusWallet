@@ -15,7 +15,7 @@ import com.example.nexuswallet.feature.wallet.domain.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.SPLToken
 import com.example.nexuswallet.feature.wallet.domain.TokenType
-import com.example.nexuswallet.feature.wallet.domain.TransactionDisplayInfo
+import com.example.nexuswallet.feature.wallet.domain.usecase.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.Wallet

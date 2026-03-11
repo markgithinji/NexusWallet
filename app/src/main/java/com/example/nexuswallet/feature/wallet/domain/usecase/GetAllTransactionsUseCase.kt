@@ -1,23 +1,24 @@
-package com.example.nexuswallet.feature.wallet.domain
+package com.example.nexuswallet.feature.wallet.domain.usecase
 
-import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.coin.ethereum.EVMTransaction
-import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
-import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
-import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
-import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.wallet.domain.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.SolanaCoin
+import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
-import javax.inject.Singleton@Singleton
+import javax.inject.Singleton
+
+@Singleton
 class GetAllTransactionsUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
@@ -153,7 +154,10 @@ class GetAllTransactionsUseCase @Inject constructor(
                 val btcCount = sortedList.count { it is BitcoinTransaction }
                 val evmCount = sortedList.count { it is EVMTransaction }
                 val solCount = sortedList.count { it is SolanaTransaction }
-                logger.d(tag, "Observing - BTC: $btcCount, EVM: $evmCount, SOL: $solCount, Total: ${sortedList.size}")
+                logger.d(
+                    tag,
+                    "Observing - BTC: $btcCount, EVM: $evmCount, SOL: $solCount, Total: ${sortedList.size}"
+                )
             }
         }.flowOn(Dispatchers.IO)
     }
@@ -207,7 +211,7 @@ class GetAllTransactionsUseCase @Inject constructor(
 
                     logger.d(tag, "Saved ${transactions.size} Bitcoin transactions for ${coin.address}")
                 }
-                is Result.Error -> {
+                is com.example.nexuswallet.feature.core.util.Result.Error -> {
                     logger.e(tag, "Failed to fetch Bitcoin transactions: ${result.message}")
                 }
                 else -> {}
@@ -242,7 +246,7 @@ class GetAllTransactionsUseCase @Inject constructor(
                     }
                     logger.d(tag, "Saved ${result.data.size} native ETH transactions for $address")
                 }
-                is Result.Error -> {
+                is com.example.nexuswallet.feature.core.util.Result.Error -> {
                     logger.e(tag, "Failed to fetch native ETH transactions: ${result.message}")
                 }
                 else -> {}
@@ -271,7 +275,7 @@ class GetAllTransactionsUseCase @Inject constructor(
                     }
                     logger.d(tag, "Saved ${result.data.size} ${token.symbol} transactions")
                 }
-                is Result.Error -> {
+                is com.example.nexuswallet.feature.core.util.Result.Error -> {
                     logger.e(tag, "Failed to fetch ${token.symbol} transactions: ${result.message}")
                 }
                 else -> {}
@@ -354,7 +358,7 @@ class GetAllTransactionsUseCase @Inject constructor(
 
                     logger.d(tag, "Saved ${transactions.size} Solana transactions for ${coin.address}")
                 }
-                is Result.Error -> {
+                is com.example.nexuswallet.feature.core.util.Result.Error -> {
                     logger.e(tag, "Failed to fetch Solana transactions: ${result.message}")
                 }
                 else -> {}
