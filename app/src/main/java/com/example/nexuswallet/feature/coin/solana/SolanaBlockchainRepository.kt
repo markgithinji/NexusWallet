@@ -3,11 +3,11 @@ package com.example.nexuswallet.feature.coin.solana
 import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.coin.solana.data.remote.HeliusTransactionResponse
+import com.example.nexuswallet.feature.coin.solana.data.repository.SolanaSignedTransaction
 import org.sol4k.Keypair
 import java.math.BigDecimal
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 interface SolanaBlockchainRepository {
     // ===== RPC Methods (using sol4k) =====
@@ -48,15 +48,15 @@ interface SolanaBlockchainRepository {
         address: String,
         network: SolanaNetwork,
         limit: Int = 50
-    ): Result<List<HeliusTransaction>>
+    ): Result<List<HeliusTransactionResponse>>
 
     suspend fun getTransaction(
         signature: String,
         network: SolanaNetwork
-    ): Result<HeliusTransaction>
+    ): Result<HeliusTransactionResponse>
 
     fun parseTransfer(
-        transaction: HeliusTransaction,
+        transaction: HeliusTransactionResponse,
         walletAddress: String
     ): TransferInfo?
 }

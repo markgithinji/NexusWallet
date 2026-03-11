@@ -1,9 +1,15 @@
-package com.example.nexuswallet.feature.coin.solana
+package com.example.nexuswallet.feature.coin.solana.data.repository
 
 import com.example.nexuswallet.feature.coin.BroadcastResult
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
 import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.coin.solana.data.remote.HeliusApi
+import com.example.nexuswallet.feature.coin.solana.data.remote.HeliusTransactionResponse
+import com.example.nexuswallet.feature.coin.solana.data.remote.HeliusTransactionRequest
+import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
+import com.example.nexuswallet.feature.coin.solana.TransferInfo
 import com.example.nexuswallet.feature.logging.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,9 +27,6 @@ import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
-import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 
 @Singleton
 class SolanaBlockchainRepositoryImpl @Inject constructor(
@@ -260,7 +263,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         address: String,
         network: SolanaNetwork,
         limit: Int
-    ): Result<List<HeliusTransaction>> = withContext(Dispatchers.IO) {
+    ): Result<List<HeliusTransactionResponse>> = withContext(Dispatchers.IO) {
         logger.d(tag, "=== getTransactions called ===")
         logger.d(tag, "Address: ${address.take(8)}..., Network: $network, Limit: $limit")
 
@@ -279,7 +282,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     override suspend fun getTransaction(
         signature: String,
         network: SolanaNetwork
-    ): Result<HeliusTransaction> = withContext(Dispatchers.IO) {
+    ): Result<HeliusTransactionResponse> = withContext(Dispatchers.IO) {
         logger.d(tag, "=== getTransaction called ===")
         logger.d(tag, "Signature: ${signature.take(8)}..., Network: $network")
 
@@ -295,7 +298,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     }
 
     override fun parseTransfer(
-        transaction: HeliusTransaction,
+        transaction: HeliusTransactionResponse,
         walletAddress: String
     ): TransferInfo? {
         logger.d(tag, "=== parseTransfer called ===")

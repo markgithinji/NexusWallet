@@ -1,13 +1,17 @@
-package com.example.nexuswallet.feature.coin.solana
+package com.example.nexuswallet.feature.coin.solana.data.repository
 
+import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
+import com.example.nexuswallet.feature.coin.solana.data.local.SolanaTransactionDao
 import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
+import com.example.nexuswallet.feature.coin.solana.data.toDomain
+import com.example.nexuswallet.feature.coin.solana.data.toEntity
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import okhttp3.internal.concurrent.TaskRunner.Companion.logger
 import javax.inject.Inject
 import javax.inject.Singleton
+
 @Singleton
 class SolanaTransactionRepositoryImpl @Inject constructor(
     private val solanaTransactionDao: SolanaTransactionDao,

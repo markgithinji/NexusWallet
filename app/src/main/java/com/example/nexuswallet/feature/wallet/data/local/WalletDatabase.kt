@@ -9,8 +9,8 @@ import com.example.nexuswallet.feature.coin.bitcoin.data.local.BitcoinTransactio
 import com.example.nexuswallet.feature.coin.bitcoin.data.local.BitcoinTransactionEntity
 import com.example.nexuswallet.feature.coin.ethereum.data.local.EVMTransactionDao
 import com.example.nexuswallet.feature.coin.ethereum.EVMTransactionEntity
-import com.example.nexuswallet.feature.coin.solana.SolanaTransactionDao
-import com.example.nexuswallet.feature.coin.solana.SolanaTransactionEntity
+import com.example.nexuswallet.feature.coin.solana.data.local.SolanaTransactionDao
+import com.example.nexuswallet.feature.coin.solana.data.local.SolanaTransactionEntity
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoinDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Converters
