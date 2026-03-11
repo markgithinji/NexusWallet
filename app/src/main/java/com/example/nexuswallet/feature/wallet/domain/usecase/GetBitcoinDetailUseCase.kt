@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.domain.BitcoinDetailResult
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinDetailResult
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import javax.inject.Inject

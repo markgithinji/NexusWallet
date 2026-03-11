@@ -7,9 +7,9 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
-import com.example.nexuswallet.feature.wallet.domain.SolanaDetailResult
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
 import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 
 @Singleton

@@ -1,14 +1,12 @@
 package com.example.nexuswallet.feature.wallet.data.local.mapper
 
 import com.example.nexuswallet.feature.wallet.data.local.entity.EVMTokenEntity
-import com.example.nexuswallet.feature.wallet.data.local.toEthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.local.toStorageString
-import com.example.nexuswallet.feature.wallet.domain.ERC20Token
-import com.example.nexuswallet.feature.wallet.domain.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.model.ERC20Token
+import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.NativeETH
-import com.example.nexuswallet.feature.wallet.domain.USDCToken
-import com.example.nexuswallet.feature.wallet.domain.USDTToken
+import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import java.util.UUID
 
 fun EVMToken.toEntity(walletId: String): EVMTokenEntity = EVMTokenEntity(

@@ -5,8 +5,8 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.domain.EVMToken
-import com.example.nexuswallet.feature.wallet.domain.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import org.web3j.abi.datatypes.Address
 import java.math.BigDecimal
 import javax.inject.Inject

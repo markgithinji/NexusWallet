@@ -10,12 +10,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
-import com.example.nexuswallet.feature.wallet.domain.EVMToken
-import com.example.nexuswallet.feature.wallet.domain.EthereumDetailResult
+import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumDetailResult
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.NativeETH
-import com.example.nexuswallet.feature.wallet.domain.USDCToken
-import com.example.nexuswallet.feature.wallet.domain.USDTToken
+import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 
 interface GetEthereumDetailUseCase {

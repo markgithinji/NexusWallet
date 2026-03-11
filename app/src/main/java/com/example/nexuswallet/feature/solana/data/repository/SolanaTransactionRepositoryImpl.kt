@@ -8,7 +8,7 @@ import com.example.nexuswallet.feature.solana.data.toEntity
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.data.toDomain
 import com.example.nexuswallet.feature.solana.data.toEntity
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject

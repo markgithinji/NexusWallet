@@ -4,7 +4,7 @@ import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.Wallet
+import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import org.bitcoinj.core.Address
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params

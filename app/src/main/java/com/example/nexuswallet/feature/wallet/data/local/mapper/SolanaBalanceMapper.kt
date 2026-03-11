@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.wallet.data.local.mapper
 
 import com.example.nexuswallet.feature.wallet.data.local.entity.SolanaBalanceEntity
-import com.example.nexuswallet.feature.wallet.domain.SolanaBalance
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
 import java.util.UUID
 
 fun SolanaBalanceEntity.toDomain(): SolanaBalance =

@@ -4,7 +4,7 @@ import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.local.toBitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import java.math.BigDecimal
 import java.math.RoundingMode
 fun com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionEntity.toDomain(): com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction =

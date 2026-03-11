@@ -10,9 +10,9 @@ import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinBal
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinWalletUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.ValidateBitcoinTransactionUseCase
-import com.example.nexuswallet.feature.wallet.domain.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.Wallet
+import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

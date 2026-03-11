@@ -14,7 +14,7 @@ import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.TransactionDetail
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import javax.inject.Inject
 import javax.inject.Singleton

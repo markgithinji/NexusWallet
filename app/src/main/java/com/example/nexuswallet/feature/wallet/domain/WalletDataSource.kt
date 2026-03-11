@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain
 
+import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import kotlinx.coroutines.flow.Flow
 
 interface WalletDataSource {

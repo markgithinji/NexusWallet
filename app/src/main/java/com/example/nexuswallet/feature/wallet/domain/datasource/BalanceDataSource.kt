@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain.datasource
 
-import com.example.nexuswallet.feature.wallet.domain.WalletBalance
+import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 
 interface BalanceDataSource {
     suspend fun saveWalletBalance(balance: WalletBalance)

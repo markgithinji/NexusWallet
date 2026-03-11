@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.wallet.data.local.mapper
 
 import com.example.nexuswallet.feature.wallet.data.local.entity.SPLTokenEntity
-import com.example.nexuswallet.feature.wallet.domain.SPLToken
+import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import java.util.UUID
 
 fun SPLTokenEntity.toDomain(): SPLToken =

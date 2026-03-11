@@ -8,12 +8,12 @@ import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockc
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetFeeEstimateUseCase
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.SendEVMAssetUseCase
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.ValidateEVMSendUseCase
-import com.example.nexuswallet.feature.wallet.domain.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.NativeETH
-import com.example.nexuswallet.feature.wallet.domain.USDCToken
-import com.example.nexuswallet.feature.wallet.domain.USDTToken
-import com.example.nexuswallet.feature.wallet.domain.Wallet
+import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
+import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow

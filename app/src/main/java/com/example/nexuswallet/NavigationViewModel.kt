@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.settings.ui.IsBiometricEnabledUseCase
 import com.example.nexuswallet.feature.settings.ui.IsPinSetUseCase
-import com.example.nexuswallet.feature.wallet.domain.Wallet
+import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

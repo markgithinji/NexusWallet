@@ -13,13 +13,13 @@ import com.example.nexuswallet.feature.wallet.data.local.mapper.toEntity
 import com.example.nexuswallet.feature.wallet.data.local.mapper.toSolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.local.mapper.toStorageString
 import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
-import com.example.nexuswallet.feature.wallet.domain.BitcoinBalance
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.EVMBalance
+import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
 import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.SolanaBalance
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
 import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.WalletBalance
+import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton

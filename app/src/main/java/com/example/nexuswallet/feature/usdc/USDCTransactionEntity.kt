@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 //
 //
 //@Entity(tableName = "USDCSendTransaction")

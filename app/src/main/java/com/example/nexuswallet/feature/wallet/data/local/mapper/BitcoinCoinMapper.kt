@@ -1,9 +1,7 @@
 package com.example.nexuswallet.feature.wallet.data.local.mapper
 
 import com.example.nexuswallet.feature.wallet.data.local.entity.BitcoinCoinEntity
-import com.example.nexuswallet.feature.wallet.data.local.toBitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.local.toStorageString
-import com.example.nexuswallet.feature.wallet.domain.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import java.util.UUID
 

@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.wallet.data.local.mapper
 
 import com.example.nexuswallet.feature.wallet.data.local.entity.EVMBalanceEntity
 import com.example.nexuswallet.feature.wallet.data.local.entity.EVMTokenEntity
-import com.example.nexuswallet.feature.wallet.domain.EVMBalance
+import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
 import java.util.UUID
 
 fun EVMBalance.toEntity(walletId: String, tokenEntity: EVMTokenEntity): EVMBalanceEntity =

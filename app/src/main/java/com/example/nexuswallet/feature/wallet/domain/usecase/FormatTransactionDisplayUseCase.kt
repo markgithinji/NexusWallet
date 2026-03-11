@@ -5,7 +5,7 @@ import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransact
 import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
 import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
