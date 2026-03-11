@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.ethereum
+package com.example.nexuswallet.feature.coin.ethereum.ui
 
 import android.util.Log
 import androidx.compose.runtime.snapshotFlow
@@ -17,7 +17,6 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -40,32 +39,6 @@ class EthereumSendViewModel @Inject constructor(
     private val validateEVMSendUseCase: ValidateEVMSendUseCase,
     private val walletRepository: WalletRepository
 ) : ViewModel() {
-
-    data class EthSendUiState(
-        val walletId: String = "",
-        val walletName: String = "",
-        val fromAddress: String = "",
-        val network: EthereumNetwork = EthereumNetwork.Sepolia,
-        val availableNetworks: List<EthereumNetwork> = emptyList(),
-        val availableTokens: List<EVMToken> = emptyList(),
-        val selectedToken: EVMToken? = null,
-        val ethBalance: BigDecimal = BigDecimal.ZERO,
-        val tokenBalance: BigDecimal = BigDecimal.ZERO,
-        val balanceFormatted: String = "0 ETH",
-        val toAddress: String = "",
-        val amount: String = "",
-        val amountValue: BigDecimal = BigDecimal.ZERO,
-        val note: String = "",
-        val feeLevel: FeeLevel = FeeLevel.NORMAL,
-        val feeEstimate: EVMFeeEstimate? = null,
-        val isFeeLoading: Boolean = false,
-        val validationResult: SendValidationResult = SendValidationResult(isValid = false),
-        val isLoading: Boolean = false,
-        val error: String? = null,
-        val step: String = "",
-        val isInitialized: Boolean = false,
-        val balancesLoaded: Boolean = false
-    )
 
     private val _uiState = MutableStateFlow(EthSendUiState())
     val uiState: StateFlow<EthSendUiState> = _uiState.asStateFlow()

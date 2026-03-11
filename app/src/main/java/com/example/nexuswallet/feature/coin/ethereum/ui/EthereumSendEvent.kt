@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.ethereum
+package com.example.nexuswallet.feature.coin.ethereum.ui
 
 import com.example.nexuswallet.feature.coin.FeeLevel
 

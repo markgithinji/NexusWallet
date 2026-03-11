@@ -21,7 +21,7 @@ import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredS
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.ui.send.BitcoinSendScreen
 import com.example.nexuswallet.feature.coin.FeeLevel
-import com.example.nexuswallet.feature.coin.ethereum.EthereumSendScreen
+import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendScreen
 import com.example.nexuswallet.feature.coin.solana.SolanaSendScreen
 import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.market.ui.TokenDetailScreen

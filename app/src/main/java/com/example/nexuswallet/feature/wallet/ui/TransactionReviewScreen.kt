@@ -44,9 +44,9 @@ import com.example.nexuswallet.feature.coin.bitcoin.ui.review.BitcoinReviewEffec
 import com.example.nexuswallet.feature.coin.bitcoin.ui.review.BitcoinReviewViewModel
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate
-import com.example.nexuswallet.feature.coin.ethereum.EthereumSendEffect
-import com.example.nexuswallet.feature.coin.ethereum.EthereumSendEvent
-import com.example.nexuswallet.feature.coin.ethereum.EthereumSendViewModel
+import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendEffect
+import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendEvent
+import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendViewModel
 import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
 import com.example.nexuswallet.feature.coin.solana.SolanaSendEffect
 import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
