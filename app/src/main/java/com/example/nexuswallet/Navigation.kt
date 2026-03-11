@@ -19,7 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredScreen
 import com.example.nexuswallet.feature.coin.CoinType
-import com.example.nexuswallet.feature.coin.bitcoin.ui.send.BitcoinSendScreen
+import com.example.nexuswallet.feature.bitcoin.ui.send.BitcoinSendScreen
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendScreen
 import com.example.nexuswallet.feature.coin.solana.ui.SolanaSendScreen
@@ -337,7 +337,7 @@ fun Navigation(
 
             when (args.coinType) {
                 CoinType.BITCOIN -> {
-                    BitcoinSendScreen(
+                    _root_ide_package_.com.example.nexuswallet.feature.bitcoin.ui.send.BitcoinSendScreen(
                         onNavigateUp = {
                             Log.d("Navigation", "BitcoinSendScreen: navigate up")
                             navController.navigateUp()
