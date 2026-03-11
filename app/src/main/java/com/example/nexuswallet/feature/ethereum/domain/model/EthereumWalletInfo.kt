@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.ethereum.domain.model
 
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
+import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import kotlinx.serialization.Serializable
 
 @Serializable

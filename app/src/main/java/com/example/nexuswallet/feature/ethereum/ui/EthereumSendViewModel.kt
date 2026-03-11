@@ -9,7 +9,7 @@ import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetFeeEstima
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.SendEVMAssetUseCase
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.ValidateEVMSendUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
-import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
+import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
