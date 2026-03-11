@@ -1,17 +1,17 @@
-package com.example.nexuswallet.feature.coin.ethereum
+package com.example.nexuswallet.feature.coin.ethereum.domain.di
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.repository.EVMBlockchainRepositoryImpl
 import com.example.nexuswallet.feature.coin.ethereum.data.EVMTransactionRepository
-import com.example.nexuswallet.feature.coin.ethereum.data.local.EVMTransactionDao
-import com.example.nexuswallet.feature.coin.ethereum.data.remote.EtherscanApiService
-import com.example.nexuswallet.feature.coin.ethereum.data.repository.EVMTransactionRepositoryImpl
+import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetEthereumWalletUseCase
+import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetPendingTransactionsUseCase
+import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetTransactionUseCase
+import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetWalletTransactionsUseCase
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.SendEVMAssetUseCase
-import com.example.nexuswallet.feature.coin.usdc.Web3jFactory
+import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.SyncEthereumTransactionsUseCase
+import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.ValidateEVMSendUseCase
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.Module
 import dagger.Provides
@@ -21,7 +21,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object UseCaseModule {
+object EVMDomainModule {
 
     @Provides
     @Singleton
@@ -31,7 +31,7 @@ object UseCaseModule {
         walletRepository: WalletRepository,
         logger: Logger
     ): SyncEthereumTransactionsUseCase {
-        return SyncEthereumTransactionsUseCaseImpl(
+        return SyncEthereumTransactionsUseCase(
             evmBlockchainRepository = evmBlockchainRepository,
             evmTransactionRepository = evmTransactionRepository,
             walletRepository = walletRepository,
@@ -45,7 +45,7 @@ object UseCaseModule {
         evmTransactionRepository: EVMTransactionRepository,
         logger: Logger
     ): GetTransactionUseCase {
-        return GetTransactionUseCaseImpl(
+        return GetTransactionUseCase(
             evmTransactionRepository = evmTransactionRepository,
             logger = logger
         )
@@ -57,7 +57,7 @@ object UseCaseModule {
         evmTransactionRepository: EVMTransactionRepository,
         logger: Logger
     ): GetWalletTransactionsUseCase {
-        return GetWalletTransactionsUseCaseImpl(
+        return GetWalletTransactionsUseCase(
             evmTransactionRepository = evmTransactionRepository,
             logger = logger
         )
@@ -69,7 +69,7 @@ object UseCaseModule {
         evmTransactionRepository: EVMTransactionRepository,
         logger: Logger
     ): GetPendingTransactionsUseCase {
-        return GetPendingTransactionsUseCaseImpl(
+        return GetPendingTransactionsUseCase(
             evmTransactionRepository = evmTransactionRepository,
             logger = logger
         )
@@ -78,22 +78,10 @@ object UseCaseModule {
     @Provides
     @Singleton
     fun provideValidateEVMSendUseCase(
-        getFeeEstimateUseCase: GetFeeEstimateUseCase,
-        logger: Logger
-    ): ValidateEVMSendUseCase {
-        return ValidateEVMSendUseCaseImpl(
-            getFeeEstimateUseCase = getFeeEstimateUseCase,
-            logger = logger
-        )
-    }
-
-    @Provides
-    @Singleton
-    fun provideGetFeeEstimateUseCase(
         evmBlockchainRepository: EVMBlockchainRepository,
         logger: Logger
-    ): GetFeeEstimateUseCase {
-        return GetFeeEstimateUseCaseImpl(
+    ): ValidateEVMSendUseCase {
+        return ValidateEVMSendUseCase(
             evmBlockchainRepository = evmBlockchainRepository,
             logger = logger
         )
@@ -105,7 +93,7 @@ object UseCaseModule {
         walletRepository: WalletRepository,
         logger: Logger
     ): GetEthereumWalletUseCase {
-        return GetEthereumWalletUseCaseImpl(
+        return GetEthereumWalletUseCase(
             walletRepository = walletRepository,
             logger = logger
         )
@@ -121,7 +109,7 @@ object UseCaseModule {
         keyStoreRepository: KeyStoreRepository,
         logger: Logger
     ): SendEVMAssetUseCase {
-        return SendEVMAssetUseCaseImpl(
+        return SendEVMAssetUseCase(
             walletRepository = walletRepository,
             evmBlockchainRepository = evmBlockchainRepository,
             evmTransactionRepository = evmTransactionRepository,
