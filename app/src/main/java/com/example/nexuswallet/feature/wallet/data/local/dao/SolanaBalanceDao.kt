@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import com.example.nexuswallet.feature.wallet.data.local.entity.SolanaBalanceEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -21,23 +22,4 @@ interface SolanaBalanceDao {
         WHERE sc.walletId = :walletId
     """)
     suspend fun getByWalletId(walletId: String): List<SolanaBalanceEntity>
-
-    @Query("""
-        SELECT sb.* FROM solana_balances sb
-        INNER JOIN solana_coins sc ON sb.coinId = sc.id
-        WHERE sc.walletId = :walletId
-    """)
-    fun observeByWalletId(walletId: String): Flow<List<SolanaBalanceEntity>>
-
-    @Query("SELECT * FROM solana_balances WHERE coinId = :coinId")
-    suspend fun getByCoinId(coinId: String): SolanaBalanceEntity?
-
-    @Query("SELECT * FROM solana_balances WHERE coinId = :coinId")
-    fun observeByCoinId(coinId: String): Flow<SolanaBalanceEntity?>
-
-    @Query("DELETE FROM solana_balances WHERE coinId IN (SELECT id FROM solana_coins WHERE walletId = :walletId)")
-    suspend fun deleteByWalletId(walletId: String)
-
-    @Query("DELETE FROM solana_balances WHERE coinId = :coinId")
-    suspend fun deleteByCoinId(coinId: String)
 }

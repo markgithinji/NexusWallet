@@ -5,22 +5,28 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import com.example.nexuswallet.feature.coin.bitcoin.data.local.BitcoinTransactionDao
-import com.example.nexuswallet.feature.coin.bitcoin.data.local.BitcoinTransactionEntity
-import com.example.nexuswallet.feature.coin.ethereum.data.local.EVMTransactionDao
-import com.example.nexuswallet.feature.coin.ethereum.EVMTransactionEntity
-import com.example.nexuswallet.feature.coin.solana.data.local.SolanaTransactionDao
-import com.example.nexuswallet.feature.coin.solana.data.local.SolanaTransactionEntity
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalanceDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoinDao
-import com.example.nexuswallet.feature.wallet.data.local.Converters
+import com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionDao
+import com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionEntity
+import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionDao
+import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity
+import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionDao
+import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity
+import com.example.nexuswallet.feature.wallet.data.local.dao.BitcoinBalanceDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.BitcoinCoinDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.EVMBalanceDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.EVMTokenDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.SPLTokenDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaBalanceDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaCoinDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.WalletDao
+import com.example.nexuswallet.feature.wallet.data.local.entity.BitcoinBalanceEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.BitcoinCoinEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.EVMBalanceEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.EVMTokenEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.SPLTokenEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.SolanaBalanceEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.SolanaCoinEntity
 import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMTokenDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLTokenDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalanceDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoinDao
 
 @Database(
     entities = [

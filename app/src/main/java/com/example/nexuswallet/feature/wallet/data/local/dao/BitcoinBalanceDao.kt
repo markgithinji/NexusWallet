@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import com.example.nexuswallet.feature.wallet.data.local.entity.BitcoinBalanceEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -17,10 +18,4 @@ interface BitcoinBalanceDao {
 
     @Query("SELECT * FROM bitcoin_balances WHERE coinId IN (SELECT id FROM bitcoin_coins WHERE walletId = :walletId)")
     suspend fun getByWalletId(walletId: String): List<BitcoinBalanceEntity>
-
-    @Query("SELECT * FROM bitcoin_balances WHERE coinId IN (SELECT id FROM bitcoin_coins WHERE walletId = :walletId)")
-    fun observeByWalletId(walletId: String): Flow<List<BitcoinBalanceEntity>>
-
-    @Query("SELECT * FROM bitcoin_balances WHERE coinId = :coinId")
-    suspend fun getByCoinId(coinId: String): BitcoinBalanceEntity?
 }

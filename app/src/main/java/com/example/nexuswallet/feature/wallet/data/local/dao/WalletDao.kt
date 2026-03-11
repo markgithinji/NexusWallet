@@ -20,10 +20,4 @@ interface WalletDao {
 
     @Query("DELETE FROM wallets WHERE id = :walletId")
     suspend fun delete(walletId: String)
-
-    @Query("SELECT COUNT(*) FROM wallets")
-    suspend fun count(): Int
-
-    @Query("SELECT EXISTS(SELECT 1 FROM wallets WHERE id = :walletId)")
-    suspend fun exists(walletId: String): Boolean
 }

@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import com.example.nexuswallet.feature.wallet.data.local.entity.BitcoinCoinEntity
 
 @Dao
 interface BitcoinCoinDao {

@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import com.example.nexuswallet.feature.wallet.data.local.entity.SPLTokenEntity
 
 @Dao
 interface SPLTokenDao {
@@ -19,10 +20,4 @@ interface SPLTokenDao {
 
     @Query("SELECT * FROM spl_tokens WHERE id = :tokenId")
     suspend fun getById(tokenId: String): SPLTokenEntity?
-
-    @Query("DELETE FROM spl_tokens WHERE solanaCoinId = :solanaCoinId")
-    suspend fun deleteBySolanaCoinId(solanaCoinId: String)
-
-    @Query("DELETE FROM spl_tokens WHERE id = :tokenId")
-    suspend fun deleteById(tokenId: String)
 }
