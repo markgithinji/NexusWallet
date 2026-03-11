@@ -48,8 +48,8 @@ import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendEffect
 import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendEvent
 import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendViewModel
 import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
-import com.example.nexuswallet.feature.coin.solana.SolanaSendEffect
-import com.example.nexuswallet.feature.coin.solana.SolanaSendViewModel
+import com.example.nexuswallet.feature.coin.solana.ui.SolanaSendEffect
+import com.example.nexuswallet.feature.coin.solana.ui.SolanaSendViewModel
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
