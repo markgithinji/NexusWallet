@@ -5,6 +5,9 @@ import com.example.nexuswallet.feature.authentication.domain.repository.Security
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SafeApiCall
+import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
+import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
+import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.USDT_GAS_LIMIT
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.SendEthereumResult
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.TokenTransaction
@@ -18,6 +21,7 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
+import com.example.nexuswallet.toHex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.web3j.abi.FunctionEncoder
@@ -339,13 +343,5 @@ class SendEVMAssetUseCase @Inject constructor(
 
             Triple(rawTransaction, signedHex, txHash)
         }
-    }
-
-    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
-
-    companion object {
-        const val GAS_LIMIT_STANDARD = 21000L
-        const val DEFAULT_TOKEN_GAS_LIMIT = 65000L
-        const val USDT_GAS_LIMIT = 78000L
     }
 }

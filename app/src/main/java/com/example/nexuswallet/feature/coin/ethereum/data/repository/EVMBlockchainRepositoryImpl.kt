@@ -12,6 +12,9 @@ import com.example.nexuswallet.feature.coin.ethereum.data.toTokenTransactionList
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
+import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
+import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.USDT_GAS_LIMIT
 import com.example.nexuswallet.feature.coin.usdc.Web3jFactory
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TokenType
@@ -446,13 +449,6 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
     )
 
     companion object {
-        // Gas limits
-        const val GAS_LIMIT_STANDARD = 21000L
-        const val DEFAULT_TOKEN_GAS_LIMIT = 65000L
-        const val USDT_GAS_LIMIT = 78000L
-
-        // Constants
-        private const val WEI_PER_GWEI = 1_000_000_000L
         private const val WEI_PER_ETH = "1000000000000000000"
         private const val ETH_DECIMALS = 18
         private const val GWEI_TO_WEI = 1_000_000_000L

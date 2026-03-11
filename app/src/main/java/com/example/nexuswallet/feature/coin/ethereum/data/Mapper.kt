@@ -118,12 +118,6 @@ fun TokenTransactionResponse.toTokenTransaction(
         RoundingMode.HALF_UP
     )
 
-    val generatedId = when (tokenSymbol) {
-        "USDC" -> "${network.chainId}_usdc"
-        "USDT" -> "${network.chainId}_usdt"
-        else -> "${network.chainId}_${contractAddress}"
-    }
-
     return TokenTransaction(
         id = "token_tx_${System.currentTimeMillis()}_${hash.take(8)}",
         walletId = walletId,
