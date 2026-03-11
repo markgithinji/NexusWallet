@@ -12,7 +12,7 @@ import com.example.nexuswallet.feature.wallet.data.local.mapper.toDomain
 import com.example.nexuswallet.feature.wallet.data.local.mapper.toEntity
 import com.example.nexuswallet.feature.wallet.data.local.mapper.toSolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.local.mapper.toStorageString
-import com.example.nexuswallet.feature.wallet.domain.BalanceDataSource
+import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
 import com.example.nexuswallet.feature.wallet.domain.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.EVMBalance

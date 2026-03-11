@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.wallet.data.repository
 
-import com.example.nexuswallet.feature.wallet.domain.BalanceDataSource
+import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
 import com.example.nexuswallet.feature.wallet.domain.Wallet
 import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.WalletDataSource
