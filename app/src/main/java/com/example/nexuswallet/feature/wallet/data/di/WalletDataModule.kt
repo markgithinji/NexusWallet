@@ -1,10 +1,6 @@
-package com.example.nexuswallet.feature.wallet.di
+package com.example.nexuswallet.feature.wallet.data.di
 
 import android.content.Context
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
-import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.local.dao.BitcoinBalanceDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.BitcoinCoinDao
@@ -15,13 +11,6 @@ import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaBalanceDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaCoinDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.WalletDao
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepositoryImpl
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalanceDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoinDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMTokenDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLTokenDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalanceDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoinDao
-import com.example.nexuswallet.feature.wallet.domain.SyncWalletBalancesUseCaseImpl
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.Module
 import dagger.Provides
@@ -119,7 +108,7 @@ object DatabaseModule {
         evmTokenDao: EVMTokenDao,
         evmBalanceDao: EVMBalanceDao
     ): BalanceDataSource {
-        return BalanceDataSourceImpl(
+        return BalanceDataSource(
             bitcoinCoinDao = bitcoinCoinDao,
             solanaCoinDao = solanaCoinDao,
             bitcoinBalanceDao = bitcoinBalanceDao,
@@ -138,27 +127,6 @@ object DatabaseModule {
         return WalletRepositoryImpl(
             walletDataSource = walletDataSource,
             balanceDataSource = balanceDataSource
-        )
-    }
-
-    // === Use Cases ===
-    @Provides
-    @Singleton
-    fun provideSyncWalletBalancesUseCase(
-        walletDataSource: WalletDataSource,
-        balanceDataSource: BalanceDataSource,
-        bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-        evmBlockchainRepository: EVMBlockchainRepository,
-        solanaBlockchainRepository: SolanaBlockchainRepository,
-        logger: Logger
-    ): SyncWalletBalancesUseCase {
-        return SyncWalletBalancesUseCaseImpl(
-            walletDataSource = walletDataSource,
-            balanceDataSource = balanceDataSource,
-            bitcoinBlockchainRepository = bitcoinBlockchainRepository,
-            evmBlockchainRepository = evmBlockchainRepository,
-            solanaBlockchainRepository = solanaBlockchainRepository,
-            logger = logger
         )
     }
 }

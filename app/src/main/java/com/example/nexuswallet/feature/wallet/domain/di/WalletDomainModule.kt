@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.di
+package com.example.nexuswallet.feature.wallet.domain.di
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
@@ -269,6 +269,26 @@ object WalletDomainModule {
         return GetSolanaDetailUseCaseImpl(
             walletRepository = walletRepository,
             solanaTransactionRepository = solanaTransactionRepository,
+            solanaBlockchainRepository = solanaBlockchainRepository,
+            logger = logger
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideSyncWalletBalancesUseCase(
+        walletDataSource: WalletDataSource,
+        balanceDataSource: BalanceDataSource,
+        bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+        evmBlockchainRepository: EVMBlockchainRepository,
+        solanaBlockchainRepository: SolanaBlockchainRepository,
+        logger: Logger
+    ): SyncWalletBalancesUseCase {
+        return SyncWalletBalancesUseCaseImpl(
+            walletDataSource = walletDataSource,
+            balanceDataSource = balanceDataSource,
+            bitcoinBlockchainRepository = bitcoinBlockchainRepository,
+            evmBlockchainRepository = evmBlockchainRepository,
             solanaBlockchainRepository = solanaBlockchainRepository,
             logger = logger
         )
