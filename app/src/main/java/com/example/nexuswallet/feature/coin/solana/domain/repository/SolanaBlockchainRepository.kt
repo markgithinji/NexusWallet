@@ -1,17 +1,17 @@
-package com.example.nexuswallet.feature.coin.solana
+package com.example.nexuswallet.feature.coin.solana.domain.repository
 
 import com.example.nexuswallet.feature.coin.BroadcastResult
-import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
+import com.example.nexuswallet.feature.coin.solana.TransferInfo
 import com.example.nexuswallet.feature.coin.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.coin.solana.data.remote.HeliusTransactionResponse
-import com.example.nexuswallet.feature.coin.solana.data.repository.SolanaSignedTransaction
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import org.sol4k.Keypair
 import java.math.BigDecimal
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 
 interface SolanaBlockchainRepository {
-    // ===== RPC Methods (using sol4k) =====
     suspend fun getRecentBlockhash(network: SolanaNetwork): Result<String>
 
     suspend fun getBalance(
@@ -44,7 +44,6 @@ interface SolanaBlockchainRepository {
 
     fun validateAddress(address: String): Result<Boolean>
 
-    // ===== HELIUS API METHODS =====
     suspend fun getTransactions(
         address: String,
         network: SolanaNetwork,

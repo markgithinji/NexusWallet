@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.coin.solana.data
 
 import com.example.nexuswallet.feature.coin.FeeLevel
-import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
+import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.coin.solana.data.local.SolanaTransactionEntity
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus

@@ -1,12 +1,24 @@
-package com.example.nexuswallet.feature.coin.solana
+package com.example.nexuswallet.feature.coin.solana.domain.di
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.coin.solana.data.local.SolanaTransactionDao
-import com.example.nexuswallet.feature.coin.solana.data.repository.SolanaTransactionRepositoryImpl
-import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
+import com.example.nexuswallet.feature.coin.solana.GetSolanaBalanceUseCase
+import com.example.nexuswallet.feature.coin.solana.GetSolanaBalanceUseCaseImpl
+import com.example.nexuswallet.feature.coin.solana.GetSolanaFeeEstimateUseCase
+import com.example.nexuswallet.feature.coin.solana.GetSolanaFeeEstimateUseCaseImpl
+import com.example.nexuswallet.feature.coin.solana.GetSolanaWalletUseCase
+import com.example.nexuswallet.feature.coin.solana.GetSolanaWalletUseCaseImpl
+import com.example.nexuswallet.feature.coin.solana.SendSolanaUseCase
+import com.example.nexuswallet.feature.coin.solana.SendSolanaUseCaseImpl
+import com.example.nexuswallet.feature.coin.solana.SyncSolanaTransactionsUseCase
+import com.example.nexuswallet.feature.coin.solana.SyncSolanaTransactionsUseCaseImpl
+import com.example.nexuswallet.feature.coin.solana.ValidateSolanaAddressUseCase
+import com.example.nexuswallet.feature.coin.solana.ValidateSolanaAddressUseCaseImpl
+import com.example.nexuswallet.feature.coin.solana.ValidateSolanaSendUseCase
+import com.example.nexuswallet.feature.coin.solana.ValidateSolanaSendUseCaseImpl
+import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.Module
 import dagger.Provides
@@ -16,7 +28,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object SolanaUseCaseModule {
+object SolanaUseDomainModule {
 
     @Provides
     @Singleton

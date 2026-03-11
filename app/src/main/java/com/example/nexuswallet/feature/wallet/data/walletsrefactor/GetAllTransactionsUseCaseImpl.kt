@@ -8,9 +8,9 @@ import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTra
 import com.example.nexuswallet.feature.coin.ethereum.EVMTransaction
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
-import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
-import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
-import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
+import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
+import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.GetAllTransactionsUseCase
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus

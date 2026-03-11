@@ -1,13 +1,13 @@
 package com.example.nexuswallet.feature.wallet.domain
-import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
+import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.FeeLevel
-import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
-import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
+import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
 
 
 interface GetSolanaDetailUseCase {

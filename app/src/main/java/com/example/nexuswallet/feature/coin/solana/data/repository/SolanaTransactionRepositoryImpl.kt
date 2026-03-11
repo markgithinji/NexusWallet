@@ -1,8 +1,8 @@
 package com.example.nexuswallet.feature.coin.solana.data.repository
 
-import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
+import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.coin.solana.data.local.SolanaTransactionDao
-import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
+import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.coin.solana.data.toDomain
 import com.example.nexuswallet.feature.coin.solana.data.toEntity
 import com.example.nexuswallet.feature.logging.Logger

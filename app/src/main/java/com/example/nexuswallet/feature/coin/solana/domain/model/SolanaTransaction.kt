@@ -1,9 +1,8 @@
-package com.example.nexuswallet.feature.coin.solana
+package com.example.nexuswallet.feature.coin.solana.domain.model
 
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -28,35 +27,4 @@ data class SolanaTransaction(
     val tokenDecimals: Int? = null,
     val slot: Long? = null,
     val blockTime: Long? = null
-)
-@Serializable
-data class SolanaFeeEstimate(
-    val feeLamports: Long,
-    val feeSol: String,
-    val estimatedTime: Int,
-    val priority: FeeLevel,
-    val computeUnits: Int,
-    val blockhash: String? = null
-)
-
-data class SendSolanaResult(
-    val transactionId: String,
-    val txHash: String,
-    val success: Boolean,
-    val error: String? = null
-)
-
-data class SolanaWalletInfo(
-    val walletId: String,
-    val walletName: String,
-    val walletAddress: String,
-    val network: SolanaNetwork
-)
-
-data class TransferInfo(
-    val from: String,
-    val to: String,
-    val amount: Long,
-    val isIncoming: Boolean,
-    val fee: Long
 )
