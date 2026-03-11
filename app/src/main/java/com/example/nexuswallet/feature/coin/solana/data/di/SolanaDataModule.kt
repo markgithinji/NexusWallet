@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.nexuswallet.feature.coin.solana.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.data.local.SolanaTransactionDao
 import com.example.nexuswallet.feature.coin.solana.data.remote.HeliusApi
+import com.example.nexuswallet.feature.coin.solana.data.remote.HeliusApiKeyInterceptor
 import com.example.nexuswallet.feature.coin.solana.data.repository.SolanaBlockchainRepositoryImpl
 import com.example.nexuswallet.feature.coin.solana.data.repository.SolanaTransactionRepositoryImpl
 import com.example.nexuswallet.feature.coin.solana.domain.SolanaTransactionRepository
@@ -20,10 +21,10 @@ import okhttp3.OkHttpClient
 import org.sol4k.Connection
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
 
-@Module
 @InstallIn(SingletonComponent::class)
 object SolanaDataModule {
 
@@ -33,22 +34,26 @@ object SolanaDataModule {
         return BuildConfig.HELIUS_API_KEY
     }
 
-    // ===== HELIUS RPC (for sol4k Connection) =====
+    @Provides
+    @Singleton
+    fun provideHeliusApiKeyInterceptor(apiKey: String): HeliusApiKeyInterceptor {
+        return HeliusApiKeyInterceptor(apiKey)
+    }
+
     @Provides
     @Singleton
     @Named("heliusRpcDevnet")
-    fun provideHeliusRpcDevnetConnection(apiKey: String): Connection {
-        return Connection("https://devnet.helius-rpc.com/?api-key=$apiKey")
+    fun provideHeliusRpcDevnetConnection(): Connection {
+        return Connection("https://devnet.helius-rpc.com/")
     }
 
     @Provides
     @Singleton
     @Named("heliusRpcMainnet")
-    fun provideHeliusRpcMainnetConnection(apiKey: String): Connection {
-        return Connection("https://mainnet.helius-rpc.com/?api-key=$apiKey")
+    fun provideHeliusRpcMainnetConnection(): Connection {
+        return Connection("https://mainnet.helius-rpc.com/")
     }
 
-    // ===== HELIUS REST API (Retrofit) =====
     @Provides
     @Singleton
     @Named("heliusApiDevnet")
@@ -65,10 +70,21 @@ object SolanaDataModule {
 
     @Provides
     @Singleton
+    fun provideHeliusOkHttpClient(
+        apiKeyInterceptor: HeliusApiKeyInterceptor
+    ): OkHttpClient {
+        return OkHttpClient.Builder()
+            .addInterceptor(apiKeyInterceptor)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
+
+    @Provides
+    @Singleton
     fun provideHeliusApi(
         @Named("heliusApiDevnet") devnetBaseUrl: String,
         @Named("heliusApiMainnet") mainnetBaseUrl: String,
-        @ApplicationContext context: Context,
         okHttpClient: OkHttpClient,
         json: Json
     ): HeliusApi {
@@ -89,14 +105,12 @@ object SolanaDataModule {
         @Named("heliusRpcDevnet") rpcDevnetConnection: Connection,
         @Named("heliusRpcMainnet") rpcMainnetConnection: Connection,
         heliusApi: HeliusApi,
-        apiKey: String,
         logger: Logger
     ): SolanaBlockchainRepository {
         return SolanaBlockchainRepositoryImpl(
             rpcDevnetConnection = rpcDevnetConnection,
             rpcMainnetConnection = rpcMainnetConnection,
             heliusApi = heliusApi,
-            apiKey = apiKey,
             logger = logger
         )
     }

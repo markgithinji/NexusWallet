@@ -1,14 +1,13 @@
 package com.example.nexuswallet.feature.coin.solana.data
 
 import com.example.nexuswallet.feature.coin.FeeLevel
+import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
 import com.example.nexuswallet.feature.coin.solana.data.local.SolanaTransactionEntity
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import java.math.BigDecimal
-import java.math.RoundingMode
 
-fun SolanaTransactionEntity.toDomain(): com.example.nexuswallet.feature.coin.solana.SolanaTransaction {
-    return _root_ide_package_.com.example.nexuswallet.feature.coin.solana.SolanaTransaction(
+fun SolanaTransactionEntity.toDomain(): SolanaTransaction {
+    return SolanaTransaction(
         id = id,
         walletId = walletId,
         fromAddress = fromAddress,
@@ -32,7 +31,7 @@ fun SolanaTransactionEntity.toDomain(): com.example.nexuswallet.feature.coin.sol
     )
 }
 
-fun com.example.nexuswallet.feature.coin.solana.SolanaTransaction.toEntity(): SolanaTransactionEntity {
+fun SolanaTransaction.toEntity(): SolanaTransactionEntity {
     return SolanaTransactionEntity(
         id = id,
         walletId = walletId,

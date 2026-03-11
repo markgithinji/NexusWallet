@@ -33,7 +33,6 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     @param:Named("heliusRpcDevnet") private val rpcDevnetConnection: Connection,
     @param:Named("heliusRpcMainnet") private val rpcMainnetConnection: Connection,
     private val heliusApi: HeliusApi,
-    private val apiKey: String,
     private val logger: Logger
 ) : SolanaBlockchainRepository {
 
@@ -270,8 +269,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         SafeApiCall.make {
             val transactions = heliusApi.getTransactions(
                 address = address,
-                limit = limit,
-                apiKey = apiKey
+                limit = limit
             )
 
             logger.d(tag, "Found ${transactions.size} transactions from Helius")
@@ -289,8 +287,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         SafeApiCall.make {
             val request = HeliusTransactionRequest(transactions = listOf(signature))
             val transactions = heliusApi.getTransaction(
-                request = request,
-                apiKey = apiKey
+                request = request
             )
 
             transactions.firstOrNull() ?: throw Exception("Transaction not found")
