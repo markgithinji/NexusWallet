@@ -12,7 +12,7 @@ import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransactio
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
+import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetTransactionDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
 import dagger.hilt.android.lifecycle.HiltViewModel

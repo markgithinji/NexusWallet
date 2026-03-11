@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.wallet.data.local.mapper
 import com.example.nexuswallet.feature.wallet.data.local.entity.SolanaCoinEntity
 import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
-import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
+import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import java.util.UUID
 
 fun SolanaCoinEntity.toDomain(splTokens: List<SPLToken>): SolanaCoin =

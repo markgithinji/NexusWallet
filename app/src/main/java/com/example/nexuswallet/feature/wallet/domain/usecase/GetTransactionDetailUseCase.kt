@@ -13,7 +13,7 @@ import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTrans
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
+import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import javax.inject.Inject

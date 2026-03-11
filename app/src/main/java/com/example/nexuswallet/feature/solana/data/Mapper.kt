@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.solana.data
 
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
+import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 
 fun com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity.toDomain(): com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction {

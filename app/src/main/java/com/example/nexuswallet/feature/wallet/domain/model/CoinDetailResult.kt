@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.wallet.domain.model
 
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
+import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import java.math.BigDecimal
 
 // Base result interface

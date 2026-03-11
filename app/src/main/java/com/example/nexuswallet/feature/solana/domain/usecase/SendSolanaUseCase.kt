@@ -13,7 +13,7 @@ import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.SOLANA_PRIVATE_KEY_TYPE
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
-import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
+import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.toHex

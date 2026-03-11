@@ -29,7 +29,7 @@ import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.NetworkType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
+import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.ui.ErrorMessage
 import com.example.nexuswallet.feature.wallet.ui.MaxAmountDialog
 import com.example.nexuswallet.feature.wallet.ui.NetworkSelectorCard
