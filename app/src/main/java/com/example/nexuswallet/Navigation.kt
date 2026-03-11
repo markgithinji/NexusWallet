@@ -22,7 +22,7 @@ import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.bitcoin.ui.send.BitcoinSendScreen
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.ethereum.ui.EthereumSendScreen
-import com.example.nexuswallet.feature.coin.solana.ui.SolanaSendScreen
+import com.example.nexuswallet.feature.solana.ui.SolanaSendScreen
 import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
@@ -390,7 +390,7 @@ fun Navigation(
                     )
                 }
                 CoinType.SOLANA -> {
-                    SolanaSendScreen(
+                    _root_ide_package_.com.example.nexuswallet.feature.solana.ui.SolanaSendScreen(
                         onNavigateUp = {
                             Log.d("Navigation", "SolanaSendScreen: navigate up")
                             navController.navigateUp()
