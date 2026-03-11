@@ -1,13 +1,4 @@
-package com.example.nexuswallet.feature.wallet.data.local
-
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.toStorageString
-import kotlinx.serialization.json.Json
-import org.json.JSONObject
-import java.util.UUID
+package com.example.nexuswallet.feature.wallet.data.local.migration
 
 //
 //val MIGRATION_16_17 = object : Migration(16, 17) {

@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.example.nexuswallet.feature.wallet.data.local.WalletEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
 import java.util.UUID
 
 @Entity(

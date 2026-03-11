@@ -5,13 +5,13 @@ import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlo
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.local.WalletDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.local.WalletLocalDataSourceImpl
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepositoryImpl
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoinDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMBalanceDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.EVMBalanceDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMTokenDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLTokenDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalanceDao

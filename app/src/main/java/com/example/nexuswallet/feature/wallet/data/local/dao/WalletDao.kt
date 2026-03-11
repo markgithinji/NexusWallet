@@ -1,14 +1,15 @@
-package com.example.nexuswallet.feature.wallet.data.local
+package com.example.nexuswallet.feature.wallet.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface WalletDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insert(wallet: WalletEntity)
 
     @Query("SELECT * FROM wallets WHERE id = :walletId")

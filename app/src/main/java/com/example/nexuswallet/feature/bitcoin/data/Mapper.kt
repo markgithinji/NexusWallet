@@ -6,7 +6,7 @@ import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionEntity
 import com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransactionResponse
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.toBitcoinNetwork
+import com.example.nexuswallet.feature.wallet.data.local.toBitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import java.math.BigDecimal
 import java.math.RoundingMode

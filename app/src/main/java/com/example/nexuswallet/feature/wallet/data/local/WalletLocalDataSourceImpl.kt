@@ -6,7 +6,8 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalanc
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoinDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMBalance
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMBalanceDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.EVMBalanceDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.WalletDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMTokenDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLTokenDao
@@ -16,11 +17,11 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoinDao
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.toBitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.toDomain
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.toEntity
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.toSolanaNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.toStorageString
+import com.example.nexuswallet.feature.wallet.data.local.toBitcoinNetwork
+import com.example.nexuswallet.feature.wallet.data.local.toDomain
+import com.example.nexuswallet.feature.wallet.data.local.toEntity
+import com.example.nexuswallet.feature.wallet.data.local.toSolanaNetwork
+import com.example.nexuswallet.feature.wallet.data.local.toStorageString
 import com.example.nexuswallet.feature.wallet.domain.WalletLocalDataSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map

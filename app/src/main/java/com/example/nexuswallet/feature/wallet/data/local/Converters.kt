@@ -1,8 +1,14 @@
-package com.example.nexuswallet.feature.wallet.data.walletsrefactor
+package com.example.nexuswallet.feature.wallet.data.local
 
 import android.util.Log
 import androidx.room.TypeConverter
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMBalance
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TokenType
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import kotlinx.serialization.json.Json
 
