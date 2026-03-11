@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.coin.bitcoin.domain.model
+package com.example.nexuswallet.feature.coin.bitcoin.util
 
 object BitcoinConstants {
     // Private key type

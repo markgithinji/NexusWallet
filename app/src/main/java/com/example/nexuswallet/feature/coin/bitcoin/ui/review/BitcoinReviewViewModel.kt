@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_INPUT_COUNT
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_OUTPUT_COUNT
+import com.example.nexuswallet.feature.coin.bitcoin.util.BitcoinConstants.DEFAULT_INPUT_COUNT
+import com.example.nexuswallet.feature.coin.bitcoin.util.BitcoinConstants.DEFAULT_OUTPUT_COUNT
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
 import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinWalletUseCase
