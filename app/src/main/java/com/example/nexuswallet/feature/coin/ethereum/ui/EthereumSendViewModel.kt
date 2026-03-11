@@ -1,14 +1,13 @@
 package com.example.nexuswallet.feature.coin.ethereum.ui
 
-import android.util.Log
-import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.coin.Result
 import com.example.nexuswallet.feature.coin.SendValidationResult
-import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
+import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetFeeEstimateUseCase
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.SendEVMAssetUseCase
+import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.ValidateEVMSendUseCase
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
@@ -23,16 +22,14 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
+
 @HiltViewModel
 class EthereumSendViewModel @Inject constructor(
-    private val getEthereumWalletUseCase: GetEthereumWalletUseCase,
     private val sendEVMAssetUseCase: SendEVMAssetUseCase,
     private val getFeeEstimateUseCase: GetFeeEstimateUseCase,
     private val evmBlockchainRepository: EVMBlockchainRepository,
@@ -61,8 +58,6 @@ class EthereumSendViewModel @Inject constructor(
                 )
             }
 
-            Log.d("EthereumVM", "initialize() called with walletId: $walletId, network: $network")
-
             // Load wallet
             wallet = walletRepository.getWallet(walletId)
             if (wallet == null) {
@@ -85,8 +80,6 @@ class EthereumSendViewModel @Inject constructor(
                 _uiState.update { it.copy(error = "No network available", isLoading = false) }
                 return@launch
             }
-
-            Log.d("EthereumVM", "Target network selected: $targetNetwork")
 
             val networkTokens = evmTokensByNetwork[targetNetwork] ?: emptyList()
             val nativeEth = networkTokens.filterIsInstance<NativeETH>().firstOrNull()
@@ -111,39 +104,8 @@ class EthereumSendViewModel @Inject constructor(
         }
     }
 
-    fun setTransactionData(
-        toAddress: String,
-        amount: String,
-        feeLevel: FeeLevel
-    ) {
-        viewModelScope.launch {
-            Log.d("EthereumVM", "setTransactionData() called - to: $toAddress, amount: $amount, feeLevel: $feeLevel")
-
-            val amountValue = amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
-
-            _uiState.update {
-                it.copy(
-                    toAddress = toAddress,
-                    amount = amount,
-                    amountValue = amountValue,
-                    feeLevel = feeLevel
-                )
-            }
-
-            // Wait for balances to load
-            if (!_uiState.value.balancesLoaded) {
-                snapshotFlow { _uiState.value.balancesLoaded }
-                    .filter { it }
-                    .firstOrNull()
-            }
-
-            validateInputs()
-        }
-    }
-
     fun switchNetwork(network: EthereumNetwork) {
         viewModelScope.launch {
-            Log.d("EthereumVM", "switchNetwork() called to: $network")
 
             val networkTokens = evmTokensByNetwork[network] ?: emptyList()
             val nativeEth = networkTokens.filterIsInstance<NativeETH>().firstOrNull()
@@ -173,7 +135,6 @@ class EthereumSendViewModel @Inject constructor(
 
     fun selectToken(token: EVMToken) {
         viewModelScope.launch {
-            Log.d("EthereumVM", "selectToken() called: ${token.symbol}")
 
             _uiState.update {
                 it.copy(
@@ -193,8 +154,6 @@ class EthereumSendViewModel @Inject constructor(
         val token = state.selectedToken ?: return
         val currentTokenId = token.externalId
 
-        Log.d("EthereumVM", "loadBalances() for network: ${state.network}, token: ${token.symbol}")
-
         // Load ETH balance (for gas)
         val ethBalanceResult = evmBlockchainRepository.getNativeBalance(
             address = token.address,
@@ -210,8 +169,8 @@ class EthereumSendViewModel @Inject constructor(
                         currentState
                     }
                 }
-                Log.d("EthereumVM", "ETH balance loaded: ${ethBalanceResult.data}")
             }
+
             is Result.Error -> {
                 _uiState.update { currentState ->
                     if (currentState.selectedToken?.externalId == currentTokenId) {
@@ -221,6 +180,7 @@ class EthereumSendViewModel @Inject constructor(
                     }
                 }
             }
+
             Result.Loading -> {}
         }
 
@@ -229,6 +189,7 @@ class EthereumSendViewModel @Inject constructor(
             is NativeETH -> {
                 Result.Success(state.ethBalance)
             }
+
             else -> {
                 evmBlockchainRepository.getTokenBalance(
                     address = token.address,
@@ -249,6 +210,7 @@ class EthereumSendViewModel @Inject constructor(
                             balanceFormatted = when (token) {
                                 is USDCToken, is USDTToken ->
                                     "$${balance.setScale(2, RoundingMode.HALF_UP)} ${token.symbol}"
+
                                 else ->
                                     "${balance.setScale(4, RoundingMode.HALF_UP)} ${token.symbol}"
                             },
@@ -259,12 +221,12 @@ class EthereumSendViewModel @Inject constructor(
                         currentState
                     }
                 }
-                Log.d("EthereumVM", "Token balance loaded: $balance for ${token.symbol}")
 
                 if (_uiState.value.selectedToken?.externalId == currentTokenId) {
                     validateInputs()
                 }
             }
+
             is Result.Error -> {
                 _uiState.update { currentState ->
                     if (currentState.selectedToken?.externalId == currentTokenId) {
@@ -278,6 +240,7 @@ class EthereumSendViewModel @Inject constructor(
                     }
                 }
             }
+
             Result.Loading -> {}
         }
     }
@@ -294,8 +257,6 @@ class EthereumSendViewModel @Inject constructor(
                 currentState
             }
         }
-
-        Log.d("EthereumVM", "loadFeeEstimate() for network: ${state.network}, isToken: ${state.selectedToken !is NativeETH}")
 
         val feeEstimateResult = getFeeEstimateUseCase(
             feeLevel = state.feeLevel,
@@ -317,6 +278,7 @@ class EthereumSendViewModel @Inject constructor(
                 }
                 validateInputs()
             }
+
             is Result.Error -> {
                 _uiState.update { currentState ->
                     if (currentState.selectedToken?.externalId == currentToken?.externalId) {
@@ -329,6 +291,7 @@ class EthereumSendViewModel @Inject constructor(
                     }
                 }
             }
+
             Result.Loading -> {}
         }
     }
@@ -340,6 +303,7 @@ class EthereumSendViewModel @Inject constructor(
                     _uiState.update { it.copy(toAddress = event.address) }
                     validateInputs()
                 }
+
                 is EthereumSendEvent.AmountChanged -> {
                     val amountValue = event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
                     _uiState.update {
@@ -350,11 +314,13 @@ class EthereumSendViewModel @Inject constructor(
                     }
                     validateInputs()
                 }
+
                 is EthereumSendEvent.NoteChanged -> _uiState.update { it.copy(note = event.note) }
                 is EthereumSendEvent.FeeLevelChanged -> {
                     _uiState.update { it.copy(feeLevel = event.feeLevel) }
                     loadFeeEstimate()
                 }
+
                 EthereumSendEvent.Validate -> validateInputs()
                 EthereumSendEvent.ClearError -> clearError()
             }
@@ -364,9 +330,6 @@ class EthereumSendViewModel @Inject constructor(
     private suspend fun validateInputs(): Boolean {
         val state = _uiState.value
         val token = state.selectedToken ?: return false
-
-        Log.d("EthereumVM", "validateInputs() - network: ${state.network}, token: ${token.symbol}, to: ${state.toAddress}, amount: ${state.amountValue}")
-        Log.d("EthereumVM", "Balances - ETH: ${state.ethBalance}, Token: ${state.tokenBalance}")
 
         val validationResult = validateEVMSendUseCase(
             toAddress = state.toAddress,
@@ -391,12 +354,11 @@ class EthereumSendViewModel @Inject constructor(
                             ?: validationResult.networkError
                             ?: "Invalid transaction"
                     }
+
                     else -> null
                 }
             )
         }
-
-        Log.d("EthereumVM", "Validation result: isValid=${validationResult.isValid}")
 
         return validationResult.isValid
     }
@@ -438,9 +400,14 @@ class EthereumSendViewModel @Inject constructor(
                                 error = sendResult.error ?: "Send failed"
                             )
                         }
-                        _effect.emit(EthereumSendEffect.ShowError(sendResult.error ?: "Send failed"))
+                        _effect.emit(
+                            EthereumSendEffect.ShowError(
+                                sendResult.error ?: "Send failed"
+                            )
+                        )
                     }
                 }
+
                 is Result.Error -> {
                     _uiState.update {
                         it.copy(
@@ -450,15 +417,11 @@ class EthereumSendViewModel @Inject constructor(
                     }
                     _effect.emit(EthereumSendEffect.ShowError(result.message))
                 }
+
                 Result.Loading -> {}
             }
         }
     }
 
     fun clearError() = _uiState.update { it.copy(error = null) }
-}
-
-sealed class EthereumSendEffect {
-    data class ShowError(val message: String) : EthereumSendEffect()
-    data class TransactionSent(val txHash: String) : EthereumSendEffect()
 }

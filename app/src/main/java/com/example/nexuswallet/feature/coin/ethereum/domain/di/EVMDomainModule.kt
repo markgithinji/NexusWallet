@@ -5,6 +5,7 @@ import com.example.nexuswallet.feature.authentication.domain.repository.Security
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetEthereumWalletUseCase
+import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetFeeEstimateUseCase
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetPendingTransactionsUseCase
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetTransactionUseCase
 import com.example.nexuswallet.feature.coin.ethereum.domain.usecase.GetWalletTransactionsUseCase
@@ -115,6 +116,18 @@ object EVMDomainModule {
             evmTransactionRepository = evmTransactionRepository,
             securityPreferencesRepository = securityPreferencesRepository,
             keyStoreRepository = keyStoreRepository,
+            logger = logger
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetFeeEstimateUseCase(
+        evmBlockchainRepository: EVMBlockchainRepository,
+        logger: Logger
+    ): GetFeeEstimateUseCase {
+        return GetFeeEstimateUseCase(
+            evmBlockchainRepository = evmBlockchainRepository,
             logger = logger
         )
     }
