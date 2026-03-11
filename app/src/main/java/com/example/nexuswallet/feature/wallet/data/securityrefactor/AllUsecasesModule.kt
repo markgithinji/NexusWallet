@@ -15,7 +15,7 @@ import com.example.nexuswallet.feature.settings.ui.ClearAllSecurityDataUseCase
 import com.example.nexuswallet.feature.settings.ui.ClearAllSecurityDataUseCaseImpl
 import com.example.nexuswallet.feature.settings.ui.ClearPinUseCase
 import com.example.nexuswallet.feature.settings.ui.ClearPinUseCaseImpl
-import com.example.nexuswallet.feature.settings.ui.GetAuthStatusUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.GetAuthStatusUseCase
 import com.example.nexuswallet.feature.settings.ui.GetAuthStatusUseCaseImpl
 import com.example.nexuswallet.feature.settings.ui.IsBiometricEnabledUseCase
 import com.example.nexuswallet.feature.settings.ui.IsBiometricEnabledUseCaseImpl

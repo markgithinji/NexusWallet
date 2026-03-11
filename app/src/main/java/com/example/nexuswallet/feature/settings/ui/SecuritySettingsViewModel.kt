@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.settings.ui
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -9,6 +8,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.settings.domain.usecase.ClearAllSecurityDataUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.ClearPinUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.GetAuthStatusUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.SetBiometricEnabledUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.SetPinUseCase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -77,7 +81,7 @@ class SecuritySettingsViewModel @Inject constructor(
                     refreshAuthStatus()
                 }
                 is Result.Error -> {
-                    Log.e("SecurityVM", "Failed to set biometric: ${result.message}")
+                    _uiState.value = Result.Error(result.message)
                 }
                 Result.Loading -> { /* Ignore */ }
             }
@@ -106,7 +110,7 @@ class SecuritySettingsViewModel @Inject constructor(
                 }
             }
             is Result.Error -> {
-                Log.e("SecurityVM", "Failed to refresh auth status: ${result.message}")
+                _uiState.value = Result.Error(result.message)
             }
             Result.Loading -> { /* Ignore */ }
         }
@@ -148,7 +152,7 @@ class SecuritySettingsViewModel @Inject constructor(
                     refreshAuthStatus()
                 }
                 is Result.Error -> {
-                    Log.e("SecurityVM", "Failed to clear all data: ${result.message}")
+                    _uiState.value = Result.Error(result.message)
                 }
                 Result.Loading -> { /* Ignore */ }
             }
@@ -208,7 +212,7 @@ class SecuritySettingsViewModel @Inject constructor(
                     refreshAuthStatus()
                 }
                 is Result.Error -> {
-                    Log.e("SecurityVM", "Failed to remove PIN: ${result.message}")
+                    _uiState.value = Result.Error(result.message)
                 }
                 Result.Loading -> { /* Ignore */ }
             }
