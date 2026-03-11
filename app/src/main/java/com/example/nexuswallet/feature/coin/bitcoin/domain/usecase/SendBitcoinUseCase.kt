@@ -4,7 +4,7 @@ import com.example.nexuswallet.feature.authentication.domain.repository.KeyStore
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.coin.CoinType
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.BTC_PRIVATE_KEY_TYPE
+import com.example.nexuswallet.feature.coin.bitcoin.util.BitcoinConstants.BTC_PRIVATE_KEY_TYPE
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.SendBitcoinResult

@@ -2,8 +2,8 @@ package com.example.nexuswallet.feature.coin.bitcoin.domain.usecase
 
 import com.example.nexuswallet.feature.coin.FeeLevel
 import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_INPUT_COUNT
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinConstants.DEFAULT_OUTPUT_COUNT
+import com.example.nexuswallet.feature.coin.bitcoin.util.BitcoinConstants.DEFAULT_INPUT_COUNT
+import com.example.nexuswallet.feature.coin.bitcoin.util.BitcoinConstants.DEFAULT_OUTPUT_COUNT
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository

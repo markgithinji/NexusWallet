@@ -9,6 +9,7 @@ import com.example.nexuswallet.feature.coin.ethereum.domain.model.SendEthereumRe
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
+import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.ETH_PRIVATE_KEY_TYPE
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.ERC20Token
 import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
@@ -71,7 +72,7 @@ class SendEVMAssetUseCase @Inject constructor(
         logger.d(tag, "Step 1: Retrieving private key...")
         val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
             walletId = walletId,
-            keyType = "ETH_MAIN_PRIVATE_KEY"
+            keyType = ETH_PRIVATE_KEY_TYPE
         ) ?: run {
             logger.e(tag, "No private key found for wallet: $walletId")
             return@withContext Result.Error("No private key found")
