@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.bitcoin.domain.model
 
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import java.math.BigDecimal
 
 data class PreparedBitcoinTransaction(

@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.data.walletsrefactor
+package com.example.nexuswallet.feature.wallet.domain
 
 import com.example.nexuswallet.feature.wallet.ui.SPLBalance
 import kotlinx.serialization.Serializable

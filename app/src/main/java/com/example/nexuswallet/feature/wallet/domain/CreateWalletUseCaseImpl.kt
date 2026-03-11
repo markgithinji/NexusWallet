@@ -1,21 +1,9 @@
-package com.example.nexuswallet.feature.wallet.data.securityrefactor
+package com.example.nexuswallet.feature.wallet.domain
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoin
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
-import com.example.nexuswallet.feature.wallet.domain.CreateWalletUseCase
-import com.example.nexuswallet.feature.wallet.domain.WalletLocalDataSource
 import org.bitcoinj.core.Address
 import org.bitcoinj.core.Context
 import org.bitcoinj.params.MainNetParams
@@ -29,7 +17,6 @@ import org.web3j.crypto.MnemonicUtils
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
-import org.bitcoinj.wallet.Wallet as BitcoinJWallet
 
 @Singleton
 class CreateWalletUseCaseImpl @Inject constructor(
@@ -259,7 +246,7 @@ class CreateWalletUseCaseImpl @Inject constructor(
 
         val seed = DeterministicSeed(mnemonic, null, "", 0L)
 
-        val wallet = BitcoinJWallet.fromSeed(
+        val wallet = org.bitcoinj.wallet.Wallet.fromSeed(
             params,
             seed,
             Script.ScriptType.P2PKH
@@ -385,7 +372,7 @@ class CreateWalletUseCaseImpl @Inject constructor(
             Context.propagate(context)
 
             val seed = DeterministicSeed(mnemonic, null, "", 0L)
-            val wallet = BitcoinJWallet.fromSeed(params, seed)
+            val wallet = org.bitcoinj.wallet.Wallet.fromSeed(params, seed)
             val key = wallet.currentReceiveKey()
             key.getPrivateKeyEncoded(params).toString()
         } catch (e: Exception) {
@@ -439,7 +426,7 @@ class CreateWalletUseCaseImpl @Inject constructor(
         // THIS IS A TEMPORARY SOLUTION TODO: use a proper HD derivation library in production
         val pathSeed = seed + derivationPath.toByteArray()
         val expandedSeed = deriveSolanaExpandedSeed(pathSeed)
-        return Keypair.fromSecretKey(expandedSeed)
+        return Keypair.Companion.fromSecretKey(expandedSeed)
     }
 
     private fun deriveSolanaPrivateKey(mnemonic: List<String>, derivationPath: String): String? {

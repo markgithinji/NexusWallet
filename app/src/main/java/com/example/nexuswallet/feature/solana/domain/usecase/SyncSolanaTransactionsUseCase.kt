@@ -6,7 +6,7 @@ import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransactio
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import kotlinx.coroutines.Dispatchers

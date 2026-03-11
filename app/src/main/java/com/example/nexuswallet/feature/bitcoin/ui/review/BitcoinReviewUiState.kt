@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.bitcoin.ui.review
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.PreparedBitcoinTransaction
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import java.math.BigDecimal
 
 data class BitcoinReviewUiState(

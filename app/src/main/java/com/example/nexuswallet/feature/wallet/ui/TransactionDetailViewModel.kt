@@ -10,10 +10,9 @@ import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
 import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUseCase
+import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.GetTransactionDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.TransactionDetail
 import dagger.hilt.android.lifecycle.HiltViewModel

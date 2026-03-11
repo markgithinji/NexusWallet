@@ -86,11 +86,11 @@ import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate
 import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
+import com.example.nexuswallet.feature.wallet.domain.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.USDTToken
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight

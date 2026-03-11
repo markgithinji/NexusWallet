@@ -3,8 +3,8 @@ package com.example.nexuswallet.feature.bitcoin.domain.usecase
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
+import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.Wallet
 import org.bitcoinj.core.Address
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params

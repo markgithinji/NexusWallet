@@ -4,13 +4,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TransactionDisplayInfo
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.SPLToken
+import com.example.nexuswallet.feature.wallet.domain.TransactionDisplayInfo
+import com.example.nexuswallet.feature.wallet.domain.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.BitcoinDetailResult
 import com.example.nexuswallet.feature.wallet.domain.EthereumDetailResult
-import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.GetBitcoinDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.GetEthereumDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.GetSolanaDetailUseCase

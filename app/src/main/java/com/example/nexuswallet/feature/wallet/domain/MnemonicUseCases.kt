@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.data.securityrefactor
+package com.example.nexuswallet.feature.wallet.domain
 import com.example.nexuswallet.feature.logging.Logger
 import org.bitcoinj.crypto.MnemonicCode
 import org.web3j.crypto.MnemonicUtils

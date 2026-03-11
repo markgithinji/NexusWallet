@@ -4,7 +4,7 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

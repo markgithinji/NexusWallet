@@ -1,15 +1,7 @@
 package com.example.nexuswallet.feature.ethereum.data
 
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity
-import com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionResponse
-import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction
-import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
-import com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse
-import com.example.nexuswallet.feature.ethereum.data.toNativeETHTransaction
-import com.example.nexuswallet.feature.ethereum.data.toTokenTransaction
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import java.math.BigDecimal
 import java.math.RoundingMode

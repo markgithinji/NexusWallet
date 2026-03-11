@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import com.example.nexuswallet.R
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -32,13 +31,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.NetworkType
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TransactionDisplayInfo
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
+import com.example.nexuswallet.feature.wallet.domain.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.SPLToken
+import com.example.nexuswallet.feature.wallet.domain.TransactionDisplayInfo
+import com.example.nexuswallet.feature.wallet.domain.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight

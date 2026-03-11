@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.solana.domain.model
 
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
 
 data class SolanaWalletInfo(
     val walletId: String,

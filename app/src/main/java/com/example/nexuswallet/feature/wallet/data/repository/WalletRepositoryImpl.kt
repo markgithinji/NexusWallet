@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.wallet.data.repository
 
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
+import com.example.nexuswallet.feature.wallet.domain.Wallet
+import com.example.nexuswallet.feature.wallet.domain.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.WalletLocalDataSource
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import kotlinx.coroutines.flow.Flow

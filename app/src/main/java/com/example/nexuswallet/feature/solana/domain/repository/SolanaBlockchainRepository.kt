@@ -6,7 +6,7 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
 import org.sol4k.Keypair
 import java.math.BigDecimal
 

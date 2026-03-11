@@ -5,16 +5,11 @@ import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
 import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
 
 interface GetEthereumDetailUseCase {
     suspend fun getEthDetails(

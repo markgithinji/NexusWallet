@@ -4,7 +4,7 @@ import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.core.util.Result

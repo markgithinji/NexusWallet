@@ -9,9 +9,9 @@ import com.example.nexuswallet.feature.coin.solana.domain.usecase.GetSolanaFeeEs
 import com.example.nexuswallet.feature.coin.solana.domain.usecase.GetSolanaWalletUseCase
 import com.example.nexuswallet.feature.coin.solana.domain.usecase.SendSolanaUseCase
 import com.example.nexuswallet.feature.coin.solana.domain.usecase.ValidateSolanaSendUseCase
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoin
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
+import com.example.nexuswallet.feature.wallet.domain.SolanaCoin
+import com.example.nexuswallet.feature.wallet.domain.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.Wallet
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow

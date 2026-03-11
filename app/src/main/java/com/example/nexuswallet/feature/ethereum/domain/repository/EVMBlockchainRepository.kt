@@ -7,8 +7,8 @@ import com.example.nexuswallet.feature.coin.ethereum.data.model.GasPrice
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.domain.model.TokenTransaction
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.TokenType
+import com.example.nexuswallet.feature.wallet.domain.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.TokenType
 import org.web3j.crypto.RawTransaction
 import java.math.BigDecimal
 import java.math.BigInteger

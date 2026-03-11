@@ -1,12 +1,10 @@
-package com.example.nexuswallet.feature.wallet.data.walletsrefactor
+package com.example.nexuswallet.feature.wallet.domain
 
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
 import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
 import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
-import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUseCase
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat

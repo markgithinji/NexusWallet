@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.data.securityrefactor
+package com.example.nexuswallet.feature.wallet.domain
 
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.util.Result

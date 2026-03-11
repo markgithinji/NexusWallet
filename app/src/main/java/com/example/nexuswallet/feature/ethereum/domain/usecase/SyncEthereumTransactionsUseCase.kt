@@ -4,10 +4,10 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.ERC20Token
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
+import com.example.nexuswallet.feature.wallet.domain.ERC20Token
+import com.example.nexuswallet.feature.wallet.domain.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

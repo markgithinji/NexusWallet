@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.data.securityrefactor
+package com.example.nexuswallet.feature.wallet.domain
 
 object KeyValidation {
 

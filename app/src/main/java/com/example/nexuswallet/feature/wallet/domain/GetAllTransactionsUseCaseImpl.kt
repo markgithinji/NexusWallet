@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.data.walletsrefactor
+package com.example.nexuswallet.feature.wallet.domain
 
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
@@ -12,9 +12,6 @@ import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlock
 import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.domain.GetAllTransactionsUseCase
-import com.example.nexuswallet.feature.wallet.domain.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.WalletRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine

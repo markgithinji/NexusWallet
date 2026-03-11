@@ -11,9 +11,6 @@ import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransa
 import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
 import javax.inject.Inject
 import javax.inject.Singleton
 
