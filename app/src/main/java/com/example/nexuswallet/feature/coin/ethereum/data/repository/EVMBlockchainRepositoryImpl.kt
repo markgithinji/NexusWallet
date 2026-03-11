@@ -187,10 +187,6 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         network: EthereumNetwork
     ): Result<Triple<RawTransaction, String, String>> = withContext(Dispatchers.IO) {
         SafeApiCall.make {
-            if (!validateAddress(fromAddress) || !validateAddress(toAddress)) {
-                throw Exception("Invalid address format")
-            }
-
             val rawTransaction = RawTransaction.createEtherTransaction(
                 nonce,
                 gasPriceWei,
@@ -222,10 +218,6 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         tokenType: TokenType
     ): Result<Triple<RawTransaction, String, String>> = withContext(Dispatchers.IO) {
         SafeApiCall.make {
-            if (!validateAddress(fromAddress) || !validateAddress(toAddress)) {
-                throw Exception("Invalid address format")
-            }
-
             val function = Function(
                 "transfer",
                 listOf(Address(toAddress), Uint256(amount)),
@@ -428,10 +420,6 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
     }
 
     // ============ HELPER METHODS ============
-
-    private fun validateAddress(address: String): Boolean {
-        return address.startsWith("0x") && address.length == 42
-    }
 
     private fun extractHashFromError(error: String): String? {
         val hashPattern = Regex("0x[a-fA-F0-9]{64}")
