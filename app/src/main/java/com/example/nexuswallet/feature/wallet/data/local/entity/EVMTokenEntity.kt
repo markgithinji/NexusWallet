@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
+import com.example.nexuswallet.feature.wallet.domain.model.TokenType
 import java.util.UUID
 
 @Entity(
@@ -35,7 +36,7 @@ data class EVMTokenEntity(
     val symbol: String,
     val name: String,
     val decimals: Int,
-    val tokenType: String,
+    val tokenType: TokenType,
     val externalId: String,
     val updatedAt: Long = System.currentTimeMillis()
 )
