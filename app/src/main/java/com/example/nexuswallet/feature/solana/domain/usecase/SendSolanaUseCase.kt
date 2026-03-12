@@ -5,12 +5,13 @@ import com.example.nexuswallet.feature.authentication.domain.repository.Security
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
+import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.domain.model.SendSolanaResult
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
-import com.example.nexuswallet.feature.solana.util.SolanaConstants.SOLANA_PRIVATE_KEY_TYPE
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
@@ -71,11 +72,16 @@ class SendSolanaUseCase @Inject constructor(
         val lamports = amount.multiply(BigDecimal(LAMPORTS_PER_SOL)).toLong()
 
         // 2. Get private key
-        logger.d(tag, "Looking for key with type: ${SOLANA_PRIVATE_KEY_TYPE}")
+        val keyType = when (network) {
+            SolanaNetwork.Mainnet -> KEY_SOLANA_MAINNET
+            SolanaNetwork.Devnet -> KEY_SOLANA_DEVNET
+        }
+
+        logger.d(tag, "Looking for key with type: $keyType")
 
         val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
             walletId = walletId,
-            keyType = SOLANA_PRIVATE_KEY_TYPE
+            keyType = keyType
         )
 
         if (encryptedData == null) {
@@ -146,7 +152,7 @@ class SendSolanaUseCase @Inject constructor(
 
         val sendResult = SendSolanaResult(
             transactionId = "sol_tx_${System.currentTimeMillis()}",
-            txHash = signedTx.signature ?: "",
+            txHash = signedTx.signature,
             success = broadcastResult.success,
             error = broadcastResult.error
         )

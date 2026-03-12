@@ -62,9 +62,15 @@ class SendBitcoinUseCase @Inject constructor(
         }
 
         // Get private key
+        val keyType = when (bitcoinCoin.network) {
+            BitcoinNetwork.Mainnet -> KEY_BITCOIN_MAINNET
+            BitcoinNetwork.Testnet -> KEY_BITCOIN_TESTNET
+        }
+
+        // Get private key
         val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
             walletId = walletId,
-            keyType = BTC_PRIVATE_KEY_TYPE
+            keyType = keyType
         )
 
         if (encryptedData == null) {
