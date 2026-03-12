@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
 import org.sol4k.Keypair
 import java.math.BigDecimal
 
@@ -37,17 +38,18 @@ interface SolanaBlockchainRepository {
     ): Result<SolanaSignedTransaction>
 
     suspend fun broadcastTransaction(
-        signedTransaction: com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction,
+        signedTransaction: SolanaSignedTransaction,
         network: SolanaNetwork
     ): Result<BroadcastResult>
 
     fun validateAddress(address: String): Result<Boolean>
 
     suspend fun getTransactions(
+        walletId: String,
         address: String,
         network: SolanaNetwork,
-        limit: Int = 50
-    ): Result<List<HeliusTransactionResponse>>
+        limit: Int
+    ): Result<List<SolanaTransaction>>
 
     suspend fun getTransaction(
         signature: String,
@@ -55,7 +57,7 @@ interface SolanaBlockchainRepository {
     ): Result<HeliusTransactionResponse>
 
     fun parseTransfer(
-        transaction: com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse,
+        transaction: HeliusTransactionResponse,
         walletAddress: String
     ): com.example.nexuswallet.feature.solana.domain.model.TransferInfo?
 }

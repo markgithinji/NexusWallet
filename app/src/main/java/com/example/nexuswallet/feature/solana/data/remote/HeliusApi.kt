@@ -11,10 +11,10 @@ interface HeliusApi {
     suspend fun getTransactions(
         @Path("address") address: String,
         @Query("limit") limit: Int,
-    ): List<com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse>
+    ): List<HeliusTransactionResponse>
 
     @POST("transactions")
     suspend fun getTransaction(
-        @Body request: com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionRequest,
-    ): List<com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse>
+        @Body request: HeliusTransactionRequest,
+    ): List<HeliusTransactionResponse>
 }

@@ -281,81 +281,33 @@ class GetAllTransactionsUseCase @Inject constructor(
     private suspend fun fetchSolanaTransactions(walletId: String, coin: SolanaCoin) {
         logger.d(tag, "Fetching Solana transactions for ${coin.address} on ${coin.network}")
 
-        // Get transactions
         val result = solanaBlockchainRepository.getTransactions(
+            walletId = walletId,
             address = coin.address,
             network = coin.network,
-            limit = 50 // Fetch last 50 transactions
+            limit = 50
         )
 
         when (result) {
             is Result.Success -> {
-                // Delete old transactions for this network first
                 val networkStr = when (coin.network) {
                     SolanaNetwork.Mainnet -> SolanaNetwork.Mainnet.name
                     SolanaNetwork.Devnet -> SolanaNetwork.Devnet.name
                 }
+
+                // Delete old transactions
                 solanaTransactionRepository.deleteForWalletAndNetwork(walletId, networkStr)
 
-                val transactions = result.data.mapNotNull { heliusTx ->
-                    // Parse transfer info
-                    val transferInfo = solanaBlockchainRepository.parseTransfer(
-                        transaction = heliusTx,
-                        walletAddress = coin.address
-                    ) ?: return@mapNotNull null
-
-                    // Check if this is a token transfer (has token transfers)
-                    val isTokenTransfer = heliusTx.tokenTransfers.isNotEmpty()
-
-                    if (isTokenTransfer) {
-                        // TODO: Handle SPL token transactions
-                        // For now, we'll skip token transactions
-                        logger.d(
-                            tag,
-                            "Skipping token transaction: ${heliusTx.signature.take(8)}..."
-                        )
-                        null
-                    } else {
-                        // Native SOL transfer
-                        SolanaTransaction(
-                            id = heliusTx.signature,
-                            walletId = walletId,
-                            fromAddress = transferInfo.from,
-                            toAddress = transferInfo.to,
-                            status = if (heliusTx.transactionError == null)
-                                TransactionStatus.SUCCESS
-                            else
-                                TransactionStatus.FAILED,
-                            timestamp = heliusTx.timestamp * 1000, // Convert to milliseconds
-                            note = heliusTx.description,
-                            feeLevel = FeeLevel.NORMAL,
-                            amountLamports = transferInfo.amount,
-                            amountSol = (transferInfo.amount.toDouble() / 1_000_000_000).toString(),
-                            feeLamports = heliusTx.fee,
-                            feeSol = (heliusTx.fee.toDouble() / 1_000_000_000).toString(),
-                            signature = heliusTx.signature,
-                            network = coin.network,
-                            isIncoming = transferInfo.isIncoming,
-                            tokenMint = null,
-                            tokenSymbol = null,
-                            tokenDecimals = null,
-                            slot = heliusTx.slot,
-                            blockTime = heliusTx.timestamp
-                        )
-                    }
-                }
-
-                transactions.forEach { transaction ->
+                // Save new transactions (already domain models)
+                result.data.forEach { transaction ->
                     solanaTransactionRepository.saveTransaction(transaction)
                 }
 
-                logger.d(tag, "Saved ${transactions.size} Solana transactions for ${coin.address}")
+                logger.d(tag, "Saved ${result.data.size} Solana transactions for ${coin.address}")
             }
-
             is Result.Error -> {
                 logger.e(tag, "Failed to fetch Solana transactions: ${result.message}")
             }
-
             else -> {}
         }
     }

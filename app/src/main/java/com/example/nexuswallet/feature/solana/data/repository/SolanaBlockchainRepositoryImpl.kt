@@ -10,6 +10,7 @@ import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionRespo
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
 import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.sol4k.Base58
@@ -214,7 +215,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     }
 
     override suspend fun broadcastTransaction(
-        signedTransaction: com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction,
+        signedTransaction: SolanaSignedTransaction,
         network: SolanaNetwork
     ): Result<BroadcastResult> = withContext(Dispatchers.IO) {
         SafeApiCall.make {
@@ -230,17 +231,20 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getTransactions(
+        walletId: String,
         address: String,
         network: SolanaNetwork,
         limit: Int
-    ): Result<List<HeliusTransactionResponse>> = withContext(Dispatchers.IO) {
-
+    ): Result<List<SolanaTransaction>> = withContext(Dispatchers.IO) {
         SafeApiCall.make {
-            val transactions = heliusApi.getTransactions(
+            val heliusTransactions = heliusApi.getTransactions(
                 address = address,
                 limit = limit
             )
-            transactions
+
+            heliusTransactions.mapNotNull { heliusTx ->
+                heliusTx.toDomain(walletId, address, network)
+            }
         }
     }
 
