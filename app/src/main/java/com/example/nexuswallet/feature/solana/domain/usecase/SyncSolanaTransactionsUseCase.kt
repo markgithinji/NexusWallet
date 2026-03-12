@@ -1,13 +1,11 @@
 package com.example.nexuswallet.feature.solana.domain.usecase
 
-import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
-import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
-import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.solana.data.toStorageString
 import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
+import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,9 +22,9 @@ class SyncSolanaTransactionsUseCase @Inject constructor(
 
     private val tag = "SyncSolanaUC"
 
-    suspend operator fun invoke(walletId: String, network: String): Result<Unit> =
+    suspend operator fun invoke(walletId: String, network: SolanaNetwork): Result<Unit> =
         withContext(Dispatchers.IO) {
-            logger.d(tag, "Syncing Solana transactions for wallet: $walletId, network: $network")
+            logger.d(tag, "Syncing Solana transactions for wallet: $walletId, network: ${network.name}")
 
             val wallet = walletRepository.getWallet(walletId) ?: run {
                 logger.e(tag, "Wallet not found: $walletId")
@@ -34,15 +32,11 @@ class SyncSolanaTransactionsUseCase @Inject constructor(
             }
 
             // Find the specific Solana coin by network
-            val solanaCoin = when (network.lowercase()) {
-                "mainnet" -> wallet.solanaCoins.find { it.network == SolanaNetwork.Mainnet }
-                "devnet" -> wallet.solanaCoins.find { it.network == SolanaNetwork.Devnet }
-                else -> null
-            }
+            val solanaCoin = wallet.solanaCoins.find { it.network == network }
 
             if (solanaCoin == null) {
-                logger.e(tag, "Solana $network not enabled for wallet: ${wallet.name}")
-                return@withContext Result.Error("Solana $network not enabled")
+                logger.e(tag, "Solana ${network.displayName} not enabled for wallet: ${wallet.name}")
+                return@withContext Result.Error("Solana ${network.displayName} not enabled")
             }
 
             logger.d(
@@ -52,8 +46,9 @@ class SyncSolanaTransactionsUseCase @Inject constructor(
 
             // Get transactions from Helius API
             val historyResult = solanaBlockchainRepository.getTransactions(
+                walletId = walletId,
                 address = solanaCoin.address,
-                network = solanaCoin.network,
+                network = network,
                 limit = 50
             )
 
@@ -64,101 +59,53 @@ class SyncSolanaTransactionsUseCase @Inject constructor(
                     val transactions = historyResult.data
                     logger.d(
                         tag,
-                        "Received ${transactions.size} transactions on ${solanaCoin.network}"
+                        "Received ${transactions.size} transactions on ${network.displayName}"
                     )
 
                     if (transactions.isNotEmpty()) {
-                        val networkStorage = solanaCoin.network.name
+                        // Use the network's storage string via mapper
+                        val networkStorage = network.toStorageString()
 
                         // Delete existing transactions for this specific wallet and network
                         solanaTransactionRepository.deleteForWalletAndNetwork(
                             walletId,
                             networkStorage
                         )
-                        logger.d(tag, "Deleted existing transactions for $networkStorage")
+                        logger.d(tag, "Deleted existing transactions for ${network.displayName}")
 
-                        transactions.forEachIndexed { index, heliusTx ->
-                            // Parse transfer info
-                            val transferInfo = solanaBlockchainRepository.parseTransfer(
-                                transaction = heliusTx,
-                                walletAddress = solanaCoin.address
-                            )
-
-                            if (transferInfo != null && heliusTx.tokenTransfers.isEmpty()) {
-                                // Only save native SOL transfers (skip token transactions)
-                                val transaction = SolanaTransaction(
-                                    id = heliusTx.signature,
-                                    walletId = walletId,
-                                    fromAddress = transferInfo.from,
-                                    toAddress = transferInfo.to,
-                                    status = if (heliusTx.transactionError == null)
-                                        TransactionStatus.SUCCESS
-                                    else
-                                        TransactionStatus.FAILED,
-                                    timestamp = heliusTx.timestamp * 1000, // Convert to milliseconds
-                                    note = heliusTx.description,
-                                    feeLevel = FeeLevel.NORMAL,
-                                    amountLamports = transferInfo.amount,
-                                    amountSol = (transferInfo.amount.toDouble() / 1_000_000_000).toString(),
-                                    feeLamports = heliusTx.fee,
-                                    feeSol = (heliusTx.fee.toDouble() / 1_000_000_000).toString(),
-                                    signature = heliusTx.signature,
-                                    network = solanaCoin.network,
-                                    isIncoming = transferInfo.isIncoming,
-                                    tokenMint = null,
-                                    tokenSymbol = null,
-                                    tokenDecimals = null,
-                                    slot = heliusTx.slot,
-                                    blockTime = heliusTx.timestamp
-                                )
-
-                                logger.d(
-                                    tag,
-                                    "Transaction #$index on ${solanaCoin.network}: ${
-                                        transaction.signature?.take(
-                                            8
-                                        )
-                                    }..."
-                                )
-                                logger.d(tag, "  isIncoming: ${transaction.isIncoming}")
-                                logger.d(
-                                    tag,
-                                    "  amount: ${transaction.amountLamports} lamports (${transaction.amountSol} SOL)"
-                                )
-
-                                solanaTransactionRepository.saveTransaction(transaction)
-                                savedCount++
-                            } else if (heliusTx.tokenTransfers.isNotEmpty()) {
-                                logger.d(
-                                    tag,
-                                    "Skipping token transaction #$index: ${heliusTx.signature.take(8)}..."
-                                )
-                            }
+                        // Save the new transactions
+                        transactions.forEach { transaction ->
+                            solanaTransactionRepository.saveTransaction(transaction)
+                            savedCount++
                         }
+
+                        logger.d(tag, "Saved $savedCount transactions to database")
                     } else {
-                        logger.d(tag, "No transactions found on ${solanaCoin.network}")
+                        logger.d(tag, "No transactions found on ${network.displayName}")
                     }
 
                     logger.d(
                         tag,
-                        "Successfully saved $savedCount transactions on ${solanaCoin.network}"
+                        "Successfully synced $savedCount transactions on ${network.displayName}"
                     )
                 }
 
                 is Result.Error -> {
                     logger.e(
                         tag,
-                        "Failed to fetch transactions on ${solanaCoin.network}: ${historyResult.message}"
+                        "Failed to fetch transactions on ${network.displayName}: ${historyResult.message}"
                     )
                     return@withContext Result.Error(historyResult.message)
                 }
 
-                else -> {}
+                Result.Loading -> {
+                    // Do nothing
+                }
             }
 
             logger.d(
                 tag,
-                "=== Sync completed for wallet $walletId on $network (saved: $savedCount transactions) ==="
+                "=== Sync completed for wallet $walletId on ${network.displayName} (saved: $savedCount transactions) ==="
             )
             Result.Success(Unit)
         }
