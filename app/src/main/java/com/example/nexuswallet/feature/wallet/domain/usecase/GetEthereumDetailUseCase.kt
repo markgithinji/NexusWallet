@@ -123,8 +123,7 @@ class GetEthereumDetailUseCase @Inject constructor(
             CoinType.USDC -> {
                 allTxs.filterIsInstance<TokenTransaction>()
                     .filter { tx ->
-                        tx.tokenSymbol == "USDC" &&
-                                tx.tokenExternalId == token.externalId &&
+                        tx.tokenExternalId == token.externalId &&
                                 tx.network == targetNetwork
                     }
             }
