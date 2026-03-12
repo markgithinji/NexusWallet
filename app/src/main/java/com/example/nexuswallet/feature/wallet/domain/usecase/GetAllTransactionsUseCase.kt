@@ -1,23 +1,24 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
-import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction
-import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
-import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import kotlinx.coroutines.Dispatchers
@@ -26,9 +27,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.example.nexuswallet.feature.core.util.Result
-import kotlin.collections.map
-
 
 @Singleton
 class GetAllTransactionsUseCase @Inject constructor(
@@ -68,7 +66,8 @@ class GetAllTransactionsUseCase @Inject constructor(
                 BitcoinNetwork.Mainnet -> BitcoinNetwork.Mainnet.name
                 BitcoinNetwork.Testnet -> BitcoinNetwork.Testnet.name
             }
-            val transactions = bitcoinTransactionRepository.getTransactionsSync(walletId, networkStr)
+            val transactions =
+                bitcoinTransactionRepository.getTransactionsSync(walletId, networkStr)
             allTransactions.addAll(transactions)
         }
 
@@ -85,8 +84,10 @@ class GetAllTransactionsUseCase @Inject constructor(
                 SolanaNetwork.Mainnet -> SolanaNetwork.Mainnet.name
                 SolanaNetwork.Devnet -> SolanaNetwork.Devnet.name
             }
-            val nativeTransactions = solanaTransactionRepository.getNativeTransactionsSync(walletId, networkStr)
-            val tokenTransactions = solanaTransactionRepository.getTransactionsSync(walletId, networkStr)
+            val nativeTransactions =
+                solanaTransactionRepository.getNativeTransactionsSync(walletId, networkStr)
+            val tokenTransactions =
+                solanaTransactionRepository.getTransactionsSync(walletId, networkStr)
             allTransactions.addAll(nativeTransactions)
             allTransactions.addAll(tokenTransactions)
         }
@@ -122,7 +123,8 @@ class GetAllTransactionsUseCase @Inject constructor(
                 val nativeToken = tokens.find { it is NativeETH }
                 fetchEVMNativeTransactions(walletId, address, network, nativeToken?.externalId)
 
-                tokens.filter { it.contractAddress != "0x0000000000000000000000000000000000000000" }
+                // Fetch all non-native tokens (USDC, USDT, ERC20)
+                tokens.filter { it !is NativeETH }
                     .forEach { token ->
                         fetchEVMTokenTransactions(walletId, address, token)
                     }
@@ -177,60 +179,36 @@ class GetAllTransactionsUseCase @Inject constructor(
     // ============ BITCOIN ============
 
     private suspend fun fetchBitcoinTransactions(walletId: String, coin: BitcoinCoin) {
-        try {
-            logger.d(tag, "Fetching Bitcoin transactions for ${coin.address} on ${coin.network}")
+        logger.d(tag, "Fetching Bitcoin transactions for ${coin.address} on ${coin.network}")
 
-            val result = bitcoinBlockchainRepository.getAddressTransactions(
-                walletId = walletId,
-                address = coin.address,
-                network = coin.network
-            )
+        val result = bitcoinBlockchainRepository.getAddressTransactions(
+            walletId = walletId,
+            address = coin.address,
+            network = coin.network
+        )
 
-            when (result) {
-                is Result.Success -> {
-                    // Delete old transactions for this network first
-                    val networkStr = when (coin.network) {
-                        BitcoinNetwork.Mainnet -> BitcoinNetwork.Mainnet.name
-                        BitcoinNetwork.Testnet -> BitcoinNetwork.Testnet.name
-                    }
-                    bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, networkStr)
-
-                    val transactions = result.data.map { tx ->
-                        BitcoinTransaction(
-                            id = tx.id,
-                            walletId = walletId,
-                            fromAddress = tx.fromAddress,
-                            toAddress = tx.toAddress,
-                            status = tx.status,
-                            timestamp = tx.timestamp,
-                            note = tx.note,
-                            feeLevel = tx.feeLevel,
-                            amountSatoshis = tx.amountSatoshis,
-                            amountBtc = tx.amountBtc,
-                            feeSatoshis = tx.feeSatoshis,
-                            feeBtc = tx.feeBtc,
-                            feePerByte = tx.feePerByte,
-                            estimatedSize = tx.estimatedSize,
-                            signedHex = tx.signedHex,
-                            txHash = tx.txHash,
-                            network = coin.network,
-                            isIncoming = tx.isIncoming
-                        )
-                    }
-
-                    transactions.forEach { transaction ->
-                        bitcoinTransactionRepository.saveTransaction(transaction)
-                    }
-
-                    logger.d(tag, "Saved ${transactions.size} Bitcoin transactions for ${coin.address}")
+        when (result) {
+            is Result.Success -> {
+                // Delete old transactions for this network first
+                val networkStr = when (coin.network) {
+                    BitcoinNetwork.Mainnet -> BitcoinNetwork.Mainnet.name
+                    BitcoinNetwork.Testnet -> BitcoinNetwork.Testnet.name
                 }
-                is Result.Error -> {
-                    logger.e(tag, "Failed to fetch Bitcoin transactions: ${result.message}")
+                bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, networkStr)
+
+                // Save transactions directly - they're already BitcoinTransaction domain models
+                result.data.forEach { transaction ->
+                    bitcoinTransactionRepository.saveTransaction(transaction)
                 }
-                else -> {}
+
+                logger.d(tag, "Saved ${result.data.size} Bitcoin transactions for ${coin.address}")
             }
-        } catch (e: Exception) {
-            logger.e(tag, "Exception fetching Bitcoin transactions", e)
+
+            is Result.Error -> {
+                logger.e(tag, "Failed to fetch Bitcoin transactions: ${result.message}")
+            }
+
+            else -> {}
         }
     }
 
@@ -242,142 +220,143 @@ class GetAllTransactionsUseCase @Inject constructor(
         network: EthereumNetwork,
         tokenExternalId: String?
     ) {
-        try {
-            logger.d(tag, "Fetching native ETH transactions for $address on ${network.chainId}")
+        logger.d(tag, "Fetching native ETH transactions for $address on ${network.chainId}")
 
-            val result = evmBlockchainRepository.getNativeTransactions(
-                address = address,
-                network = network,
-                walletId = walletId,
-                tokenExternalId = tokenExternalId
-            )
+        val result = evmBlockchainRepository.getNativeTransactions(
+            address = address,
+            network = network,
+            walletId = walletId,
+            tokenExternalId = tokenExternalId
+        )
 
-            when (result) {
-                is Result.Success -> {
-                    result.data.forEach { transaction ->
-                        evmTransactionRepository.saveTransaction(transaction)
-                    }
-                    logger.d(tag, "Saved ${result.data.size} native ETH transactions for $address")
+        when (result) {
+            is Result.Success -> {
+                result.data.forEach { transaction ->
+                    evmTransactionRepository.saveTransaction(transaction)
                 }
-                is Result.Error -> {
-                    logger.e(tag, "Failed to fetch native ETH transactions: ${result.message}")
-                }
-                else -> {}
+                logger.d(tag, "Saved ${result.data.size} native ETH transactions for $address")
             }
-        } catch (e: Exception) {
-            logger.e(tag, "Exception fetching native ETH transactions", e)
+
+            is Result.Error -> {
+                logger.e(tag, "Failed to fetch native ETH transactions: ${result.message}")
+            }
+
+            else -> {}
         }
     }
 
-    private suspend fun fetchEVMTokenTransactions(walletId: String, address: String, token: EVMToken) {
-        try {
-            logger.d(tag, "Fetching token transactions for ${token.symbol} at ${token.contractAddress}")
+    private suspend fun fetchEVMTokenTransactions(
+        walletId: String,
+        address: String,
+        token: EVMToken
+    ) {
+        logger.d(tag, "Fetching token transactions for ${token.symbol} at ${token.contractAddress}")
 
-            val result = evmBlockchainRepository.getTokenTransactions(
-                address = address,
-                tokenContract = token.contractAddress,
-                network = token.network,
-                walletId = walletId,
-                tokenExternalId = token.externalId
-            )
+        val result = evmBlockchainRepository.getTokenTransactions(
+            address = address,
+            tokenContract = token.contractAddress,
+            network = token.network,
+            walletId = walletId,
+            tokenExternalId = token.externalId
+        )
 
-            when (result) {
-                is Result.Success -> {
-                    result.data.forEach { transaction ->
-                        evmTransactionRepository.saveTransaction(transaction)
-                    }
-                    logger.d(tag, "Saved ${result.data.size} ${token.symbol} transactions")
+        when (result) {
+            is Result.Success -> {
+                result.data.forEach { transaction ->
+                    evmTransactionRepository.saveTransaction(transaction)
                 }
-                is com.example.nexuswallet.feature.core.util.Result.Error -> {
-                    logger.e(tag, "Failed to fetch ${token.symbol} transactions: ${result.message}")
-                }
-                else -> {}
+                logger.d(tag, "Saved ${result.data.size} ${token.symbol} transactions")
             }
-        } catch (e: Exception) {
-            logger.e(tag, "Exception fetching token transactions", e)
+
+            is Result.Error -> {
+                logger.e(tag, "Failed to fetch ${token.symbol} transactions: ${result.message}")
+            }
+
+            else -> {}
         }
     }
 
     // ============ SOLANA ============
 
     private suspend fun fetchSolanaTransactions(walletId: String, coin: SolanaCoin) {
-        try {
-            logger.d(tag, "Fetching Solana transactions for ${coin.address} on ${coin.network}")
+        logger.d(tag, "Fetching Solana transactions for ${coin.address} on ${coin.network}")
 
-            // Get transactions from Helius API
-            val result = solanaBlockchainRepository.getTransactions(
-                address = coin.address,
-                network = coin.network,
-                limit = 50 // Fetch last 50 transactions
-            )
+        // Get transactions
+        val result = solanaBlockchainRepository.getTransactions(
+            address = coin.address,
+            network = coin.network,
+            limit = 50 // Fetch last 50 transactions
+        )
 
-            when (result) {
-                is Result.Success -> {
-                    // Delete old transactions for this network first
-                    val networkStr = when (coin.network) {
-                        SolanaNetwork.Mainnet -> SolanaNetwork.Mainnet.name
-                        SolanaNetwork.Devnet -> SolanaNetwork.Devnet.name
-                    }
-                    solanaTransactionRepository.deleteForWalletAndNetwork(walletId, networkStr)
-
-                    val transactions = result.data.mapNotNull { heliusTx ->
-                        // Parse transfer info from Helius transaction
-                        val transferInfo = solanaBlockchainRepository.parseTransfer(
-                            transaction = heliusTx,
-                            walletAddress = coin.address
-                        ) ?: return@mapNotNull null
-
-                        // Check if this is a token transfer (has token transfers)
-                        val isTokenTransfer = heliusTx.tokenTransfers.isNotEmpty()
-
-                        if (isTokenTransfer) {
-                            // TODO: Handle SPL token transactions
-                            // For now, we'll skip token transactions
-                            logger.d(tag, "Skipping token transaction: ${heliusTx.signature.take(8)}...")
-                            null
-                        } else {
-                            // Native SOL transfer
-                            SolanaTransaction(
-                                id = heliusTx.signature,
-                                walletId = walletId,
-                                fromAddress = transferInfo.from,
-                                toAddress = transferInfo.to,
-                                status = if (heliusTx.transactionError == null)
-                                    TransactionStatus.SUCCESS
-                                else
-                                    TransactionStatus.FAILED,
-                                timestamp = heliusTx.timestamp * 1000, // Convert to milliseconds
-                                note = heliusTx.description,
-                                feeLevel = FeeLevel.NORMAL,
-                                amountLamports = transferInfo.amount,
-                                amountSol = (transferInfo.amount.toDouble() / 1_000_000_000).toString(),
-                                feeLamports = heliusTx.fee,
-                                feeSol = (heliusTx.fee.toDouble() / 1_000_000_000).toString(),
-                                signature = heliusTx.signature,
-                                network = coin.network,
-                                isIncoming = transferInfo.isIncoming,
-                                tokenMint = null,
-                                tokenSymbol = null,
-                                tokenDecimals = null,
-                                slot = heliusTx.slot,
-                                blockTime = heliusTx.timestamp
-                            )
-                        }
-                    }
-
-                    transactions.forEach { transaction ->
-                        solanaTransactionRepository.saveTransaction(transaction)
-                    }
-
-                    logger.d(tag, "Saved ${transactions.size} Solana transactions for ${coin.address}")
+        when (result) {
+            is Result.Success -> {
+                // Delete old transactions for this network first
+                val networkStr = when (coin.network) {
+                    SolanaNetwork.Mainnet -> SolanaNetwork.Mainnet.name
+                    SolanaNetwork.Devnet -> SolanaNetwork.Devnet.name
                 }
-                is Result.Error -> {
-                    logger.e(tag, "Failed to fetch Solana transactions: ${result.message}")
+                solanaTransactionRepository.deleteForWalletAndNetwork(walletId, networkStr)
+
+                val transactions = result.data.mapNotNull { heliusTx ->
+                    // Parse transfer info
+                    val transferInfo = solanaBlockchainRepository.parseTransfer(
+                        transaction = heliusTx,
+                        walletAddress = coin.address
+                    ) ?: return@mapNotNull null
+
+                    // Check if this is a token transfer (has token transfers)
+                    val isTokenTransfer = heliusTx.tokenTransfers.isNotEmpty()
+
+                    if (isTokenTransfer) {
+                        // TODO: Handle SPL token transactions
+                        // For now, we'll skip token transactions
+                        logger.d(
+                            tag,
+                            "Skipping token transaction: ${heliusTx.signature.take(8)}..."
+                        )
+                        null
+                    } else {
+                        // Native SOL transfer
+                        SolanaTransaction(
+                            id = heliusTx.signature,
+                            walletId = walletId,
+                            fromAddress = transferInfo.from,
+                            toAddress = transferInfo.to,
+                            status = if (heliusTx.transactionError == null)
+                                TransactionStatus.SUCCESS
+                            else
+                                TransactionStatus.FAILED,
+                            timestamp = heliusTx.timestamp * 1000, // Convert to milliseconds
+                            note = heliusTx.description,
+                            feeLevel = FeeLevel.NORMAL,
+                            amountLamports = transferInfo.amount,
+                            amountSol = (transferInfo.amount.toDouble() / 1_000_000_000).toString(),
+                            feeLamports = heliusTx.fee,
+                            feeSol = (heliusTx.fee.toDouble() / 1_000_000_000).toString(),
+                            signature = heliusTx.signature,
+                            network = coin.network,
+                            isIncoming = transferInfo.isIncoming,
+                            tokenMint = null,
+                            tokenSymbol = null,
+                            tokenDecimals = null,
+                            slot = heliusTx.slot,
+                            blockTime = heliusTx.timestamp
+                        )
+                    }
                 }
-                else -> {}
+
+                transactions.forEach { transaction ->
+                    solanaTransactionRepository.saveTransaction(transaction)
+                }
+
+                logger.d(tag, "Saved ${transactions.size} Solana transactions for ${coin.address}")
             }
-        } catch (e: Exception) {
-            logger.e(tag, "Exception fetching Solana transactions", e)
+
+            is Result.Error -> {
+                logger.e(tag, "Failed to fetch Solana transactions: ${result.message}")
+            }
+
+            else -> {}
         }
     }
 }
