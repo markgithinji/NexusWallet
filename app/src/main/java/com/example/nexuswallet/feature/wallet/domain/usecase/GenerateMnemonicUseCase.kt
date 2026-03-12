@@ -18,18 +18,18 @@ class GenerateMnemonicUseCase @Inject constructor(
         logger.d(tag, "Generating mnemonic with word count: $wordCount")
 
         val strength = when (wordCount) {
-            12 -> 128
-            15 -> 160
-            18 -> 192
-            21 -> 224
-            24 -> 256
+            WORDS_12 -> STRENGTH_128
+            WORDS_15 -> STRENGTH_160
+            WORDS_18 -> STRENGTH_192
+            WORDS_21 -> STRENGTH_224
+            WORDS_24 -> STRENGTH_256
             else -> {
                 logger.w(tag, "Invalid word count: $wordCount, defaulting to 12 words")
-                128
+                DEFAULT_STRENGTH
             }
         }
 
-        val entropy = ByteArray(strength / 8)
+        val entropy = ByteArray(strength / BITS_TO_BYTES_DIVISOR)
         SecureRandom().nextBytes(entropy)
 
         return try {
@@ -46,5 +46,25 @@ class GenerateMnemonicUseCase @Inject constructor(
             logger.d(tag, "Successfully generated ${mnemonic.size} word mnemonic using fallback")
             mnemonic
         }
+    }
+
+    companion object {
+        // Word count constants
+        private const val WORDS_12 = 12
+        private const val WORDS_15 = 15
+        private const val WORDS_18 = 18
+        private const val WORDS_21 = 21
+        private const val WORDS_24 = 24
+
+        // Strength constants (bits)
+        private const val STRENGTH_128 = 128
+        private const val STRENGTH_160 = 160
+        private const val STRENGTH_192 = 192
+        private const val STRENGTH_224 = 224
+        private const val STRENGTH_256 = 256
+        private const val DEFAULT_STRENGTH = STRENGTH_128
+
+        // Conversion constant
+        private const val BITS_TO_BYTES_DIVISOR = 8
     }
 }
