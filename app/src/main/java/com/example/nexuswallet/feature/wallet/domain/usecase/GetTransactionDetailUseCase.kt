@@ -1,23 +1,21 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.coin.ethereum.EVMTransaction
-import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
-import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
-import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
-import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaTransaction
-import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaTransactionRepository
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction
+import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
+import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import javax.inject.Inject
 import javax.inject.Singleton
+
 @Singleton
 class GetTransactionDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
@@ -34,7 +32,10 @@ class GetTransactionDetailUseCase @Inject constructor(
         transactionId: String,
         coinType: CoinType
     ): Result<TransactionDetail> {
-        logger.d(tag, "Getting transaction detail: $transactionId for wallet: $walletId, type: $coinType")
+        logger.d(
+            tag,
+            "Getting transaction detail: $transactionId for wallet: $walletId, type: $coinType"
+        )
 
         return try {
             val wallet = walletRepository.getWallet(walletId)
@@ -78,32 +79,6 @@ class GetTransactionDetailUseCase @Inject constructor(
         return solanaTransactionRepository.getTransaction(transactionId)
     }
 
-    // Extension function to get EthereumNetwork from chain ID
-    private fun Long.toEthereumNetwork(): EthereumNetwork? {
-        val chainIdStr = this.toString()
-        return when (chainIdStr) {
-            EthereumNetwork.Mainnet.chainId -> EthereumNetwork.Mainnet
-            EthereumNetwork.Sepolia.chainId -> EthereumNetwork.Sepolia
-            else -> {
-                logger.w(tag, "Unknown chain ID: $this")
-                null
-            }
-        }
-    }
-
-    // Extension function to get display name from chain ID
-    private fun Long.toEthereumDisplayName(): String {
-        val chainIdStr = this.toString()
-        return when (chainIdStr) {
-            EthereumNetwork.Mainnet.chainId -> EthereumNetwork.Mainnet.displayName
-            EthereumNetwork.Sepolia.chainId -> EthereumNetwork.Sepolia.displayName
-            else -> {
-                logger.w(tag, "Unknown chain ID: $this, defaulting to Ethereum")
-                "Ethereum"
-            }
-        }
-    }
-
     private fun mapBitcoinToDetail(
         tx: BitcoinTransaction
     ): TransactionDetail {
@@ -111,10 +86,7 @@ class GetTransactionDetailUseCase @Inject constructor(
             id = tx.id,
             walletId = tx.walletId,
             coinType = CoinType.BITCOIN,
-            network = when (tx.network) {
-                BitcoinNetwork.Mainnet -> "Bitcoin Mainnet"
-                BitcoinNetwork.Testnet -> "Bitcoin Testnet"
-            },
+            network = tx.network.displayName,
             hash = tx.txHash ?: tx.id,
             status = tx.status,
             timestamp = tx.timestamp,
@@ -138,10 +110,7 @@ class GetTransactionDetailUseCase @Inject constructor(
             id = tx.id,
             walletId = tx.walletId,
             coinType = CoinType.SOLANA,
-            network = when (tx.network) {
-                SolanaNetwork.Mainnet -> "Solana Mainnet"
-                SolanaNetwork.Devnet -> "Solana Devnet"
-            },
+            network = tx.network.displayName,
             hash = tx.signature ?: tx.id,
             status = tx.status,
             timestamp = tx.timestamp,
@@ -170,7 +139,7 @@ class GetTransactionDetailUseCase @Inject constructor(
             id = tx.id,
             walletId = tx.walletId,
             coinType = coinType,
-            network = tx.chainId.toEthereumDisplayName(), // Now works with Long
+            network = tx.network.displayName,
             hash = tx.txHash ?: tx.id,
             status = tx.status,
             timestamp = tx.timestamp,
@@ -199,7 +168,7 @@ class GetTransactionDetailUseCase @Inject constructor(
             id = tx.id,
             walletId = tx.walletId,
             coinType = coinType,
-            network = tx.chainId.toEthereumDisplayName(),
+            network = tx.network.displayName,
             hash = tx.txHash ?: tx.id,
             status = tx.status,
             timestamp = tx.timestamp,

@@ -27,7 +27,7 @@ class GetSolanaDetailUseCase @Inject constructor(
 
     suspend operator fun invoke(
         walletId: String,
-        network: SolanaNetwork  // Changed from String to SolanaNetwork
+        network: SolanaNetwork
     ): Result<SolanaDetailResult> {
         logger.d(tag, "=== GetSolanaDetailUseCase started ===")
         logger.d(tag, "Getting Solana details for wallet: $walletId, network: $network")
@@ -49,7 +49,7 @@ class GetSolanaDetailUseCase @Inject constructor(
         logger.d(tag, "Deleting old transactions for wallet $walletId, network $networkStorage")
         solanaTransactionRepository.deleteForWalletAndNetwork(walletId, networkStorage)
 
-        // 4. Fetch transactions using Helius API
+        // 4. Fetch transactions
         logger.d(tag, "Fetching transactions from Helius API...")
         val heliusResult = solanaBlockchainRepository.getTransactions(
             walletId = walletId,
@@ -78,7 +78,7 @@ class GetSolanaDetailUseCase @Inject constructor(
                         savedCount++
                         logger.d(tag, "  Saved SOL transfer: ${heliusTx.signature.take(8)}..., amount: ${heliusTx.amountSol} SOL")
                     } else {
-                        // This is a token transfer (already handled in repository)
+                        // This is a token transfer
                         tokenTransferCount++
                         logger.d(tag, "  Token transaction: ${heliusTx.signature.take(8)}...")
                     }
@@ -99,7 +99,7 @@ class GetSolanaDetailUseCase @Inject constructor(
 
         // 5. Get balance
         val balance = walletRepository.getWalletBalance(walletId)
-        val coinBalance = balance?.solanaBalances?.get(solanaCoin.network)  // Direct network lookup
+        val coinBalance = balance?.solanaBalances?.get(solanaCoin.network)
         logger.d(tag, "Balance for ${solanaCoin.network}: ${coinBalance?.sol ?: "0"} SOL")
 
         // 6. Get raw transactions from local DB
@@ -127,10 +127,7 @@ class GetSolanaDetailUseCase @Inject constructor(
             balanceFormatted = "${coinBalance?.sol ?: "0"} SOL",
             usdValue = coinBalance?.usdValue ?: 0.0,
             network = solanaCoin.network.name,
-            networkDisplayName = when (solanaCoin.network) {
-                SolanaNetwork.Mainnet -> "Mainnet"
-                SolanaNetwork.Devnet -> "Devnet"
-            },
+            networkDisplayName = solanaCoin.network.displayName,
             rawTransactions = solTxs,
             solanaCoin = solanaCoin,
             splTokens = solanaCoin.splTokens,
