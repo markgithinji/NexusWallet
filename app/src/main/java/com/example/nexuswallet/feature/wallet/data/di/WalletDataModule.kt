@@ -10,7 +10,11 @@ import com.example.nexuswallet.feature.wallet.data.local.dao.SPLTokenDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaBalanceDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaCoinDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.WalletDao
+import com.example.nexuswallet.feature.wallet.data.local.datasource.BalanceDataSourceImpl
+import com.example.nexuswallet.feature.wallet.data.local.datasource.WalletDataSourceImpl
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepositoryImpl
+import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
+import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import dagger.Module
 import dagger.Provides
@@ -21,7 +25,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object DatabaseModule {
+object WalletDataModule {
 
     @Provides
     @Singleton
@@ -108,7 +112,7 @@ object DatabaseModule {
         evmTokenDao: EVMTokenDao,
         evmBalanceDao: EVMBalanceDao
     ): BalanceDataSource {
-        return BalanceDataSource(
+        return BalanceDataSourceImpl(
             bitcoinCoinDao = bitcoinCoinDao,
             solanaCoinDao = solanaCoinDao,
             bitcoinBalanceDao = bitcoinBalanceDao,
