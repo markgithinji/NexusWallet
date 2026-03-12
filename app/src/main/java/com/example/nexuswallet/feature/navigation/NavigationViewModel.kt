@@ -1,4 +1,4 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.navigation
 
 import android.util.Log
 import androidx.lifecycle.ViewModel

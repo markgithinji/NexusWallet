@@ -1,4 +1,4 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.navigation
 
 import android.os.Build
 import android.util.Log
@@ -130,7 +130,7 @@ fun Navigation(
     ) {
         composable<WelcomeRoute> {
             Log.d("Navigation", "Navigated to WelcomeRoute")
-            WelcomeScreen(
+            _root_ide_package_.com.example.nexuswallet.WelcomeScreen(
                 onCreateWallet = {
                     Log.d("Navigation", "WelcomeScreen: onCreateWallet clicked")
                     navController.navigate(CreateWalletRoute)
@@ -150,29 +150,44 @@ fun Navigation(
 
         composable<MainRoute> {
             Log.d("Navigation", "Navigated to MainRoute")
-            MainTabScreen(
+            _root_ide_package_.com.example.nexuswallet.MainTabScreen(
                 onNavigateToCreateWallet = {
                     Log.d("Navigation", "MainTabScreen: navigate to CreateWalletRoute")
                     navController.navigate(CreateWalletRoute)
                 },
                 onNavigateToWalletDetail = { walletId ->
-                    Log.d("Navigation", "MainTabScreen: navigate to WalletDetailRoute - walletId: $walletId")
+                    Log.d(
+                        "Navigation",
+                        "MainTabScreen: navigate to WalletDetailRoute - walletId: $walletId"
+                    )
                     handleDirectNavigation("walletDetail", walletId)
                 },
                 onNavigateToCoinDetail = { walletId, coinType, network ->
-                    Log.d("Navigation", "MainTabScreen: navigate to CoinDetailRoute - walletId: $walletId, coinType: $coinType, network: $network")
+                    Log.d(
+                        "Navigation",
+                        "MainTabScreen: navigate to CoinDetailRoute - walletId: $walletId, coinType: $coinType, network: $network"
+                    )
                     navController.navigate(CoinDetailRoute(walletId, coinType, network))
                 },
                 onNavigateToTokenDetail = { tokenId ->
-                    Log.d("Navigation", "MainTabScreen: navigate to TokenDetailRoute - tokenId: $tokenId")
+                    Log.d(
+                        "Navigation",
+                        "MainTabScreen: navigate to TokenDetailRoute - tokenId: $tokenId"
+                    )
                     navController.navigate(TokenDetailRoute(tokenId))
                 },
                 onNavigateToReceive = { walletId, coinType, network ->
-                    Log.d("Navigation", "MainTabScreen: navigate to ReceiveRoute - walletId: $walletId, coinType: $coinType, network: $network")
+                    Log.d(
+                        "Navigation",
+                        "MainTabScreen: navigate to ReceiveRoute - walletId: $walletId, coinType: $coinType, network: $network"
+                    )
                     navController.navigate(ReceiveRoute(walletId, coinType, network))
                 },
                 onNavigateToSend = { walletId, coinType, network ->
-                    Log.d("Navigation", "MainTabScreen: navigate to SendRoute - walletId: $walletId, coinType: $coinType, network: $network")
+                    Log.d(
+                        "Navigation",
+                        "MainTabScreen: navigate to SendRoute - walletId: $walletId, coinType: $coinType, network: $network"
+                    )
                     navController.navigate(SendRoute(walletId, coinType, network))
                 },
                 onNavigateToSecurity = {
@@ -466,7 +481,7 @@ fun Navigation(
             val args = backStackEntry.toRoute<BackupRoute>()
             Log.d("Navigation", "Navigated to BackupRoute - walletId: ${args.walletId}")
 
-            BackupScreen(
+            _root_ide_package_.com.example.nexuswallet.BackupScreen(
                 onNavigateUp = {
                     Log.d("Navigation", "BackupScreen: navigate up")
                     navController.navigateUp()
