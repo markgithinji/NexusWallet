@@ -11,7 +11,7 @@ fun SolanaCoinEntity.toDomain(splTokens: List<SPLToken>): SolanaCoin =
         address = address,
         publicKey = publicKey,
         derivationPath = derivationPath,
-        network = network.toSolanaNetwork(),
+        network = network,
         splTokens = splTokens
     )
 
@@ -21,16 +21,5 @@ fun SolanaCoin.toEntity(walletId: String): SolanaCoinEntity = SolanaCoinEntity(
     address = address,
     publicKey = publicKey,
     derivationPath = derivationPath,
-    network = network.toStorageString()
+    network = network
 )
-
-fun SolanaNetwork.toStorageString(): String = when (this) {
-    SolanaNetwork.Mainnet -> "Mainnet"
-    SolanaNetwork.Devnet -> "Devnet"
-}
-
-fun String.toSolanaNetwork(): SolanaNetwork = when (this) {
-    "Mainnet" -> SolanaNetwork.Mainnet
-    "Devnet" -> SolanaNetwork.Devnet
-    else -> SolanaNetwork.Devnet
-}

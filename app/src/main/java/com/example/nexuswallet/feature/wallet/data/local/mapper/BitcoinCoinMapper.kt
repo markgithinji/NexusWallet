@@ -10,7 +10,7 @@ fun BitcoinCoinEntity.toDomain(): BitcoinCoin =
         address = address,
         publicKey = publicKey,
         derivationPath = derivationPath,
-        network = network.toBitcoinNetwork(),
+        network = network,
         xpub = xpub
     )
 
@@ -20,17 +20,6 @@ fun BitcoinCoin.toEntity(walletId: String): BitcoinCoinEntity = BitcoinCoinEntit
     address = address,
     publicKey = publicKey,
     derivationPath = derivationPath,
-    network = network.toStorageString(),
+    network = network,
     xpub = xpub
 )
-
-fun BitcoinNetwork.toStorageString(): String = when (this) {
-    BitcoinNetwork.Mainnet -> "Mainnet"
-    BitcoinNetwork.Testnet -> "Testnet"
-}
-
-fun String.toBitcoinNetwork(): BitcoinNetwork = when (this) {
-    "Mainnet" -> BitcoinNetwork.Mainnet
-    "Testnet" -> BitcoinNetwork.Testnet
-    else -> BitcoinNetwork.Testnet
-}

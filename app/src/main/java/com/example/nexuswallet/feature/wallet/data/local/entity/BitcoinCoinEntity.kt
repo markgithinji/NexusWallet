@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
 import java.util.UUID
 
@@ -25,7 +26,7 @@ data class BitcoinCoinEntity(
     val address: String,
     val publicKey: String,
     val derivationPath: String,
-    val network: String,
+    val network: BitcoinNetwork,
     val xpub: String,
     val updatedAt: Long = System.currentTimeMillis()
 )

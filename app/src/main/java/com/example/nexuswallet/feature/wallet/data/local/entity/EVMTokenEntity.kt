@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
 import java.util.UUID
 
@@ -29,7 +30,7 @@ data class EVMTokenEntity(
     val address: String,
     val publicKey: String,
     val derivationPath: String,
-    val network: String,
+    val network: EthereumNetwork,
     val contractAddress: String,
     val symbol: String,
     val name: String,
