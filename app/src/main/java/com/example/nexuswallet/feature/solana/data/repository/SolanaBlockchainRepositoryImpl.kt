@@ -7,10 +7,11 @@ import com.example.nexuswallet.feature.core.util.SafeApiCall
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionRequest
 import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse
+import com.example.nexuswallet.feature.solana.data.toDomain
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
-import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
 import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
+import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.sol4k.Base58
@@ -267,7 +268,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     }
 
     override fun parseTransfer(
-        transaction: com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse,
+        transaction: HeliusTransactionResponse,
         walletAddress: String
     ): com.example.nexuswallet.feature.solana.domain.model.TransferInfo? {
 

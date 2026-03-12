@@ -36,8 +36,8 @@ object SolanaDataModule {
 
     @Provides
     @Singleton
-    fun provideHeliusApiKeyInterceptor(apiKey: String): com.example.nexuswallet.feature.solana.data.remote.HeliusApiKeyInterceptor {
-        return _root_ide_package_.com.example.nexuswallet.feature.solana.data.remote.HeliusApiKeyInterceptor(
+    fun provideHeliusApiKeyInterceptor(apiKey: String): HeliusApiKeyInterceptor {
+        return HeliusApiKeyInterceptor(
             apiKey
         )
     }
@@ -73,7 +73,7 @@ object SolanaDataModule {
     @Provides
     @Singleton
     fun provideHeliusOkHttpClient(
-        apiKeyInterceptor: com.example.nexuswallet.feature.solana.data.remote.HeliusApiKeyInterceptor
+        apiKeyInterceptor: HeliusApiKeyInterceptor
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(apiKeyInterceptor)
@@ -89,7 +89,7 @@ object SolanaDataModule {
         @Named("heliusApiMainnet") mainnetBaseUrl: String,
         okHttpClient: OkHttpClient,
         json: Json
-    ): com.example.nexuswallet.feature.solana.data.remote.HeliusApi {
+    ): HeliusApi {
         // Use appropriate URL based on build type or config
         val baseUrl = if (BuildConfig.DEBUG) devnetBaseUrl else mainnetBaseUrl
 
@@ -98,7 +98,7 @@ object SolanaDataModule {
             .client(okHttpClient)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
-            .create(_root_ide_package_.com.example.nexuswallet.feature.solana.data.remote.HeliusApi::class.java)
+            .create(HeliusApi::class.java)
     }
 
     @Provides
@@ -106,30 +106,29 @@ object SolanaDataModule {
     fun provideSolanaBlockchainRepository(
         @Named("heliusRpcDevnet") rpcDevnetConnection: Connection,
         @Named("heliusRpcMainnet") rpcMainnetConnection: Connection,
-        heliusApi: com.example.nexuswallet.feature.solana.data.remote.HeliusApi,
+        heliusApi: HeliusApi,
         logger: Logger
-    ): com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository {
-        return _root_ide_package_.com.example.nexuswallet.feature.solana.data.repository.SolanaBlockchainRepositoryImpl(
+    ): SolanaBlockchainRepository {
+        return SolanaBlockchainRepositoryImpl(
             rpcDevnetConnection = rpcDevnetConnection,
             rpcMainnetConnection = rpcMainnetConnection,
-            heliusApi = heliusApi,
-            logger = logger
+            heliusApi = heliusApi
         )
     }
 
     @Provides
     @Singleton
-    fun provideSolanaTransactionDao(database: WalletDatabase): com.example.nexuswallet.feature.solana.data.local.SolanaTransactionDao {
+    fun provideSolanaTransactionDao(database: WalletDatabase): SolanaTransactionDao {
         return database.solanaTransactionDao()
     }
 
     @Provides
     @Singleton
     fun provideSolanaTransactionRepository(
-        solanaTransactionDao: com.example.nexuswallet.feature.solana.data.local.SolanaTransactionDao,
+        solanaTransactionDao: SolanaTransactionDao,
         logger: Logger
-    ): com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository {
-        return _root_ide_package_.com.example.nexuswallet.feature.solana.data.repository.SolanaTransactionRepositoryImpl(
+    ): SolanaTransactionRepository {
+        return SolanaTransactionRepositoryImpl(
             solanaTransactionDao,
             logger
         )

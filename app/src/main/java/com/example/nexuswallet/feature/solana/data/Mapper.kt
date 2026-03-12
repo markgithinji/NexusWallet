@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.solana.data
 
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity
 import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse
 import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
@@ -8,8 +9,8 @@ import com.example.nexuswallet.feature.solana.domain.model.TransferInfo
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 
-fun com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity.toDomain(): com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction {
-    return _root_ide_package_.com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction(
+fun SolanaTransactionEntity.toDomain(): SolanaTransaction {
+    return SolanaTransaction(
         id = id,
         walletId = walletId,
         fromAddress = fromAddress,
@@ -33,8 +34,8 @@ fun com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity.to
     )
 }
 
-fun com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction.toEntity(): com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity {
-    return _root_ide_package_.com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity(
+fun SolanaTransaction.toEntity(): SolanaTransactionEntity {
+    return SolanaTransactionEntity(
         id = id,
         walletId = walletId,
         fromAddress = fromAddress,
@@ -69,7 +70,7 @@ fun String.toSolanaNetwork(): SolanaNetwork = when (this) {
     else -> SolanaNetwork.Devnet
 }
 
-private fun HeliusTransactionResponse.toDomain(
+fun HeliusTransactionResponse.toDomain(
     walletId: String,
     walletAddress: String,
     network: SolanaNetwork

@@ -9,35 +9,35 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SolanaTransactionDao {
-    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
-    suspend fun insert(transaction: com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(transaction: SolanaTransactionEntity)
 
     @Update
-    suspend fun update(transaction: com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity)
+    suspend fun update(transaction: SolanaTransactionEntity)
 
     @Query("SELECT * FROM solana_transactions WHERE id = :id")
-    suspend fun getById(id: String): com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity?
+    suspend fun getById(id: String): SolanaTransactionEntity?
 
     @Query("SELECT * FROM solana_transactions WHERE walletId = :walletId AND network = :network ORDER BY timestamp DESC")
-    fun getByWalletIdAndNetwork(walletId: String, network: String): Flow<List<com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity>>
+    fun getByWalletIdAndNetwork(walletId: String, network: String): Flow<List<SolanaTransactionEntity>>
 
     @Query("SELECT * FROM solana_transactions WHERE walletId = :walletId AND tokenMint = :tokenMint AND network = :network ORDER BY timestamp DESC")
-    fun getByWalletIdTokenAndNetwork(walletId: String, tokenMint: String?, network: String): Flow<List<com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity>>
+    fun getByWalletIdTokenAndNetwork(walletId: String, tokenMint: String?, network: String): Flow<List<SolanaTransactionEntity>>
 
     @Query("SELECT * FROM solana_transactions WHERE walletId = :walletId AND tokenMint IS NULL AND network = :network ORDER BY timestamp DESC")
-    fun getNativeTransactions(walletId: String, network: String): Flow<List<com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity>>
+    fun getNativeTransactions(walletId: String, network: String): Flow<List<SolanaTransactionEntity>>
 
     @Query("SELECT * FROM solana_transactions WHERE status = 'PENDING'")
-    fun observePendingTransactions(): Flow<List<com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity>>
+    fun observePendingTransactions(): Flow<List<SolanaTransactionEntity>>
 
     @Query("SELECT * FROM solana_transactions WHERE walletId = :walletId AND network = :network ORDER BY timestamp DESC")
-    suspend fun getByWalletIdAndNetworkSync(walletId: String, network: String): List<com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity>
+    suspend fun getByWalletIdAndNetworkSync(walletId: String, network: String): List<SolanaTransactionEntity>
 
     @Query("SELECT * FROM solana_transactions WHERE walletId = :walletId AND tokenMint IS NULL AND network = :network ORDER BY timestamp DESC")
-    suspend fun getNativeTransactionsSync(walletId: String, network: String): List<com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity>
+    suspend fun getNativeTransactionsSync(walletId: String, network: String): List<SolanaTransactionEntity>
 
     @Query("SELECT * FROM solana_transactions WHERE status = 'PENDING'")
-    suspend fun getPendingTransactions(): List<com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity>
+    suspend fun getPendingTransactions(): List<SolanaTransactionEntity>
 
     @Query("DELETE FROM solana_transactions WHERE id = :id")
     suspend fun deleteById(id: String)

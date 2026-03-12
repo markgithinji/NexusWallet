@@ -13,13 +13,13 @@ data class HeliusTransactionResponse(
     val signature: String,
     val slot: Long,
     val timestamp: Long,
-    val tokenTransfers: List<com.example.nexuswallet.feature.solana.data.remote.HeliusTokenTransferResponse> = emptyList(),
-    val nativeTransfers: List<com.example.nexuswallet.feature.solana.data.remote.HeliusNativeTransferResponse> = emptyList(),
-    val accountData: List<com.example.nexuswallet.feature.solana.data.remote.HeliusAccountDataResponse> = emptyList(),
+    val tokenTransfers: List<HeliusTokenTransferResponse> = emptyList(),
+    val nativeTransfers: List<HeliusNativeTransferResponse> = emptyList(),
+    val accountData: List<HeliusAccountDataResponse> = emptyList(),
     val transactionError: String? = null,
-    val instructions: List<com.example.nexuswallet.feature.solana.data.remote.HeliusInstructionResponse> = emptyList(),
+    val instructions: List<HeliusInstructionResponse> = emptyList(),
     @SerialName("lighthouseData") val lighthouseData: String? = null,
-    val events: com.example.nexuswallet.feature.solana.data.remote.HeliusEventsResponse? = null
+    val events: HeliusEventsResponse? = null
 )
 
 @Serializable
@@ -43,13 +43,13 @@ data class HeliusTokenTransferResponse(
 data class HeliusAccountDataResponse(
     val account: String,
     val nativeBalanceChange: Long,
-    val tokenBalanceChanges: List<com.example.nexuswallet.feature.solana.data.remote.HeliusTokenBalanceChangeResponse> = emptyList()
+    val tokenBalanceChanges: List<HeliusTokenBalanceChangeResponse> = emptyList()
 )
 
 @Serializable
 data class HeliusTokenBalanceChangeResponse(
     val mint: String,
-    val rawTokenAmount: com.example.nexuswallet.feature.solana.data.remote.HeliusRawTokenAmountResponse,
+    val rawTokenAmount: HeliusRawTokenAmountResponse,
     val tokenAccount: String
 )
 
@@ -64,7 +64,7 @@ data class HeliusInstructionResponse(
     val accounts: List<String>,
     val data: String,
     val programId: String,
-    val innerInstructions: List<com.example.nexuswallet.feature.solana.data.remote.HeliusInnerInstructionResponse> = emptyList()
+    val innerInstructions: List<HeliusInnerInstructionResponse> = emptyList()
 )
 
 @Serializable
@@ -76,13 +76,13 @@ data class HeliusInnerInstructionResponse(
 
 @Serializable
 data class HeliusEventsResponse(
-    val nft: com.example.nexuswallet.feature.solana.data.remote.HeliusNFTEventResponse? = null,
-    val swap: com.example.nexuswallet.feature.solana.data.remote.HeliusSwapEventResponse? = null
+    val nft: HeliusNFTEventResponse? = null,
+    val swap: HeliusSwapEventResponse? = null
 )
 
 @Serializable
 data class HeliusNFTEventResponse(
-    val nfts: List<com.example.nexuswallet.feature.solana.data.remote.HeliusNFTResponse>,
+    val nfts: List<HeliusNFTResponse>,
     val type: String,
     val seller: String? = null,
     val buyer: String? = null
@@ -96,10 +96,10 @@ data class HeliusNFTResponse(
 
 @Serializable
 data class HeliusSwapEventResponse(
-    val nativeInput: com.example.nexuswallet.feature.solana.data.remote.HeliusNativeInputResponse? = null,
-    val nativeOutput: com.example.nexuswallet.feature.solana.data.remote.HeliusNativeOutputResponse? = null,
-    val tokenInputs: List<com.example.nexuswallet.feature.solana.data.remote.HeliusTokenInputResponse> = emptyList(),
-    val tokenOutputs: List<com.example.nexuswallet.feature.solana.data.remote.HeliusTokenOutputResponse> = emptyList()
+    val nativeInput: HeliusNativeInputResponse? = null,
+    val nativeOutput: HeliusNativeOutputResponse? = null,
+    val tokenInputs: List<HeliusTokenInputResponse> = emptyList(),
+    val tokenOutputs: List<HeliusTokenOutputResponse> = emptyList()
 )
 
 @Serializable
