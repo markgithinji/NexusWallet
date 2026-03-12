@@ -3,22 +3,34 @@ package com.example.nexuswallet.feature.wallet.domain.di
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.authentication.domain.usecase.RecordAuthenticationUseCase
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.settings.domain.usecase.ClearAllSecurityDataUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.ClearPinUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.GetAuthStatusUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.IsBiometricEnabledUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.IsPinSetUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.SetBiometricEnabledUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.SetPinUseCase
+import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.GenerateMnemonicUseCase
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.ValidateMnemonicUseCase
-import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUseCaseImpl
-import com.example.nexuswallet.feature.wallet.domain.usecase.GetTransactionDetailUseCase
+import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
 import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.usecase.CreateWalletUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.GenerateMnemonicUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetAllTransactionsUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetBitcoinDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetEthereumDetailUseCase
-import com.example.nexuswallet.feature.wallet.domain.usecase.GetEthereumDetailUseCaseImpl
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetSolanaDetailUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetTransactionDetailUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.IsSessionValidUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncWalletBalancesUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.ValidateMnemonicUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -219,7 +231,7 @@ object WalletDomainModule {
 
     @Provides
     @Singleton
-    fun provideFormatTransactionDisplayUseCase(): FormatTransactionDisplayUseCaseImpl {
+    fun provideFormatTransactionDisplayUseCase(): FormatTransactionDisplayUseCase {
         return FormatTransactionDisplayUseCase()
     }
 
@@ -229,10 +241,9 @@ object WalletDomainModule {
         walletRepository: WalletRepository,
         bitcoinTransactionRepository: BitcoinTransactionRepository,
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-        formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
         logger: Logger
     ): GetBitcoinDetailUseCase {
-        return GetBitcoinDetailUseCaseImpl(
+        return GetBitcoinDetailUseCase(
             walletRepository = walletRepository,
             bitcoinTransactionRepository = bitcoinTransactionRepository,
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
@@ -249,7 +260,7 @@ object WalletDomainModule {
         formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
         logger: Logger
     ): GetEthereumDetailUseCase {
-        return GetEthereumDetailUseCaseImpl(
+        return GetEthereumDetailUseCase(
             walletRepository = walletRepository,
             evmTransactionRepository = evmTransactionRepository,
             evmBlockchainRepository = evmBlockchainRepository,
@@ -266,7 +277,7 @@ object WalletDomainModule {
         formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
         logger: Logger
     ): GetSolanaDetailUseCase {
-        return GetSolanaDetailUseCaseImpl(
+        return GetSolanaDetailUseCase(
             walletRepository = walletRepository,
             solanaTransactionRepository = solanaTransactionRepository,
             solanaBlockchainRepository = solanaBlockchainRepository,
@@ -284,7 +295,7 @@ object WalletDomainModule {
         solanaBlockchainRepository: SolanaBlockchainRepository,
         logger: Logger
     ): SyncWalletBalancesUseCase {
-        return SyncWalletBalancesUseCaseImpl(
+        return SyncWalletBalancesUseCase(
             walletDataSource = walletDataSource,
             balanceDataSource = balanceDataSource,
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
