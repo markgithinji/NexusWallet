@@ -11,9 +11,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,7 +36,7 @@ import com.example.nexuswallet.feature.core.domain.model.NetworkType
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
-import com.example.nexuswallet.feature.wallet.domain.usecase.TransactionDisplayInfo
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
@@ -68,7 +70,7 @@ fun CoinDetailScreen(
     val networkString = network?.apiValue ?: ""
 
     LaunchedEffect(Unit) {
-        viewModel.loadCoinDetails(walletId, coinType, networkString)
+        viewModel.loadCoinDetails(walletId, coinType, network)
     }
 
     // Show loading only on initial load
@@ -81,18 +83,17 @@ fun CoinDetailScreen(
     state.error?.let { errorMessage ->
         ErrorScreen(
             message = errorMessage,
-            onRetry = { viewModel.loadCoinDetails(walletId, coinType, networkString) }
+            onRetry = { viewModel.loadCoinDetails(walletId, coinType, network) }
         )
         return
     }
 
     val (coinColor, iconRes) = getCoinDetailConfig(coinType)
-    val displayName = getCoinDisplayName(coinType)
+    val displayName = coinType.displayName
 
     Scaffold(
         topBar = {
             CoinDetailTopBar(
-                coinColor = coinColor,
                 iconRes = iconRes,
                 displayName = displayName,
                 isLoading = state.isLoading,
@@ -128,7 +129,6 @@ fun CoinDetailScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CoinDetailTopBar(
-    coinColor: Color,
     iconRes: Int,
     displayName: String,
     isLoading: Boolean,
@@ -156,7 +156,7 @@ private fun CoinDetailTopBar(
         navigationIcon = {
             IconButton(onClick = onNavigateUp) {
                 Icon(
-                    Icons.Default.ArrowBack,
+                    Icons.AutoMirrored.Filled.ArrowBack,
                     "Back",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -222,11 +222,9 @@ private fun CoinDetailContent(
         // Balance Card
         item {
             CoinDetailBalanceCard(
-                coinType = coinType,
                 coinColor = coinColor,
                 iconRes = iconRes,
                 displayName = displayName,
-                balance = state.balance,
                 balanceFormatted = state.balanceFormatted,
                 address = state.address,
                 network = networkDisplayName,
@@ -506,11 +504,9 @@ fun OtherTokenRow(
 
 @Composable
 private fun CoinDetailBalanceCard(
-    coinType: CoinType,
     coinColor: Color,
     iconRes: Int,
     displayName: String,
-    balance: String,
     balanceFormatted: String,
     address: String,
     network: String,
@@ -602,10 +598,7 @@ private fun CoinDetailBalanceCard(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            Divider(
-                color = MaterialTheme.colorScheme.outline,
-                thickness = 1.dp
-            )
+            HorizontalDivider(Modifier, thickness = 1.dp, color = MaterialTheme.colorScheme.outline)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -795,114 +788,13 @@ private fun CoinDetailTransactionsContainer(
                     )
 
                     if (index < 2) {
-                        Divider(
-                            color = MaterialTheme.colorScheme.outline,
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 4.dp),
                             thickness = 1.dp,
-                            modifier = Modifier.padding(vertical = 4.dp)
+                            color = MaterialTheme.colorScheme.outline
                         )
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CoinDetailTransactionItem(
-    transaction: TransactionDisplayInfo,
-    coinType: CoinType
-) {
-    val (symbol, displayName) = when (coinType) {
-        CoinType.BITCOIN -> Pair("BTC", "Bitcoin")
-        CoinType.ETHEREUM -> Pair("ETH", "Ethereum")
-        CoinType.SOLANA -> Pair("SOL", "Solana")
-        CoinType.USDC -> Pair("USDC", "USD Coin")
-    }
-
-    val (statusColor, statusBgColor) = when (transaction.status) {
-        TransactionStatus.SUCCESS -> Pair(
-            MaterialTheme.colorScheme.success,
-            MaterialTheme.colorScheme.success.copy(alpha = 0.1f)
-        )
-        TransactionStatus.PENDING -> Pair(
-            MaterialTheme.colorScheme.warning,
-            MaterialTheme.colorScheme.warning.copy(alpha = 0.1f)
-        )
-        TransactionStatus.FAILED -> Pair(
-            MaterialTheme.colorScheme.error,
-            MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-        )
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Status icon
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(statusBgColor),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (transaction.isIncoming)
-                    Icons.Outlined.ArrowDownward
-                else
-                    Icons.Outlined.ArrowUpward,
-                contentDescription = if (transaction.isIncoming) "Received" else "Sent",
-                tint = statusColor,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Transaction details
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = if (transaction.isIncoming) "Received $displayName" else "Sent $displayName",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1
-            )
-            Text(
-                text = transaction.formattedTime,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
-        }
-
-        // Amount and status
-        Column(
-            horizontalAlignment = Alignment.End,
-            modifier = Modifier.widthIn(min = 80.dp, max = 120.dp)
-        ) {
-            Text(
-                text = "${if (transaction.isIncoming) "+" else "-"}${transaction.formattedAmount} $symbol",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = if (transaction.isIncoming) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(statusBgColor)
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = transaction.status.name,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = statusColor,
-                    maxLines = 1
-                )
             }
         }
     }
@@ -915,14 +807,5 @@ private fun getCoinDetailConfig(coinType: CoinType): Pair<Color, Int> {
         CoinType.ETHEREUM -> Pair(ethereumLight, R.drawable.ethereum)
         CoinType.SOLANA -> Pair(solanaLight, R.drawable.solana)
         CoinType.USDC -> Pair(usdcLight, R.drawable.usdc)
-    }
-}
-
-private fun getCoinDisplayName(coinType: CoinType): String {
-    return when (coinType) {
-        CoinType.BITCOIN -> "Bitcoin"
-        CoinType.ETHEREUM -> "Ethereum"
-        CoinType.SOLANA -> "Solana"
-        CoinType.USDC -> "USDC"
     }
 }

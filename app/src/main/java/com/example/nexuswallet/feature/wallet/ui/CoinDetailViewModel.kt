@@ -3,17 +3,23 @@ package com.example.nexuswallet.feature.wallet.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
-import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
-import com.example.nexuswallet.feature.wallet.domain.usecase.TransactionDisplayInfo
-import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
+import com.example.nexuswallet.feature.core.domain.model.NetworkType
+import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinDetailResult
+import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumDetailResult
+import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
+import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetBitcoinDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetEthereumDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetSolanaDetailUseCase
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +28,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
-import com.example.nexuswallet.feature.core.util.Result
 
 @HiltViewModel
 class CoinDetailViewModel @Inject constructor(
@@ -41,7 +46,7 @@ class CoinDetailViewModel @Inject constructor(
         val network: String = "",
         val networkDisplayName: String = "",
         val coinType: CoinType? = null,
-        val coinNetwork: String = "",
+        val networkType: NetworkType? = null,
         val ethGasBalance: BigDecimal? = null,
         val splTokens: List<SPLToken> = emptyList(),
         val evmTokens: List<EVMToken> = emptyList(),
@@ -55,7 +60,7 @@ class CoinDetailViewModel @Inject constructor(
     private val _state = MutableStateFlow(CoinDetailState())
     val state: StateFlow<CoinDetailState> = _state.asStateFlow()
 
-    fun loadCoinDetails(walletId: String, coinType: CoinType, network: String = "", forceRefresh: Boolean = false) {
+    fun loadCoinDetails(walletId: String, coinType: CoinType, networkType: NetworkType? = null, forceRefresh: Boolean = false) {
         viewModelScope.launch {
             // Set loading state
             _state.update {
@@ -64,17 +69,42 @@ class CoinDetailViewModel @Inject constructor(
                     isRefreshing = forceRefresh,
                     error = null,
                     coinType = coinType,
-                    coinNetwork = network
+                    networkType = networkType,
                 )
             }
 
-            Log.d("CoinDetailVM", "=== Loading $coinType details for wallet: $walletId ===")
+            Log.d("CoinDetailVM", "=== Loading $coinType details for wallet: $walletId with network: ${networkType?.name} ===")
 
+            // Convert NetworkType to the appropriate domain network object
             val result = when (coinType) {
-                CoinType.BITCOIN -> getBitcoinDetailUseCase(walletId, network)
-                CoinType.ETHEREUM -> getEthereumDetailUseCase.getEthDetails(walletId, network)
-                CoinType.USDC -> getEthereumDetailUseCase.getUsdcDetails(walletId, network)
-                CoinType.SOLANA -> getSolanaDetailUseCase(walletId, network)
+                CoinType.BITCOIN -> {
+                    val bitcoinNetwork = when (networkType) {
+                        NetworkType.BITCOIN_TESTNET -> BitcoinNetwork.Testnet
+                        else -> BitcoinNetwork.Mainnet
+                    }
+                    getBitcoinDetailUseCase(walletId, bitcoinNetwork)
+                }
+                CoinType.ETHEREUM -> {
+                    val ethereumNetwork = when (networkType) {
+                        NetworkType.ETHEREUM_SEPOLIA -> EthereumNetwork.Sepolia
+                        else -> EthereumNetwork.Mainnet
+                    }
+                    getEthereumDetailUseCase.getEthDetails(walletId, ethereumNetwork)
+                }
+                CoinType.USDC -> {
+                    val ethereumNetwork = when (networkType) {
+                        NetworkType.ETHEREUM_SEPOLIA -> EthereumNetwork.Sepolia
+                        else -> EthereumNetwork.Mainnet
+                    }
+                    getEthereumDetailUseCase.getUsdcDetails(walletId, ethereumNetwork)
+                }
+                CoinType.SOLANA -> {
+                    val solanaNetwork = when (networkType) {
+                        NetworkType.SOLANA_DEVNET -> SolanaNetwork.Devnet
+                        else -> SolanaNetwork.Mainnet
+                    }
+                    getSolanaDetailUseCase(walletId, solanaNetwork)
+                }
             }
 
             // Update UI with result
@@ -101,12 +131,9 @@ class CoinDetailViewModel @Inject constructor(
     }
 
     private fun updateStateWithBitcoinData(data: BitcoinDetailResult) {
-        // Format transactions using the use case in ViewModel
         val displayTransactions = data.rawTransactions.map { transaction ->
             formatTransactionDisplayUseCase(transaction, CoinType.BITCOIN)
         }
-
-        Log.d("CoinDetailVM", "Updating with ${displayTransactions.size} Bitcoin transactions")
 
         _state.update {
             it.copy(
@@ -125,10 +152,7 @@ class CoinDetailViewModel @Inject constructor(
     }
 
     private fun updateStateWithEthereumData(data: EthereumDetailResult) {
-        // Determine coin type for formatting
         val coinType = if (data.token is USDCToken) CoinType.USDC else CoinType.ETHEREUM
-
-        // Format transactions using the use case in ViewModel
         val displayTransactions = data.rawTransactions.map { transaction ->
             formatTransactionDisplayUseCase(transaction, coinType)
         }
@@ -147,13 +171,13 @@ class CoinDetailViewModel @Inject constructor(
                 evmTokens = listOf(data.token),
                 externalTokenId = data.externalTokenId,
                 isLoading = false,
-                isRefreshing = false
+                isRefreshing = false,
+                coinType = coinType // Update coinType in case it changed (USDC vs ETH)
             )
         }
     }
 
     private fun updateStateWithSolanaData(data: SolanaDetailResult) {
-        // Format transactions using the use case in ViewModel
         val displayTransactions = data.rawTransactions.map { transaction ->
             formatTransactionDisplayUseCase(transaction, CoinType.SOLANA)
         }
@@ -181,7 +205,7 @@ class CoinDetailViewModel @Inject constructor(
             loadCoinDetails(
                 currentState.walletId,
                 currentState.coinType,
-                currentState.coinNetwork,
+                currentState.networkType,
                 forceRefresh = true
             )
         }
