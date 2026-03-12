@@ -8,7 +8,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.TokenType
+import com.example.nexuswallet.feature.wallet.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.serialization.json.Json
 
@@ -24,7 +24,10 @@ class Converters {
 
     @TypeConverter
     fun fromBitcoinNetwork(network: BitcoinNetwork): String {
-        return network.name
+        return when (network) {
+            BitcoinNetwork.Mainnet -> "Mainnet"
+            BitcoinNetwork.Testnet -> "Testnet"
+        }
     }
 
     @TypeConverter
@@ -34,16 +37,13 @@ class Converters {
             return BitcoinNetwork.Testnet
         }
 
-        return try {
-            // Handle both enum name and serialized name
-            when (network) {
-                "BitcoinMainnet", "Mainnet" -> BitcoinNetwork.Mainnet
-                "BitcoinTestnet", "Testnet" -> BitcoinNetwork.Testnet
-                else -> BitcoinNetwork.Testnet
+        return when (network) {
+            "Mainnet" -> BitcoinNetwork.Mainnet
+            "Testnet" -> BitcoinNetwork.Testnet
+            else -> {
+                Log.e("Converters", "Unknown BitcoinNetwork: '$network', defaulting to Testnet")
+                BitcoinNetwork.Testnet
             }
-        } catch (e: IllegalArgumentException) {
-            Log.e("Converters", "Unknown BitcoinNetwork: '$network', defaulting to Testnet")
-            BitcoinNetwork.Testnet
         }
     }
 
@@ -51,7 +51,10 @@ class Converters {
 
     @TypeConverter
     fun fromEthereumNetwork(network: EthereumNetwork): String {
-        return json.encodeToString(network)
+        return when (network) {
+            EthereumNetwork.Mainnet -> "Mainnet"
+            EthereumNetwork.Sepolia -> "Sepolia"
+        }
     }
 
     @TypeConverter
@@ -61,15 +64,12 @@ class Converters {
             return EthereumNetwork.Sepolia
         }
 
-        return try {
-            json.decodeFromString<EthereumNetwork>(network)
-        } catch (e: Exception) {
-            Log.e("Converters", "Failed to decode EthereumNetwork: $network", e)
-            // Fallback to legacy string values
-            when {
-                network.contains("mainnet", ignoreCase = true) -> EthereumNetwork.Mainnet
-                network.contains("sepolia", ignoreCase = true) -> EthereumNetwork.Sepolia
-                else -> EthereumNetwork.Sepolia
+        return when (network) {
+            "Mainnet" -> EthereumNetwork.Mainnet
+            "Sepolia" -> EthereumNetwork.Sepolia
+            else -> {
+                Log.e("Converters", "Unknown EthereumNetwork: '$network', defaulting to Sepolia")
+                EthereumNetwork.Sepolia
             }
         }
     }
@@ -78,7 +78,10 @@ class Converters {
 
     @TypeConverter
     fun fromSolanaNetwork(network: SolanaNetwork): String {
-        return network.name
+        return when (network) {
+            SolanaNetwork.Mainnet -> "Mainnet"
+            SolanaNetwork.Devnet -> "Devnet"
+        }
     }
 
     @TypeConverter
@@ -88,16 +91,13 @@ class Converters {
             return SolanaNetwork.Devnet
         }
 
-        return try {
-            // Handle both enum name and serialized name
-            when (network) {
-                "SolanaMainnet", "Mainnet" -> SolanaNetwork.Mainnet
-                "SolanaDevnet", "Devnet" -> SolanaNetwork.Devnet
-                else -> SolanaNetwork.Devnet
+        return when (network) {
+            "Mainnet" -> SolanaNetwork.Mainnet
+            "Devnet" -> SolanaNetwork.Devnet
+            else -> {
+                Log.e("Converters", "Unknown SolanaNetwork: '$network', defaulting to Devnet")
+                SolanaNetwork.Devnet
             }
-        } catch (e: IllegalArgumentException) {
-            Log.e("Converters", "Unknown SolanaNetwork: '$network', defaulting to Devnet")
-            SolanaNetwork.Devnet
         }
     }
 
