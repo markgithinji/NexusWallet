@@ -4,8 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.settings.ui.IsBiometricEnabledUseCase
-import com.example.nexuswallet.feature.settings.ui.IsPinSetUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.IsBiometricEnabledUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.IsPinSetUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.collections.emptyList
 
 @HiltViewModel
 class NavigationViewModel @Inject constructor(

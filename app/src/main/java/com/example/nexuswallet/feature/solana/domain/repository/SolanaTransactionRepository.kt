@@ -5,19 +5,19 @@ import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.coroutines.flow.Flow
 
 interface SolanaTransactionRepository {
-    suspend fun saveTransaction(transaction: com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction)
-    suspend fun updateTransaction(transaction: com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction)
-    suspend fun getTransaction(id: String): com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction?
+    suspend fun saveTransaction(transaction: SolanaTransaction)
+    suspend fun updateTransaction(transaction: SolanaTransaction)
+    suspend fun getTransaction(id: String): SolanaTransaction?
 
-    fun getTransactions(walletId: String, network: String): Flow<List<com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction>>
-    fun getTransactionsByToken(walletId: String, tokenMint: String?, network: String): Flow<List<com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction>>
-    fun getNativeTransactions(walletId: String, network: String): Flow<List<com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction>>
-    fun observePendingTransactions(): Flow<List<com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction>>
+    fun getTransactions(walletId: String, network: String): Flow<List<SolanaTransaction>>
+    fun getTransactionsByToken(walletId: String, tokenMint: String?, network: String): Flow<List<SolanaTransaction>>
+    fun getNativeTransactions(walletId: String, network: String): Flow<List<SolanaTransaction>>
+    fun observePendingTransactions(): Flow<List<SolanaTransaction>>
 
-    suspend fun getTransactionsSync(walletId: String, network: String): List<com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction>
-    suspend fun getNativeTransactionsSync(walletId: String, network: String): List<com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction>
+    suspend fun getTransactionsSync(walletId: String, network: String): List<SolanaTransaction>
+    suspend fun getNativeTransactionsSync(walletId: String, network: String): List<SolanaTransaction>
 
-    suspend fun getPendingTransactions(): List<com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction>
+    suspend fun getPendingTransactions(): List<SolanaTransaction>
     suspend fun deleteTransaction(id: String)
     suspend fun deleteAllForWallet(walletId: String)
     suspend fun deleteForWalletAndNetwork(walletId: String, network: String)

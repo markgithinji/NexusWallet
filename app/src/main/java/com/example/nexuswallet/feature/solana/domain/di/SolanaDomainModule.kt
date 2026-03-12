@@ -2,23 +2,16 @@ package com.example.nexuswallet.feature.solana.domain.di
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.coin.solana.GetSolanaBalanceUseCase
-import com.example.nexuswallet.feature.coin.solana.GetSolanaBalanceUseCaseImpl
-import com.example.nexuswallet.feature.coin.solana.GetSolanaFeeEstimateUseCase
-import com.example.nexuswallet.feature.coin.solana.GetSolanaFeeEstimateUseCaseImpl
-import com.example.nexuswallet.feature.coin.solana.GetSolanaWalletUseCase
-import com.example.nexuswallet.feature.coin.solana.GetSolanaWalletUseCaseImpl
-import com.example.nexuswallet.feature.coin.solana.SendSolanaUseCase
-import com.example.nexuswallet.feature.coin.solana.SendSolanaUseCaseImpl
-import com.example.nexuswallet.feature.coin.solana.SyncSolanaTransactionsUseCase
-import com.example.nexuswallet.feature.coin.solana.SyncSolanaTransactionsUseCaseImpl
-import com.example.nexuswallet.feature.coin.solana.ValidateSolanaAddressUseCase
-import com.example.nexuswallet.feature.coin.solana.ValidateSolanaAddressUseCaseImpl
-import com.example.nexuswallet.feature.solana.domain.usecase.ValidateSolanaSendUseCase
-import com.example.nexuswallet.feature.coin.solana.ValidateSolanaSendUseCaseImpl
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
-import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.solana.domain.usecase.GetSolanaBalanceUseCase
+import com.example.nexuswallet.feature.solana.domain.usecase.GetSolanaFeeEstimateUseCase
+import com.example.nexuswallet.feature.solana.domain.usecase.GetSolanaWalletUseCase
+import com.example.nexuswallet.feature.solana.domain.usecase.SendSolanaUseCase
+import com.example.nexuswallet.feature.solana.domain.usecase.SyncSolanaTransactionsUseCase
+import com.example.nexuswallet.feature.solana.domain.usecase.ValidateSolanaAddressUseCase
+import com.example.nexuswallet.feature.solana.domain.usecase.ValidateSolanaSendUseCase
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import dagger.Module
 import dagger.Provides
@@ -33,12 +26,12 @@ object SolanaUseDomainModule {
     @Provides
     @Singleton
     fun provideSyncSolanaTransactionsUseCase(
-        solanaBlockchainRepository: com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository,
-        solanaTransactionRepository: com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository,
+        solanaBlockchainRepository: SolanaBlockchainRepository,
+        solanaTransactionRepository: SolanaTransactionRepository,
         walletRepository: WalletRepository,
         logger: Logger
     ): SyncSolanaTransactionsUseCase {
-        return SyncSolanaTransactionsUseCaseImpl(
+        return SyncSolanaTransactionsUseCase(
             solanaBlockchainRepository,
             solanaTransactionRepository,
             walletRepository,
@@ -52,7 +45,7 @@ object SolanaUseDomainModule {
         walletRepository: WalletRepository,
         logger: Logger
     ): GetSolanaWalletUseCase {
-        return GetSolanaWalletUseCaseImpl(
+        return GetSolanaWalletUseCase(
             walletRepository,
             logger
         )
@@ -62,13 +55,13 @@ object SolanaUseDomainModule {
     @Singleton
     fun provideSendSolanaUseCase(
         walletRepository: WalletRepository,
-        solanaBlockchainRepository: com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository,
-        solanaTransactionRepository: com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository,
+        solanaBlockchainRepository: SolanaBlockchainRepository,
+        solanaTransactionRepository: SolanaTransactionRepository,
         securityPreferencesRepository: SecurityPreferencesRepository,
         keyStoreRepository: KeyStoreRepository,
         logger: Logger
     ): SendSolanaUseCase {
-        return SendSolanaUseCaseImpl(
+        return SendSolanaUseCase(
             walletRepository,
             solanaBlockchainRepository,
             solanaTransactionRepository,
@@ -81,10 +74,10 @@ object SolanaUseDomainModule {
     @Provides
     @Singleton
     fun provideGetSolanaBalanceUseCase(
-        solanaBlockchainRepository: com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository,
+        solanaBlockchainRepository: SolanaBlockchainRepository,
         logger: Logger
     ): GetSolanaBalanceUseCase {
-        return GetSolanaBalanceUseCaseImpl(
+        return GetSolanaBalanceUseCase(
             solanaBlockchainRepository,
             logger
         )
@@ -93,10 +86,10 @@ object SolanaUseDomainModule {
     @Provides
     @Singleton
     fun provideGetSolanaFeeEstimateUseCase(
-        solanaBlockchainRepository: com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository,
+        solanaBlockchainRepository: SolanaBlockchainRepository,
         logger: Logger
     ): GetSolanaFeeEstimateUseCase {
-        return GetSolanaFeeEstimateUseCaseImpl(
+        return GetSolanaFeeEstimateUseCase(
             solanaBlockchainRepository,
             logger
         )
@@ -105,10 +98,10 @@ object SolanaUseDomainModule {
     @Provides
     @Singleton
     fun provideValidateSolanaAddressUseCase(
-        solanaBlockchainRepository: com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository,
+        solanaBlockchainRepository: SolanaBlockchainRepository,
         logger: Logger
     ): ValidateSolanaAddressUseCase {
-        return ValidateSolanaAddressUseCaseImpl(
+        return ValidateSolanaAddressUseCase(
             solanaBlockchainRepository,
             logger
         )
@@ -119,8 +112,8 @@ object SolanaUseDomainModule {
     fun provideValidateSolanaSendUseCase(
         validateSolanaAddressUseCase: ValidateSolanaAddressUseCase,
         logger: Logger
-    ): com.example.nexuswallet.feature.solana.domain.usecase.ValidateSolanaSendUseCase {
-        return ValidateSolanaSendUseCaseImpl(
+    ): ValidateSolanaSendUseCase {
+        return ValidateSolanaSendUseCase(
             validateSolanaAddressUseCase,
             logger
         )

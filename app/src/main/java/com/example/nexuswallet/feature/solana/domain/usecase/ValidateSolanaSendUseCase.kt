@@ -1,10 +1,10 @@
 package com.example.nexuswallet.feature.solana.domain.usecase
 
-import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
-import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaFeeEstimate
-import com.example.nexuswallet.feature.coin.solana.domain.repository.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
+import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton

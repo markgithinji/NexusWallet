@@ -2,9 +2,9 @@ package com.example.nexuswallet.feature.solana.ui
 
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
-import com.example.nexuswallet.feature.coin.solana.domain.model.SolanaFeeEstimate
-import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
+import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import java.math.BigDecimal
 
 data class SolanaSendUIState(
