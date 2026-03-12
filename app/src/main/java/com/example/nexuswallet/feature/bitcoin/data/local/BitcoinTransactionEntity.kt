@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.bitcoin.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 
 @Entity(tableName = "BitcoinTransaction")
 data class BitcoinTransactionEntity(
@@ -22,6 +23,6 @@ data class BitcoinTransactionEntity(
     val estimatedSize: Long,
     val signedHex: String?,
     val txHash: String?,
-    val network: String,
+    val network: BitcoinNetwork,
     val isIncoming: Boolean = false
 )

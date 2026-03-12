@@ -1,14 +1,17 @@
 package com.example.nexuswallet.feature.bitcoin.data
 
+import com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionEntity
+import com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransactionResponse
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.local.toBitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import java.math.BigDecimal
 import java.math.RoundingMode
-fun com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionEntity.toDomain(): com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction =
-    _root_ide_package_.com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction(
+
+fun BitcoinTransactionEntity.toDomain(): BitcoinTransaction =
+    BitcoinTransaction(
         id = id,
         walletId = walletId,
         fromAddress = fromAddress,
@@ -25,12 +28,12 @@ fun com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionEntity.
         estimatedSize = estimatedSize,
         signedHex = signedHex,
         txHash = txHash,
-        network = network.toBitcoinNetwork(),
+        network = network,
         isIncoming = isIncoming
     )
 
-fun com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction.toEntity(): com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionEntity =
-    _root_ide_package_.com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionEntity(
+fun BitcoinTransaction.toEntity(): BitcoinTransactionEntity =
+    BitcoinTransactionEntity(
         id = id,
         walletId = walletId,
         fromAddress = fromAddress,
@@ -47,18 +50,18 @@ fun com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction.toEn
         estimatedSize = estimatedSize,
         signedHex = signedHex,
         txHash = txHash,
-        network = network.name,
+        network = network,
         isIncoming = isIncoming
     )
 
-fun com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransactionResponse.toDomain(
+fun EsploraTransactionResponse.toDomain(
     walletId: String,
     fromAddress: String,
     toAddress: String,
     amount: Long,
     isIncoming: Boolean,
     network: BitcoinNetwork
-): com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction {
+): BitcoinTransaction {
 
     val btcAmount = BigDecimal(amount).divide(
         BigDecimal(100_000_000),
@@ -74,7 +77,7 @@ fun com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransaction
         ).toPlainString()
     } else "0"
 
-    return _root_ide_package_.com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction(
+    return BitcoinTransaction(
         id = "${walletId}_${txid}_${System.currentTimeMillis()}",
         walletId = walletId,
         coinType = CoinType.BITCOIN,
