@@ -18,33 +18,22 @@ import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 
-interface GetEthereumDetailUseCase {
-    suspend fun getEthDetails(
-        walletId: String,
-        network: String = ""
-    ): Result<EthereumDetailResult>
-
-    suspend fun getUsdcDetails(
-        walletId: String,
-        network: String = ""
-    ): Result<EthereumDetailResult>
-}
 @Singleton
-class GetEthereumDetailUseCaseImpl @Inject constructor(
+class GetEthereumDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val logger: Logger
-) : GetEthereumDetailUseCase {
+) {
 
     private val tag = "GetEthereumDetailUC"
 
-    override suspend fun getEthDetails(
+    suspend fun getEthDetails(
         walletId: String,
         network: String
     ): Result<EthereumDetailResult> = getDetails(walletId, network, CoinType.ETHEREUM)
 
-    override suspend fun getUsdcDetails(
+    suspend fun getUsdcDetails(
         walletId: String,
         network: String
     ): Result<EthereumDetailResult> = getDetails(walletId, network, CoinType.USDC)
