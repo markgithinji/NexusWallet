@@ -4,11 +4,20 @@ import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
+import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
+import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import kotlinx.coroutines.Dispatchers
@@ -17,6 +26,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.example.nexuswallet.feature.core.util.Result
+import kotlin.collections.map
+
 
 @Singleton
 class GetAllTransactionsUseCase @Inject constructor(
@@ -169,6 +181,7 @@ class GetAllTransactionsUseCase @Inject constructor(
             logger.d(tag, "Fetching Bitcoin transactions for ${coin.address} on ${coin.network}")
 
             val result = bitcoinBlockchainRepository.getAddressTransactions(
+                walletId = walletId,
                 address = coin.address,
                 network = coin.network
             )
@@ -182,26 +195,26 @@ class GetAllTransactionsUseCase @Inject constructor(
                     }
                     bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, networkStr)
 
-                    val transactions = result.data.map { dto ->
+                    val transactions = result.data.map { tx ->
                         BitcoinTransaction(
-                            id = dto.txid,
+                            id = tx.id,
                             walletId = walletId,
-                            fromAddress = dto.fromAddress,
-                            toAddress = dto.toAddress,
-                            status = dto.status,
-                            timestamp = dto.timestamp * 1000, // Convert to milliseconds
-                            note = null,
-                            feeLevel = FeeLevel.NORMAL, // Default, we don't know the fee level from API
-                            amountSatoshis = dto.amount,
-                            amountBtc = (dto.amount.toDouble() / 100_000_000).toString(),
-                            feeSatoshis = dto.fee ?: 0,
-                            feeBtc = ((dto.fee?.toDouble() ?: 0.0) / 100_000_000).toString(),
-                            feePerByte = 0.0, // Not available from basic API
-                            estimatedSize = 0,
-                            signedHex = null,
-                            txHash = dto.txid,
+                            fromAddress = tx.fromAddress,
+                            toAddress = tx.toAddress,
+                            status = tx.status,
+                            timestamp = tx.timestamp,
+                            note = tx.note,
+                            feeLevel = tx.feeLevel,
+                            amountSatoshis = tx.amountSatoshis,
+                            amountBtc = tx.amountBtc,
+                            feeSatoshis = tx.feeSatoshis,
+                            feeBtc = tx.feeBtc,
+                            feePerByte = tx.feePerByte,
+                            estimatedSize = tx.estimatedSize,
+                            signedHex = tx.signedHex,
+                            txHash = tx.txHash,
                             network = coin.network,
-                            isIncoming = dto.isIncoming
+                            isIncoming = tx.isIncoming
                         )
                     }
 
@@ -211,7 +224,7 @@ class GetAllTransactionsUseCase @Inject constructor(
 
                     logger.d(tag, "Saved ${transactions.size} Bitcoin transactions for ${coin.address}")
                 }
-                is com.example.nexuswallet.feature.core.util.Result.Error -> {
+                is Result.Error -> {
                     logger.e(tag, "Failed to fetch Bitcoin transactions: ${result.message}")
                 }
                 else -> {}
@@ -246,7 +259,7 @@ class GetAllTransactionsUseCase @Inject constructor(
                     }
                     logger.d(tag, "Saved ${result.data.size} native ETH transactions for $address")
                 }
-                is com.example.nexuswallet.feature.core.util.Result.Error -> {
+                is Result.Error -> {
                     logger.e(tag, "Failed to fetch native ETH transactions: ${result.message}")
                 }
                 else -> {}
@@ -358,7 +371,7 @@ class GetAllTransactionsUseCase @Inject constructor(
 
                     logger.d(tag, "Saved ${transactions.size} Solana transactions for ${coin.address}")
                 }
-                is com.example.nexuswallet.feature.core.util.Result.Error -> {
+                is Result.Error -> {
                     logger.e(tag, "Failed to fetch Solana transactions: ${result.message}")
                 }
                 else -> {}
