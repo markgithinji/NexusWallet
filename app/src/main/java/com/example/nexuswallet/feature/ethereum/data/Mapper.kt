@@ -1,7 +1,12 @@
 package com.example.nexuswallet.feature.ethereum.data
 
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
 import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -15,17 +20,17 @@ fun com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransact
     network: EthereumNetwork,
     walletAddress: String,
     tokenExternalId: String? = null
-): com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction {
+): NativeETHTransaction {
     val weiAmount = value.toBigDecimalOrNull() ?: BigDecimal.ZERO
     val ethAmount = weiAmount.divide(
-        BigDecimal(_root_ide_package_.com.example.nexuswallet.feature.ethereum.data.WEI_PER_ETH),
+        BigDecimal(WEI_PER_ETH),
         18,
         RoundingMode.HALF_UP
     )
 
     val gasPriceWei = gasPrice.toBigDecimalOrNull() ?: BigDecimal.ZERO
     val gasPriceGwei = gasPriceWei.divide(
-        BigDecimal(_root_ide_package_.com.example.nexuswallet.feature.ethereum.data.WEI_PER_GWEI),
+        BigDecimal(WEI_PER_GWEI),
         6,
         RoundingMode.HALF_UP
     )
@@ -33,7 +38,7 @@ fun com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransact
     val gasUsedValue = gasUsed.toLongOrNull() ?: 0L
     val feeWei = gasPriceWei.multiply(BigDecimal(gasUsedValue))
     val feeEth = feeWei.divide(
-        BigDecimal(_root_ide_package_.com.example.nexuswallet.feature.ethereum.data.WEI_PER_ETH),
+        BigDecimal(WEI_PER_ETH),
         18,
         RoundingMode.HALF_UP
     )
@@ -45,7 +50,7 @@ fun com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransact
         else -> TransactionStatus.PENDING
     }
 
-    return _root_ide_package_.com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction(
+    return NativeETHTransaction(
         id = "eth_tx_${System.currentTimeMillis()}_${hash.take(8)}",
         walletId = walletId,
         fromAddress = from,
@@ -59,14 +64,14 @@ fun com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransact
         gasPriceWei = gasPrice,
         gasPriceGwei = gasPriceGwei.toPlainString(),
         gasLimit = gas.toLongOrNull()
-            ?: _root_ide_package_.com.example.nexuswallet.feature.ethereum.data.GAS_LIMIT_STANDARD,
+            ?: GAS_LIMIT_STANDARD,
         feeWei = feeWei.toPlainString(),
         feeEth = feeEth.toPlainString(),
         nonce = nonce.toIntOrNull() ?: 0,
         chainId = network.chainId.toLong(),
         signedHex = null,
         txHash = hash,
-        network = network.displayName,
+        network = network,
         isIncoming = isIncoming,
         data = input,
         tokenExternalId = tokenExternalId
@@ -81,7 +86,7 @@ fun List<com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTra
     network: EthereumNetwork,
     walletAddress: String,
     tokenExternalId: String? = null
-): List<com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction> {
+): List<NativeETHTransaction> {
     return this.map { tx ->
         tx.toNativeETHTransaction(walletId, network, walletAddress, tokenExternalId)
     }
@@ -95,7 +100,7 @@ fun com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse.toToken
     network: EthereumNetwork,
     walletAddress: String,
     tokenExternalId: String
-): com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction {
+): TokenTransaction {
     val weiAmount = value.toBigDecimalOrNull() ?: BigDecimal.ZERO
     val decimals = tokenDecimal.toIntOrNull() ?: 18
     val divisor = BigDecimal.TEN.pow(decimals)
@@ -108,12 +113,12 @@ fun com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse.toToken
     val gasUsedValue = gasUsed.toLongOrNull() ?: 0L
     val feeWei = gasPriceWei.multiply(BigDecimal(gasUsedValue))
     val feeEth = feeWei.divide(
-        BigDecimal(_root_ide_package_.com.example.nexuswallet.feature.ethereum.data.WEI_PER_ETH),
+        BigDecimal(WEI_PER_ETH),
         18,
         RoundingMode.HALF_UP
     )
 
-    return _root_ide_package_.com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction(
+    return TokenTransaction(
         id = "token_tx_${System.currentTimeMillis()}_${hash.take(8)}",
         walletId = walletId,
         fromAddress = from,
@@ -126,19 +131,19 @@ fun com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse.toToken
         amountDecimal = tokenAmount.toPlainString(),
         gasPriceWei = gasPrice,
         gasPriceGwei = gasPriceWei.divide(
-            BigDecimal(_root_ide_package_.com.example.nexuswallet.feature.ethereum.data.WEI_PER_GWEI),
+            BigDecimal(WEI_PER_GWEI),
             6,
             RoundingMode.HALF_UP
         ).toPlainString(),
         gasLimit = gas.toLongOrNull()
-            ?: _root_ide_package_.com.example.nexuswallet.feature.ethereum.data.GAS_LIMIT_STANDARD,
+            ?: GAS_LIMIT_STANDARD,
         feeWei = feeWei.toPlainString(),
         feeEth = feeEth.toPlainString(),
         nonce = nonce.toIntOrNull() ?: 0,
         chainId = network.chainId.toLong(),
         signedHex = null,
         txHash = hash,
-        network = network.displayName,
+        network = network,
         isIncoming = isIncoming,
         tokenContract = contractAddress,
         tokenSymbol = tokenSymbol,
@@ -162,12 +167,9 @@ fun List<com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse>.t
     }
 }
 
-/**
- * Maps EVMTransactionEntity to EVMTransaction
- */
-fun com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity.toDomain(): com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction {
-    return if (tokenContract == null) {
-        _root_ide_package_.com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction(
+fun EVMTransactionEntity.toDomain(): EVMTransaction {
+    return when (transactionType) {
+        EVMTransactionType.NATIVE_ETH -> NativeETHTransaction(
             id = id,
             walletId = walletId,
             fromAddress = fromAddress,
@@ -192,8 +194,8 @@ fun com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity.toD
             data = data,
             tokenExternalId = tokenExternalId
         )
-    } else {
-        _root_ide_package_.com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction(
+
+        EVMTransactionType.TOKEN -> TokenTransaction(
             id = id,
             walletId = walletId,
             fromAddress = fromAddress,
@@ -215,19 +217,18 @@ fun com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity.toD
             txHash = txHash,
             network = network,
             isIncoming = isIncoming,
-            tokenContract = tokenContract,
+            tokenContract = tokenContract!!,
             tokenSymbol = tokenSymbol!!,
             tokenDecimals = tokenDecimals!!,
             data = data,
-            tokenExternalId = tokenExternalId
-                ?: throw IllegalStateException("Token transaction missing tokenExternalId")
+            tokenExternalId = tokenExternalId!!
         )
     }
 }
 
-fun com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction.toEntity(): com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity {
+fun EVMTransaction.toEntity(): EVMTransactionEntity {
     return when (this) {
-        is com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction -> _root_ide_package_.com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity(
+        is NativeETHTransaction -> EVMTransactionEntity(
             id = id,
             walletId = walletId,
             fromAddress = fromAddress,
@@ -254,10 +255,10 @@ fun com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction.toEntit
             tokenSymbol = null,
             tokenDecimals = null,
             tokenContract = null,
-            transactionType = "NATIVE_ETH"
+            transactionType = EVMTransactionType.NATIVE_ETH
         )
 
-        is com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction -> _root_ide_package_.com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity(
+        is TokenTransaction -> EVMTransactionEntity(
             id = id,
             walletId = walletId,
             fromAddress = fromAddress,
@@ -284,7 +285,7 @@ fun com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction.toEntit
             tokenSymbol = tokenSymbol,
             tokenDecimals = tokenDecimals,
             tokenContract = tokenContract,
-            transactionType = "TOKEN"
+            transactionType = EVMTransactionType.TOKEN
         )
     }
 }

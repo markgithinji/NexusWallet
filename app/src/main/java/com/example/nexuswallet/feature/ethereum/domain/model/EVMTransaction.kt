@@ -23,7 +23,67 @@ sealed class EVMTransaction {
     abstract val chainId: Long
     abstract val signedHex: String?
     abstract val txHash: String?
-    abstract val network: String
+    abstract val network: EthereumNetwork
     abstract val isIncoming: Boolean
     abstract val tokenExternalId: String?
+    abstract val transactionType: EVMTransactionType
 }
+
+@Serializable
+data class NativeETHTransaction(
+    override val id: String,
+    override val walletId: String,
+    override val fromAddress: String,
+    override val toAddress: String,
+    override val status: TransactionStatus,
+    override val timestamp: Long,
+    override val note: String?,
+    override val feeLevel: FeeLevel,
+    val amountWei: String,
+    val amountEth: String,
+    override val gasPriceWei: String,
+    override val gasPriceGwei: String,
+    override val gasLimit: Long,
+    override val feeWei: String,
+    override val feeEth: String,
+    override val nonce: Int,
+    override val chainId: Long,
+    override val signedHex: String?,
+    override val txHash: String?,
+    override val network: EthereumNetwork,
+    override val isIncoming: Boolean = false,
+    val data: String = "",
+    override val tokenExternalId: String? = null,
+    override val transactionType: EVMTransactionType = EVMTransactionType.NATIVE_ETH
+) : EVMTransaction()
+
+@Serializable
+data class TokenTransaction(
+    override val id: String,
+    override val walletId: String,
+    override val fromAddress: String,
+    override val toAddress: String,
+    override val status: TransactionStatus,
+    override val timestamp: Long,
+    override val note: String?,
+    override val feeLevel: FeeLevel,
+    val amountWei: String,
+    val amountDecimal: String,
+    override val gasPriceWei: String,
+    override val gasPriceGwei: String,
+    override val gasLimit: Long,
+    override val feeWei: String,
+    override val feeEth: String,
+    override val nonce: Int,
+    override val chainId: Long,
+    override val signedHex: String?,
+    override val txHash: String?,
+    override val network: EthereumNetwork,
+    override val isIncoming: Boolean = false,
+    val tokenContract: String,
+    val tokenSymbol: String,
+    val tokenDecimals: Int,
+    val data: String,
+    override val tokenExternalId: String,
+    override val transactionType: EVMTransactionType = EVMTransactionType.TOKEN
+) : EVMTransaction()
