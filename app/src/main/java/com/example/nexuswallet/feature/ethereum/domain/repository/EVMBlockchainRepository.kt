@@ -3,12 +3,12 @@ package com.example.nexuswallet.feature.ethereum.domain.repository
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.coin.ethereum.data.model.GasPrice
-import com.example.nexuswallet.feature.coin.ethereum.domain.model.EVMFeeEstimate
-import com.example.nexuswallet.feature.coin.ethereum.domain.model.NativeETHTransaction
-import com.example.nexuswallet.feature.coin.ethereum.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.ethereum.data.model.GasPrice
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.wallet.domain.model.TokenType
 import org.web3j.crypto.RawTransaction
 import java.math.BigDecimal
 import java.math.BigInteger

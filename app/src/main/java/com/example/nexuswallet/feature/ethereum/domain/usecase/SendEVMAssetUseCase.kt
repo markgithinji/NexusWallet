@@ -4,20 +4,20 @@ import com.example.nexuswallet.feature.authentication.domain.repository.KeyStore
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.coin.ethereum.domain.model.NativeETHTransaction
-import com.example.nexuswallet.feature.coin.ethereum.domain.model.SendEthereumResult
-import com.example.nexuswallet.feature.coin.ethereum.domain.model.TokenTransaction
-import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
-import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
-import com.example.nexuswallet.feature.coin.ethereum.util.EVMConstants.ETH_PRIVATE_KEY_TYPE
+import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
+import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.ethereum.domain.model.SendEthereumResult
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
+import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.ERC20Token
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import com.example.nexuswallet.feature.wallet.domain.TokenType
+import com.example.nexuswallet.feature.wallet.domain.model.TokenType
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
-import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.toHex
 import kotlinx.coroutines.Dispatchers
@@ -198,7 +198,7 @@ class SendEVMAssetUseCase @Inject constructor(
                             note = note,
                             timestamp = System.currentTimeMillis(),
                             feeLevel = feeLevel,
-                            network = token.network.displayName,
+                            network = token.network,
                             isIncoming = false,
                             data = "",
                             tokenExternalId = token.externalId
@@ -224,7 +224,7 @@ class SendEVMAssetUseCase @Inject constructor(
                             note = note,
                             timestamp = System.currentTimeMillis(),
                             feeLevel = feeLevel,
-                            network = token.network.displayName,
+                            network = token.network,
                             isIncoming = false,
                             tokenContract = token.contractAddress,
                             tokenSymbol = token.symbol,

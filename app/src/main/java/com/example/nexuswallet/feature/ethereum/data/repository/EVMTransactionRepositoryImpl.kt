@@ -1,12 +1,12 @@
 package com.example.nexuswallet.feature.ethereum.data.repository
 
-import com.example.nexuswallet.feature.coin.ethereum.data.local.EVMTransactionDao
-import com.example.nexuswallet.feature.coin.ethereum.data.toDomain
-import com.example.nexuswallet.feature.coin.ethereum.data.toEntity
-import com.example.nexuswallet.feature.coin.ethereum.domain.model.EVMTransaction
-import com.example.nexuswallet.feature.coin.ethereum.domain.model.NativeETHTransaction
-import com.example.nexuswallet.feature.coin.ethereum.domain.model.TokenTransaction
-import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMTransactionRepository
+import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionDao
+import com.example.nexuswallet.feature.ethereum.data.toDomain
+import com.example.nexuswallet.feature.ethereum.data.toEntity
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction
+import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map

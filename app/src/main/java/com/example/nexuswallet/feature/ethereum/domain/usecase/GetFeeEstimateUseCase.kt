@@ -1,13 +1,13 @@
 package com.example.nexuswallet.feature.ethereum.domain.usecase
 
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.coin.ethereum.domain.model.EVMFeeEstimate
-import com.example.nexuswallet.feature.coin.ethereum.domain.repository.EVMBlockchainRepository
-import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
+import com.example.nexuswallet.feature.logging.Logger
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.example.nexuswallet.feature.core.util.Result
 
 @Singleton
 class GetFeeEstimateUseCase @Inject constructor(

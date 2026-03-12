@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.ethereum.domain.usecase
 
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.coin.ethereum.domain.model.EthereumWalletInfo
+import com.example.nexuswallet.feature.ethereum.domain.model.EthereumWalletInfo
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
