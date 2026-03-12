@@ -6,8 +6,8 @@ import com.example.nexuswallet.feature.authentication.domain.model.AuthType
 import com.example.nexuswallet.feature.authentication.domain.usecase.RecordAuthenticationUseCase
 import com.example.nexuswallet.feature.authentication.domain.usecase.VerifyPinUseCase
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.settings.ui.IsBiometricEnabledUseCase
-import com.example.nexuswallet.feature.settings.ui.IsPinSetUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.IsBiometricEnabledUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.IsPinSetUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

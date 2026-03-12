@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.bitcoin.domain.repository
 
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
 import kotlinx.coroutines.flow.Flow
 
 interface BitcoinTransactionRepository {

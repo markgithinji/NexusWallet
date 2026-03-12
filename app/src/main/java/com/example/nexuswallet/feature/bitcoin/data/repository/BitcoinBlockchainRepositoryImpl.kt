@@ -1,17 +1,17 @@
 package com.example.nexuswallet.feature.bitcoin.data.repository
 
+import com.example.nexuswallet.feature.bitcoin.data.model.ParsedTransaction
+import com.example.nexuswallet.feature.bitcoin.data.model.UTXO
+import com.example.nexuswallet.feature.bitcoin.data.remote.api.BitcoinApi
+import com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransactionResponse
+import com.example.nexuswallet.feature.bitcoin.data.toDomain
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.SafeApiCall
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
-import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.coin.bitcoin.data.model.ParsedTransaction
-import com.example.nexuswallet.feature.coin.bitcoin.data.model.UTXO
-import com.example.nexuswallet.feature.coin.bitcoin.data.remote.api.BitcoinApi
-import com.example.nexuswallet.feature.coin.bitcoin.data.remote.model.EsploraTransactionResponse
-import com.example.nexuswallet.feature.coin.bitcoin.data.toDomain
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext

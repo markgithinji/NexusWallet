@@ -1,10 +1,10 @@
 package com.example.nexuswallet.feature.bitcoin.data.repository
 
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.bitcoin.data.local.BitcoinTransactionDao
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.coin.bitcoin.data.toDomain
-import com.example.nexuswallet.feature.coin.bitcoin.data.toEntity
+import com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionDao
+import com.example.nexuswallet.feature.bitcoin.data.toDomain
+import com.example.nexuswallet.feature.bitcoin.data.toEntity
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject

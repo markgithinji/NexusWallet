@@ -1,10 +1,10 @@
 package com.example.nexuswallet.feature.bitcoin.domain.usecase
 
-import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

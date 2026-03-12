@@ -1,9 +1,9 @@
 package com.example.nexuswallet.feature.bitcoin.ui.send
 
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinFeeEstimate
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import java.math.BigDecimal
 
 data class BtcSendUiState(

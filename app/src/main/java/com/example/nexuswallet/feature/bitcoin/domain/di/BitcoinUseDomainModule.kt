@@ -2,15 +2,15 @@ package com.example.nexuswallet.feature.bitcoin.domain.di
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
-import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
-import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.GetBitcoinWalletUseCase
-import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.PrepareBitcoinTransactionUseCase
-import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.SendBitcoinUseCase
-import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.SyncBitcoinTransactionsUseCase
-import com.example.nexuswallet.feature.coin.bitcoin.domain.usecase.ValidateBitcoinTransactionUseCase
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
+import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
+import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinWalletUseCase
+import com.example.nexuswallet.feature.bitcoin.domain.usecase.PrepareBitcoinTransactionUseCase
+import com.example.nexuswallet.feature.bitcoin.domain.usecase.SendBitcoinUseCase
+import com.example.nexuswallet.feature.bitcoin.domain.usecase.SyncBitcoinTransactionsUseCase
+import com.example.nexuswallet.feature.bitcoin.domain.usecase.ValidateBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import dagger.Module

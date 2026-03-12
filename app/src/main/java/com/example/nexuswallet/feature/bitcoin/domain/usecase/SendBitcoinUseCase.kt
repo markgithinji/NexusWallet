@@ -2,16 +2,17 @@ package com.example.nexuswallet.feature.bitcoin.domain.usecase
 
 import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
+import com.example.nexuswallet.feature.bitcoin.domain.model.PreparedBitcoinTransaction
+import com.example.nexuswallet.feature.bitcoin.domain.model.SendBitcoinResult
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.coin.bitcoin.util.BitcoinConstants.BTC_PRIVATE_KEY_TYPE
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.PreparedBitcoinTransaction
-import com.example.nexuswallet.feature.coin.bitcoin.domain.model.SendBitcoinResult
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinBlockchainRepository
-import com.example.nexuswallet.feature.coin.bitcoin.domain.repository.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_MAINNET
+import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_TESTNET
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.toHex
