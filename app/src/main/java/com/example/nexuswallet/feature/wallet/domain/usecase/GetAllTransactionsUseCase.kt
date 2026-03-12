@@ -298,7 +298,7 @@ class GetAllTransactionsUseCase @Inject constructor(
                 // Delete old transactions
                 solanaTransactionRepository.deleteForWalletAndNetwork(walletId, networkStr)
 
-                // Save new transactions (already domain models)
+                // Save new transactions
                 result.data.forEach { transaction ->
                     solanaTransactionRepository.saveTransaction(transaction)
                 }

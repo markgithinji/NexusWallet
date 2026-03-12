@@ -1,17 +1,18 @@
 package com.example.nexuswallet.feature.wallet.domain.model
 
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.ui.SPLBalance
 import kotlinx.serialization.Serializable
 
 
 // ============ MAIN WALLET BALANCE ============
 
-@Serializable
 data class WalletBalance(
     val walletId: String,
     val lastUpdated: Long,
-    val bitcoinBalances: Map<String, BitcoinBalance> = emptyMap(),
-    val solanaBalances: Map<String, SolanaBalance> = emptyMap(),
+    val bitcoinBalances: Map<BitcoinNetwork, BitcoinBalance> = emptyMap(),
+    val solanaBalances: Map<SolanaNetwork, SolanaBalance> = emptyMap(),
     val evmBalances: List<EVMBalance> = emptyList(),
     val splBalances: List<SPLBalance> = emptyList()
 )
