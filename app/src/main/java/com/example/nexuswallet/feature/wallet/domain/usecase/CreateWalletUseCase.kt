@@ -6,6 +6,11 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_MAINNET
+import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_TESTNET
+import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
+import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
+import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.util.KeyValidation
@@ -187,8 +192,8 @@ class CreateWalletUseCase @Inject constructor(
 
         bitcoinCoins.forEach { coin ->
             val keyType = when (coin.network) {
-                BitcoinNetwork.Mainnet -> "BTC_MAINNET_PRIVATE_KEY"
-                BitcoinNetwork.Testnet -> "BTC_TESTNET_PRIVATE_KEY"
+                BitcoinNetwork.Mainnet -> KEY_BITCOIN_MAINNET
+                BitcoinNetwork.Testnet -> KEY_BITCOIN_TESTNET
             }
             val privateKey = deriveBitcoinPrivateKey(mnemonic, coin.network)
             if (privateKey == null || !storePrivateKey(walletId, keyType, privateKey)) {
@@ -203,7 +208,7 @@ class CreateWalletUseCase @Inject constructor(
         // One private key works for all EVM tokens on all networks
         if (evmTokens.isNotEmpty()) {
             val privateKey = deriveEthereumPrivateKey(mnemonic)
-            if (privateKey == null || !storePrivateKey(walletId, "ETH_MAIN_PRIVATE_KEY", privateKey)) {
+            if (privateKey == null || !storePrivateKey(walletId, KEY_ETHEREUM_MAIN, privateKey)) {
                 logger.e(tag, "Failed to store Ethereum private key")
                 return Result.Error("Failed to store Ethereum private key")
             }
@@ -214,8 +219,8 @@ class CreateWalletUseCase @Inject constructor(
 
         solanaCoins.forEach { coin ->
             val keyType = when (coin.network) {
-                SolanaNetwork.Mainnet -> "SOL_MAINNET_PRIVATE_KEY"
-                SolanaNetwork.Devnet -> "SOL_DEVNET_PRIVATE_KEY"
+                SolanaNetwork.Mainnet -> KEY_SOLANA_MAINNET
+                SolanaNetwork.Devnet -> KEY_SOLANA_DEVNET
             }
             // Pass the derivation path to get the correct private key
             val privateKey = deriveSolanaPrivateKey(mnemonic, coin.derivationPath)
@@ -241,8 +246,6 @@ class CreateWalletUseCase @Inject constructor(
     }
 
     // ============ PRIVATE COIN CREATION METHODS ============
-
-    private val bitcoinLock = Any()
 
     private fun createBitcoinCoin(
         mnemonic: List<String>,
@@ -281,20 +284,6 @@ class CreateWalletUseCase @Inject constructor(
         null
     }
 
-    private fun isValidBitcoinAddress(
-        address: String,
-        network: BitcoinNetwork
-    ): Boolean = try {
-        val params = when (network) {
-            BitcoinNetwork.Mainnet -> MainNetParams.get()
-            BitcoinNetwork.Testnet -> TestNet3Params.get()
-        }
-        Address.fromString(params, address)
-        true
-    } catch (e: Exception) {
-        false
-    }
-
     private fun createNativeETH(
         mnemonic: List<String>,
         network: EthereumNetwork
@@ -329,8 +318,8 @@ class CreateWalletUseCase @Inject constructor(
             publicKey = nativeEth.publicKey,
             network = nativeEth.network,
             contractAddress = when (nativeEth.network) {
-                EthereumNetwork.Mainnet -> "0xdAC17F958D2ee523a2206206994597C13D831ec7"
-                EthereumNetwork.Sepolia -> "0x7169D38820dfd117C3FA1f22a697dBA58d90BA06"
+                EthereumNetwork.Mainnet -> nativeEth.network.usdtContractAddress
+                EthereumNetwork.Sepolia -> nativeEth.network.usdtContractAddress
             }
         )
     }
@@ -344,8 +333,8 @@ class CreateWalletUseCase @Inject constructor(
 
             // Use different account indices for different networks
             val derivationPath = when (network) {
-                SolanaNetwork.Mainnet -> "m/44'/501'/0'/0'"   // Standard path for Mainnet
-                SolanaNetwork.Devnet -> "m/44'/501'/1'/0'"    // Different account for Devnet
+                SolanaNetwork.Mainnet -> SOLANA_MAINNET_DERIVATION_PATH
+                SolanaNetwork.Devnet -> SOLANA_DEVNET_DERIVATION_PATH
             }
 
             val keypair = deriveSolanaKeypairFromSeed(seed, derivationPath)
@@ -419,8 +408,7 @@ class CreateWalletUseCase @Inject constructor(
     }
 
     private fun deriveEthereumCredentials(seed: ByteArray): Credentials {
-        val derivationPath = "m/44'/60'/0'/0/0"
-        val pathArray = derivationPath.split("/")
+        val pathArray = ETHEREUM_DERIVATION_PATH.split("/")
             .drop(1)
             .map { part ->
                 val isHardened = part.endsWith("'")
@@ -471,7 +459,7 @@ class CreateWalletUseCase @Inject constructor(
             securityPreferencesRepository.storeEncryptedMnemonic(
                 walletId = walletId,
                 encryptedMnemonic = encryptedHex,
-                iv = ivHex.hexToBytes()
+                iv = ivHex.hexToByteArray()
             )
             true
         } catch (e: Exception) {
@@ -496,7 +484,7 @@ class CreateWalletUseCase @Inject constructor(
                 walletId = walletId,
                 keyType = keyType,
                 encryptedKey = encryptedHex,
-                iv = ivHex.hexToBytes()
+                iv = ivHex.hexToByteArray()
             )
             true
         } catch (e: Exception) {
@@ -505,12 +493,12 @@ class CreateWalletUseCase @Inject constructor(
         }
     }
 
-    // ============ HELPER METHODS ============
-
-    private fun String.hexToBytes(): ByteArray =
-        chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-
     companion object {
         private const val HARDENED_BIT = 0x80000000
+
+        // Derivation paths
+        private const val ETHEREUM_DERIVATION_PATH = "m/44'/60'/0'/0/0"
+        private const val SOLANA_MAINNET_DERIVATION_PATH = "m/44'/501'/0'/0'"
+        private const val SOLANA_DEVNET_DERIVATION_PATH = "m/44'/501'/1'/0'"
     }
 }
