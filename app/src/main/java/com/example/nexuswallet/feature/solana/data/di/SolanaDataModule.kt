@@ -73,6 +73,7 @@ object SolanaDataModule {
 
     @Provides
     @Singleton
+    @Named("helius")
     fun provideHeliusOkHttpClient(
         apiKeyInterceptor: HeliusApiKeyInterceptor
     ): OkHttpClient {
@@ -88,7 +89,7 @@ object SolanaDataModule {
     fun provideHeliusApi(
         @Named("heliusApiDevnet") devnetBaseUrl: String,
         @Named("heliusApiMainnet") mainnetBaseUrl: String,
-        okHttpClient: OkHttpClient,
+        @Named("helius") okHttpClient: OkHttpClient,
         json: Json
     ): HeliusApi {
         // Use appropriate URL based on build type or config

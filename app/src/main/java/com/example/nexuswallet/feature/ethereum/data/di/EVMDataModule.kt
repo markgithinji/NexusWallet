@@ -21,6 +21,7 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 import com.example.nexuswallet.BuildConfig
+import javax.inject.Named
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -36,16 +37,17 @@ object EVMDataModule {
 
     @Provides
     @Singleton
-    fun provideEtherscanApiKeyInterceptor(apiKey: String): com.example.nexuswallet.feature.ethereum.data.remote.EtherscanApiKeyInterceptor {
-        return _root_ide_package_.com.example.nexuswallet.feature.ethereum.data.remote.EtherscanApiKeyInterceptor(
+    fun provideEtherscanApiKeyInterceptor(apiKey: String): EtherscanApiKeyInterceptor {
+        return EtherscanApiKeyInterceptor(
             apiKey
         )
     }
 
     @Provides
     @Singleton
+    @Named("etherscan")
     fun provideEtherscanOkHttpClient(
-        apiKeyInterceptor: com.example.nexuswallet.feature.ethereum.data.remote.EtherscanApiKeyInterceptor
+        apiKeyInterceptor: EtherscanApiKeyInterceptor
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(apiKeyInterceptor)
@@ -57,9 +59,9 @@ object EVMDataModule {
     @Provides
     @Singleton
     fun provideEtherscanApi(
-        client: OkHttpClient,
+        @Named("etherscan") client: OkHttpClient,
         json: Json
-    ): com.example.nexuswallet.feature.ethereum.data.remote.EtherscanApiService {
+    ): EtherscanApiService {
         return Retrofit.Builder()
             .baseUrl(ETHERSCAN_V2_URL)
             .client(client)
@@ -88,7 +90,7 @@ object EVMDataModule {
     @Singleton
     fun provideEVMBlockchainRepository(
         etherscanApiService: EtherscanApiService,
-        web3jFactory: com.example.nexuswallet.feature.usdc.Web3jFactory
+        web3jFactory: Web3jFactory
     ): EVMBlockchainRepository {
         return EVMBlockchainRepositoryImpl(
             etherscanApi = etherscanApiService,
