@@ -24,6 +24,7 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
+import com.example.nexuswallet.BuildConfig
 
 @InstallIn(SingletonComponent::class)
 object SolanaDataModule {
