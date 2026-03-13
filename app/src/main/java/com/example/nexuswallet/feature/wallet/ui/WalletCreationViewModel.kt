@@ -3,9 +3,10 @@ package com.example.nexuswallet.feature.wallet.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.GenerateMnemonicUseCase
-import com.example.nexuswallet.feature.wallet.data.securityrefactor.ValidateMnemonicUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
+import com.example.nexuswallet.feature.wallet.domain.usecase.CreateWalletUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.GenerateMnemonicUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.ValidateMnemonicUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,7 +36,7 @@ class WalletCreationViewModel @Inject constructor(
 
     // Coin selection state
     data class CoinSelection(
-        // Bitcoin - can select multiple networks
+        // Bitcoin
         var includeBitcoinMainnet: Boolean = true,
         var includeBitcoinTestnet: Boolean = true,
 

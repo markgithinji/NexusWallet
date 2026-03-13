@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import com.example.nexuswallet.R
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -36,10 +35,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
+import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
