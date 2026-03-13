@@ -1,15 +1,14 @@
 package com.example.nexuswallet.feature.wallet.ui
 
-
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
@@ -24,6 +23,7 @@ import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
 import javax.inject.Inject
+
 @HiltViewModel
 class WalletDashboardViewModel @Inject constructor(
     private val walletRepository: WalletRepository
@@ -74,12 +74,12 @@ class WalletDashboardViewModel @Inject constructor(
 
                         // Log Bitcoin coins
                         wallet.bitcoinCoins.forEachIndexed { coinIdx, coin ->
-                            Log.d("WalletVM", "  BTC Coin $coinIdx: network=${coin.network}, address=${coin.address.take(8)}...")
+                            Log.d("WalletVM", "  BTC Coin $coinIdx: network=${coin.network.name}, address=${coin.address.take(8)}...")
                         }
 
                         // Log Solana coins
                         wallet.solanaCoins.forEachIndexed { coinIdx, coin ->
-                            Log.d("WalletVM", "  SOL Coin $coinIdx: network=${coin.network}, address=${coin.address.take(8)}...")
+                            Log.d("WalletVM", "  SOL Coin $coinIdx: network=${coin.network.name}, address=${coin.address.take(8)}...")
                         }
 
                         // Log EVM token externalIds
@@ -116,12 +116,12 @@ class WalletDashboardViewModel @Inject constructor(
 
                         // Log Bitcoin balances
                         balance.bitcoinBalances.forEach { (network, btcBalance) ->
-                            Log.d("WalletVM", "  Bitcoin $network: ${btcBalance.btc} BTC, value=${btcBalance.usdValue}")
+                            Log.d("WalletVM", "  Bitcoin ${network.displayName}: ${btcBalance.btc} BTC, value=${btcBalance.usdValue}")
                         }
 
                         // Log Solana balances
                         balance.solanaBalances.forEach { (network, solBalance) ->
-                            Log.d("WalletVM", "  Solana $network: ${solBalance.sol} SOL, value=${solBalance.usdValue}")
+                            Log.d("WalletVM", "  Solana ${network.displayName}: ${solBalance.sol} SOL, value=${solBalance.usdValue}")
                         }
 
                         // Log EVM balance details
@@ -190,11 +190,11 @@ class WalletDashboardViewModel @Inject constructor(
         return balance
     }
 
-    fun getBitcoinBalance(walletId: String, network: String): BitcoinBalance? {
+    fun getBitcoinBalance(walletId: String, network: BitcoinNetwork): BitcoinBalance? {
         return _balances.value[walletId]?.bitcoinBalances?.get(network)
     }
 
-    fun getSolanaBalance(walletId: String, network: String): SolanaBalance? {
+    fun getSolanaBalance(walletId: String, network: SolanaNetwork): SolanaBalance? {
         return _balances.value[walletId]?.solanaBalances?.get(network)
     }
 
@@ -306,11 +306,7 @@ class WalletDashboardViewModel @Inject constructor(
 
             // Add Bitcoin balances (all networks)
             wallet.bitcoinCoins.forEach { coin ->
-                val networkKey = when (coin.network) {
-                    BitcoinNetwork.Mainnet -> "mainnet"
-                    BitcoinNetwork.Testnet -> "testnet"
-                }
-                val btcBalance = balance?.bitcoinBalances?.get(networkKey)
+                val btcBalance = balance?.bitcoinBalances?.get(coin.network)
                 btcBalance?.let {
                     result.add(
                         TokenWithBalance(
@@ -321,7 +317,7 @@ class WalletDashboardViewModel @Inject constructor(
                             balance = it.btc,
                             usdValue = it.usdValue,
                             network = coin.network.displayName,
-                            networkKey = networkKey
+                            networkKey = coin.network.name
                         )
                     )
                 }
@@ -329,11 +325,7 @@ class WalletDashboardViewModel @Inject constructor(
 
             // Add Solana balances (all networks)
             wallet.solanaCoins.forEach { coin ->
-                val networkKey = when (coin.network) {
-                    SolanaNetwork.Mainnet -> "mainnet"
-                    SolanaNetwork.Devnet -> "devnet"
-                }
-                val solBalance = balance?.solanaBalances?.get(networkKey)
+                val solBalance = balance?.solanaBalances?.get(coin.network)
                 solBalance?.let {
                     result.add(
                         TokenWithBalance(
@@ -343,8 +335,8 @@ class WalletDashboardViewModel @Inject constructor(
                             tokenSymbol = "SOL",
                             balance = it.sol,
                             usdValue = it.usdValue,
-                            network = coin.network.name,
-                            networkKey = networkKey
+                            network = coin.network.displayName,
+                            networkKey = coin.network.name
                         )
                     )
                 }
@@ -396,13 +388,13 @@ val WalletBalance.totalUsdValue: Double
         // Add all Bitcoin balances
         bitcoinBalances.forEach { (network, btcBalance) ->
             total += btcBalance.usdValue
-            Log.d("WalletVM", "  + Bitcoin $network: ${btcBalance.usdValue}")
+            Log.d("WalletVM", "  + Bitcoin ${network.displayName}: ${btcBalance.usdValue}")
         }
 
         // Add all Solana balances
         solanaBalances.forEach { (network, solBalance) ->
             total += solBalance.usdValue
-            Log.d("WalletVM", "  + Solana $network: ${solBalance.usdValue}")
+            Log.d("WalletVM", "  + Solana ${network.displayName}: ${solBalance.usdValue}")
         }
 
         // Add all EVM token balances
