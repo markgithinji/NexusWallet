@@ -3,17 +3,17 @@ package com.example.nexuswallet.feature.wallet.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.core.domain.model.NetworkType
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinDetailResult
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumDetailResult
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
@@ -43,10 +43,9 @@ class CoinDetailViewModel @Inject constructor(
         val balance: String = "0",
         val balanceFormatted: String = "0",
         val usdValue: Double = 0.0,
-        val network: String = "",
+        val network: Network? = null,
         val networkDisplayName: String = "",
         val coinType: CoinType? = null,
-        val networkType: NetworkType? = null,
         val ethGasBalance: BigDecimal? = null,
         val splTokens: List<SPLToken> = emptyList(),
         val evmTokens: List<EVMToken> = emptyList(),
@@ -60,7 +59,11 @@ class CoinDetailViewModel @Inject constructor(
     private val _state = MutableStateFlow(CoinDetailState())
     val state: StateFlow<CoinDetailState> = _state.asStateFlow()
 
-    fun loadCoinDetails(walletId: String, coinType: CoinType, networkType: NetworkType? = null, forceRefresh: Boolean = false) {
+    fun loadCoinDetails(
+        walletId: String,
+        network: Network,
+        forceRefresh: Boolean = false
+    ) {
         viewModelScope.launch {
             // Set loading state
             _state.update {
@@ -68,42 +71,35 @@ class CoinDetailViewModel @Inject constructor(
                     isLoading = !forceRefresh,
                     isRefreshing = forceRefresh,
                     error = null,
-                    coinType = coinType,
-                    networkType = networkType,
+                    network = network,
+                    coinType = network.coinType,
                 )
             }
 
-            Log.d("CoinDetailVM", "=== Loading $coinType details for wallet: $walletId with network: ${networkType?.name} ===")
+            Log.d(
+                "CoinDetailVM",
+                "=== Loading ${network.coinType} details for wallet: $walletId with network: ${network.displayName} ==="
+            )
 
-            // Convert NetworkType to the appropriate domain network object
-            val result = when (coinType) {
-                CoinType.BITCOIN -> {
-                    val bitcoinNetwork = when (networkType) {
-                        NetworkType.BITCOIN_TESTNET -> BitcoinNetwork.Testnet
-                        else -> BitcoinNetwork.Mainnet
-                    }
-                    getBitcoinDetailUseCase(walletId, bitcoinNetwork)
+            val result = when (network) {
+                is BitcoinNetwork -> {
+                    getBitcoinDetailUseCase(walletId, network)
                 }
-                CoinType.ETHEREUM -> {
-                    val ethereumNetwork = when (networkType) {
-                        NetworkType.ETHEREUM_SEPOLIA -> EthereumNetwork.Sepolia
-                        else -> EthereumNetwork.Mainnet
+                is EthereumNetwork -> {
+                    when (network.coinType) {
+                        CoinType.ETHEREUM -> getEthereumDetailUseCase.getEthDetails(walletId, network)
+                        CoinType.USDC -> getEthereumDetailUseCase.getUsdcDetails(walletId, network)
+                        else -> {
+                            Log.e(
+                                "CoinDetailVM",
+                                "Unexpected coinType for EthereumNetwork: ${network.coinType}"
+                            )
+                            return@launch
+                        }
                     }
-                    getEthereumDetailUseCase.getEthDetails(walletId, ethereumNetwork)
                 }
-                CoinType.USDC -> {
-                    val ethereumNetwork = when (networkType) {
-                        NetworkType.ETHEREUM_SEPOLIA -> EthereumNetwork.Sepolia
-                        else -> EthereumNetwork.Mainnet
-                    }
-                    getEthereumDetailUseCase.getUsdcDetails(walletId, ethereumNetwork)
-                }
-                CoinType.SOLANA -> {
-                    val solanaNetwork = when (networkType) {
-                        NetworkType.SOLANA_DEVNET -> SolanaNetwork.Devnet
-                        else -> SolanaNetwork.Mainnet
-                    }
-                    getSolanaDetailUseCase(walletId, solanaNetwork)
+                is SolanaNetwork -> {
+                    getSolanaDetailUseCase(walletId, network)
                 }
             }
 
@@ -116,6 +112,7 @@ class CoinDetailViewModel @Inject constructor(
                         is SolanaDetailResult -> updateStateWithSolanaData(data)
                     }
                 }
+
                 is Result.Error -> {
                     _state.update {
                         it.copy(
@@ -125,6 +122,7 @@ class CoinDetailViewModel @Inject constructor(
                         )
                     }
                 }
+
                 Result.Loading -> {}
             }
         }
@@ -143,7 +141,8 @@ class CoinDetailViewModel @Inject constructor(
                 balanceFormatted = data.balanceFormatted,
                 usdValue = data.usdValue,
                 network = data.network,
-                networkDisplayName = data.networkDisplayName,
+                networkDisplayName = data.network.displayName,
+                coinType = data.network.coinType,
                 transactions = displayTransactions,
                 isLoading = false,
                 isRefreshing = false
@@ -152,7 +151,9 @@ class CoinDetailViewModel @Inject constructor(
     }
 
     private fun updateStateWithEthereumData(data: EthereumDetailResult) {
+        // Determine coin type from the token data
         val coinType = if (data.token is USDCToken) CoinType.USDC else CoinType.ETHEREUM
+
         val displayTransactions = data.rawTransactions.map { transaction ->
             formatTransactionDisplayUseCase(transaction, coinType)
         }
@@ -165,14 +166,14 @@ class CoinDetailViewModel @Inject constructor(
                 balanceFormatted = data.balanceFormatted,
                 usdValue = data.usdValue,
                 network = data.network,
-                networkDisplayName = data.networkDisplayName,
+                networkDisplayName = data.network.displayName,
+                coinType = coinType,
                 transactions = displayTransactions,
                 ethGasBalance = data.ethGasBalance,
                 evmTokens = listOf(data.token),
                 externalTokenId = data.externalTokenId,
                 isLoading = false,
-                isRefreshing = false,
-                coinType = coinType // Update coinType in case it changed (USDC vs ETH)
+                isRefreshing = false
             )
         }
     }
@@ -190,7 +191,8 @@ class CoinDetailViewModel @Inject constructor(
                 balanceFormatted = data.balanceFormatted,
                 usdValue = data.usdValue,
                 network = data.network,
-                networkDisplayName = data.networkDisplayName,
+                networkDisplayName = data.network.displayName,
+                coinType = data.network.coinType,
                 transactions = displayTransactions,
                 splTokens = data.splTokens,
                 isLoading = false,
@@ -201,11 +203,10 @@ class CoinDetailViewModel @Inject constructor(
 
     fun refresh() {
         val currentState = _state.value
-        if (currentState.walletId.isNotEmpty() && currentState.coinType != null) {
+        if (currentState.walletId.isNotEmpty() && currentState.network != null) {
             loadCoinDetails(
                 currentState.walletId,
-                currentState.coinType,
-                currentState.networkType,
+                currentState.network,
                 forceRefresh = true
             )
         }
