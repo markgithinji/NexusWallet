@@ -28,15 +28,17 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.contentColorFor
 import com.example.nexuswallet.feature.core.domain.model.NetworkType
+import com.example.nexuswallet.feature.wallet.domain.model.Network
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTabScreen(
     onNavigateToCreateWallet: () -> Unit,
     onNavigateToWalletDetail: (String) -> Unit,
-    onNavigateToCoinDetail: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToCoinDetail: (String, Network) -> Unit,
     onNavigateToTokenDetail: (String) -> Unit,
-    onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
-    onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToReceive: (String, Network) -> Unit,
+    onNavigateToSend: (String, Network) -> Unit,
     onNavigateToSecurity: () -> Unit,
     onRequestAuthentication: (String, String) -> Unit,
     padding: PaddingValues
