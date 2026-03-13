@@ -14,17 +14,52 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import com.example.nexuswallet.R
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.LocalGasStation
+import androidx.compose.material.icons.outlined.OpenInBrowser
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,24 +72,26 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
+import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewEffect
+import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewViewModel
 import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.core.domain.model.NetworkType
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
-import com.example.nexuswallet.feature.coin.bitcoin.ui.review.BitcoinReviewEffect
-import com.example.nexuswallet.feature.coin.bitcoin.ui.review.BitcoinReviewViewModel
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate
-import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendEffect
-import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendEvent
-import com.example.nexuswallet.feature.coin.ethereum.ui.EthereumSendViewModel
-import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
-import com.example.nexuswallet.feature.coin.solana.ui.SolanaSendEffect
-import com.example.nexuswallet.feature.coin.solana.ui.SolanaSendViewModel
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.core.domain.model.NetworkType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
+import com.example.nexuswallet.feature.ethereum.ui.EthereumSendEffect
+import com.example.nexuswallet.feature.ethereum.ui.EthereumSendEvent
+import com.example.nexuswallet.feature.ethereum.ui.EthereumSendViewModel
+import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
+import com.example.nexuswallet.feature.solana.ui.SolanaSendEffect
+import com.example.nexuswallet.feature.solana.ui.SolanaSendViewModel
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.ui.theme.bitcoinLight
@@ -67,7 +104,6 @@ import com.example.nexuswallet.ui.theme.warning
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,11 +111,10 @@ fun TransactionReviewScreen(
     onNavigateUp: () -> Unit,
     onNavigateToWalletDetail: (String) -> Unit,
     walletId: String,
-    coinType: CoinType,
     toAddress: String,
     amount: String,
     feeLevel: String? = null,
-    network: NetworkType? = null,
+    network: Network,
     ethereumViewModel: EthereumSendViewModel = hiltViewModel(),
     solanaViewModel: SolanaSendViewModel = hiltViewModel(),
     bitcoinReviewViewModel: BitcoinReviewViewModel = hiltViewModel()
@@ -94,6 +129,8 @@ fun TransactionReviewScreen(
     val ethereumState = ethereumViewModel.uiState.collectAsState()
     val solanaState = solanaViewModel.state.collectAsState()
     val bitcoinState = bitcoinReviewViewModel.state.collectAsState()
+
+    val coinType = network.coinType
 
     // Handle Bitcoin effects
     LaunchedEffect(bitcoinReviewViewModel) {
@@ -164,32 +201,10 @@ fun TransactionReviewScreen(
         CoinType.USDC -> Triple(usdcLight, R.drawable.usdc, "USDC")
     }
 
-    // Extract network objects from NetworkType enum
-    val bitcoinNetwork = when (network) {
-        NetworkType.BITCOIN_MAINNET -> BitcoinNetwork.Mainnet
-        NetworkType.BITCOIN_TESTNET -> BitcoinNetwork.Testnet
-        else -> null
-    }
-
-    val ethereumNetwork = when (network) {
-        NetworkType.ETHEREUM_MAINNET -> EthereumNetwork.Mainnet
-        NetworkType.ETHEREUM_SEPOLIA -> EthereumNetwork.Sepolia
-        else -> null
-    }
-
-    val solanaNetwork = when (network) {
-        NetworkType.SOLANA_MAINNET -> SolanaNetwork.Mainnet
-        NetworkType.SOLANA_DEVNET -> SolanaNetwork.Devnet
-        else -> null
-    }
-
     LaunchedEffect(Unit) {
-        when (coinType) {
-            CoinType.ETHEREUM, CoinType.USDC -> {
-                // For both ETH and USDC, we use the Ethereum ViewModel
-                ethereumViewModel.initialize(walletId, ethereumNetwork)
-
-                // Set the transaction data
+        when (network) {
+            is EthereumNetwork -> {
+                ethereumViewModel.initialize(walletId, network)
                 ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(toAddress))
                 ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(amount))
                 feeLevel?.let {
@@ -208,21 +223,21 @@ fun TransactionReviewScreen(
                     usdcToken?.let { ethereumViewModel.selectToken(it) }
                 }
             }
-            CoinType.SOLANA -> {
-                solanaViewModel.init(walletId, solanaNetwork)
+            is SolanaNetwork -> {
+                solanaViewModel.init(walletId, network)
                 solanaViewModel.updateToAddress(toAddress)
                 solanaViewModel.updateAmount(amount)
                 feeLevel?.let {
                     solanaViewModel.updateFeeLevel(FeeLevel.valueOf(it))
                 }
             }
-            CoinType.BITCOIN -> {
+            is BitcoinNetwork -> {
                 bitcoinReviewViewModel.initialize(
                     walletId = walletId,
                     toAddress = toAddress,
                     amount = amount,
                     feeLevel = FeeLevel.valueOf(feeLevel ?: "NORMAL"),
-                    network = bitcoinNetwork ?: BitcoinNetwork.Testnet
+                    network = network
                 )
                 bitcoinReviewViewModel.prepareTransaction()
             }
@@ -230,53 +245,50 @@ fun TransactionReviewScreen(
     }
 
     // Extract data for display
-    val fromAddress = when (coinType) {
-        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.fromAddress
-        CoinType.SOLANA -> solanaState.value.walletAddress
-        CoinType.BITCOIN -> bitcoinState.value.fromAddress
+    val fromAddress = when (network) {
+        is EthereumNetwork -> ethereumState.value.fromAddress
+        is SolanaNetwork -> solanaState.value.walletAddress
+        is BitcoinNetwork -> bitcoinState.value.fromAddress
     }
 
-    val selectedToken = if (coinType == CoinType.ETHEREUM || coinType == CoinType.USDC) {
+    val selectedToken = if (network is EthereumNetwork && (coinType == CoinType.ETHEREUM || coinType == CoinType.USDC)) {
         ethereumState.value.selectedToken
     } else null
 
-    val feeEstimate = when (coinType) {
-        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.feeEstimate
-        CoinType.SOLANA -> solanaState.value.feeEstimate
-        CoinType.BITCOIN -> bitcoinState.value.feeEstimate
+    val feeEstimate = when (network) {
+        is EthereumNetwork -> ethereumState.value.feeEstimate
+        is SolanaNetwork -> solanaState.value.feeEstimate
+        is BitcoinNetwork -> bitcoinState.value.feeEstimate
     }
 
-    val isFeeLoading = when (coinType) {
-        CoinType.BITCOIN -> bitcoinState.value.isFeeLoading
-        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.isFeeLoading
-        CoinType.SOLANA -> solanaState.value.isFeeLoading
-    }
-    // Add debug logging
-    LaunchedEffect(isFeeLoading, coinType) {
-        Log.d("TransactionReview", "CoinType: $coinType, isFeeLoading: $isFeeLoading")
-        Log.d("TransactionReview", "Solana - isFeeLoading: ${solanaState.value.isFeeLoading}, feeEstimate: ${solanaState.value.feeEstimate}")
+    val isFeeLoading = when (network) {
+        is BitcoinNetwork -> bitcoinState.value.isFeeLoading
+        is EthereumNetwork -> ethereumState.value.isFeeLoading
+        is SolanaNetwork -> solanaState.value.isFeeLoading
     }
 
-    val isReady = when (coinType) {
-        CoinType.BITCOIN -> bitcoinState.value.transactionPrepared
-        CoinType.ETHEREUM, CoinType.USDC -> ethereumState.value.validationResult.isValid
-        CoinType.SOLANA -> solanaState.value.isValid
-        else -> true
+    LaunchedEffect(isFeeLoading, network) {
+        Log.d("TransactionReview", "Network: $network, isFeeLoading: $isFeeLoading")
+        if (network is SolanaNetwork) {
+            Log.d("TransactionReview", "Solana - isFeeLoading: ${solanaState.value.isFeeLoading}, feeEstimate: ${solanaState.value.feeEstimate}")
+        }
     }
 
-    val isPreparing = when (coinType) {
-        CoinType.BITCOIN -> bitcoinState.value.isLoading && !bitcoinState.value.transactionPrepared
+    val isReady = when (network) {
+        is BitcoinNetwork -> bitcoinState.value.transactionPrepared
+        is EthereumNetwork -> ethereumState.value.validationResult.isValid
+        is SolanaNetwork -> solanaState.value.isValid
         else -> false
     }
 
-    // Get network display name
-    val networkDisplayName = network?.displayName ?: when (coinType) {
-        CoinType.BITCOIN -> "Bitcoin"
-        CoinType.ETHEREUM, CoinType.USDC -> "Ethereum"
-        CoinType.SOLANA -> "Solana"
+    val isPreparing = when (network) {
+        is BitcoinNetwork -> bitcoinState.value.isLoading && !bitcoinState.value.transactionPrepared
+        else -> false
     }
 
-    // Get token icon for selected token
+    val isTestnet = network.isTestnet
+    val fullNetworkName = if (isTestnet) "${network.displayName} Testnet" else network.displayName
+
     val tokenIconRes = when (selectedToken) {
         is NativeETH -> R.drawable.ethereum
         is USDCToken -> R.drawable.usdc
@@ -332,22 +344,22 @@ fun TransactionReviewScreen(
                     isSending = true
                     sendError = null
 
-                    when (coinType) {
-                        CoinType.ETHEREUM, CoinType.USDC -> {
+                    when (network) {
+                        is EthereumNetwork -> {
                             ethereumViewModel.send { hash ->
                                 txHash = hash
                                 txStatus = "Transaction sent!"
                                 isSending = false
                             }
                         }
-                        CoinType.SOLANA -> {
+                        is SolanaNetwork -> {
                             solanaViewModel.send { hash ->
                                 txHash = hash
                                 txStatus = "Transaction sent!"
                                 isSending = false
                             }
                         }
-                        CoinType.BITCOIN -> {
+                        is BitcoinNetwork -> {
                             bitcoinReviewViewModel.sendTransaction { hash ->
                                 txHash = hash
                                 txStatus = "Transaction sent!"
@@ -366,7 +378,6 @@ fun TransactionReviewScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Main content
             TransactionReviewContent(
                 coinType = coinType,
                 amount = amount,
@@ -379,14 +390,15 @@ fun TransactionReviewScreen(
                 iconRes = iconRes,
                 tokenIconRes = tokenIconRes,
                 selectedToken = selectedToken,
-                network = networkDisplayName,
+                network = fullNetworkName,
+                networkObject = network,
                 isValid = true,
                 validationErrors = if (sendError != null) listOf(sendError!!) else emptyList(),
                 onCopyAddress = { address ->
                     copyToClipboard(context, address)
                 },
                 onViewOnExplorer = { hash ->
-                    val url = getExplorerUrl(coinType, hash, network)
+                    val url = ExplorerUrlHelper.getExplorerUrl(hash, network)
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     context.startActivity(intent)
                 },
@@ -401,9 +413,9 @@ fun TransactionReviewScreen(
             ) {
                 SuccessBanner(
                     txHash = txHash ?: "",
-                    coinType = coinType,
+                    network = network,
                     onViewExplorer = { hash ->
-                        val url = getExplorerUrl(coinType, hash, network)
+                        val url = ExplorerUrlHelper.getExplorerUrl(hash, network)
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                         context.startActivity(intent)
                     },
@@ -420,7 +432,7 @@ fun TransactionReviewScreen(
 @Composable
 fun SuccessBanner(
     txHash: String,
-    coinType: CoinType,
+    network: Network,
     onViewExplorer: (String) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
@@ -524,7 +536,8 @@ fun TransactionReviewContent(
     iconRes: Int,
     tokenIconRes: Int? = null,
     selectedToken: EVMToken? = null,
-    network: Any? = null,
+    network: String? = null,
+    networkObject: Network? = null,
     isValid: Boolean = true,
     validationErrors: List<String> = emptyList(),
     onCopyAddress: (String) -> Unit,
@@ -624,9 +637,20 @@ fun TransactionReviewContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
                     )
+                } else if (networkObject != null) {
+                    val networkName = if (networkObject.isTestnet)
+                        "${networkObject.displayName} Testnet"
+                    else
+                        networkObject.displayName
+                    Text(
+                        text = "on $networkName",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 } else if (network != null) {
                     Text(
-                        text = "on ${network.toString()}",
+                        text = "on $network",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
@@ -681,9 +705,9 @@ fun TransactionReviewContent(
         txHash?.let { hash ->
             TransactionSuccessCard(
                 hash = hash,
+                network = networkObject,
                 coinType = coinType,
                 coinColor = coinColor,
-                network = network,
                 onViewOnExplorer = { onViewOnExplorer(hash) }
             )
         }
@@ -1014,9 +1038,9 @@ private fun getPriorityColor(priority: FeeLevel): Color {
 @Composable
 fun TransactionSuccessCard(
     hash: String,
+    network: Network? = null,
     coinType: CoinType,
     coinColor: Color,
-    network: Any? = null,
     onViewOnExplorer: () -> Unit
 ) {
     val context = LocalContext.current
@@ -1208,64 +1232,25 @@ fun FeeLoadingShimmer() {
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Row 1: Total Fee
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(70.dp)
-                            .height(16.dp)
-                            .shimmer()
-                    )
-                    Box(
-                        modifier = Modifier
-                            .width(100.dp)
-                            .height(16.dp)
-                            .shimmer()
-                    )
-                }
-
-                // Row 2: Gas Price / Fee Rate
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(80.dp)
-                            .height(16.dp)
-                            .shimmer()
-                    )
-                    Box(
-                        modifier = Modifier
-                            .width(90.dp)
-                            .height(16.dp)
-                            .shimmer()
-                    )
-                }
-
-                // Row 3: Gas Limit / Compute Units
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(75.dp)
-                            .height(16.dp)
-                            .shimmer()
-                    )
-                    Box(
-                        modifier = Modifier
-                            .width(60.dp)
-                            .height(16.dp)
-                            .shimmer()
-                    )
+                repeat(3) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(70.dp)
+                                .height(16.dp)
+                                .shimmer()
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(100.dp)
+                                .height(16.dp)
+                                .shimmer()
+                        )
+                    }
                 }
             }
 
@@ -1312,7 +1297,6 @@ fun FeeLoadingShimmer() {
     }
 }
 
-// Helper functions
 private fun copyToClipboard(context: Context, address: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clip = ClipData.newPlainText("Address", address)
@@ -1337,28 +1321,5 @@ private fun getExplorerName(coinType: CoinType): String {
         CoinType.ETHEREUM -> "Etherscan"
         CoinType.SOLANA -> "Solscan"
         CoinType.USDC -> "Etherscan"
-    }
-}
-
-private fun getExplorerUrl(coinType: CoinType, txHash: String, network: NetworkType?): String {
-    return when (coinType) {
-        CoinType.BITCOIN -> {
-            when (network) {
-                NetworkType.BITCOIN_TESTNET -> "https://blockstream.info/testnet/tx/$txHash"
-                else -> "https://blockstream.info/tx/$txHash"
-            }
-        }
-        CoinType.ETHEREUM, CoinType.USDC -> {
-            when (network) {
-                NetworkType.ETHEREUM_SEPOLIA -> "https://sepolia.etherscan.io/tx/$txHash"
-                else -> "https://etherscan.io/tx/$txHash"
-            }
-        }
-        CoinType.SOLANA -> {
-            when (network) {
-                NetworkType.SOLANA_DEVNET -> "https://solscan.io/tx/$txHash?cluster=devnet"
-                else -> "https://solscan.io/tx/$txHash"
-            }
-        }
     }
 }

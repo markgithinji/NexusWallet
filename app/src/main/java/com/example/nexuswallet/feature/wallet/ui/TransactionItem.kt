@@ -31,7 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.wallet.domain.usecase.TransactionDisplayInfo
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
@@ -43,11 +43,10 @@ import com.example.nexuswallet.ui.theme.warning
 @Composable
 fun TransactionItem(
     transaction: TransactionDisplayInfo,
-    coinType: CoinType,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
-    val (symbol, displayName, coinColor) = when (coinType) {
+    val (symbol, displayName, coinColor) = when (transaction.coinType) {
         CoinType.BITCOIN -> Triple("BTC", "Bitcoin", bitcoinLight)
         CoinType.ETHEREUM -> Triple("ETH", "Ethereum", ethereumLight)
         CoinType.SOLANA -> Triple("SOL", "Solana", solanaLight)
