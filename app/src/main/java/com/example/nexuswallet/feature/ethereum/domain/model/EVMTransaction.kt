@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.ethereum.domain.model
 
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.serialization.Serializable
 

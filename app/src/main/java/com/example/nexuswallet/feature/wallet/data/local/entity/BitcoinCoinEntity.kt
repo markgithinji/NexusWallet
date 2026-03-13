@@ -4,8 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import java.util.UUID
 
 @Entity(

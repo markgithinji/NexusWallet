@@ -1,13 +1,12 @@
 package com.example.nexuswallet.feature.wallet.domain.model
 
 import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 
 data class TransactionDetail(
     val id: String,
     val walletId: String,
     val coinType: CoinType,
-    val network: String,
+    val network: Network,
     val hash: String,
     val status: TransactionStatus,
     val timestamp: Long,
@@ -19,6 +18,7 @@ data class TransactionDetail(
     val memo: String? = null,
     val blockHeight: Long? = null,
     val confirmations: Int? = null,
+    val networkDisplayName: String = network.displayName,
 
     // Solana specific
     val slot: Long? = null,
