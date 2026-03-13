@@ -29,23 +29,21 @@ class GetTransactionDetailUseCase @Inject constructor(
 
     suspend operator fun invoke(
         walletId: String,
-        transactionId: String,
-        coinType: CoinType
+        transactionId: String
     ): Result<TransactionDetail> {
         logger.d(
             tag,
-            "Getting transaction detail: $transactionId for wallet: $walletId, type: $coinType"
+            "Getting transaction detail: $transactionId for wallet: $walletId"
         )
 
         return try {
             val wallet = walletRepository.getWallet(walletId)
                 ?: return Result.Error("Wallet not found")
 
-            val transaction = when (coinType) {
-                CoinType.BITCOIN -> getBitcoinTransaction(transactionId)
-                CoinType.ETHEREUM, CoinType.USDC -> getEVMTransaction(transactionId)
-                CoinType.SOLANA -> getSolanaTransaction(transactionId)
-            }
+            // Try each repository until we find the transaction
+            val transaction = getBitcoinTransaction(transactionId)
+                ?: getEVMTransaction(transactionId)
+                ?: getSolanaTransaction(transactionId)
 
             if (transaction == null) {
                 return Result.Error("Transaction not found")
@@ -54,8 +52,8 @@ class GetTransactionDetailUseCase @Inject constructor(
             val detail = when (transaction) {
                 is BitcoinTransaction -> mapBitcoinToDetail(transaction)
                 is SolanaTransaction -> mapSolanaToDetail(transaction)
-                is NativeETHTransaction -> mapNativeETHToDetail(transaction, coinType)
-                is TokenTransaction -> mapTokenToDetail(transaction, coinType)
+                is NativeETHTransaction -> mapNativeETHToDetail(transaction)
+                is TokenTransaction -> mapTokenToDetail(transaction)
                 else -> return Result.Error("Unknown transaction type")
             }
 
@@ -128,8 +126,7 @@ class GetTransactionDetailUseCase @Inject constructor(
     }
 
     private fun mapNativeETHToDetail(
-        tx: NativeETHTransaction,
-        coinType: CoinType
+        tx: NativeETHTransaction
     ): TransactionDetail {
         val gasPriceGwei = tx.gasPriceGwei.toDoubleOrNull() ?: 0.0
         val gasUsed = tx.gasLimit
@@ -138,7 +135,7 @@ class GetTransactionDetailUseCase @Inject constructor(
         return TransactionDetail(
             id = tx.id,
             walletId = tx.walletId,
-            coinType = coinType,
+            coinType = CoinType.ETHEREUM,
             network = tx.network,
             hash = tx.txHash ?: tx.id,
             status = tx.status,
@@ -152,18 +149,23 @@ class GetTransactionDetailUseCase @Inject constructor(
             gasPrice = tx.gasPriceGwei,
             gasUsed = gasUsed,
             nonce = tx.nonce,
-            chainId = tx.chainId.toString(),
-            networkDisplayName = tx.network.displayName
+            chainId = tx.chainId.toString()
         )
     }
 
     private fun mapTokenToDetail(
-        tx: TokenTransaction,
-        coinType: CoinType
+        tx: TokenTransaction
     ): TransactionDetail {
         val gasPriceGwei = tx.gasPriceGwei.toDoubleOrNull() ?: 0.0
         val gasUsed = tx.gasLimit
         val feeEth = (gasPriceGwei * gasUsed / 1_000_000_000).toString()
+
+        // Determine coin type based on token symbol
+        val coinType = when (tx.tokenSymbol) {
+            "USDC" -> CoinType.USDC
+            "USDT" -> CoinType.USDC // Treat USDT as USDC for navigation purposes
+            else -> CoinType.ETHEREUM
+        }
 
         return TransactionDetail(
             id = tx.id,
@@ -185,8 +187,7 @@ class GetTransactionDetailUseCase @Inject constructor(
             chainId = tx.chainId.toString(),
             tokenSymbol = tx.tokenSymbol,
             tokenDecimals = tx.tokenDecimals,
-            tokenContract = tx.tokenContract,
-            networkDisplayName = tx.network.displayName
+            tokenContract = tx.tokenContract
         )
     }
 }
