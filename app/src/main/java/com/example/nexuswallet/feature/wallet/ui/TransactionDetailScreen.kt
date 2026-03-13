@@ -1,11 +1,9 @@
 package com.example.nexuswallet.feature.wallet.ui
 
-
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Error
@@ -38,8 +36,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -59,9 +57,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
@@ -81,14 +79,13 @@ fun TransactionDetailScreen(
     onNavigateUp: () -> Unit,
     walletId: String,
     transactionId: String,
-    coinType: CoinType,
     viewModel: TransactionDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        viewModel.loadTransactionDetail(walletId, transactionId, coinType)
+        viewModel.loadTransactionDetail(walletId, transactionId)
     }
 
     LaunchedEffect(viewModel) {
@@ -107,16 +104,20 @@ fun TransactionDetailScreen(
                     shareTransaction(context, state.transaction, state.formattedAmount, state.formattedTime)
                 }
                 is TransactionDetailViewModel.TransactionDetailEffect.OpenExplorer -> {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(effect.url))
+                    val intent = Intent(Intent.ACTION_VIEW, effect.url.toUri())
                     context.startActivity(intent)
                 }
             }
         }
     }
 
-    // Get coin config for consistent styling
-    val (coinColor, iconRes) = getCoinDetailConfig(coinType)
-    val displayName = getCoinDisplayName(coinType)
+    val coinType = state.transaction?.coinType
+
+    val (coinColor, iconRes) = if (coinType != null) {
+        getCoinDetailConfig(coinType)
+    } else {
+        Pair(MaterialTheme.colorScheme.primary, R.drawable.bitcoin)
+    }
 
     Scaffold(
         topBar = {
@@ -125,9 +126,7 @@ fun TransactionDetailScreen(
                 onShare = { viewModel.shareTransaction() },
                 onRefresh = { viewModel.refresh() },
                 isRefreshing = state.isRefreshing,
-                coinColor = coinColor,
                 iconRes = iconRes,
-                displayName = displayName
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -139,7 +138,7 @@ fun TransactionDetailScreen(
             state.error != null && state.transaction == null -> {
                 ErrorScreen(
                     message = state.error!!,
-                    onRetry = { viewModel.loadTransactionDetail(walletId, transactionId, coinType) }
+                    onRetry = { viewModel.loadTransactionDetail(walletId, transactionId) }
                 )
             }
             state.transaction != null -> {
@@ -176,7 +175,7 @@ private fun shareTransaction(context: Context, transaction: TransactionDetail?, 
             appendLine("From: ${tx.fromAddress}")
             appendLine("To: ${tx.toAddress}")
             appendLine("Hash: ${tx.hash}")
-            appendLine("Network: ${tx.network}")
+            appendLine("Network: ${tx.network.displayName}")
             appendLine("Fee: ${tx.fee}")
             appendLine("Time: $formattedTime")
         }
@@ -197,9 +196,7 @@ private fun TransactionDetailTopBar(
     onShare: () -> Unit,
     onRefresh: () -> Unit,
     isRefreshing: Boolean,
-    coinColor: Color,
     iconRes: Int,
-    displayName: String
 ) {
     TopAppBar(
         title = {
@@ -222,7 +219,7 @@ private fun TransactionDetailTopBar(
         navigationIcon = {
             IconButton(onClick = onNavigateUp) {
                 Icon(
-                    Icons.Default.ArrowBack,
+                    Icons.AutoMirrored.Filled.ArrowBack,
                     "Back",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -441,7 +438,10 @@ fun TransactionStatusCard(
                 contentColor = coinColor
             ) {
                 Text(
-                    text = transaction.network,
+                    text = when {
+                        transaction.network.isTestnet -> "${transaction.network.displayName} Testnet"
+                        else -> transaction.network.displayName
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
@@ -636,10 +636,7 @@ fun TransactionAddressesCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Divider(
-                color = MaterialTheme.colorScheme.outline,
-                thickness = 1.dp
-            )
+            HorizontalDivider(Modifier, thickness = 1.dp, color = MaterialTheme.colorScheme.outline)
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -727,7 +724,10 @@ fun NetworkFeeCard(
             // Network
             DetailRow(
                 label = "Network",
-                value = transaction.network,
+                value = when {
+                    transaction.network.isTestnet -> "${transaction.network.displayName} Testnet"
+                    else -> transaction.network.displayName
+                },
                 valueColor = coinColor
             )
 
@@ -815,7 +815,7 @@ fun AdditionalDetailsCard(
             transaction.feePerByte?.let {
                 DetailRow(
                     label = "Fee Rate",
-                    value = "${it} sat/byte"
+                    value = "$it sat/byte"
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -832,7 +832,7 @@ fun AdditionalDetailsCard(
             transaction.tokenSymbol?.let {
                 DetailRow(
                     label = "Token",
-                    value = transaction.tokenSymbol ?: ""
+                    value = transaction.tokenSymbol
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -921,22 +921,12 @@ fun TransactionDetailLoadingShimmer() {
     }
 }
 
-// Helper functions
 private fun getCoinDetailConfig(coinType: CoinType): Pair<Color, Int> {
     return when (coinType) {
         CoinType.BITCOIN -> Pair(bitcoinLight, R.drawable.bitcoin)
         CoinType.ETHEREUM -> Pair(ethereumLight, R.drawable.ethereum)
         CoinType.SOLANA -> Pair(solanaLight, R.drawable.solana)
         CoinType.USDC -> Pair(usdcLight, R.drawable.usdc)
-    }
-}
-
-private fun getCoinDisplayName(coinType: CoinType): String {
-    return when (coinType) {
-        CoinType.BITCOIN -> "Bitcoin"
-        CoinType.ETHEREUM -> "Ethereum"
-        CoinType.SOLANA -> "Solana"
-        CoinType.USDC -> "USDC"
     }
 }
 
