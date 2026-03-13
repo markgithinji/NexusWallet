@@ -47,9 +47,9 @@ import com.example.nexuswallet.ui.theme.bitcoinLight
 @Composable
 fun BitcoinSendScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToReview: (String, String, String, FeeLevel?, Network) -> Unit,  // Removed CoinType, Network is non-nullable
+    onNavigateToReview: (String, String, String, FeeLevel?, Network) -> Unit,
     walletId: String,
-    network: Network,  // Non-nullable Network directly
+    network: Network,
     viewModel: BitcoinSendViewModel = hiltViewModel()
 ) {
     var showMaxDialog by remember { mutableStateOf(false) }
@@ -66,7 +66,6 @@ fun BitcoinSendScreen(
 
     val state by viewModel.state.collectAsState()
 
-    // Initialize ViewModel with the network directly
     LaunchedEffect(Unit) {
         viewModel.handleEvent(BitcoinSendEvent.Initialize(walletId, network as BitcoinNetwork))
     }
@@ -223,7 +222,7 @@ fun BitcoinSendScreen(
                         state.toAddress,
                         state.amount,
                         state.feeLevel,
-                        state.network  // Pass network directly
+                        state.network
                     )
                 },
                 modifier = Modifier.align(Alignment.BottomCenter)

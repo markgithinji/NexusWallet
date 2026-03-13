@@ -21,7 +21,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object BitcoinUseDomainModule {
+object BitcoinDomainModule {
 
     @Provides
     @Singleton

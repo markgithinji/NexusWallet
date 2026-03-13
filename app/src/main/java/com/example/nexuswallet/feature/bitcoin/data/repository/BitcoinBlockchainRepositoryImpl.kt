@@ -6,12 +6,12 @@ import com.example.nexuswallet.feature.bitcoin.data.remote.api.BitcoinApi
 import com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransactionResponse
 import com.example.nexuswallet.feature.bitcoin.data.toDomain
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.SafeApiCall
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -201,8 +201,24 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
 
 
     /**
-     * Create and sign a Bitcoin transaction using bitcoinj
+     * Creates and signs a Bitcoin transaction in a single atomic operation.
+     *
+     * This method combines transaction creation and signing to minimize the time
+     * the private key spends in memory. The key is only held during this function
+     * call and is not persisted or exposed outside.
+     *
+     * @param fromKey The ECKey containing the private key for signing
+     * @param toAddress The recipient's Bitcoin address
+     * @param satoshis The amount to send in satoshis
+     * @param feeLevel The fee priority level (SLOW, NORMAL, FAST)
+     * @param network The Bitcoin network (Mainnet or Testnet)
+     * @return Result containing the signed Transaction or error
+     *
+     * @implNote Security: This method is intentionally kept as a single operation
+     * to avoid storing private key material in intermediate states. Do not refactor
+     * into separate create/sign steps without implementing secure key handling.
      */
+
     override suspend fun createAndSignTransaction(
         fromKey: ECKey,
         toAddress: String,

@@ -27,7 +27,6 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.contentColorFor
-import com.example.nexuswallet.feature.core.domain.model.NetworkType
 import com.example.nexuswallet.feature.wallet.domain.model.Network
 
 @OptIn(ExperimentalMaterial3Api::class)
