@@ -5,6 +5,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.ERC20Token
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import java.util.UUID
@@ -21,41 +22,41 @@ fun EVMToken.toEntity(walletId: String): EVMTokenEntity = EVMTokenEntity(
     name = name,
     decimals = decimals,
     tokenType = when (this) {
-        is NativeETH -> "NATIVE"
-        is USDCToken -> "USDC"
-        is USDTToken -> "USDT"
-        is ERC20Token -> "ERC20"
+        is NativeETH -> TokenType.NATIVE
+        is USDCToken -> TokenType.USDC
+        is USDTToken -> TokenType.USDT
+        is ERC20Token -> TokenType.ERC20
     },
     externalId = externalId,
     updatedAt = System.currentTimeMillis()
 )
 
 fun EVMTokenEntity.toDomain(): EVMToken = when (tokenType) {
-    "NATIVE" -> NativeETH(
+    TokenType.NATIVE -> NativeETH(
         address = address,
         publicKey = publicKey,
         network = network,
         contractAddress = contractAddress,
     )
-    "USDC" -> USDCToken(
+    TokenType.USDC -> USDCToken(
         address = address,
         publicKey = publicKey,
         network = network,
         contractAddress = contractAddress,
     )
-    "USDT" -> USDTToken(
+    TokenType.USDT -> USDTToken(
         address = address,
         publicKey = publicKey,
         network = network,
-        contractAddress = contractAddress
+        contractAddress = contractAddress,
     )
-    else -> ERC20Token(
+    TokenType.ERC20 -> ERC20Token(
         address = address,
         publicKey = publicKey,
         network = network,
         contractAddress = contractAddress,
         symbol = symbol,
         name = name,
-        decimals = decimals
+        decimals = decimals,
     )
 }
