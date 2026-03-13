@@ -169,6 +169,7 @@ class SendEVMAssetUseCase @Inject constructor(
         when (broadcastResult) {
             is Result.Success -> {
                 val broadcastData = broadcastResult.data
+                val finalTxHash = broadcastData.hash ?: txHash
 
                 // 6. save transaction after successful broadcast
                 if (broadcastData.success) {
@@ -179,7 +180,7 @@ class SendEVMAssetUseCase @Inject constructor(
 
                     val transaction = when (token) {
                         is NativeETH -> NativeETHTransaction(
-                            id = "tx_${System.currentTimeMillis()}",
+                            id = finalTxHash,
                             walletId = walletId,
                             fromAddress = token.address,
                             toAddress = toAddress,
@@ -193,7 +194,7 @@ class SendEVMAssetUseCase @Inject constructor(
                             nonce = nonce.toInt(),
                             chainId = token.network.chainId.toLong(),
                             signedHex = signedHex,
-                            txHash = broadcastData.hash ?: txHash,
+                            txHash = finalTxHash,
                             status = TransactionStatus.SUCCESS,
                             note = note,
                             timestamp = System.currentTimeMillis(),
@@ -205,7 +206,7 @@ class SendEVMAssetUseCase @Inject constructor(
                         )
 
                         else -> TokenTransaction(
-                            id = "tx_${System.currentTimeMillis()}",
+                            id = finalTxHash,
                             walletId = walletId,
                             fromAddress = token.address,
                             toAddress = toAddress,
@@ -219,7 +220,7 @@ class SendEVMAssetUseCase @Inject constructor(
                             nonce = nonce.toInt(),
                             chainId = token.network.chainId.toLong(),
                             signedHex = signedHex,
-                            txHash = broadcastData.hash ?: txHash,
+                            txHash = finalTxHash,
                             status = TransactionStatus.SUCCESS,
                             note = note,
                             timestamp = System.currentTimeMillis(),
@@ -249,8 +250,8 @@ class SendEVMAssetUseCase @Inject constructor(
                 }
 
                 val sendResult = SendEthereumResult(
-                    transactionId = "tx_${System.currentTimeMillis()}",
-                    txHash = broadcastData.hash ?: txHash,
+                    transactionId = finalTxHash,
+                    txHash = finalTxHash,
                     success = broadcastData.success,
                     error = broadcastData.error
                 )

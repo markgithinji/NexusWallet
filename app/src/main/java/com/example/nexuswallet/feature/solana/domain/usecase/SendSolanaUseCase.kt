@@ -1,20 +1,20 @@
 package com.example.nexuswallet.feature.solana.domain.usecase
 
-import com.example.nexuswallet.feature.core.data.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.core.data.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.domain.model.SendSolanaResult
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.toHex
@@ -151,7 +151,7 @@ class SendSolanaUseCase @Inject constructor(
         }
 
         val sendResult = SendSolanaResult(
-            transactionId = "sol_tx_${System.currentTimeMillis()}",
+            transactionId = signedTx.signature,
             txHash = signedTx.signature,
             success = broadcastResult.success,
             error = broadcastResult.error
@@ -183,7 +183,7 @@ class SendSolanaUseCase @Inject constructor(
         val lamports = amount.multiply(BigDecimal(LAMPORTS_PER_SOL)).toLong()
 
         return SolanaTransaction(
-            id = "sol_tx_${System.currentTimeMillis()}",
+            id = signature ?: "sol_tx_${System.currentTimeMillis()}",  // Use signature if available, fallback to timestamp
             walletId = walletId,
             fromAddress = solanaCoin.address,
             toAddress = toAddress,

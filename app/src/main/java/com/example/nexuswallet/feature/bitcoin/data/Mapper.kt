@@ -78,7 +78,7 @@ fun EsploraTransactionResponse.toDomain(
     } else "0"
 
     return BitcoinTransaction(
-        id = "${walletId}_${txid}_${System.currentTimeMillis()}",
+        id = txid,
         walletId = walletId,
         coinType = CoinType.BITCOIN,
         fromAddress = fromAddress,
@@ -93,7 +93,7 @@ fun EsploraTransactionResponse.toDomain(
         txHash = txid,
         status = if (status.confirmed) TransactionStatus.SUCCESS else TransactionStatus.PENDING,
         note = null,
-        timestamp = status.blockTime ?: (System.currentTimeMillis() / 1000),
+        timestamp = (status.blockTime ?: (System.currentTimeMillis() / 1000)) * 1000,  // Convert to milliseconds
         feeLevel = FeeLevel.NORMAL,
         network = network,
         isIncoming = isIncoming

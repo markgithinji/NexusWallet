@@ -142,7 +142,7 @@ class SendBitcoinUseCase @Inject constructor(
             is Result.Success -> {
                 // Create and save transaction
                 val transaction = BitcoinTransaction(
-                    id = preparedTx.transactionId,
+                    id = txId,
                     walletId = walletId,
                     coinType = CoinType.BITCOIN,
                     fromAddress = preparedTx.fromAddress,

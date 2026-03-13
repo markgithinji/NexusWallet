@@ -4,9 +4,9 @@ import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -51,7 +51,7 @@ fun com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransact
     }
 
     return NativeETHTransaction(
-        id = "eth_tx_${System.currentTimeMillis()}_${hash.take(8)}",
+        id = hash,
         walletId = walletId,
         fromAddress = from,
         toAddress = to,
@@ -119,7 +119,7 @@ fun com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse.toToken
     )
 
     return TokenTransaction(
-        id = "token_tx_${System.currentTimeMillis()}_${hash.take(8)}",
+        id = hash,
         walletId = walletId,
         fromAddress = from,
         toAddress = to,
