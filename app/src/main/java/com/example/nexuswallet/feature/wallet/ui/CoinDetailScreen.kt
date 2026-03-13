@@ -33,9 +33,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.NetworkType
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
@@ -55,22 +59,19 @@ import java.util.*
 @Composable
 fun CoinDetailScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
-    onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
-    onNavigateToAllTransactions: (String, CoinType, NetworkType?) -> Unit,
-    onNavigateToTransactionDetail: (String, String, CoinType) -> Unit,
+    onNavigateToReceive: (String, Network) -> Unit,
+    onNavigateToSend: (String, Network) -> Unit,
+    onNavigateToAllTransactions: (String, Network) -> Unit,
+    onNavigateToTransactionDetail: (String, String) -> Unit,
     walletId: String,
-    coinType: CoinType,
-    network: NetworkType? = null,
+    network: Network,
     viewModel: CoinDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    val networkString = network?.apiValue ?: ""
-
     LaunchedEffect(Unit) {
-        viewModel.loadCoinDetails(walletId, coinType, network)
+        viewModel.loadCoinDetails(walletId, network)
     }
 
     // Show loading only on initial load
@@ -83,11 +84,12 @@ fun CoinDetailScreen(
     state.error?.let { errorMessage ->
         ErrorScreen(
             message = errorMessage,
-            onRetry = { viewModel.loadCoinDetails(walletId, coinType, network) }
+            onRetry = { viewModel.loadCoinDetails(walletId, network) }
         )
         return
     }
 
+    val coinType = state.coinType ?: network.coinType
     val (coinColor, iconRes) = getCoinDetailConfig(coinType)
     val displayName = coinType.displayName
 
@@ -116,10 +118,15 @@ fun CoinDetailScreen(
                 clipboard.setPrimaryClip(clip)
                 Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
             },
-            onReceive = onNavigateToReceive,
-            onSend = onNavigateToSend,
-            onViewAllTransactions = onNavigateToAllTransactions,
-            onNavigateToSend = onNavigateToSend,
+            onReceive = { walletId, network ->
+                onNavigateToReceive(walletId, network)
+            },
+            onSend = { walletId, network ->
+                onNavigateToSend(walletId, network)
+            },
+            onViewAllTransactions = { walletId, network ->
+                onNavigateToAllTransactions(walletId, network)
+            },
             onNavigateToTransactionDetail = onNavigateToTransactionDetail,
             modifier = Modifier.padding(padding)
         )
@@ -196,22 +203,16 @@ private fun CoinDetailContent(
     coinColor: Color,
     iconRes: Int,
     displayName: String,
-    network: NetworkType?,
+    network: Network,
     onCopyAddress: (String) -> Unit,
-    onReceive: (String, CoinType, NetworkType?) -> Unit,
-    onSend: (String, CoinType, NetworkType?) -> Unit,
-    onViewAllTransactions: (String, CoinType, NetworkType?) -> Unit,
-    onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
-    onNavigateToTransactionDetail: (String, String, CoinType) -> Unit,
+    onReceive: (String, Network) -> Unit,
+    onSend: (String, Network) -> Unit,
+    onViewAllTransactions: (String, Network) -> Unit,
+    onNavigateToTransactionDetail: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Get the network display name
-    val networkDisplayName = network?.displayName ?: when (coinType) {
-        CoinType.BITCOIN -> "Bitcoin"
-        CoinType.ETHEREUM -> "Ethereum"
-        CoinType.SOLANA -> "Solana"
-        CoinType.USDC -> "USD Coin"
-    }
+    val networkDisplayName = network.displayName
+    val isTestnet = network.isTestnet
 
     LazyColumn(
         modifier = modifier
@@ -219,7 +220,6 @@ private fun CoinDetailContent(
         contentPadding = PaddingValues(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Balance Card
         item {
             CoinDetailBalanceCard(
                 coinColor = coinColor,
@@ -236,12 +236,11 @@ private fun CoinDetailContent(
         // Actions
         item {
             CoinDetailActionsCard(
-                onReceive = { onReceive(state.walletId, coinType, network) },
-                onSend = { onSend(state.walletId, coinType, network) }
+                onReceive = { onReceive(state.walletId, network) },
+                onSend = { onSend(state.walletId, network) }
             )
         }
 
-        // ETH Gas Balance for USDC
         if (coinType == CoinType.USDC && state.ethGasBalance != null) {
             item {
                 CoinDetailEthGasBalanceCard(ethBalance = state.ethGasBalance)
@@ -253,27 +252,23 @@ private fun CoinDetailContent(
             item {
                 CoinDetailSPLTokensCard(
                     splTokens = state.splTokens,
-                    network = network,
+                    isTestnet = isTestnet,
                     onTokenClick = { token ->
                         // TODO: create a token detail screen
-                        // onNavigateToTokenDetail(token.mintAddress, network)
                     }
                 )
             }
         }
 
-        // Other EVM Tokens (for ETH view)
         if (coinType == CoinType.ETHEREUM && state.evmTokens.size > 1) {
             item {
                 CoinDetailOtherTokensCard(
                     tokens = state.evmTokens.filter { it !is NativeETH },
-                    network = network,
+                    isTestnet = isTestnet,
                     onTokenClick = { token ->
                         when (token) {
-                            is USDCToken -> onNavigateToSend(state.walletId, CoinType.USDC, network)
-                            is USDTToken -> {
-                                onNavigateToSend(state.walletId, CoinType.USDC, network)
-                            }
+                            is USDCToken -> onSend(state.walletId, network)
+                            is USDTToken -> onSend(state.walletId, network)
                             else -> {
                                 // TODO: Handle other ERC20 tokens
                             }
@@ -283,14 +278,13 @@ private fun CoinDetailContent(
             }
         }
 
-        // Recent Transactions
         item {
             CoinDetailTransactionsContainer(
                 transactions = state.transactions,
                 coinType = coinType,
-                onViewAll = { onViewAllTransactions(state.walletId, coinType, network) },
+                onViewAll = { onViewAllTransactions(state.walletId, network) },
                 onTransactionClick = { transaction ->
-                    onNavigateToTransactionDetail(state.walletId, transaction.id, coinType)
+                    onNavigateToTransactionDetail(state.walletId, transaction.id)
                 }
             )
         }
@@ -300,7 +294,7 @@ private fun CoinDetailContent(
 @Composable
 fun CoinDetailSPLTokensCard(
     splTokens: List<SPLToken>,
-    network: NetworkType?,
+    isTestnet: Boolean,
     onTokenClick: (SPLToken) -> Unit
 ) {
     Card(
@@ -328,7 +322,7 @@ fun CoinDetailSPLTokensCard(
             splTokens.forEach { token ->
                 SPLTokenRow(
                     token = token,
-                    network = network,
+                    isTestnet = isTestnet,
                     onClick = { onTokenClick(token) }
                 )
             }
@@ -339,7 +333,7 @@ fun CoinDetailSPLTokensCard(
 @Composable
 fun SPLTokenRow(
     token: SPLToken,
-    network: NetworkType?,
+    isTestnet: Boolean,
     onClick: () -> Unit
 ) {
     Row(
@@ -380,7 +374,7 @@ fun SPLTokenRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (network == NetworkType.SOLANA_DEVNET) {
+            if (isTestnet) {
                 Text(
                     text = "Devnet",
                     style = MaterialTheme.typography.labelSmall,
@@ -395,7 +389,7 @@ fun SPLTokenRow(
 @Composable
 fun CoinDetailOtherTokensCard(
     tokens: List<EVMToken>,
-    network: NetworkType?,
+    isTestnet: Boolean,
     onTokenClick: (EVMToken) -> Unit
 ) {
     Card(
@@ -423,7 +417,7 @@ fun CoinDetailOtherTokensCard(
             tokens.forEach { token ->
                 OtherTokenRow(
                     token = token,
-                    network = network,
+                    isTestnet = isTestnet,
                     onClick = { onTokenClick(token) }
                 )
             }
@@ -434,7 +428,7 @@ fun CoinDetailOtherTokensCard(
 @Composable
 fun OtherTokenRow(
     token: EVMToken,
-    network: NetworkType?,
+    isTestnet: Boolean,
     onClick: () -> Unit
 ) {
     val (color, iconRes) = when (token) {
@@ -490,7 +484,7 @@ fun OtherTokenRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (network == NetworkType.ETHEREUM_SEPOLIA) {
+            if (isTestnet) {
                 Text(
                     text = "Sepolia",
                     style = MaterialTheme.typography.labelSmall,
@@ -532,7 +526,6 @@ private fun CoinDetailBalanceCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Coin icon and name
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -560,7 +553,7 @@ private fun CoinDetailBalanceCard(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        if (network != "MAINNET" && network != "Mainnet") {
+                        if (network != "MAINNET" && network != "Mainnet" && network != "Bitcoin" && network != "Ethereum" && network != "Solana") {
                             Text(
                                 text = network,
                                 style = MaterialTheme.typography.bodySmall,
@@ -782,7 +775,6 @@ private fun CoinDetailTransactionsContainer(
                 transactions.take(3).forEachIndexed { index, transaction ->
                     TransactionItem(
                         transaction = transaction,
-                        coinType = coinType,
                         modifier = Modifier
                             .clickable { onTransactionClick(transaction) }
                     )
@@ -800,7 +792,6 @@ private fun CoinDetailTransactionsContainer(
     }
 }
 
-// Helper functions
 private fun getCoinDetailConfig(coinType: CoinType): Pair<Color, Int> {
     return when (coinType) {
         CoinType.BITCOIN -> Pair(bitcoinLight, R.drawable.bitcoin)
