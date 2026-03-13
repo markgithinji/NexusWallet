@@ -27,9 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.core.domain.model.NetworkType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.ui.ErrorMessage
 import com.example.nexuswallet.feature.wallet.ui.MaxAmountDialog
 import com.example.nexuswallet.feature.wallet.ui.NetworkSelectorCard
@@ -47,9 +47,9 @@ import com.example.nexuswallet.ui.theme.solanaLight
 @Composable
 fun SolanaSendScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToReview: (String, CoinType, String, String, FeeLevel?, NetworkType?) -> Unit,
+    onNavigateToReview: (String, String, String, FeeLevel?, Network) -> Unit,
     walletId: String,
-    network: NetworkType? = null,
+    network: Network,
     viewModel: SolanaSendViewModel = hiltViewModel()
 ) {
     var showMaxDialog by remember { mutableStateOf(false) }
@@ -66,26 +66,14 @@ fun SolanaSendScreen(
 
     val state by viewModel.state.collectAsState()
 
-    // Extract Solana network from NetworkType
-    val solanaNetwork = when (network) {
-        NetworkType.SOLANA_MAINNET -> SolanaNetwork.Mainnet
-        NetworkType.SOLANA_DEVNET -> SolanaNetwork.Devnet
-        else -> null
-    }
-
-    // Initialize ViewModel
+    // Initialize ViewModel with the network directly
     LaunchedEffect(Unit) {
-        viewModel.init(walletId, solanaNetwork)
-    }
-
-    val currentNetworkName = when (state.network) {
-        SolanaNetwork.Mainnet -> "Solana Mainnet"
-        SolanaNetwork.Devnet -> "Solana Devnet"
+        viewModel.init(walletId, network as SolanaNetwork)
     }
 
     val availableNetworks = listOf(
-        NetworkType.SOLANA_MAINNET,
-        NetworkType.SOLANA_DEVNET
+        SolanaNetwork.Mainnet,
+        SolanaNetwork.Devnet
     )
 
     val errorState = rememberSendErrorState(
@@ -117,17 +105,9 @@ fun SolanaSendScreen(
             if (showNetworkSelector) {
                 NetworkSelectorDialog(
                     availableNetworks = availableNetworks,
-                    currentNetwork = currentNetworkName,
+                    currentNetwork = state.network,
                     onNetworkSelected = { selectedNetwork ->
-                        when (selectedNetwork) {
-                            NetworkType.SOLANA_MAINNET -> {
-                                viewModel.switchNetwork(SolanaNetwork.Mainnet)
-                            }
-                            NetworkType.SOLANA_DEVNET -> {
-                                viewModel.switchNetwork(SolanaNetwork.Devnet)
-                            }
-                            else -> {}
-                        }
+                        viewModel.switchNetwork(selectedNetwork as SolanaNetwork)
                         showNetworkSelector = false
                     },
                     onDismiss = { showNetworkSelector = false }
@@ -144,7 +124,7 @@ fun SolanaSendScreen(
             ) {
                 // Network Selector Card
                 NetworkSelectorCard(
-                    currentNetwork = currentNetworkName,
+                    currentNetwork = state.network,
                     onClick = { showNetworkSelector = true }
                 )
 
@@ -155,7 +135,7 @@ fun SolanaSendScreen(
                     coinColor = solanaLight,
                     iconRes = R.drawable.solana,
                     address = state.walletAddress,
-                    network = currentNetworkName
+                    network = state.network
                 )
 
                 // Error Banner
@@ -175,7 +155,6 @@ fun SolanaSendScreen(
                     },
                     onFocusChange = { isFocused ->
                         addressFocused = isFocused
-                        // Mark as touched when focus leaves and field has content
                         if (!isFocused && state.toAddress.isNotEmpty()) {
                             addressTouched = true
                         }
@@ -200,7 +179,6 @@ fun SolanaSendScreen(
                     },
                     onFocusChange = { isFocused ->
                         amountFocused = isFocused
-                        // Mark as touched when focus leaves and field has content
                         if (!isFocused && state.amount.isNotEmpty()) {
                             amountTouched = true
                         }
@@ -234,17 +212,12 @@ fun SolanaSendScreen(
                 error = errorState.activeError,
                 onSend = {
                     focusManager.clearFocus()
-                    val currentNetwork = when (state.network) {
-                        SolanaNetwork.Mainnet -> NetworkType.SOLANA_MAINNET
-                        SolanaNetwork.Devnet -> NetworkType.SOLANA_DEVNET
-                    }
                     onNavigateToReview(
                         walletId,
-                        CoinType.SOLANA,
                         state.toAddress,
                         state.amount,
                         state.feeLevel,
-                        currentNetwork
+                        state.network
                     )
                 },
                 modifier = Modifier.align(Alignment.BottomCenter)

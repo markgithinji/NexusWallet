@@ -30,9 +30,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.core.domain.model.NetworkType
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.ui.ErrorMessage
@@ -59,10 +59,9 @@ import java.math.RoundingMode
 @Composable
 fun EthereumSendScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToReview: (String, CoinType, String, String, FeeLevel?, NetworkType?) -> Unit,
+    onNavigateToReview: (String, String, String, FeeLevel?, Network) -> Unit,
     walletId: String,
-    coinType: CoinType, // Can be CoinType.ETHEREUM or CoinType.USDC
-    network: NetworkType? = null,
+    network: Network,
     viewModel: EthereumSendViewModel = hiltViewModel()
 ) {
     var showMaxDialog by remember { mutableStateOf(false) }
@@ -80,19 +79,12 @@ fun EthereumSendScreen(
 
     val state by viewModel.uiState.collectAsState()
 
-    // Extract Ethereum network from NetworkType
-    val ethereumNetwork = when (network) {
-        NetworkType.ETHEREUM_MAINNET -> EthereumNetwork.Mainnet
-        NetworkType.ETHEREUM_SEPOLIA -> EthereumNetwork.Sepolia
-        else -> null
-    }
-
-    // Initialize ViewModel
+    // Initialize ViewModel with the network directly
     LaunchedEffect(Unit) {
-        viewModel.initialize(walletId, ethereumNetwork)
+        viewModel.initialize(walletId, network as EthereumNetwork)
 
-        // Auto-select USDC if needed
-        if (coinType == CoinType.USDC) {
+        // Auto-select USDC if needed (based on network's coinType)
+        if (network.coinType == CoinType.USDC) {
             snapshotFlow { state.isInitialized }
                 .filter { it }
                 .firstOrNull()
@@ -107,28 +99,23 @@ fun EthereumSendScreen(
         is NativeETH -> Triple(R.drawable.ethereum, ethereumLight, "Ethereum")
         is USDCToken -> Triple(R.drawable.usdc, usdcLight, "USDC")
         is USDTToken -> Triple(R.drawable.usdc, usdtLight, "USDT")
-        else -> when (coinType) {
+        else -> when (network.coinType) {
             CoinType.ETHEREUM -> Triple(R.drawable.ethereum, ethereumLight, "Ethereum")
             CoinType.USDC -> Triple(R.drawable.usdc, usdcLight, "USDC")
             else -> Triple(R.drawable.ethereum, ethereumLight, "Ethereum")
         }
     }
 
-    val currentNetworkName = when (state.network) {
-        EthereumNetwork.Mainnet -> "Ethereum Mainnet"
-        EthereumNetwork.Sepolia -> "Ethereum Sepolia"
-    }
-
     val availableNetworks = listOf(
-        NetworkType.ETHEREUM_MAINNET,
-        NetworkType.ETHEREUM_SEPOLIA
+        EthereumNetwork.Mainnet,
+        EthereumNetwork.Sepolia
     )
 
     // Determine the current coin type for the amount input
     val currentCoinType = when {
         selectedToken is USDCToken -> CoinType.USDC
         selectedToken is USDTToken -> CoinType.USDC // Treat USDT as USDC for USD price
-        else -> CoinType.ETHEREUM
+        else -> network.coinType
     }
 
     val errorState = rememberSendErrorState(
@@ -160,19 +147,9 @@ fun EthereumSendScreen(
             if (showNetworkSelector) {
                 NetworkSelectorDialog(
                     availableNetworks = availableNetworks,
-                    currentNetwork = currentNetworkName,
+                    currentNetwork = state.network,
                     onNetworkSelected = { selectedNetwork ->
-                        when (selectedNetwork) {
-                            NetworkType.ETHEREUM_MAINNET -> {
-                                viewModel.switchNetwork(EthereumNetwork.Mainnet)
-                            }
-
-                            NetworkType.ETHEREUM_SEPOLIA -> {
-                                viewModel.switchNetwork(EthereumNetwork.Sepolia)
-                            }
-
-                            else -> {}
-                        }
+                        viewModel.switchNetwork(selectedNetwork as EthereumNetwork)
                         showNetworkSelector = false
                     },
                     onDismiss = { showNetworkSelector = false }
@@ -203,7 +180,7 @@ fun EthereumSendScreen(
             ) {
                 // Network Selector Card
                 NetworkSelectorCard(
-                    currentNetwork = currentNetworkName,
+                    currentNetwork = state.network,
                     onClick = { showNetworkSelector = true }
                 )
 
@@ -237,7 +214,7 @@ fun EthereumSendScreen(
                     coinColor = coinColor,
                     iconRes = iconRes,
                     address = state.fromAddress,
-                    network = currentNetworkName
+                    network = state.network
                 )
 
                 // Show ETH balance for gas if this is a token
@@ -270,7 +247,6 @@ fun EthereumSendScreen(
                     },
                     onFocusChange = { isFocused ->
                         addressFocused = isFocused
-                        // Mark as touched when focus leaves and field has content
                         if (!isFocused && state.toAddress.isNotEmpty()) {
                             addressTouched = true
                         }
@@ -295,7 +271,6 @@ fun EthereumSendScreen(
                     },
                     onFocusChange = { isFocused ->
                         amountFocused = isFocused
-                        // Mark as touched when focus leaves and field has content
                         if (!isFocused && state.amount.isNotEmpty()) {
                             amountTouched = true
                         }
@@ -316,8 +291,7 @@ fun EthereumSendScreen(
                     feeLevel = state.feeLevel,
                     onFeeLevelChange = { viewModel.onEvent(EthereumSendEvent.FeeLevelChanged(it)) },
                     feeEstimate = state.feeEstimate,
-                    coinType = CoinType.ETHEREUM,
-                    token = selectedToken
+                    coinType = CoinType.ETHEREUM
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -330,17 +304,12 @@ fun EthereumSendScreen(
                 error = errorState.activeError,
                 onSend = {
                     focusManager.clearFocus()
-                    val currentNetwork = when (state.network) {
-                        EthereumNetwork.Mainnet -> NetworkType.ETHEREUM_MAINNET
-                        EthereumNetwork.Sepolia -> NetworkType.ETHEREUM_SEPOLIA
-                    }
                     onNavigateToReview(
                         walletId,
-                        coinType,
                         state.toAddress,
                         state.amount,
                         state.feeLevel,
-                        currentNetwork
+                        state.network
                     )
                 },
                 modifier = Modifier.align(Alignment.BottomCenter)
@@ -354,7 +323,7 @@ fun EthereumSendScreen(
             balance = if (selectedToken is NativeETH) state.ethBalance else state.tokenBalance,
             feeEstimate = state.feeEstimate,
             tokenSymbol = selectedToken?.symbol ?: "ETH",
-            coinType = coinType,
+            coinType = network.coinType,
             token = selectedToken,
             onDismiss = { showMaxDialog = false },
             onConfirm = { maxAmount ->

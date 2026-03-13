@@ -28,8 +28,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.core.domain.model.NetworkType
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.ui.ErrorMessage
 import com.example.nexuswallet.feature.wallet.ui.MaxAmountDialog
 import com.example.nexuswallet.feature.wallet.ui.NetworkSelectorCard
@@ -47,9 +47,9 @@ import com.example.nexuswallet.ui.theme.bitcoinLight
 @Composable
 fun BitcoinSendScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToReview: (String, CoinType, String, String, FeeLevel?, NetworkType?) -> Unit,
+    onNavigateToReview: (String, String, String, FeeLevel?, Network) -> Unit,  // Removed CoinType, Network is non-nullable
     walletId: String,
-    network: NetworkType? = null,
+    network: Network,  // Non-nullable Network directly
     viewModel: BitcoinSendViewModel = hiltViewModel()
 ) {
     var showMaxDialog by remember { mutableStateOf(false) }
@@ -66,26 +66,14 @@ fun BitcoinSendScreen(
 
     val state by viewModel.state.collectAsState()
 
-    // Extract Bitcoin network from NetworkType
-    val bitcoinNetwork = when (network) {
-        NetworkType.BITCOIN_MAINNET -> BitcoinNetwork.Mainnet
-        NetworkType.BITCOIN_TESTNET -> BitcoinNetwork.Testnet
-        else -> null
-    }
-
-    // Initialize ViewModel
+    // Initialize ViewModel with the network directly
     LaunchedEffect(Unit) {
-        viewModel.handleEvent(BitcoinSendEvent.Initialize(walletId, bitcoinNetwork))
-    }
-
-    val currentNetworkName = when (state.network) {
-        BitcoinNetwork.Mainnet -> "Bitcoin Mainnet"
-        BitcoinNetwork.Testnet -> "Bitcoin Testnet"
+        viewModel.handleEvent(BitcoinSendEvent.Initialize(walletId, network as BitcoinNetwork))
     }
 
     val availableNetworks = listOf(
-        NetworkType.BITCOIN_MAINNET,
-        NetworkType.BITCOIN_TESTNET
+        BitcoinNetwork.Mainnet,
+        BitcoinNetwork.Testnet
     )
 
     val errorState = rememberSendErrorState(
@@ -117,17 +105,9 @@ fun BitcoinSendScreen(
             if (showNetworkSelector) {
                 NetworkSelectorDialog(
                     availableNetworks = availableNetworks,
-                    currentNetwork = currentNetworkName,
+                    currentNetwork = state.network,
                     onNetworkSelected = { selectedNetwork ->
-                        when (selectedNetwork) {
-                            NetworkType.BITCOIN_MAINNET -> {
-                                viewModel.handleEvent(BitcoinSendEvent.SwitchNetwork(BitcoinNetwork.Mainnet))
-                            }
-                            NetworkType.BITCOIN_TESTNET -> {
-                                viewModel.handleEvent(BitcoinSendEvent.SwitchNetwork(BitcoinNetwork.Testnet))
-                            }
-                            else -> {}
-                        }
+                        viewModel.handleEvent(BitcoinSendEvent.SwitchNetwork(selectedNetwork as BitcoinNetwork))
                         showNetworkSelector = false
                     },
                     onDismiss = { showNetworkSelector = false }
@@ -145,7 +125,7 @@ fun BitcoinSendScreen(
             ) {
                 // Network Selector Card
                 NetworkSelectorCard(
-                    currentNetwork = currentNetworkName,
+                    currentNetwork = state.network,
                     onClick = { showNetworkSelector = true }
                 )
 
@@ -156,7 +136,7 @@ fun BitcoinSendScreen(
                     coinColor = bitcoinLight,
                     iconRes = R.drawable.bitcoin,
                     address = state.walletAddress,
-                    network = currentNetworkName
+                    network = state.network
                 )
 
                 // Error Banner
@@ -176,7 +156,6 @@ fun BitcoinSendScreen(
                     },
                     onFocusChange = { isFocused ->
                         addressFocused = isFocused
-                        // Mark as touched when focus leaves and field has content
                         if (!isFocused && state.toAddress.isNotEmpty()) {
                             addressTouched = true
                         }
@@ -204,7 +183,6 @@ fun BitcoinSendScreen(
                     },
                     onFocusChange = { isFocused ->
                         amountFocused = isFocused
-                        // Mark as touched when focus leaves and field has content
                         if (!isFocused && state.amount.isNotEmpty()) {
                             amountTouched = true
                         }
@@ -240,17 +218,12 @@ fun BitcoinSendScreen(
                 error = errorState.activeError,
                 onSend = {
                     focusManager.clearFocus()
-                    val currentNetwork = when (state.network) {
-                        BitcoinNetwork.Mainnet -> NetworkType.BITCOIN_MAINNET
-                        BitcoinNetwork.Testnet -> NetworkType.BITCOIN_TESTNET
-                    }
                     onNavigateToReview(
                         walletId,
-                        CoinType.BITCOIN,
                         state.toAddress,
                         state.amount,
                         state.feeLevel,
-                        currentNetwork
+                        state.network  // Pass network directly
                     )
                 },
                 modifier = Modifier.align(Alignment.BottomCenter)
