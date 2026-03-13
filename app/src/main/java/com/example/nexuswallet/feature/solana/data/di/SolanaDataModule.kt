@@ -4,7 +4,6 @@ import android.content.Context
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionDao
 import com.example.nexuswallet.feature.solana.data.remote.HeliusApi
-import com.example.nexuswallet.feature.solana.data.remote.HeliusApiKeyInterceptor
 import com.example.nexuswallet.feature.solana.data.repository.SolanaBlockchainRepositoryImpl
 import com.example.nexuswallet.feature.solana.data.repository.SolanaTransactionRepositoryImpl
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
@@ -25,22 +24,39 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
 import com.example.nexuswallet.BuildConfig
+import com.example.nexuswallet.feature.core.data.remote.ApiKeyInterceptor
 
 @InstallIn(SingletonComponent::class)
 object SolanaDataModule {
 
     @Provides
     @Singleton
+    @Named("heliusApiKey")
     fun provideHeliusApiKey(): String {
         return BuildConfig.HELIUS_API_KEY
     }
 
     @Provides
     @Singleton
-    fun provideHeliusApiKeyInterceptor(apiKey: String): HeliusApiKeyInterceptor {
-        return HeliusApiKeyInterceptor(
-            apiKey
-        )
+    @Named("heliusApiKeyParam")
+    fun provideHeliusApiKeyParam(): String {
+        return "api-key"
+    }
+
+    @Provides
+    @Singleton
+    @Named("helius")
+    fun provideHeliusOkHttpClient(
+        @Named("heliusApiKey") apiKey: String,
+        @Named("heliusApiKeyParam") apiKeyParam: String
+    ): OkHttpClient {
+        val interceptor = ApiKeyInterceptor(apiKey, apiKeyParam)
+
+        return OkHttpClient.Builder()
+            .addInterceptor(interceptor)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
     }
 
     @Provides
@@ -73,26 +89,12 @@ object SolanaDataModule {
 
     @Provides
     @Singleton
-    @Named("helius")
-    fun provideHeliusOkHttpClient(
-        apiKeyInterceptor: HeliusApiKeyInterceptor
-    ): OkHttpClient {
-        return OkHttpClient.Builder()
-            .addInterceptor(apiKeyInterceptor)
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .build()
-    }
-
-    @Provides
-    @Singleton
     fun provideHeliusApi(
         @Named("heliusApiDevnet") devnetBaseUrl: String,
         @Named("heliusApiMainnet") mainnetBaseUrl: String,
         @Named("helius") okHttpClient: OkHttpClient,
         json: Json
     ): HeliusApi {
-        // Use appropriate URL based on build type or config
         val baseUrl = if (BuildConfig.DEBUG) devnetBaseUrl else mainnetBaseUrl
 
         return Retrofit.Builder()

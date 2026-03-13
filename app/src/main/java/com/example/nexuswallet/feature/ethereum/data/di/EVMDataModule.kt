@@ -1,7 +1,6 @@
 package com.example.nexuswallet.feature.ethereum.data.di
 
 import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionDao
-import com.example.nexuswallet.feature.ethereum.data.remote.EtherscanApiKeyInterceptor
 import com.example.nexuswallet.feature.ethereum.data.remote.EtherscanApiService
 import com.example.nexuswallet.feature.ethereum.data.repository.EVMBlockchainRepositoryImpl
 import com.example.nexuswallet.feature.ethereum.data.repository.EVMTransactionRepositoryImpl
@@ -21,6 +20,7 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 import com.example.nexuswallet.BuildConfig
+import com.example.nexuswallet.feature.core.data.remote.ApiKeyInterceptor
 import javax.inject.Named
 
 @Module
@@ -31,26 +31,29 @@ object EVMDataModule {
 
     @Provides
     @Singleton
+    @Named("etherscanApiKey")
     fun provideEtherscanApiKey(): String {
         return BuildConfig.ETHERSCAN_API_KEY
     }
 
     @Provides
     @Singleton
-    fun provideEtherscanApiKeyInterceptor(apiKey: String): EtherscanApiKeyInterceptor {
-        return EtherscanApiKeyInterceptor(
-            apiKey
-        )
+    @Named("etherscanApiKeyParam")
+    fun provideEtherscanApiKeyParam(): String {
+        return "apikey"
     }
 
     @Provides
     @Singleton
     @Named("etherscan")
     fun provideEtherscanOkHttpClient(
-        apiKeyInterceptor: EtherscanApiKeyInterceptor
+        @Named("etherscanApiKey") apiKey: String,
+        @Named("etherscanApiKeyParam") apiKeyParam: String
     ): OkHttpClient {
+        val interceptor = ApiKeyInterceptor(apiKey, apiKeyParam)
+
         return OkHttpClient.Builder()
-            .addInterceptor(apiKeyInterceptor)
+            .addInterceptor(interceptor)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
