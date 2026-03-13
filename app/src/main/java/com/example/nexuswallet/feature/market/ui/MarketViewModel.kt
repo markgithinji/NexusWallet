@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.market.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.data.remote.TokenPriceUpdate
 import com.example.nexuswallet.feature.market.domain.CoinGeckoRepository
 import com.example.nexuswallet.feature.market.domain.Token
@@ -12,7 +12,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

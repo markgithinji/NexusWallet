@@ -2,20 +2,21 @@ package com.example.nexuswallet.feature.wallet.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.coin.CoinType
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransaction
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.coin.ethereum.NativeETHTransaction
-import com.example.nexuswallet.feature.coin.ethereum.TokenTransaction
-import com.example.nexuswallet.feature.coin.solana.SolanaTransaction
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
+import com.example.nexuswallet.feature.core.domain.model.CoinType
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.FormatTransactionDisplayUseCase
-import com.example.nexuswallet.feature.wallet.domain.GetTransactionDetailUseCase
-import com.example.nexuswallet.feature.wallet.domain.TransactionDetail
+import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
+import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDetailDisplayUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetTransactionDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +35,7 @@ import javax.inject.Inject
 @HiltViewModel
 class TransactionDetailViewModel @Inject constructor(
     private val getTransactionDetailUseCase: GetTransactionDetailUseCase,
-    private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
+    private val formatTransactionDetailDisplayUseCase: FormatTransactionDetailDisplayUseCase,
     private val logger: Logger
 ) : ViewModel() {
 
@@ -67,26 +68,17 @@ class TransactionDetailViewModel @Inject constructor(
 
     fun loadTransactionDetail(
         walletId: String,
-        transactionId: String,
-        coinType: CoinType
+        transactionId: String
     ) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
 
-            when (val result = getTransactionDetailUseCase(walletId, transactionId, coinType)) {
+            when (val result = getTransactionDetailUseCase(walletId, transactionId)) {
                 is Result.Success -> {
                     val transaction = result.data
 
-                    // Create a dummy transaction object for formatting
-                    val dummyTx = when (coinType) {
-                        CoinType.BITCOIN -> createDummyBitcoinTx(transaction)
-                        CoinType.SOLANA -> createDummySolanaTx(transaction)
-                        CoinType.ETHEREUM, CoinType.USDC -> createDummyEVMTx(transaction, coinType)
-                    }
+                    val displayInfo = formatTransactionDetailDisplayUseCase(transaction)
 
-                    val displayInfo = formatTransactionDisplayUseCase(dummyTx, coinType)
-
-                    // Calculate USD value TODO: integrate market repository
                     val usdValue = calculateUSDValue(transaction)
                     val formattedUsd = NumberFormat.getCurrencyInstance(Locale.US).format(usdValue)
 
@@ -119,10 +111,8 @@ class TransactionDetailViewModel @Inject constructor(
     }
 
     private fun calculateUSDValue(transaction: TransactionDetail): Double {
-        // For now, return 0 or a mock value
         val amount = transaction.amount.toDoubleOrNull() ?: 0.0
 
-        // TODO: replace with actual price fetching
         val mockPrices = mapOf(
             "bitcoin" to 65000.0,
             "ethereum" to 3500.0,
@@ -142,129 +132,10 @@ class TransactionDetailViewModel @Inject constructor(
         return amount * price
     }
 
-    private fun createDummyBitcoinTx(transaction: TransactionDetail): BitcoinTransaction {
-        return BitcoinTransaction(
-            id = transaction.id,
-            walletId = transaction.walletId,
-            fromAddress = transaction.fromAddress,
-            toAddress = transaction.toAddress,
-            status = transaction.status,
-            timestamp = transaction.timestamp,
-            note = transaction.memo,
-            feeLevel = FeeLevel.NORMAL,
-            amountSatoshis = 0,
-            amountBtc = transaction.amount,
-            feeSatoshis = 0,
-            feeBtc = transaction.fee,
-            feePerByte = transaction.feePerByte ?: 0.0,
-            estimatedSize = transaction.estimatedSize?.toLong() ?: 0,
-            signedHex = null,
-            txHash = transaction.hash,
-            network = when {
-                transaction.network.contains("Testnet") -> BitcoinNetwork.Testnet
-                else -> BitcoinNetwork.Mainnet
-            },
-            isIncoming = transaction.isIncoming
-        )
-    }
-
-    private fun createDummySolanaTx(transaction: TransactionDetail): SolanaTransaction {
-        return SolanaTransaction(
-            id = transaction.id,
-            walletId = transaction.walletId,
-            fromAddress = transaction.fromAddress,
-            toAddress = transaction.toAddress,
-            status = transaction.status,
-            timestamp = transaction.timestamp,
-            note = transaction.memo,
-            feeLevel = FeeLevel.NORMAL,
-            amountLamports = 0,
-            amountSol = transaction.amount,
-            feeLamports = 0,
-            feeSol = transaction.fee,
-            signature = transaction.hash,
-            network = when {
-                transaction.network.contains("Devnet") -> SolanaNetwork.Devnet
-                else -> SolanaNetwork.Mainnet
-            },
-            isIncoming = transaction.isIncoming,
-            tokenMint = transaction.tokenContract,
-            tokenSymbol = transaction.tokenSymbol,
-            tokenDecimals = transaction.tokenDecimals,
-            slot = transaction.slot,
-            blockTime = transaction.blockHeight
-        )
-    }
-
-    private fun createDummyEVMTx(transaction: TransactionDetail, coinType: CoinType): Any {
-        if (transaction.tokenSymbol != null) {
-            return TokenTransaction(
-                id = transaction.id,
-                walletId = transaction.walletId,
-                fromAddress = transaction.fromAddress,
-                toAddress = transaction.toAddress,
-                status = transaction.status,
-                timestamp = transaction.timestamp,
-                note = transaction.memo,
-                feeLevel = FeeLevel.NORMAL,
-                amountWei = "0",
-                amountDecimal = transaction.amount,
-                gasPriceWei = "0",
-                gasPriceGwei = transaction.gasPrice ?: "0",
-                gasLimit = transaction.gasUsed ?: 0,
-                feeWei = "0",
-                feeEth = transaction.fee,
-                nonce = transaction.nonce ?: 0,
-                chainId = transaction.chainId?.toLong() ?: 0,
-                signedHex = null,
-                txHash = transaction.hash,
-                network = when {
-                    transaction.network.contains("Sepolia") -> EthereumNetwork.Sepolia.chainId
-                    else -> EthereumNetwork.Mainnet.chainId
-                },
-                isIncoming = transaction.isIncoming,
-                tokenContract = transaction.tokenContract ?: "",
-                tokenSymbol = transaction.tokenSymbol ?: "",
-                tokenDecimals = transaction.tokenDecimals ?: 18,
-                data = "",
-                tokenExternalId = ""
-            )
-        } else {
-            return NativeETHTransaction(
-                id = transaction.id,
-                walletId = transaction.walletId,
-                fromAddress = transaction.fromAddress,
-                toAddress = transaction.toAddress,
-                status = transaction.status,
-                timestamp = transaction.timestamp,
-                note = transaction.memo,
-                feeLevel = FeeLevel.NORMAL,
-                amountWei = "0",
-                amountEth = transaction.amount,
-                gasPriceWei = "0",
-                gasPriceGwei = transaction.gasPrice ?: "0",
-                gasLimit = transaction.gasUsed ?: 0,
-                feeWei = "0",
-                feeEth = transaction.fee,
-                nonce = transaction.nonce ?: 0,
-                chainId = transaction.chainId?.toLong() ?: 0,
-                signedHex = null,
-                txHash = transaction.hash,
-                network = when {
-                    transaction.network.contains("Sepolia") -> EthereumNetwork.Sepolia.chainId
-                    else -> EthereumNetwork.Mainnet.chainId
-                },
-                isIncoming = transaction.isIncoming,
-                data = "",
-                tokenExternalId = null
-            )
-        }
-    }
-
     fun refresh() {
         val currentState = _state.value
         currentState.transaction?.let { tx ->
-            loadTransactionDetail(tx.walletId, tx.id, tx.coinType)
+            loadTransactionDetail(tx.walletId, tx.id)
         }
     }
 
@@ -283,22 +154,7 @@ class TransactionDetailViewModel @Inject constructor(
     fun openInExplorer() {
         viewModelScope.launch {
             _state.value.transaction?.let { tx ->
-                val network = when (tx.coinType) {
-                    CoinType.BITCOIN -> when {
-                        tx.network.contains("Testnet") -> "testnet"
-                        else -> "mainnet"
-                    }
-                    CoinType.ETHEREUM, CoinType.USDC -> when {
-                        tx.network.contains("Sepolia") -> "sepolia"
-                        else -> "mainnet"
-                    }
-                    CoinType.SOLANA -> when {
-                        tx.network.contains("Devnet") -> "devnet"
-                        else -> "mainnet"
-                    }
-                }
-
-                val url = ExplorerUrlHelper.getExplorerUrl(tx.hash, tx.coinType, network)
+                val url = ExplorerUrlHelper.getExplorerUrl(tx.hash, tx.network)
                 _effects.emit(TransactionDetailEffect.OpenExplorer(url))
             }
         }

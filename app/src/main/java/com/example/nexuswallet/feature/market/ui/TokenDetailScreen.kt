@@ -25,10 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Article
-import androidx.compose.material.icons.outlined.CurrencyBitcoin
-import androidx.compose.material.icons.outlined.Diamond
 import androidx.compose.material.icons.outlined.Error
-import androidx.compose.material.icons.outlined.FlashOn
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.TrendingDown
 import androidx.compose.material.icons.outlined.TrendingUp
@@ -63,19 +60,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.data.model.NewsArticle
 import com.example.nexuswallet.feature.market.data.remote.ChartData
 import com.example.nexuswallet.feature.market.data.remote.ChartDuration
 import com.example.nexuswallet.feature.market.data.remote.TokenDetail
-import com.example.nexuswallet.ui.theme.bitcoinLight
-import com.example.nexuswallet.ui.theme.ethereumLight
-import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.success
-import java.time.Duration
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)

@@ -4,7 +4,7 @@ import com.example.nexuswallet.feature.market.data.model.NewsArticle
 import com.example.nexuswallet.feature.market.data.remote.ChartData
 import com.example.nexuswallet.feature.market.data.remote.ChartDuration
 import com.example.nexuswallet.feature.market.data.remote.TokenDetail
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.core.util.Result
 
 interface MarketRepository {
     suspend fun getLatestPricePercentages(): Result<Map<String, Double>>

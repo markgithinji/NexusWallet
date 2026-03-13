@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.market.ui
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.data.model.NewsArticle
 import com.example.nexuswallet.feature.market.data.remote.ChartData
 import com.example.nexuswallet.feature.market.data.remote.ChartDuration

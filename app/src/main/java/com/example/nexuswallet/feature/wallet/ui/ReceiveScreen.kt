@@ -73,8 +73,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.example.nexuswallet.feature.coin.CoinType
-import com.example.nexuswallet.feature.coin.NetworkType
+import com.example.nexuswallet.feature.core.domain.model.CoinType
+import com.example.nexuswallet.feature.core.domain.model.NetworkType
+import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -87,20 +88,17 @@ import com.google.zxing.qrcode.QRCodeWriter
 fun ReceiveScreen(
     onNavigateUp: () -> Unit,
     walletId: String,
-    coinType: CoinType,
-    network: NetworkType? = null,
+    network: Network,
     viewModel: ReceiveViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Initialize with coin type and network from navigation
     LaunchedEffect(Unit) {
-        viewModel.initialize(walletId, coinType, network)
+        viewModel.initialize(walletId, network)
     }
 
-    // Show success snackbar when copied
     LaunchedEffect(uiState.copiedToClipboard) {
         if (uiState.copiedToClipboard) {
             snackbarHostState.showSnackbar(
@@ -110,14 +108,15 @@ fun ReceiveScreen(
         }
     }
 
-    val (coinColor, iconRes) = getCoinTypeConfig(uiState.coinType)
+    val coinType = uiState.coinType ?: network.coinType
+    val (coinColor, iconRes) = getCoinTypeConfig(coinType)
 
     Scaffold(
         topBar = {
             ReceiveScreenTopBar(
                 iconRes = iconRes,
                 coinColor = coinColor,
-                coinName = uiState.coinType.name.lowercase().replaceFirstChar { it.uppercase() },
+                coinName = coinType.name.lowercase().replaceFirstChar { it.uppercase() },
                 networkDisplayName = uiState.networkDisplayName,
                 onNavigateUp = onNavigateUp
             )
@@ -130,13 +129,13 @@ fun ReceiveScreen(
         } else if (uiState.error != null) {
             ErrorView(
                 error = uiState.error,
-                onRetry = { viewModel.initialize(walletId, coinType, network) },
+                onRetry = { viewModel.initialize(walletId, network) },
                 modifier = Modifier.padding(paddingValues)
             )
         } else {
             ReceiveContent(
                 address = uiState.address,
-                coinType = uiState.coinType,
+                coinType = coinType,
                 networkDisplayName = uiState.networkDisplayName,
                 copiedToClipboard = uiState.copiedToClipboard,
                 onCopy = {

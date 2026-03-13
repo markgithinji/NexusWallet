@@ -20,23 +20,25 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.contentColorFor
-import com.example.nexuswallet.feature.coin.NetworkType
+import com.example.nexuswallet.feature.core.domain.model.NetworkType
+import com.example.nexuswallet.feature.wallet.domain.model.Network
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTabScreen(
     onNavigateToCreateWallet: () -> Unit,
     onNavigateToWalletDetail: (String) -> Unit,
-    onNavigateToCoinDetail: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToCoinDetail: (String, Network) -> Unit,
     onNavigateToTokenDetail: (String) -> Unit,
-    onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
-    onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToReceive: (String, Network) -> Unit,
+    onNavigateToSend: (String, Network) -> Unit,
     onNavigateToSecurity: () -> Unit,
     onRequestAuthentication: (String, String) -> Unit,
     padding: PaddingValues

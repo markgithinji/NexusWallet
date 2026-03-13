@@ -5,20 +5,31 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionDao
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinTransactionEntity
-import com.example.nexuswallet.feature.coin.ethereum.EVMTransactionDao
-import com.example.nexuswallet.feature.coin.ethereum.EVMTransactionEntity
-import com.example.nexuswallet.feature.coin.solana.SolanaTransactionDao
-import com.example.nexuswallet.feature.coin.solana.SolanaTransactionEntity
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinBalanceDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinCoinDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Converters
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMBalanceDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMTokenDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SPLTokenDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaBalanceDao
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoinDao
+import com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionDao
+import com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionEntity
+import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionDao
+import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity
+import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionDao
+import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity
+import com.example.nexuswallet.feature.wallet.data.local.dao.BitcoinBalanceDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.BitcoinCoinDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.EVMBalanceDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.EVMTokenDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.SPLTokenDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaBalanceDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaCoinDao
+import com.example.nexuswallet.feature.wallet.data.local.dao.WalletDao
+import com.example.nexuswallet.feature.wallet.data.local.entity.BitcoinBalanceEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.BitcoinCoinEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.EVMBalanceEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.EVMTokenEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.SPLTokenEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.SolanaBalanceEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.SolanaCoinEntity
+import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
+import com.example.nexuswallet.feature.wallet.data.local.migration.MIGRATION_1_2
+import com.example.nexuswallet.feature.wallet.data.local.migration.MIGRATION_2_3
+import com.example.nexuswallet.feature.wallet.data.local.migration.MIGRATION_3_4
 
 @Database(
     entities = [
@@ -43,7 +54,7 @@ import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaCoinDao
         EVMBalanceEntity::class,
         EVMTransactionEntity::class
     ],
-    version = 1,
+    version = 4,  // Increment version from 3 to 4
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -80,7 +91,12 @@ abstract class WalletDatabase : RoomDatabase() {
                     WalletDatabase::class.java,
                     "wallet_database"
                 )
-//                     .fallbackToDestructiveMigration()
+                    .addMigrations(
+                        MIGRATION_1_2,
+                        MIGRATION_2_3,
+                        MIGRATION_3_4
+                    )
+//                 .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

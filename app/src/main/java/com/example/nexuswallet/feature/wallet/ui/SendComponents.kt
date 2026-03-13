@@ -1,9 +1,5 @@
 package com.example.nexuswallet.feature.wallet.ui
 
-
-import android.content.ClipboardManager
-import android.content.Context
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -69,7 +65,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -79,18 +75,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.nexuswallet.R
-import com.example.nexuswallet.feature.coin.CoinType
-import com.example.nexuswallet.feature.coin.NetworkType
-import com.example.nexuswallet.feature.coin.SendValidationResult
-import com.example.nexuswallet.feature.coin.bitcoin.BitcoinFeeEstimate
-import com.example.nexuswallet.feature.coin.bitcoin.FeeLevel
-import com.example.nexuswallet.feature.coin.ethereum.EVMFeeEstimate
-import com.example.nexuswallet.feature.coin.solana.SolanaFeeEstimate
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EVMToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
+import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
+import com.example.nexuswallet.feature.core.domain.model.CoinType
+import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
+import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
+import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -130,7 +126,7 @@ fun SendTopBar(
         navigationIcon = {
             IconButton(onClick = onNavigateUp) {
                 Icon(
-                    Icons.Default.ArrowBack,
+                    Icons.AutoMirrored.Filled.ArrowBack,
                     "Back",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -154,9 +150,15 @@ fun SendTopBar(
 
 @Composable
 fun NetworkSelectorCard(
-    currentNetwork: String,
+    currentNetwork: Network?,
     onClick: () -> Unit
 ) {
+    val displayName = if (currentNetwork?.isTestnet == true) {
+        "${currentNetwork.displayName} Testnet"
+    } else {
+        currentNetwork?.displayName ?: "Select Network"
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -188,7 +190,7 @@ fun NetworkSelectorCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = currentNetwork,
+                    text = displayName,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
@@ -205,9 +207,9 @@ fun NetworkSelectorCard(
 
 @Composable
 fun NetworkSelectorDialog(
-    availableNetworks: List<NetworkType>,
-    currentNetwork: String,
-    onNetworkSelected: (NetworkType) -> Unit,
+    availableNetworks: List<Network>,
+    currentNetwork: Network?,
+    onNetworkSelected: (Network) -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -228,8 +230,12 @@ fun NetworkSelectorDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(availableNetworks) { network ->
-                    val networkName = network.displayName
-                    val isSelected = networkName == currentNetwork
+                    val displayName = if (network.isTestnet) {
+                        "${network.displayName} Testnet"
+                    } else {
+                        network.displayName
+                    }
+                    val isSelected = network == currentNetwork
 
                     Card(
                         modifier = Modifier
@@ -250,7 +256,7 @@ fun NetworkSelectorDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = networkName,
+                                text = displayName,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 color = if (isSelected)
@@ -292,7 +298,7 @@ fun SendBalanceCard(
     coinColor: Color,
     iconRes: Int,
     address: String,
-    network: String? = null
+    network: Network? = null
 ) {
     Card(
         modifier = Modifier
@@ -334,9 +340,9 @@ fun SendBalanceCard(
                         color = coinColor
                     )
 
-                    if (network != null && network != "MAINNET" && network != "Mainnet") {
+                    if (network != null && network.isTestnet) {
                         Text(
-                            text = "Network: $network",
+                            text = "Network: ${network.displayName} Testnet",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -396,7 +402,7 @@ fun SendAddressInput(
     focusRequester: FocusRequester = FocusRequester()
 ) {
     val focusManager = LocalFocusManager.current
-    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     var focused by remember { mutableStateOf(false) }
 
     LaunchedEffect(focused) {
@@ -515,12 +521,9 @@ fun SendAddressInput(
 
                 TextButton(
                     onClick = {
-                        val clipboard =
-                            context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = clipboard.primaryClip
-                        val pastedText = clip?.getItemAt(0)?.text?.toString()
-                        if (!pastedText.isNullOrBlank()) {
-                            onPaste(pastedText)
+                        val clip = clipboardManager.getText()
+                        if (!clip.isNullOrBlank()) {
+                            onPaste(clip.toString())
                         }
                     },
                     colors = ButtonDefaults.textButtonColors(
@@ -787,7 +790,6 @@ fun SendFeeSelection(
                         )
                     }
                 }
-
                 CoinType.ETHEREUM, CoinType.USDC -> {
                     (feeEstimate as? EVMFeeEstimate)?.let { fee ->
                         FeeDetailsRow(
@@ -804,13 +806,18 @@ fun SendFeeSelection(
                         )
                     }
                 }
-
                 CoinType.SOLANA -> {
                     (feeEstimate as? SolanaFeeEstimate)?.let { fee ->
                         FeeDetailsRow(
                             label = "Network Fee",
                             value = "${fee.feeSol} SOL"
                         )
+                        if (fee.computeUnits > 0) {
+                            FeeDetailsRow(
+                                label = "Compute Units",
+                                value = fee.computeUnits.toString()
+                            )
+                        }
                     }
                 }
             }
@@ -874,7 +881,7 @@ fun FeeLevelButton(
         colors = CardDefaults.cardColors(
             containerColor = if (selected) color.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant
         ),
-        border = if (selected) BorderStroke(1.dp, color) else null
+        border = if (selected) androidx.compose.foundation.BorderStroke(1.dp, color) else null
     ) {
         Row(
             modifier = Modifier
@@ -982,229 +989,6 @@ fun SendBottomBar(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun MaxAmountDialog(
-    balance: BigDecimal,
-    feeEstimate: Any?,
-    tokenSymbol: String,
-    coinType: CoinType,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    val fee = when (feeEstimate) {
-        is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull()
-            ?: BigDecimal("0.00001")
-
-        is EVMFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
-        is SolanaFeeEstimate -> feeEstimate.feeSol.toBigDecimalOrNull() ?: BigDecimal("0.000005")
-        else -> when (coinType) {
-            CoinType.BITCOIN -> BigDecimal("0.00001")
-            CoinType.ETHEREUM, CoinType.USDC -> BigDecimal("0.001")
-            CoinType.SOLANA -> BigDecimal("0.000005")
-        }
-    }
-
-    val maxAmount = balance - fee
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = {
-            Text(
-                text = "Send Maximum",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        },
-        text = {
-            Column {
-                if (maxAmount > BigDecimal.ZERO) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Available:",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "${
-                                balance.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros()
-                                    .toPlainString()
-                            } $tokenSymbol",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Network Fee:",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "- ${
-                                fee.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros()
-                                    .toPlainString()
-                            } $tokenSymbol",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-
-                    Divider(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.outline,
-                        thickness = 1.dp
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Maximum Send:",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "${
-                                maxAmount.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros()
-                                    .toPlainString()
-                            } $tokenSymbol",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "This will send all available funds minus the network fee.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    Text(
-                        text = "Insufficient balance to cover network fee.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            if (maxAmount > BigDecimal.ZERO) {
-                Button(
-                    onClick = { onConfirm(maxAmount.toPlainString()) },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text(
-                        "Use Maximum",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            ) {
-                Text("Cancel", style = MaterialTheme.typography.labelLarge)
-            }
-        }
-    )
-}
-
-@Composable
-fun ErrorMessage(
-    error: String,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Error,
-                    contentDescription = "Error",
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp)
-                )
-                Text(
-                    text = error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Close,
-                    contentDescription = "Dismiss",
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }
-    }
-}
-
-// Helper to get USD rate based on coin color TODO: need proper price fetching
-private fun getUsdRate(coinColor: Color): Double {
-    return when (coinColor) {
-        bitcoinLight -> 45000.0
-        ethereumLight -> 3000.0
-        solanaLight -> 30.0
-        usdcLight -> 1.0
-        else -> 1.0
     }
 }
 
@@ -1369,152 +1153,74 @@ fun MaxAmountDialog(
 }
 
 @Composable
-fun SendFeeSelection(
-    feeLevel: FeeLevel,
-    onFeeLevelChange: (FeeLevel) -> Unit,
-    feeEstimate: Any?,
-    coinType: CoinType,
-    token: EVMToken? = null
+fun ErrorMessage(
+    error: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(20.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.errorContainer
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = "Transaction Fee",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Error,
+                    contentDescription = "Error",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            FeeLevelButtons(
-                selectedLevel = feeLevel,
-                onLevelSelected = onFeeLevelChange
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            when (coinType) {
-                CoinType.BITCOIN -> {
-                    (feeEstimate as? BitcoinFeeEstimate)?.let { fee ->
-                        FeeDetailsRow(
-                            label = "Network Fee",
-                            value = "${fee.totalFeeBtc} BTC"
-                        )
-                        FeeDetailsRow(
-                            label = "Fee Rate",
-                            value = "${fee.feePerByte} sat/byte"
-                        )
-                    }
-                }
-                CoinType.ETHEREUM, CoinType.USDC -> {
-                    (feeEstimate as? EVMFeeEstimate)?.let { fee ->
-                        FeeDetailsRow(
-                            label = "Network Fee",
-                            value = "${fee.totalFeeEth} ETH"
-                        )
-                        FeeDetailsRow(
-                            label = "Gas Price",
-                            value = "${fee.gasPriceGwei} Gwei"
-                        )
-                        FeeDetailsRow(
-                            label = "Gas Limit",
-                            value = fee.gasLimit.toString()
-                        )
-                    }
-                }
-                CoinType.SOLANA -> {
-                    (feeEstimate as? SolanaFeeEstimate)?.let { fee ->
-                        FeeDetailsRow(
-                            label = "Network Fee",
-                            value = "${fee.feeSol} SOL"
-                        )
-                        if (fee.computeUnits > 0) {
-                            FeeDetailsRow(
-                                label = "Compute Units",
-                                value = fee.computeUnits.toString()
-                            )
-                        }
-                    }
-                }
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = "Dismiss",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
     }
 }
 
-@Composable
-fun rememberSendErrorState(
-    validationResult: SendValidationResult,
-    addressTouched: Boolean,
-    amountTouched: Boolean,
-    addressFocused: Boolean,
-    amountFocused: Boolean
-): SendErrorState {
-
-    val showAddressError = !addressFocused && addressTouched && validationResult.addressError != null
-    val showSelfSendError = !addressFocused && addressTouched && validationResult.selfSendError != null
-
-    // Only show amount errors if amount field has been touched
-    val showAmountError = !amountFocused && amountTouched && validationResult.amountError != null
-    val showBalanceError = !amountFocused && amountTouched && validationResult.balanceError != null
-    val showGasError = !amountFocused && amountTouched && validationResult.gasError != null
-
-    val activeError = when {
-        !addressFocused && !amountFocused -> {
-            when {
-                showSelfSendError -> validationResult.selfSendError
-                showAddressError -> validationResult.addressError
-                showGasError -> validationResult.gasError
-                showAmountError -> validationResult.amountError
-                showBalanceError -> validationResult.balanceError
-                else -> null
-            }
-        }
-        else -> null
+// Helper to get USD rate based on coin color
+private fun getUsdRate(coinColor: Color): Double {
+    return when (coinColor) {
+        bitcoinLight -> 45000.0
+        ethereumLight -> 3000.0
+        solanaLight -> 30.0
+        usdcLight -> 1.0
+        else -> 1.0
     }
-
-    return SendErrorState(
-        showAddressError = showAddressError,
-        showAmountError = showAmountError,
-        showBalanceError = showBalanceError,
-        showSelfSendError = showSelfSendError,
-        showGasError = showGasError,
-        activeError = activeError,
-        addressErrorMessage = when {
-            showSelfSendError -> validationResult.selfSendError
-            showAddressError -> validationResult.addressError
-            else -> null
-        },
-        amountErrorMessage = when {
-            showGasError -> validationResult.gasError
-            showAmountError -> validationResult.amountError
-            showBalanceError -> validationResult.balanceError
-            else -> null
-        }
-    )
 }
 
-data class SendErrorState(
-    val showAddressError: Boolean = false,
-    val showAmountError: Boolean = false,
-    val showBalanceError: Boolean = false,
-    val showSelfSendError: Boolean = false,
-    val showGasError: Boolean = false,
-    val activeError: String? = null,
-    val addressErrorMessage: String? = null,
-    val amountErrorMessage: String? = null
-)
 @Composable
 fun TokenSelectorCard(
     selectedToken: EVMToken?,
@@ -1713,3 +1419,65 @@ fun TokenSelectorDialog(
         }
     )
 }
+
+@Composable
+fun rememberSendErrorState(
+    validationResult: SendValidationResult,
+    addressTouched: Boolean,
+    amountTouched: Boolean,
+    addressFocused: Boolean,
+    amountFocused: Boolean
+): SendErrorState {
+
+    val showAddressError = !addressFocused && addressTouched && validationResult.addressError != null
+    val showSelfSendError = !addressFocused && addressTouched && validationResult.selfSendError != null
+
+    val showAmountError = !amountFocused && amountTouched && validationResult.amountError != null
+    val showBalanceError = !amountFocused && amountTouched && validationResult.balanceError != null
+    val showGasError = !amountFocused && amountTouched && validationResult.gasError != null
+
+    val activeError = when {
+        !addressFocused && !amountFocused -> {
+            when {
+                showSelfSendError -> validationResult.selfSendError
+                showAddressError -> validationResult.addressError
+                showGasError -> validationResult.gasError
+                showAmountError -> validationResult.amountError
+                showBalanceError -> validationResult.balanceError
+                else -> null
+            }
+        }
+        else -> null
+    }
+
+    return SendErrorState(
+        showAddressError = showAddressError,
+        showAmountError = showAmountError,
+        showBalanceError = showBalanceError,
+        showSelfSendError = showSelfSendError,
+        showGasError = showGasError,
+        activeError = activeError,
+        addressErrorMessage = when {
+            showSelfSendError -> validationResult.selfSendError
+            showAddressError -> validationResult.addressError
+            else -> null
+        },
+        amountErrorMessage = when {
+            showGasError -> validationResult.gasError
+            showAmountError -> validationResult.amountError
+            showBalanceError -> validationResult.balanceError
+            else -> null
+        }
+    )
+}
+
+data class SendErrorState(
+    val showAddressError: Boolean = false,
+    val showAmountError: Boolean = false,
+    val showBalanceError: Boolean = false,
+    val showSelfSendError: Boolean = false,
+    val showGasError: Boolean = false,
+    val activeError: String? = null,
+    val addressErrorMessage: String? = null,
+    val amountErrorMessage: String? = null
+)

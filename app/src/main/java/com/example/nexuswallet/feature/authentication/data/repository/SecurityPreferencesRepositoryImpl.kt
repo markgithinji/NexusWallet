@@ -6,7 +6,10 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.example.nexuswallet.feature.authentication.domain.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.authentication.data.util.safeEdit
+import com.example.nexuswallet.feature.authentication.data.util.safeGet
+import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.toHex
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,7 +45,7 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             val ivHex = preferences[ivKey]
 
             if (encrypted != null && ivHex != null) {
-                Pair(encrypted, hexToBytes(ivHex))
+                Pair(encrypted,ivHex.hexToByteArray())
             } else {
                 null
             }
@@ -79,7 +82,7 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             val ivHex = preferences[ivKey]
 
             if (encrypted != null && ivHex != null) {
-                Pair(encrypted, hexToBytes(ivHex))
+                Pair(encrypted, ivHex.hexToByteArray())
             } else {
                 null
             }
@@ -96,7 +99,7 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             val ivHex = preferences[ivKey]
 
             if (encrypted != null && ivHex != null) {
-                Pair(encrypted, hexToBytes(ivHex))
+                Pair(encrypted, ivHex.hexToByteArray())
             } else {
                 null
             }
@@ -162,12 +165,6 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             val preferences = dataStore.data.first()
             preferences[LAST_AUTH_TIME_KEY]
         }
-    }
-
-    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
-
-    private fun hexToBytes(hex: String): ByteArray {
-        return hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
     }
 
     companion object {

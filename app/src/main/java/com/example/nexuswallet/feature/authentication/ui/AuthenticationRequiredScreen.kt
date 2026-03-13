@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.authentication.ui
 
-
+import android.hardware.biometrics.BiometricPrompt.BIOMETRIC_ERROR_CANCELED
+import android.hardware.biometrics.BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED
 import androidx.activity.compose.LocalActivity
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
@@ -33,8 +34,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -59,14 +60,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.FragmentActivity
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.example.nexuswallet.feature.authentication.domain.AuthType
-import com.example.nexuswallet.feature.coin.Result
+import com.example.nexuswallet.feature.authentication.domain.model.AuthType
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.ui.theme.warning
 import kotlinx.coroutines.launch
-import timber.log.Timber
-import java.util.concurrent.Executor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -88,31 +86,30 @@ fun AuthenticationRequiredScreen(
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
 
     val biometricPrompt = remember(activity) {
-        if (activity != null) {
-            val executor: Executor = ContextCompat.getMainExecutor(context)
-            BiometricPrompt(activity, executor,
-                object : BiometricPrompt.AuthenticationCallback() {
-                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                        super.onAuthenticationSucceeded(result)
-                        viewModel.onBiometricSuccess()
-                    }
+        if (activity == null) return@remember null
 
-                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                        super.onAuthenticationError(errorCode, errString)
-                        if (errorCode != BiometricPrompt.ERROR_CANCELED &&
-                            errorCode != BiometricPrompt.ERROR_USER_CANCELED) {
-                            viewModel.setErrorMessage(errString.toString())
-                        }
-                    }
+        val executor = ContextCompat.getMainExecutor(context)
+        BiometricPrompt(
+            activity,
+            executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    viewModel.onBiometricSuccess()
+                }
 
-                    override fun onAuthenticationFailed() {
-                        super.onAuthenticationFailed()
-                        viewModel.setErrorMessage("Authentication failed. Please try again.")
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    if (errorCode != BIOMETRIC_ERROR_CANCELED &&
+                        errorCode != BIOMETRIC_ERROR_USER_CANCELED
+                    ) {
+                        viewModel.setErrorMessage(errString.toString())
                     }
-                })
-        } else {
-            null
-        }
+                }
+
+                override fun onAuthenticationFailed() {
+                    viewModel.setErrorMessage("Authentication failed. Please try again.")
+                }
+            }
+        )
     }
 
     val promptInfo = remember {
@@ -126,14 +123,15 @@ fun AuthenticationRequiredScreen(
 
     val coroutineScope = rememberCoroutineScope()
 
-    // Refresh auth status when screen becomes visible
     LaunchedEffect(Unit) {
         viewModel.refreshAuthStatus()
     }
 
     if (showPinDialog) {
-        AuthenticationPinDialog(
+        PinEntryDialog(
             showDialog = showPinDialog,
+            title = "Enter PIN",
+            subtitle = "Enter your PIN to continue",
             onPinEntered = { pin ->
                 coroutineScope.launch {
                     viewModel.verifyPin(pin)
@@ -181,9 +179,11 @@ fun AuthenticationRequiredScreen(
                 onAuthenticated()
                 viewModel.clearState()
             }
+
             is Result.Error -> {
                 viewModel.setErrorMessage(result.message)
             }
+
             else -> {}
         }
     }
@@ -389,7 +389,7 @@ private fun AuthenticationMethodsCard(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            // Biometric button - enabled only if hardware available AND user enabled it
+            // Biometric button - enabled only if hardware available & user enabled it
             val biometricEnabled = biometricHardwareAvailable && isBiometricEnabled
             val biometricError = when {
                 !biometricHardwareAvailable -> "Biometric hardware not available"
@@ -459,10 +459,10 @@ private fun AuthenticationMethodsCard(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.weight(1f),
-                        color = MaterialTheme.colorScheme.outline,
-                        thickness = 1.dp
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outline
                     )
                     Text(
                         text = "OR",
@@ -470,10 +470,10 @@ private fun AuthenticationMethodsCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.weight(1f),
-                        color = MaterialTheme.colorScheme.outline,
-                        thickness = 1.dp
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outline
                     )
                 }
 
@@ -535,19 +535,4 @@ private fun AuthenticationMethodsCard(
             }
         }
     }
-}
-
-@Composable
-private fun AuthenticationPinDialog(
-    showDialog: Boolean,
-    onPinEntered: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    PinEntryDialog(
-        showDialog = showDialog,
-        title = "Enter PIN",
-        subtitle = "Enter your PIN to continue",
-        onPinEntered = onPinEntered,
-        onDismiss = onDismiss
-    )
 }

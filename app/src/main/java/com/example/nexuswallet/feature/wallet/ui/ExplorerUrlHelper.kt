@@ -1,26 +1,31 @@
 package com.example.nexuswallet.feature.wallet.ui
 
-import com.example.nexuswallet.feature.coin.CoinType
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 
 object ExplorerUrlHelper {
-    fun getExplorerUrl(txHash: String, coinType: CoinType, network: String?): String {
-        return when (coinType) {
-            CoinType.BITCOIN -> {
-                when (network?.lowercase()) {
-                    "testnet" -> "https://blockstream.info/testnet/tx/$txHash"
-                    else -> "https://blockstream.info/tx/$txHash"
+    fun getExplorerUrl(txHash: String, network: Network): String {
+        return when (network) {
+            is BitcoinNetwork -> {
+                when (network) {
+                    BitcoinNetwork.Mainnet -> "https://blockstream.info/tx/$txHash"
+                    BitcoinNetwork.Testnet -> "https://blockstream.info/testnet/tx/$txHash"
                 }
             }
-            CoinType.ETHEREUM, CoinType.USDC -> {
-                when (network?.lowercase()) {
-                    "sepolia" -> "https://sepolia.etherscan.io/tx/$txHash"
-                    else -> "https://etherscan.io/tx/$txHash"
+
+            is EthereumNetwork -> {
+                when (network) {
+                    EthereumNetwork.Mainnet -> "https://etherscan.io/tx/$txHash"
+                    EthereumNetwork.Sepolia -> "https://sepolia.etherscan.io/tx/$txHash"
                 }
             }
-            CoinType.SOLANA -> {
-                when (network?.lowercase()) {
-                    "devnet" -> "https://solscan.io/tx/$txHash?cluster=devnet"
-                    else -> "https://solscan.io/tx/$txHash"
+
+            is SolanaNetwork -> {
+                when (network) {
+                    SolanaNetwork.Mainnet -> "https://solscan.io/tx/$txHash"
+                    SolanaNetwork.Devnet -> "https://solscan.io/tx/$txHash?cluster=devnet"
                 }
             }
         }

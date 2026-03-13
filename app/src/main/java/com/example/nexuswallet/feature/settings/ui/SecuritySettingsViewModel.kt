@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.settings.ui
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -8,8 +7,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.example.nexuswallet.feature.coin.Result
-import kotlinx.coroutines.async
+import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.settings.domain.usecase.ClearAllSecurityDataUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.ClearPinUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.GetAuthStatusUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.SetBiometricEnabledUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.SetPinUseCase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -78,7 +81,7 @@ class SecuritySettingsViewModel @Inject constructor(
                     refreshAuthStatus()
                 }
                 is Result.Error -> {
-                    Log.e("SecurityVM", "Failed to set biometric: ${result.message}")
+                    _uiState.value = Result.Error(result.message)
                 }
                 Result.Loading -> { /* Ignore */ }
             }
@@ -107,7 +110,7 @@ class SecuritySettingsViewModel @Inject constructor(
                 }
             }
             is Result.Error -> {
-                Log.e("SecurityVM", "Failed to refresh auth status: ${result.message}")
+                _uiState.value = Result.Error(result.message)
             }
             Result.Loading -> { /* Ignore */ }
         }
@@ -149,7 +152,7 @@ class SecuritySettingsViewModel @Inject constructor(
                     refreshAuthStatus()
                 }
                 is Result.Error -> {
-                    Log.e("SecurityVM", "Failed to clear all data: ${result.message}")
+                    _uiState.value = Result.Error(result.message)
                 }
                 Result.Loading -> { /* Ignore */ }
             }
@@ -163,34 +166,27 @@ class SecuritySettingsViewModel @Inject constructor(
         _pinSetupError.value = null
     }
 
-    suspend fun setNewPin(pin: String): Boolean {
-        _operationState.value = SecurityOperation.UPDATING
+    fun setNewPin(pin: String) {
+        viewModelScope.launch {
+            _operationState.value = SecurityOperation.UPDATING
 
-        return try {
             when (val result = setPinUseCase(pin)) {
                 is Result.Success -> {
                     if (result.data) {
                         refreshAuthStatus()
                         _showPinSetupDialog.value = false
-                        true
                     } else {
                         _pinSetupError.value = "Failed to set PIN"
-                        false
                     }
                 }
                 is Result.Error -> {
                     _pinSetupError.value = "Failed to set PIN: ${result.message}"
-                    false
                 }
                 Result.Loading -> {
                     _pinSetupError.value = "Setting PIN..."
-                    false
                 }
             }
-        } catch (e: Exception) {
-            _pinSetupError.value = "Failed to set PIN: ${e.message}"
-            false
-        } finally {
+
             _operationState.value = SecurityOperation.IDLE
         }
     }
@@ -209,7 +205,7 @@ class SecuritySettingsViewModel @Inject constructor(
                     refreshAuthStatus()
                 }
                 is Result.Error -> {
-                    Log.e("SecurityVM", "Failed to remove PIN: ${result.message}")
+                    _uiState.value = Result.Error(result.message)
                 }
                 Result.Loading -> { /* Ignore */ }
             }

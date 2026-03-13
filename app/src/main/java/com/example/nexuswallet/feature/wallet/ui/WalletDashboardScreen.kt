@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.wallet.ui
 
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateContentSize
@@ -11,8 +10,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
-import com.example.nexuswallet.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,23 +33,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.AttachMoney
-import androidx.compose.material.icons.outlined.CurrencyBitcoin
-import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Diamond
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.FlashOn
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Token
 import androidx.compose.material.icons.outlined.TrendingUp
-import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -64,13 +51,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -85,33 +70,29 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.example.nexuswallet.feature.coin.CoinType
-import com.example.nexuswallet.feature.coin.NetworkType
-import com.example.nexuswallet.feature.coin.Result
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.NativeETH
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDCToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.USDTToken
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.Wallet
-import com.example.nexuswallet.feature.wallet.data.walletsrefactor.WalletBalance
+import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
+import com.example.nexuswallet.feature.wallet.domain.model.Wallet
+import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
-import com.example.nexuswallet.ui.theme.warning
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
@@ -119,10 +100,9 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun WalletDashboardScreen(
-    onNavigateToWalletDetail: (String) -> Unit,
-    onNavigateToCoinDetail: (String, CoinType, NetworkType?) -> Unit,
-    onNavigateToReceive: (String, CoinType, NetworkType?) -> Unit,
-    onNavigateToSend: (String, CoinType, NetworkType?) -> Unit,
+    onNavigateToCoinDetail: (String, Network) -> Unit,
+    onNavigateToReceive: (String, Network) -> Unit,
+    onNavigateToSend: (String, Network) -> Unit,
     onNavigateToCreateWallet: () -> Unit,
     onRequestAuthentication: (String, String) -> Unit,
     padding: PaddingValues,
@@ -164,7 +144,6 @@ fun WalletDashboardScreen(
         ) {
             when (val state = uiState) {
                 is Result.Loading -> {
-                    // Loading state
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -174,7 +153,6 @@ fun WalletDashboardScreen(
                 }
 
                 is Result.Error -> {
-                    // Error state
                     EmptyWalletsContent(
                         onCreateWallet = onNavigateToCreateWallet,
                         isError = true,
@@ -192,7 +170,6 @@ fun WalletDashboardScreen(
                             onCreateWallet = onNavigateToCreateWallet
                         )
                     } else {
-                        // Normal state with wallets
                         DashboardContent(
                             wallets = state.data,
                             totalPortfolio = totalPortfolio,
@@ -201,14 +178,14 @@ fun WalletDashboardScreen(
                             onWalletClick = { wallet ->
                                 onRequestAuthentication("walletDetail", wallet.id)
                             },
-                            onCoinClick = { walletId, coinType, network ->
-                                onNavigateToCoinDetail(walletId, coinType, network)
+                            onCoinClick = { walletId, network ->
+                                onNavigateToCoinDetail(walletId, network)
                             },
-                            onReceiveClick = { walletId, coinType, network ->
-                                onNavigateToReceive(walletId, coinType, network)
+                            onReceiveClick = { walletId, network ->
+                                onNavigateToReceive(walletId, network)
                             },
-                            onSendClick = { walletId, coinType, network ->
-                                onNavigateToSend(walletId, coinType, network)
+                            onSendClick = { walletId, network ->
+                                onNavigateToSend(walletId, network)
                             },
                             onDeleteWallet = { walletId ->
                                 viewModel.deleteWallet(walletId)
@@ -218,7 +195,6 @@ fun WalletDashboardScreen(
                 }
             }
 
-            // Loading overlay for operations
             if (isOperationLoading && uiState is Result.Success && (uiState as Result.Success).data.isNotEmpty()) {
                 Box(
                     modifier = Modifier
@@ -283,7 +259,6 @@ fun DashboardTopBar(
             }
         },
         actions = {
-            // Plus icon for creating new wallet
             IconButton(
                 onClick = onCreateWallet
             ) {
@@ -309,9 +284,9 @@ fun DashboardContent(
     balances: Map<String, WalletBalance>,
     isOperationLoading: Boolean,
     onWalletClick: (Wallet) -> Unit,
-    onCoinClick: (String, CoinType, NetworkType?) -> Unit,
-    onReceiveClick: (String, CoinType, NetworkType?) -> Unit,
-    onSendClick: (String, CoinType, NetworkType?) -> Unit,
+    onCoinClick: (String, Network) -> Unit,
+    onReceiveClick: (String, Network) -> Unit,
+    onSendClick: (String, Network) -> Unit,
     onDeleteWallet: (String) -> Unit
 ) {
     val configuration = LocalConfiguration.current
@@ -323,7 +298,6 @@ fun DashboardContent(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Portfolio Summary Header
         item {
             AnimatedPortfolioHeader(
                 totalPortfolio = totalPortfolio,
@@ -332,7 +306,6 @@ fun DashboardContent(
             )
         }
 
-        // Wallets Section Header
         item {
             Text(
                 text = "Your Wallets",
@@ -343,9 +316,7 @@ fun DashboardContent(
             )
         }
 
-        // Wallets Grid/List
         if (isTablet) {
-            // Grid layout for tablets
             items(wallets.chunked(2)) { walletPair ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -363,7 +334,6 @@ fun DashboardContent(
                 }
             }
         } else {
-            // List layout for phones
             items(wallets) { wallet ->
                 WalletCard(
                     wallet = wallet,
@@ -399,7 +369,6 @@ fun WalletCard(
         )
     }
 
-    // Calculate total USD value from all balances
     val totalUsdValue = balance?.let {
         var total = 0.0
         it.bitcoinBalances.values.forEach { btc -> total += btc.usdValue }
@@ -425,14 +394,12 @@ fun WalletCard(
                     onWalletClick()
                 }
         ) {
-            // Main card content
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Wallet icon
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -450,11 +417,9 @@ fun WalletCard(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Wallet info
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
-                    // Row for wallet name and balance
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -479,36 +444,32 @@ fun WalletCard(
                         )
                     }
 
-                    // Show coin badges as small indicators with FlowRow for wrapping
                     FlowRow(
                         modifier = Modifier.padding(top = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         maxItemsInEachRow = Int.MAX_VALUE
                     ) {
-                        // Bitcoin badges
                         wallet.bitcoinCoins.forEach { coin ->
                             CoinBadge(
                                 text = when (coin.network) {
-                                    BitcoinNetwork.Mainnet -> "BTC"
-                                    BitcoinNetwork.Testnet -> "BTC (Test)"
+                                    is BitcoinNetwork.Mainnet -> "BTC"
+                                    is BitcoinNetwork.Testnet -> "BTC (Test)"
                                 },
                                 color = bitcoinLight,
                             )
                         }
 
-                        // Solana badges
                         wallet.solanaCoins.forEach { coin ->
                             CoinBadge(
                                 text = when (coin.network) {
-                                    SolanaNetwork.Mainnet -> "SOL"
-                                    SolanaNetwork.Devnet -> "SOL (Dev)"
+                                    is SolanaNetwork.Mainnet -> "SOL"
+                                    is SolanaNetwork.Devnet -> "SOL (Dev)"
                                 },
                                 color = solanaLight,
                             )
                         }
 
-                        // EVM token badges (show first 5, then +X for remaining)
                         val visibleTokens = wallet.evmTokens.take(5)
                         visibleTokens.forEach { token ->
                             CoinBadge(
@@ -522,7 +483,6 @@ fun WalletCard(
                             )
                         }
 
-                        // Show count of remaining tokens if any
                         val remainingCount = wallet.evmTokens.size - 5
                         if (remainingCount > 0) {
                             CoinBadge(
@@ -536,7 +496,7 @@ fun WalletCard(
                 IconButton(
                     onClick = {
                         isExpanded = !isExpanded
-                   },
+                    },
                     modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
@@ -548,13 +508,12 @@ fun WalletCard(
                 }
             }
 
-            // Expanded content with coin details
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = expandVertically() + fadeIn(),
                 exit = shrinkVertically() + fadeOut()
             ) {
-               WalletExpandedContent(
+                WalletExpandedContent(
                     wallet = wallet,
                     balance = balance,
                     onDelete = { showDeleteDialog = true }
@@ -583,15 +542,11 @@ fun WalletExpandedContent(
 
         // Bitcoin coins
         wallet.bitcoinCoins.forEach { coin ->
-            val networkKey = when (coin.network) {
-                BitcoinNetwork.Mainnet -> "mainnet"
-                BitcoinNetwork.Testnet -> "testnet"
-            }
-            val btcBalance = balance?.bitcoinBalances?.get(networkKey)
+            val btcBalance = balance?.bitcoinBalances?.get(coin.network)
 
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.bitcoin),
-                symbol = "Bitcoin${if (coin.network != BitcoinNetwork.Mainnet) " (Testnet)" else ""}",
+                symbol = "Bitcoin${if (coin.network.isTestnet) " (Testnet)" else ""}",
                 amount = if (btcBalance != null)
                     "${NumberFormat.getNumberInstance(Locale.US).format(btcBalance.btc.toDoubleOrNull() ?: 0.0)} BTC"
                 else "0 BTC",
@@ -603,15 +558,11 @@ fun WalletExpandedContent(
 
         // Solana coins
         wallet.solanaCoins.forEach { coin ->
-            val networkKey = when (coin.network) {
-                SolanaNetwork.Mainnet -> "mainnet"
-                SolanaNetwork.Devnet -> "devnet"
-            }
-            val solBalance = balance?.solanaBalances?.get(networkKey)
+            val solBalance = balance?.solanaBalances?.get(coin.network)
 
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.solana),
-                symbol = "Solana${if (coin.network != SolanaNetwork.Mainnet) " (Devnet)" else ""}",
+                symbol = "Solana${if (coin.network.isTestnet) " (Devnet)" else ""}",
                 amount = if (solBalance != null)
                     "${NumberFormat.getNumberInstance(Locale.US).format(solBalance.sol.toDoubleOrNull() ?: 0.0)} SOL"
                 else "0 SOL",
@@ -632,7 +583,7 @@ fun WalletExpandedContent(
             val tokenBalance = balance?.evmBalances?.find { it.externalTokenId == token.externalId }
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.ethereum),
-                symbol = "Ethereum${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
+                symbol = "Ethereum${if (token.network.isTestnet) " (${token.network.displayName})" else ""}",
                 amount = if (tokenBalance != null)
                     "${NumberFormat.getNumberInstance(Locale.US).format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)} ETH"
                 else "0 ETH",
@@ -647,7 +598,7 @@ fun WalletExpandedContent(
             val tokenBalance = balance?.evmBalances?.find { it.externalTokenId == token.externalId }
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.usdc),
-                symbol = "USD Coin${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
+                symbol = "USD Coin${if (token.network.isTestnet) " (${token.network.displayName})" else ""}",
                 amount = if (tokenBalance != null)
                     "${NumberFormat.getNumberInstance(Locale.US).format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)} USDC"
                 else "0 USDC",
@@ -662,7 +613,7 @@ fun WalletExpandedContent(
             val tokenBalance = balance?.evmBalances?.find { it.externalTokenId == token.externalId }
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.tether),
-                symbol = "Tether USD${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
+                symbol = "Tether USD${if (token.network.isTestnet) " (${token.network.displayName})" else ""}",
                 amount = if (tokenBalance != null)
                     "${NumberFormat.getNumberInstance(Locale.US).format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)} USDT"
                 else "0 USDT",
@@ -677,7 +628,7 @@ fun WalletExpandedContent(
             val tokenBalance = balance?.evmBalances?.find { it.externalTokenId == token.externalId }
             SimpleBalanceRow(
                 icon = Icons.Outlined.Token,
-                symbol = "${token.symbol}${if (token.network != EthereumNetwork.Mainnet) " (${token.network.displayName})" else ""}",
+                symbol = "${token.symbol}${if (token.network.isTestnet) " (${token.network.displayName})" else ""}",
                 amount = if (tokenBalance != null)
                     "${NumberFormat.getNumberInstance(Locale.US).format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)} ${token.symbol}"
                 else "0 ${token.symbol}",
@@ -724,7 +675,6 @@ fun SimpleBalanceRow(
     color: Color,
     showZeroBalance: Boolean = false
 ) {
-    // Always show if showZeroBalance is true, otherwise only show if usdValue > 0
     if (!showZeroBalance && usdValue <= 0) return
 
     Row(
@@ -733,7 +683,6 @@ fun SimpleBalanceRow(
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left side - icon and details
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -783,7 +732,6 @@ fun SimpleBalanceRow(
             }
         }
 
-        // Right side - USD value
         Text(
             text = if (usdValue > 0)
                 NumberFormat.getCurrencyInstance(Locale.US).format(usdValue)
@@ -813,67 +761,6 @@ fun CoinBadge(text: String, color: Color) {
             fontWeight = FontWeight.Bold
         )
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DashboardTopBar(
-    scrollBehavior: TopAppBarScrollBehavior,
-    onRefresh: () -> Unit,
-    isRefreshing: Boolean
-) {
-    TopAppBar(
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Dashboard,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = "Dashboard",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        },
-        navigationIcon = {
-            IconButton(onClick = { /* Open drawer */ }) {
-                Icon(
-                    imageVector = Icons.Outlined.Menu,
-                    contentDescription = "Menu",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        },
-        actions = {
-            IconButton(onClick = onRefresh) {
-                if (isRefreshing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Outlined.Refresh,
-                        contentDescription = "Refresh",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        },
-        scrollBehavior = scrollBehavior,
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            scrolledContainerColor = MaterialTheme.colorScheme.surface
-        )
-    )
 }
 
 @Composable
@@ -937,7 +824,6 @@ fun AnimatedPortfolioHeader(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Wallets stat
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -956,7 +842,6 @@ fun AnimatedPortfolioHeader(
                     )
                 }
 
-                // 24h change stat
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -975,7 +860,6 @@ fun AnimatedPortfolioHeader(
                     )
                 }
 
-                // Secure stat
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
