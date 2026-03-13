@@ -50,11 +50,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,7 +65,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.feature.authentication.domain.model.AuthType
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.ui.theme.warning
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -121,8 +121,6 @@ fun AuthenticationRequiredScreen(
             .build()
     }
 
-    val coroutineScope = rememberCoroutineScope()
-
     LaunchedEffect(Unit) {
         viewModel.refreshAuthStatus()
     }
@@ -133,9 +131,7 @@ fun AuthenticationRequiredScreen(
             title = "Enter PIN",
             subtitle = "Enter your PIN to continue",
             onPinEntered = { pin ->
-                coroutineScope.launch {
-                    viewModel.verifyPin(pin)
-                }
+                viewModel.verifyPin(pin)
             },
             onDismiss = {
                 viewModel.cancelPinEntry()
@@ -376,6 +372,8 @@ private fun AuthenticationMethodsCard(
     biometricHardwareAvailable: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -398,7 +396,10 @@ private fun AuthenticationMethodsCard(
             }
 
             Button(
-                onClick = onBiometricClick,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onBiometricClick()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),

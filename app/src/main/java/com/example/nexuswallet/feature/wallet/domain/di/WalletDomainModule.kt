@@ -203,18 +203,6 @@ object WalletDomainModule {
 
     @Provides
     @Singleton
-    fun provideRecordAuthenticationUseCase(
-        securityPreferencesRepository: SecurityPreferencesRepository,
-        logger: Logger
-    ): RecordAuthenticationUseCase {
-        return RecordAuthenticationUseCase(
-            securityPreferencesRepository = securityPreferencesRepository,
-            logger = logger
-        )
-    }
-
-    @Provides
-    @Singleton
     fun provideCreateWalletUseCase(
         walletDataSource: WalletDataSource,
         keyStoreRepository: KeyStoreRepository,
