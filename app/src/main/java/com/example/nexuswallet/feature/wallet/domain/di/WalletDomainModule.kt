@@ -1,8 +1,7 @@
 package com.example.nexuswallet.feature.wallet.domain.di
 
-import com.example.nexuswallet.feature.core.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.data.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.authentication.domain.usecase.RecordAuthenticationUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository

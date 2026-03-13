@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.solana.domain.di
 
-import com.example.nexuswallet.feature.core.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.data.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
