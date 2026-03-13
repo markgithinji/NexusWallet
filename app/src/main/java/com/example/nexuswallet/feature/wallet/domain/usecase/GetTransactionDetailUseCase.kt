@@ -86,7 +86,7 @@ class GetTransactionDetailUseCase @Inject constructor(
             id = tx.id,
             walletId = tx.walletId,
             coinType = CoinType.BITCOIN,
-            network = tx.network.displayName,
+            network = tx.network,
             hash = tx.txHash ?: tx.id,
             status = tx.status,
             timestamp = tx.timestamp,
@@ -110,7 +110,7 @@ class GetTransactionDetailUseCase @Inject constructor(
             id = tx.id,
             walletId = tx.walletId,
             coinType = CoinType.SOLANA,
-            network = tx.network.displayName,
+            network = tx.network,
             hash = tx.signature ?: tx.id,
             status = tx.status,
             timestamp = tx.timestamp,
@@ -139,7 +139,7 @@ class GetTransactionDetailUseCase @Inject constructor(
             id = tx.id,
             walletId = tx.walletId,
             coinType = coinType,
-            network = tx.network.displayName,
+            network = tx.network,
             hash = tx.txHash ?: tx.id,
             status = tx.status,
             timestamp = tx.timestamp,
@@ -152,7 +152,8 @@ class GetTransactionDetailUseCase @Inject constructor(
             gasPrice = tx.gasPriceGwei,
             gasUsed = gasUsed,
             nonce = tx.nonce,
-            chainId = tx.chainId.toString()
+            chainId = tx.chainId.toString(),
+            networkDisplayName = tx.network.displayName
         )
     }
 
@@ -168,7 +169,7 @@ class GetTransactionDetailUseCase @Inject constructor(
             id = tx.id,
             walletId = tx.walletId,
             coinType = coinType,
-            network = tx.network.displayName,
+            network = tx.network,
             hash = tx.txHash ?: tx.id,
             status = tx.status,
             timestamp = tx.timestamp,
@@ -184,7 +185,8 @@ class GetTransactionDetailUseCase @Inject constructor(
             chainId = tx.chainId.toString(),
             tokenSymbol = tx.tokenSymbol,
             tokenDecimals = tx.tokenDecimals,
-            tokenContract = tx.tokenContract
+            tokenContract = tx.tokenContract,
+            networkDisplayName = tx.network.displayName
         )
     }
 }

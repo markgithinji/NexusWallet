@@ -1,25 +1,23 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
-import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -117,7 +115,8 @@ class GetAllTransactionsUseCase @Inject constructor(
         // Fetch EVM transactions
         val evmAddresses = wallet.evmTokens.map { it.address }.distinct()
         evmAddresses.forEach { address ->
-            val tokensByNetwork = wallet.evmTokens.filter { it.address == address }.groupBy { it.network }
+            val tokensByNetwork =
+                wallet.evmTokens.filter { it.address == address }.groupBy { it.network }
 
             tokensByNetwork.forEach { (network, tokens) ->
                 val nativeToken = tokens.find { it is NativeETH }
@@ -196,7 +195,7 @@ class GetAllTransactionsUseCase @Inject constructor(
                 }
                 bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, networkStr)
 
-                // Save transactions directly - they're already BitcoinTransaction domain models
+                // Save transactions directly
                 result.data.forEach { transaction ->
                     bitcoinTransactionRepository.saveTransaction(transaction)
                 }
@@ -305,9 +304,11 @@ class GetAllTransactionsUseCase @Inject constructor(
 
                 logger.d(tag, "Saved ${result.data.size} Solana transactions for ${coin.address}")
             }
+
             is Result.Error -> {
                 logger.e(tag, "Failed to fetch Solana transactions: ${result.message}")
             }
+
             else -> {}
         }
     }

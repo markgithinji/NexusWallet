@@ -1,11 +1,12 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
+
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.data.toStorageString
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,7 +26,7 @@ class GetSolanaDetailUseCase @Inject constructor(
         network: SolanaNetwork
     ): Result<SolanaDetailResult> {
         logger.d(tag, "=== GetSolanaDetailUseCase started ===")
-        logger.d(tag, "Getting Solana details for wallet: $walletId, network: ${network.name}")
+        logger.d(tag, "Getting Solana details for wallet: $walletId, network: ${network.displayName}")
 
         // 1. Get wallet
         val wallet = walletRepository.getWallet(walletId)
@@ -43,7 +44,7 @@ class GetSolanaDetailUseCase @Inject constructor(
         solanaTransactionRepository.deleteForWalletAndNetwork(walletId, networkStorage)
 
         // 4. Fetch transactions from blockchain repository
-        logger.d(tag, "Fetching transactions from blockchain repository...")
+        logger.d(tag, "Fetching transactions from blockchain repository for ${network.displayName}...")
         val blockchainResult = solanaBlockchainRepository.getTransactions(
             walletId = walletId,
             address = solanaCoin.address,
@@ -102,14 +103,14 @@ class GetSolanaDetailUseCase @Inject constructor(
             }
         }
 
-        // 7. Prepare result
+        // 7. Prepare result with network object
         val result = SolanaDetailResult(
             walletId = walletId,
             address = solanaCoin.address,
             balance = coinBalance?.sol ?: "0",
             balanceFormatted = "${coinBalance?.sol ?: "0"} SOL",
             usdValue = coinBalance?.usdValue ?: 0.0,
-            network = network.name,
+            network = network,
             networkDisplayName = network.displayName,
             rawTransactions = solTransactions,
             solanaCoin = solanaCoin,
@@ -117,7 +118,7 @@ class GetSolanaDetailUseCase @Inject constructor(
             availableNetworks = wallet.solanaCoins.map { it.network }
         )
 
-        logger.d(tag, "=== GetSolanaDetailUseCase completed successfully with ${solTransactions.size} raw transactions ===")
+        logger.d(tag, "=== GetSolanaDetailUseCase completed successfully with ${solTransactions.size} raw transactions on ${network.displayName} ===")
         return Result.Success(result)
     }
 }
