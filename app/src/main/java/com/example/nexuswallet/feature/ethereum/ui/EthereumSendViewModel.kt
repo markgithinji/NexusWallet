@@ -4,12 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.usecase.GetFeeEstimateUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.SendEVMAssetUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.ValidateEVMSendUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
