@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.solana.domain.di
 
-import com.example.nexuswallet.feature.core.data.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.core.data.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
@@ -32,10 +32,10 @@ object SolanaUseDomainModule {
         logger: Logger
     ): SyncSolanaTransactionsUseCase {
         return SyncSolanaTransactionsUseCase(
-            solanaBlockchainRepository,
-            solanaTransactionRepository,
-            walletRepository,
-            logger
+            solanaBlockchainRepository = solanaBlockchainRepository,
+            solanaTransactionRepository = solanaTransactionRepository,
+            walletRepository = walletRepository,
+            logger = logger
         )
     }
 
@@ -46,8 +46,8 @@ object SolanaUseDomainModule {
         logger: Logger
     ): GetSolanaWalletUseCase {
         return GetSolanaWalletUseCase(
-            walletRepository,
-            logger
+            walletRepository = walletRepository,
+            logger = logger
         )
     }
 
@@ -62,12 +62,12 @@ object SolanaUseDomainModule {
         logger: Logger
     ): SendSolanaUseCase {
         return SendSolanaUseCase(
-            walletRepository,
-            solanaBlockchainRepository,
-            solanaTransactionRepository,
-            securityPreferencesRepository,
-            keyStoreRepository,
-            logger
+            walletRepository = walletRepository,
+            solanaBlockchainRepository = solanaBlockchainRepository,
+            solanaTransactionRepository = solanaTransactionRepository,
+            securityPreferencesRepository = securityPreferencesRepository,
+            keyStoreRepository = keyStoreRepository,
+            logger = logger
         )
     }
 
@@ -78,8 +78,8 @@ object SolanaUseDomainModule {
         logger: Logger
     ): GetSolanaBalanceUseCase {
         return GetSolanaBalanceUseCase(
-            solanaBlockchainRepository,
-            logger
+            solanaBlockchainRepository = solanaBlockchainRepository,
+            logger = logger
         )
     }
 
@@ -90,8 +90,8 @@ object SolanaUseDomainModule {
         logger: Logger
     ): GetSolanaFeeEstimateUseCase {
         return GetSolanaFeeEstimateUseCase(
-            solanaBlockchainRepository,
-            logger
+            solanaBlockchainRepository = solanaBlockchainRepository,
+            logger = logger
         )
     }
 
@@ -102,20 +102,20 @@ object SolanaUseDomainModule {
         logger: Logger
     ): ValidateSolanaAddressUseCase {
         return ValidateSolanaAddressUseCase(
-            solanaBlockchainRepository,
-            logger
+            solanaBlockchainRepository = solanaBlockchainRepository,
+            logger = logger
         )
     }
 
     @Provides
     @Singleton
     fun provideValidateSolanaSendUseCase(
-        validateSolanaAddressUseCase: ValidateSolanaAddressUseCase,
+        solanaBlockchainRepository: SolanaBlockchainRepository,
         logger: Logger
     ): ValidateSolanaSendUseCase {
         return ValidateSolanaSendUseCase(
-            validateSolanaAddressUseCase,
-            logger
+            solanaBlockchainRepository = solanaBlockchainRepository,
+            logger = logger
         )
     }
 }

@@ -2,14 +2,15 @@ package com.example.nexuswallet.feature.solana.domain.usecase
 
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class GetSolanaBalanceUseCase @Inject constructor(
-    private val solanaBlockchainRepository: com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository,
+    private val solanaBlockchainRepository: SolanaBlockchainRepository,
     private val logger: Logger
 ) {
 
