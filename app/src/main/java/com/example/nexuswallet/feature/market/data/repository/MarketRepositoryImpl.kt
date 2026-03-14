@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.market.data.repository
 
-import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.SafeApiCall
 import com.example.nexuswallet.feature.market.data.model.toChartData
@@ -85,7 +84,6 @@ class MarketRepositoryImpl @Inject constructor(
 
         return SafeApiCall.make {
             cryptoPanicApi.getNews(
-                authToken = BuildConfig.CRYPTOPANIC_API_KEY,
                 public = true,
                 currencies = currencyCode,
                 kind = "news",
