@@ -1,10 +1,16 @@
 package com.example.nexuswallet.feature.market.data.model
 
-import com.example.nexuswallet.feature.market.data.remote.ChartData
-import com.example.nexuswallet.feature.market.data.remote.MarketCapPoint
-import com.example.nexuswallet.feature.market.data.remote.PricePoint
-import com.example.nexuswallet.feature.market.data.remote.TokenDetail
-import com.example.nexuswallet.feature.market.data.remote.VolumePoint
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.TokenDetailResponse
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.CoinGeckoTokenDto
+import com.example.nexuswallet.feature.market.data.remote.model.cryptopanic.CryptoPanicPostResponse
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.MarketChartResponse
+import com.example.nexuswallet.feature.market.domain.model.NewsArticle
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.Sparkline7dResponse
+import com.example.nexuswallet.feature.market.domain.model.ChartData
+import com.example.nexuswallet.feature.market.domain.model.MarketCapPoint
+import com.example.nexuswallet.feature.market.domain.model.PricePoint
+import com.example.nexuswallet.feature.market.domain.model.TokenDetail
+import com.example.nexuswallet.feature.market.domain.model.VolumePoint
 import com.example.nexuswallet.feature.market.domain.SparklineData
 import com.example.nexuswallet.feature.market.domain.Token
 
@@ -23,11 +29,11 @@ fun CoinGeckoTokenDto.toToken(): Token {
     )
 }
 
-fun SparklineDto.toSparklineData(): SparklineData {
+fun Sparkline7dResponse.toSparklineData(): SparklineData {
     return SparklineData(price = price)
 }
 
-fun CryptoPanicPost.toNewsArticle(): NewsArticle {
+fun CryptoPanicPostResponse.toNewsArticle(): NewsArticle {
     return NewsArticle(
         title = title,
         summary = description,
@@ -51,7 +57,7 @@ fun MarketChartResponse.toChartData(): ChartData {
 }
 
 
-fun CoinDetailResponse.toTokenDetail(): TokenDetail {
+fun TokenDetailResponse.toTokenDetail(): TokenDetail {
     return TokenDetail(
         id = id,
         symbol = symbol,

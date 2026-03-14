@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.market.data.remote
 
 import retrofit2.http.GET
 import retrofit2.http.Query
-import com.example.nexuswallet.feature.market.data.model.CryptoPanicResponse
+import com.example.nexuswallet.feature.market.data.remote.model.cryptopanic.CryptoPanicResponse
 
 interface CryptoPanicApi {
     @GET("posts/")
