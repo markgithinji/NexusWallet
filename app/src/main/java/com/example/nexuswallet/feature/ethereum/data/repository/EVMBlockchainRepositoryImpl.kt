@@ -17,7 +17,7 @@ import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.USDT_GAS_LIMIT
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.web3j.abi.FunctionEncoder
@@ -37,6 +37,7 @@ import org.web3j.utils.Numeric
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.RoundingMode
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -47,7 +48,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
 ) : EVMBlockchainRepository {
 
     // Gas price cache - stores gas price per network with timestamp
-    private val gasPriceCache = mutableMapOf<String, CachedGasPrice>()
+    private val gasPriceCache = ConcurrentHashMap<String, CachedGasPrice>()
 
     // ============ BALANCE METHODS ============
 

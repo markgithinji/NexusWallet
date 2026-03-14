@@ -16,7 +16,7 @@ import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSourc
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
-import com.example.nexuswallet.feature.wallet.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import java.util.UUID
 import javax.inject.Inject

@@ -6,7 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
-import com.example.nexuswallet.feature.wallet.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import java.util.UUID
 
 @Entity(

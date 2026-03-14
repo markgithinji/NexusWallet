@@ -14,7 +14,7 @@ import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.ERC20Token
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import com.example.nexuswallet.feature.wallet.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken

@@ -8,7 +8,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.serialization.json.Json
 

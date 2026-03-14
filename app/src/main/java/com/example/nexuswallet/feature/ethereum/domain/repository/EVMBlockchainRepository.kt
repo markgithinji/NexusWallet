@@ -8,7 +8,7 @@ import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import org.web3j.crypto.RawTransaction
 import java.math.BigDecimal
 import java.math.BigInteger
