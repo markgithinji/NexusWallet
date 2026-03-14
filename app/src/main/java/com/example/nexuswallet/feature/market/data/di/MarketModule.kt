@@ -1,9 +1,11 @@
-package com.example.nexuswallet.feature.market.data.repository
+package com.example.nexuswallet.feature.market.data.di
 
-import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.market.data.remote.BinanceWebSocketImpl
 import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
 import com.example.nexuswallet.feature.market.data.remote.CryptoPanicApi
+import com.example.nexuswallet.feature.market.data.repository.CoinGeckoRepositoryImpl
+import com.example.nexuswallet.feature.market.data.repository.MarketRepositoryImpl
+import com.example.nexuswallet.feature.market.data.repository.WebSocketRepositoryImpl
 import com.example.nexuswallet.feature.market.domain.BinanceWebSocket
 import com.example.nexuswallet.feature.market.domain.CoinGeckoRepository
 import com.example.nexuswallet.feature.market.domain.MarketRepository
