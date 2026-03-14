@@ -40,19 +40,68 @@ class GetAllTransactionsUseCase @Inject constructor(
 
     private val tag = "GetAllTransactionsUC"
 
-    // Fetches from network and returns combined list
-    suspend operator fun invoke(walletId: String): List<Any> {
-        logger.d(tag, "Fetching all transactions for wallet: $walletId")
+    suspend operator fun invoke(
+        walletId: String,
+        forceRefresh: Boolean = false,
+        observe: Boolean = false
+    ): Flow<List<Any>>? {
+        logger.d(tag, "Getting all transactions for wallet: $walletId, forceRefresh: $forceRefresh, observe: $observe")
 
-        // This will do network calls and save to DB
-        refreshTransactions(walletId)
+        return if (observe) {
+            // Return flow for observation
+            createObservationFlow(walletId)
+        } else {
+            // One-time fetch
+            fetchTransactions(walletId, forceRefresh)
+            null
+        }
+    }
 
-        // Then return cached transactions
+    private suspend fun fetchTransactions(walletId: String, forceRefresh: Boolean): List<Any> {
+        if (forceRefresh) {
+            refreshTransactions(walletId)
+        }
         return getCachedTransactions(walletId)
     }
 
-    // Only gets from local DB, no network calls
-    suspend fun getCachedTransactions(walletId: String): List<Any> {
+    private fun createObservationFlow(walletId: String): Flow<List<Any>> {
+        logger.d(tag, "Creating transaction observation flow for wallet: $walletId")
+
+        return combine(
+            bitcoinTransactionRepository.getTransactions(walletId, BitcoinNetwork.Mainnet),
+            bitcoinTransactionRepository.getTransactions(walletId, BitcoinNetwork.Testnet),
+            evmTransactionRepository.getTransactions(walletId),
+            solanaTransactionRepository.getTransactions(walletId, SolanaNetwork.Mainnet),
+            solanaTransactionRepository.getTransactions(walletId, SolanaNetwork.Devnet)
+        ) { btcMainnet, btcTestnet, evm, solMainnet, solDevnet ->
+            val allTransactions = mutableListOf<Any>()
+
+            allTransactions.addAll(btcMainnet)
+            allTransactions.addAll(btcTestnet)
+            allTransactions.addAll(evm)
+            allTransactions.addAll(solMainnet)
+            allTransactions.addAll(solDevnet)
+
+            allTransactions.sortedByDescending { transaction ->
+                when (transaction) {
+                    is BitcoinTransaction -> transaction.timestamp
+                    is EVMTransaction -> transaction.timestamp
+                    is SolanaTransaction -> transaction.timestamp
+                    else -> 0L
+                }
+            }.also { sortedList ->
+                val btcCount = sortedList.count { it is BitcoinTransaction }
+                val evmCount = sortedList.count { it is EVMTransaction }
+                val solCount = sortedList.count { it is SolanaTransaction }
+                logger.d(
+                    tag,
+                    "Observing - BTC: $btcCount, EVM: $evmCount, SOL: $solCount, Total: ${sortedList.size}"
+                )
+            }
+        }.flowOn(Dispatchers.IO)
+    }
+
+    private suspend fun getCachedTransactions(walletId: String): List<Any> {
         logger.d(tag, "Getting cached transactions for wallet: $walletId")
 
         val wallet = walletRepository.getWallet(walletId) ?: return emptyList()
@@ -60,12 +109,8 @@ class GetAllTransactionsUseCase @Inject constructor(
 
         // Bitcoin transactions from local DB only
         wallet.bitcoinCoins.forEach { coin ->
-            val networkStr = when (coin.network) {
-                BitcoinNetwork.Mainnet -> BitcoinNetwork.Mainnet.name
-                BitcoinNetwork.Testnet -> BitcoinNetwork.Testnet.name
-            }
             val transactions =
-                bitcoinTransactionRepository.getTransactionsSync(walletId, networkStr)
+                bitcoinTransactionRepository.getTransactionsSync(walletId, coin.network)
             allTransactions.addAll(transactions)
         }
 
@@ -78,14 +123,10 @@ class GetAllTransactionsUseCase @Inject constructor(
 
         // Solana transactions from local DB only
         wallet.solanaCoins.forEach { coin ->
-            val networkStr = when (coin.network) {
-                SolanaNetwork.Mainnet -> SolanaNetwork.Mainnet.name
-                SolanaNetwork.Devnet -> SolanaNetwork.Devnet.name
-            }
             val nativeTransactions =
-                solanaTransactionRepository.getNativeTransactionsSync(walletId, networkStr)
+                solanaTransactionRepository.getNativeTransactionsSync(walletId, coin.network)
             val tokenTransactions =
-                solanaTransactionRepository.getTransactionsSync(walletId, networkStr)
+                solanaTransactionRepository.getTransactionsSync(walletId, coin.network)
             allTransactions.addAll(nativeTransactions)
             allTransactions.addAll(tokenTransactions)
         }
@@ -101,8 +142,7 @@ class GetAllTransactionsUseCase @Inject constructor(
         }
     }
 
-    // Only does network calls, doesn't return data
-    suspend fun refreshTransactions(walletId: String) {
+    private suspend fun refreshTransactions(walletId: String) {
         logger.d(tag, "Refreshing transactions for wallet: $walletId")
 
         val wallet = walletRepository.getWallet(walletId) ?: return
@@ -138,47 +178,10 @@ class GetAllTransactionsUseCase @Inject constructor(
         logger.d(tag, "Transaction refresh completed")
     }
 
-    fun observeTransactions(walletId: String): Flow<List<Any>> {
-        logger.d(tag, "Setting up transaction observation for wallet: $walletId")
-
-        return combine(
-            bitcoinTransactionRepository.getTransactions(walletId, BitcoinNetwork.Mainnet.name),
-            bitcoinTransactionRepository.getTransactions(walletId, BitcoinNetwork.Testnet.name),
-            evmTransactionRepository.getTransactions(walletId),
-            solanaTransactionRepository.getTransactions(walletId, SolanaNetwork.Mainnet.name),
-            solanaTransactionRepository.getTransactions(walletId, SolanaNetwork.Devnet.name)
-        ) { btcMainnet, btcTestnet, evm, solMainnet, solDevnet ->
-            val allTransactions = mutableListOf<Any>()
-
-            allTransactions.addAll(btcMainnet)
-            allTransactions.addAll(btcTestnet)
-            allTransactions.addAll(evm)
-            allTransactions.addAll(solMainnet)
-            allTransactions.addAll(solDevnet)
-
-            allTransactions.sortedByDescending { transaction ->
-                when (transaction) {
-                    is BitcoinTransaction -> transaction.timestamp
-                    is EVMTransaction -> transaction.timestamp
-                    is SolanaTransaction -> transaction.timestamp
-                    else -> 0L
-                }
-            }.also { sortedList ->
-                val btcCount = sortedList.count { it is BitcoinTransaction }
-                val evmCount = sortedList.count { it is EVMTransaction }
-                val solCount = sortedList.count { it is SolanaTransaction }
-                logger.d(
-                    tag,
-                    "Observing - BTC: $btcCount, EVM: $evmCount, SOL: $solCount, Total: ${sortedList.size}"
-                )
-            }
-        }.flowOn(Dispatchers.IO)
-    }
-
     // ============ BITCOIN ============
 
     private suspend fun fetchBitcoinTransactions(walletId: String, coin: BitcoinCoin) {
-        logger.d(tag, "Fetching Bitcoin transactions for ${coin.address} on ${coin.network}")
+        logger.d(tag, "Fetching Bitcoin transactions for ${coin.address} on ${coin.network.displayName}")
 
         val result = bitcoinBlockchainRepository.getAddressTransactions(
             walletId = walletId,
@@ -189,11 +192,7 @@ class GetAllTransactionsUseCase @Inject constructor(
         when (result) {
             is Result.Success -> {
                 // Delete old transactions for this network first
-                val networkStr = when (coin.network) {
-                    BitcoinNetwork.Mainnet -> BitcoinNetwork.Mainnet.name
-                    BitcoinNetwork.Testnet -> BitcoinNetwork.Testnet.name
-                }
-                bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, networkStr)
+                bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, coin.network)
 
                 // Save transactions directly
                 result.data.forEach { transaction ->
@@ -219,7 +218,7 @@ class GetAllTransactionsUseCase @Inject constructor(
         network: EthereumNetwork,
         tokenExternalId: String?
     ) {
-        logger.d(tag, "Fetching native ETH transactions for $address on ${network.chainId}")
+        logger.d(tag, "Fetching native ETH transactions for $address on ${network.displayName}")
 
         val result = evmBlockchainRepository.getNativeTransactions(
             address = address,
@@ -249,7 +248,7 @@ class GetAllTransactionsUseCase @Inject constructor(
         address: String,
         token: EVMToken
     ) {
-        logger.d(tag, "Fetching token transactions for ${token.symbol} at ${token.contractAddress}")
+        logger.d(tag, "Fetching token transactions for ${token.symbol} on ${token.network.displayName}")
 
         val result = evmBlockchainRepository.getTokenTransactions(
             address = address,
@@ -278,7 +277,7 @@ class GetAllTransactionsUseCase @Inject constructor(
     // ============ SOLANA ============
 
     private suspend fun fetchSolanaTransactions(walletId: String, coin: SolanaCoin) {
-        logger.d(tag, "Fetching Solana transactions for ${coin.address} on ${coin.network}")
+        logger.d(tag, "Fetching Solana transactions for ${coin.address} on ${coin.network.displayName}")
 
         val result = solanaBlockchainRepository.getTransactions(
             walletId = walletId,
@@ -289,13 +288,8 @@ class GetAllTransactionsUseCase @Inject constructor(
 
         when (result) {
             is Result.Success -> {
-                val networkStr = when (coin.network) {
-                    SolanaNetwork.Mainnet -> SolanaNetwork.Mainnet.name
-                    SolanaNetwork.Devnet -> SolanaNetwork.Devnet.name
-                }
-
-                // Delete old transactions
-                solanaTransactionRepository.deleteForWalletAndNetwork(walletId, networkStr)
+                // Delete old transactions for this network
+                solanaTransactionRepository.deleteForWalletAndNetwork(walletId, coin.network)
 
                 // Save new transactions
                 result.data.forEach { transaction ->
