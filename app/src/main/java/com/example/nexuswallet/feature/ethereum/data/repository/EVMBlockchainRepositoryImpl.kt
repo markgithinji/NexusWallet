@@ -18,6 +18,7 @@ import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STAN
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.USDT_GAS_LIMIT
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.usdc.Web3jFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.web3j.abi.FunctionEncoder
@@ -44,7 +45,7 @@ import javax.inject.Singleton
 @Singleton
 class EVMBlockchainRepositoryImpl @Inject constructor(
     private val etherscanApi: EtherscanApiService,
-    private val web3jFactory: com.example.nexuswallet.feature.usdc.Web3jFactory
+    private val web3jFactory: Web3jFactory
 ) : EVMBlockchainRepository {
 
     // Gas price cache - stores gas price per network with timestamp
@@ -328,9 +329,9 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
                 ).toPlainString()
 
                 val estimatedTime = when (feeLevel) {
-                    FeeLevel.SLOW -> 120
-                    FeeLevel.NORMAL -> 60
-                    FeeLevel.FAST -> 30
+                    FeeLevel.SLOW -> ESTIMATED_TIME_SLOW
+                    FeeLevel.NORMAL -> ESTIMATED_TIME_NORMAL
+                    FeeLevel.FAST -> ESTIMATED_TIME_FAST
                 }
 
                 Result.Success(
@@ -426,6 +427,10 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         private const val WEI_PER_ETH = "1000000000000000000"
         private const val ETH_DECIMALS = 18
         private const val GWEI_TO_WEI = 1_000_000_000L
+
+        private const val ESTIMATED_TIME_SLOW = 120
+        private const val ESTIMATED_TIME_NORMAL = 60
+        private const val ESTIMATED_TIME_FAST = 30
 
         // Price multipliers
         private val SLOW_PRICE_MULTIPLIER = BigDecimal("0.9")

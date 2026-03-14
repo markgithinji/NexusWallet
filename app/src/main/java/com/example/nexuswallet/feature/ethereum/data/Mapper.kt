@@ -2,10 +2,14 @@ package com.example.nexuswallet.feature.ethereum.data
 
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity
+import com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionDto
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
 import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
+import com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import java.math.BigDecimal
@@ -13,9 +17,8 @@ import java.math.RoundingMode
 
 private const val WEI_PER_ETH = "1000000000000000000"
 private const val WEI_PER_GWEI = 1_000_000_000L
-private const val GAS_LIMIT_STANDARD = 21000L
 
-fun com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionDto.toNativeETHTransaction(
+fun EtherscanTransactionDto.toNativeETHTransaction(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,
@@ -81,7 +84,7 @@ fun com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransact
 /**
  * Maps list of API transactions to domain models (Native ETH)
  */
-fun List<com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionDto>.toNativeETHTransactionList(
+fun List<EtherscanTransactionDto>.toNativeETHTransactionList(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,
@@ -95,7 +98,7 @@ fun List<com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTra
 /**
  * Maps token transaction to domain model
  */
-fun com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse.toTokenTransaction(
+fun TokenTransactionResponse.toTokenTransaction(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,
@@ -118,6 +121,8 @@ fun com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse.toToken
         RoundingMode.HALF_UP
     )
 
+    val gasLimitValue = gas.toLongOrNull() ?: DEFAULT_TOKEN_GAS_LIMIT
+
     return TokenTransaction(
         id = hash,
         walletId = walletId,
@@ -125,7 +130,7 @@ fun com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse.toToken
         toAddress = to,
         status = TransactionStatus.SUCCESS,
         timestamp = timeStamp.toLongOrNull()?.times(1000) ?: System.currentTimeMillis(),
-        note = "$tokenName ($tokenSymbol)",
+        note = "$tokenName ($tokenSymbol)${if (network.isTestnet) " - Testnet" else ""}",
         feeLevel = FeeLevel.NORMAL,
         amountWei = value,
         amountDecimal = tokenAmount.toPlainString(),
@@ -135,8 +140,7 @@ fun com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse.toToken
             6,
             RoundingMode.HALF_UP
         ).toPlainString(),
-        gasLimit = gas.toLongOrNull()
-            ?: GAS_LIMIT_STANDARD,
+        gasLimit = gasLimitValue,
         feeWei = feeWei.toPlainString(),
         feeEth = feeEth.toPlainString(),
         nonce = nonce.toIntOrNull() ?: 0,
@@ -191,7 +195,7 @@ fun EVMTransactionEntity.toDomain(): EVMTransaction {
             txHash = txHash,
             network = network,
             isIncoming = isIncoming,
-            data = data,
+            data = data ?: "",
             tokenExternalId = tokenExternalId
         )
 
@@ -217,11 +221,11 @@ fun EVMTransactionEntity.toDomain(): EVMTransaction {
             txHash = txHash,
             network = network,
             isIncoming = isIncoming,
-            tokenContract = tokenContract!!,
-            tokenSymbol = tokenSymbol!!,
-            tokenDecimals = tokenDecimals!!,
-            data = data,
-            tokenExternalId = tokenExternalId!!
+            tokenContract = tokenContract ?: "",
+            tokenSymbol = tokenSymbol ?: "UNKNOWN",
+            tokenDecimals = tokenDecimals ?: 18,
+            data = data ?: "",
+            tokenExternalId = tokenExternalId ?: ""
         )
     }
 }

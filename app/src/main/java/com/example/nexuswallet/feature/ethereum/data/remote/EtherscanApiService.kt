@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.ethereum.data.remote
 
 import com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanBroadcastResponse
-import com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionsDto
+import com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionsResponse
 import com.example.nexuswallet.feature.usdc.domain.EtherscanTokenTransfersResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -18,7 +18,7 @@ interface EtherscanApiService {
         @Query("page") page: Int = 1,
         @Query("offset") offset: Int = 100, // Get up to 100 transactions
         @Query("sort") sort: String = "desc"
-    ): EtherscanTransactionsDto
+    ): EtherscanTransactionsResponse
 
     @GET("v2/api")
     suspend fun broadcastTransaction(

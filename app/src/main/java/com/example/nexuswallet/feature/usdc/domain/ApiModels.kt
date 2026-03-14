@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 data class EtherscanTokenTransfersResponse(
     val status: String,
     val message: String,
-    val result: List<com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse>
+    val result: List<TokenTransactionResponse>
 )
 
 @Serializable

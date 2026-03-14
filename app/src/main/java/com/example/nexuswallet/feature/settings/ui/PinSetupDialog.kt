@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.authentication.ui
+package com.example.nexuswallet.feature.settings.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
