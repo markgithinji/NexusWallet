@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.market.data.remote.TokenPriceUpdate
+import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
 import com.example.nexuswallet.feature.market.domain.CoinGeckoRepository
 import com.example.nexuswallet.feature.market.domain.Token
 import com.example.nexuswallet.feature.market.domain.WebSocketRepository

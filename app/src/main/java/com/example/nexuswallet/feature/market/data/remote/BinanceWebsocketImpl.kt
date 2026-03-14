@@ -1,5 +1,7 @@
 package com.example.nexuswallet.feature.market.data.remote
 
+import com.example.nexuswallet.feature.market.domain.model.ConnectionState
+import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
 import com.example.nexuswallet.feature.market.domain.BinanceWebSocket
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope

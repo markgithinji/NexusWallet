@@ -1,9 +1,9 @@
 package com.example.nexuswallet.feature.market.domain
 
-import com.example.nexuswallet.feature.market.data.model.NewsArticle
-import com.example.nexuswallet.feature.market.data.remote.ChartData
-import com.example.nexuswallet.feature.market.data.remote.ChartDuration
-import com.example.nexuswallet.feature.market.data.remote.TokenDetail
+import com.example.nexuswallet.feature.market.domain.model.NewsArticle
+import com.example.nexuswallet.feature.market.domain.model.ChartData
+import com.example.nexuswallet.feature.market.domain.model.ChartDuration
+import com.example.nexuswallet.feature.market.domain.model.TokenDetail
 import com.example.nexuswallet.feature.core.util.Result
 
 interface MarketRepository {

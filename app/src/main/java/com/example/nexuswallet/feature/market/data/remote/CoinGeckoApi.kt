@@ -1,14 +1,11 @@
 package com.example.nexuswallet.feature.market.data.remote
 
-import com.example.nexuswallet.feature.market.data.model.CoinDetailResponse
-import com.example.nexuswallet.feature.market.data.model.CoinGeckoTokenDto
-import com.example.nexuswallet.feature.market.data.model.MarketChartResponse
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.TokenDetailResponse
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.CoinGeckoTokenDto
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.MarketChartResponse
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import java.util.Date
 
 interface CoinGeckoApi {
     @GET("coins/markets")
@@ -29,7 +26,7 @@ interface CoinGeckoApi {
         @Query("community_data") communityData: Boolean = false,
         @Query("developer_data") developerData: Boolean = false,
         @Query("sparkline") sparkline: Boolean = true
-    ): CoinDetailResponse
+    ): TokenDetailResponse
     @GET("coins/{id}/market_chart")
     suspend fun getMarketChart(
         @Path("id") id: String,
