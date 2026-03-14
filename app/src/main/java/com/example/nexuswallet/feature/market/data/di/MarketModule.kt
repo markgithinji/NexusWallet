@@ -23,6 +23,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import javax.inject.Named
 import javax.inject.Singleton
+import com.example.nexuswallet.BuildConfig
 
 @Module
 @InstallIn(SingletonComponent::class)

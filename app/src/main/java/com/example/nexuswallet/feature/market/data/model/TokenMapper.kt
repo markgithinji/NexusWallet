@@ -11,8 +11,8 @@ import com.example.nexuswallet.feature.market.domain.model.MarketCapPoint
 import com.example.nexuswallet.feature.market.domain.model.PricePoint
 import com.example.nexuswallet.feature.market.domain.model.TokenDetail
 import com.example.nexuswallet.feature.market.domain.model.VolumePoint
-import com.example.nexuswallet.feature.market.domain.SparklineData
-import com.example.nexuswallet.feature.market.domain.Token
+import com.example.nexuswallet.feature.market.domain.model.SparklineData
+import com.example.nexuswallet.feature.market.domain.model.Token
 
 fun CoinGeckoTokenDto.toToken(): Token {
     return Token(
