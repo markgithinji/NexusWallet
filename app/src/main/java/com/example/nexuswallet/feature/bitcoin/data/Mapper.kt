@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.bitcoin.data
 
 import com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionEntity
-import com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransactionResponse
+import com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransactionDto
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
@@ -54,7 +54,7 @@ fun BitcoinTransaction.toEntity(): BitcoinTransactionEntity =
         isIncoming = isIncoming
     )
 
-fun EsploraTransactionResponse.toDomain(
+fun EsploraTransactionDto.toDomain(
     walletId: String,
     fromAddress: String,
     toAddress: String,

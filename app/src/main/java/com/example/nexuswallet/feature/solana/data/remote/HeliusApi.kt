@@ -1,5 +1,7 @@
 package com.example.nexuswallet.feature.solana.data.remote
 
+import com.example.nexuswallet.feature.solana.data.remote.model.HeliusTransactionRequest
+import com.example.nexuswallet.feature.solana.data.remote.model.HeliusTransactionResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST

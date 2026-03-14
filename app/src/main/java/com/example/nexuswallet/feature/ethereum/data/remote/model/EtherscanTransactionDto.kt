@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class EtherscanTransactionResponse(
+data class EtherscanTransactionDto(
     @SerialName("blockNumber") val blockNumber: String,
     @SerialName("timeStamp") val timestamp: String,
     @SerialName("hash") val hash: String,

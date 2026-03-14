@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.solana.data
 
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity
-import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse
+import com.example.nexuswallet.feature.solana.data.remote.model.HeliusTransactionResponse
 import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.solana.domain.model.TransferInfo
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL

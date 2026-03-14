@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.market.data.remote.model.coingecko
 
-import com.example.nexuswallet.feature.market.data.remote.model.coingecko.Sparkline7dResponse
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -21,5 +20,5 @@ data class CoinGeckoTokenDto(
     val priceChangePercentage24h: Double? = null,
     val image: String? = null,
     @SerialName("sparkline_in_7d")
-    val sparklineIn7d: Sparkline7dResponse? = null
+    val sparklineIn7d: Sparkline7dDto? = null
 )

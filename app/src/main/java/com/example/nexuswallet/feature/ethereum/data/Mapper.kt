@@ -15,7 +15,7 @@ private const val WEI_PER_ETH = "1000000000000000000"
 private const val WEI_PER_GWEI = 1_000_000_000L
 private const val GAS_LIMIT_STANDARD = 21000L
 
-fun com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionResponse.toNativeETHTransaction(
+fun com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionDto.toNativeETHTransaction(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,
@@ -81,7 +81,7 @@ fun com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransact
 /**
  * Maps list of API transactions to domain models (Native ETH)
  */
-fun List<com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionResponse>.toNativeETHTransactionList(
+fun List<com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionDto>.toNativeETHTransactionList(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,

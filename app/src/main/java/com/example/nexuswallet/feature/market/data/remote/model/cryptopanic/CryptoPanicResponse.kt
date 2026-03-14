@@ -7,11 +7,11 @@ import kotlinx.serialization.Serializable
 data class CryptoPanicResponse(
     val next: String? = null,
     val previous: String? = null,
-    val results: List<CryptoPanicPostResponse>
+    val results: List<CryptoPanicPostDto>
 )
 
 @Serializable
-data class CryptoPanicPostResponse(
+data class CryptoPanicPostDto(
     val title: String,
     val description: String? = null,
     @SerialName("published_at")

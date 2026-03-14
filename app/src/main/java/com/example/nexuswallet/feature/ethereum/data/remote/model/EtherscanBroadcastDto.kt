@@ -10,11 +10,11 @@ data class EtherscanBroadcastResponse(
     @SerialName("id") val id: Int? = null,
     @SerialName("status") val status: String? = null,
     @SerialName("message") val message: String? = null,
-    @SerialName("error") val error: BroadcastErrorResponse? = null
+    @SerialName("error") val error: BroadcastErrorDto? = null
 )
 
 @Serializable
-data class BroadcastErrorResponse(
+data class BroadcastErrorDto(
     @SerialName("code") val code: Int,
     @SerialName("message") val message: String
 )

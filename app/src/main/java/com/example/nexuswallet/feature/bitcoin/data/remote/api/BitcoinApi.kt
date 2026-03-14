@@ -1,8 +1,8 @@
 package com.example.nexuswallet.feature.bitcoin.data.remote.api
 
-import com.example.nexuswallet.feature.bitcoin.data.remote.model.AddressResponse
-import com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransactionResponse
-import com.example.nexuswallet.feature.bitcoin.data.remote.model.UTXOResponse
+import com.example.nexuswallet.feature.bitcoin.data.remote.model.AddressDto
+import com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransactionDto
+import com.example.nexuswallet.feature.bitcoin.data.remote.model.UTXODto
 import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -12,13 +12,13 @@ import retrofit2.http.Path
 
 interface BitcoinApi {
     @GET("address/{address}")
-    suspend fun getAddressInfo(@Path("address") address: String): AddressResponse
+    suspend fun getAddressInfo(@Path("address") address: String): AddressDto
 
     @GET("address/{address}/utxo")
-    suspend fun getUtxos(@Path("address") address: String): List<UTXOResponse>
+    suspend fun getUtxos(@Path("address") address: String): List<UTXODto>
 
     @GET("tx/{txid}")
-    suspend fun getTransaction(@Path("txid") txid: String): EsploraTransactionResponse
+    suspend fun getTransaction(@Path("txid") txid: String): EsploraTransactionDto
 
     @GET("fee-estimates")
     suspend fun getFeeEstimates(): Map<String, Double>
@@ -28,5 +28,5 @@ interface BitcoinApi {
     suspend fun broadcastTransaction(@Body signedHex: String): ResponseBody
 
     @GET("address/{address}/txs")
-    suspend fun getAddressTransactions(@Path("address") address: String): List<EsploraTransactionResponse>
+    suspend fun getAddressTransactions(@Path("address") address: String): List<EsploraTransactionDto>
 }

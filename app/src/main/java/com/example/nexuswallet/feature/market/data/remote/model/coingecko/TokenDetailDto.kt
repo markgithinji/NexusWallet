@@ -1,21 +1,20 @@
 package com.example.nexuswallet.feature.market.data.remote.model.coingecko
 
-import com.example.nexuswallet.feature.market.data.remote.model.coingecko.Sparkline7dResponse
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class TokenDetailResponse(
+data class TokenDetailDto(
     val id: String,
     val symbol: String,
     val name: String,
     val image: ImageUrlsResponse,
-    val market_data: MarketDataResponse,
+    val market_data: MarketDataDto,
     val description: Map<String, String>? = null
 )
 
 @Serializable
-data class MarketDataResponse(
+data class MarketDataDto(
     @SerialName("current_price")
     val currentPrice: Map<String, Double>,
     @SerialName("market_cap")
@@ -51,7 +50,7 @@ data class MarketDataResponse(
     @SerialName("atl_date")
     val atlDate: Map<String, String>,
     @SerialName("sparkline_7d")
-    val sparkline7DResponse: Sparkline7dResponse? = null
+    val sparkline7DDto: Sparkline7dDto? = null
 )
 
 @Serializable

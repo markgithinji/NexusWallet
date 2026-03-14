@@ -1,11 +1,11 @@
 package com.example.nexuswallet.feature.market.data.model
 
-import com.example.nexuswallet.feature.market.data.remote.model.coingecko.TokenDetailResponse
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.TokenDetailDto
 import com.example.nexuswallet.feature.market.data.remote.model.coingecko.CoinGeckoTokenDto
-import com.example.nexuswallet.feature.market.data.remote.model.cryptopanic.CryptoPanicPostResponse
-import com.example.nexuswallet.feature.market.data.remote.model.coingecko.MarketChartResponse
+import com.example.nexuswallet.feature.market.data.remote.model.cryptopanic.CryptoPanicPostDto
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.MarketChartDto
 import com.example.nexuswallet.feature.market.domain.model.NewsArticle
-import com.example.nexuswallet.feature.market.data.remote.model.coingecko.Sparkline7dResponse
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.Sparkline7dDto
 import com.example.nexuswallet.feature.market.domain.model.ChartData
 import com.example.nexuswallet.feature.market.domain.model.MarketCapPoint
 import com.example.nexuswallet.feature.market.domain.model.PricePoint
@@ -29,11 +29,11 @@ fun CoinGeckoTokenDto.toToken(): Token {
     )
 }
 
-fun Sparkline7dResponse.toSparklineData(): SparklineData {
+fun Sparkline7dDto.toSparklineData(): SparklineData {
     return SparklineData(price = price)
 }
 
-fun CryptoPanicPostResponse.toNewsArticle(): NewsArticle {
+fun CryptoPanicPostDto.toNewsArticle(): NewsArticle {
     return NewsArticle(
         title = title,
         summary = description,
@@ -42,7 +42,7 @@ fun CryptoPanicPostResponse.toNewsArticle(): NewsArticle {
         url = "" // No URL in free plan
     )
 }
-fun MarketChartResponse.toChartData(): ChartData {
+fun MarketChartDto.toChartData(): ChartData {
     return ChartData(
         prices = prices.map { (timestamp, price) ->
             PricePoint(timestamp = timestamp.toLong(), price = price)
@@ -57,7 +57,7 @@ fun MarketChartResponse.toChartData(): ChartData {
 }
 
 
-fun TokenDetailResponse.toTokenDetail(): TokenDetail {
+fun TokenDetailDto.toTokenDetail(): TokenDetail {
     return TokenDetail(
         id = id,
         symbol = symbol,
@@ -81,7 +81,7 @@ fun TokenDetailResponse.toTokenDetail(): TokenDetail {
         atl = market_data.atl["usd"] ?: 0.0,
         atlChangePercentage = market_data.atlChangePercentage["usd"] ?: 0.0,
         atlDate = market_data.atlDate["usd"] ?: "",
-        sparklineIn7d = market_data.sparkline7DResponse?.price,
+        sparklineIn7d = market_data.sparkline7DDto?.price,
         description = description?.get("en")
     )
 }

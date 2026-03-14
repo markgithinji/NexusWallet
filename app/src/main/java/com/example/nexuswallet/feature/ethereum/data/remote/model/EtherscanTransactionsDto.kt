@@ -4,8 +4,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class EtherscanTransactionsResponse(
+data class EtherscanTransactionsDto(
     @SerialName("status") val status: String,
     @SerialName("message") val message: String,
-    @SerialName("result") val result: List<EtherscanTransactionResponse>
+    @SerialName("result") val result: List<EtherscanTransactionDto>
 )

@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.bitcoin.data.repository
 import com.example.nexuswallet.feature.bitcoin.data.model.ParsedTransaction
 import com.example.nexuswallet.feature.bitcoin.data.model.UTXO
 import com.example.nexuswallet.feature.bitcoin.data.remote.api.BitcoinApi
-import com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransactionResponse
+import com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransactionDto
 import com.example.nexuswallet.feature.bitcoin.data.toDomain
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
@@ -61,9 +61,9 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
             val response = api.getAddressInfo(address)
 
             val confirmed =
-                response.chainStatsResponse.fundedTxoSum - response.chainStatsResponse.spentTxoSum
+                response.chainStatsRDto.fundedTxoSum - response.chainStatsRDto.spentTxoSum
             val unconfirmed =
-                response.mempoolStatsResponse.fundedTxoSum - response.mempoolStatsResponse.spentTxoSum
+                response.mempoolStatsDto.fundedTxoSum - response.mempoolStatsDto.spentTxoSum
             val totalSatoshis = confirmed + unconfirmed
 
             BigDecimal(totalSatoshis).divide(
@@ -386,7 +386,7 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
      * Parse a transaction to extract relevant details for our address
      */
     private fun parseTransaction(
-        tx: EsploraTransactionResponse,
+        tx: EsploraTransactionDto,
         address: String
     ): ParsedTransaction? {
         val hasOutputToUs = tx.vout.any { it.scriptpubkeyAddress == address }

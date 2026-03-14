@@ -1,8 +1,8 @@
 package com.example.nexuswallet.feature.market.data.remote
 
-import com.example.nexuswallet.feature.market.data.remote.model.coingecko.TokenDetailResponse
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.TokenDetailDto
 import com.example.nexuswallet.feature.market.data.remote.model.coingecko.CoinGeckoTokenDto
-import com.example.nexuswallet.feature.market.data.remote.model.coingecko.MarketChartResponse
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.MarketChartDto
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -26,12 +26,12 @@ interface CoinGeckoApi {
         @Query("community_data") communityData: Boolean = false,
         @Query("developer_data") developerData: Boolean = false,
         @Query("sparkline") sparkline: Boolean = true
-    ): TokenDetailResponse
+    ): TokenDetailDto
     @GET("coins/{id}/market_chart")
     suspend fun getMarketChart(
         @Path("id") id: String,
         @Query("vs_currency") vsCurrency: String = "usd",
         @Query("days") days: String, // "1", "7", "30", "90", "365", "max"
         @Query("interval") interval: String? = null // Optional: "daily" for >90 days
-    ): MarketChartResponse
+    ): MarketChartDto
 }

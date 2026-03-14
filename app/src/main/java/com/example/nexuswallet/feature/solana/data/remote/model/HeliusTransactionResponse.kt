@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.solana.data.remote
+package com.example.nexuswallet.feature.solana.data.remote.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -128,9 +128,4 @@ data class HeliusTokenOutputResponse(
     val mint: String,
     val tokenAmount: Double,
     val userAccount: String
-)
-
-@Serializable
-data class HeliusTransactionRequest(
-    val transactions: List<String>
 )

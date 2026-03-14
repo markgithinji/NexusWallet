@@ -5,8 +5,8 @@ import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.SafeApiCall
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
-import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionRequest
-import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse
+import com.example.nexuswallet.feature.solana.data.remote.model.HeliusTransactionRequest
+import com.example.nexuswallet.feature.solana.data.remote.model.HeliusTransactionResponse
 import com.example.nexuswallet.feature.solana.data.toDomain
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
