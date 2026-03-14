@@ -1,18 +1,17 @@
 package com.example.nexuswallet.feature.solana.data.di
 
-import android.content.Context
-import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
+import com.example.nexuswallet.BuildConfig
+import com.example.nexuswallet.feature.core.data.remote.ApiKeyInterceptor
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionDao
 import com.example.nexuswallet.feature.solana.data.remote.HeliusApi
 import com.example.nexuswallet.feature.solana.data.repository.SolanaBlockchainRepositoryImpl
 import com.example.nexuswallet.feature.solana.data.repository.SolanaTransactionRepositoryImpl
+import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
-import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -23,8 +22,6 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
-import com.example.nexuswallet.BuildConfig
-import com.example.nexuswallet.feature.core.data.remote.ApiKeyInterceptor
 
 @InstallIn(SingletonComponent::class)
 object SolanaDataModule {
@@ -89,16 +86,28 @@ object SolanaDataModule {
 
     @Provides
     @Singleton
-    fun provideHeliusApi(
-        @Named("heliusApiDevnet") devnetBaseUrl: String,
-        @Named("heliusApiMainnet") mainnetBaseUrl: String,
+    @Named("heliusApiDevnet")
+    fun provideHeliusDevnetApi(
         @Named("helius") okHttpClient: OkHttpClient,
         json: Json
     ): HeliusApi {
-        val baseUrl = if (BuildConfig.DEBUG) devnetBaseUrl else mainnetBaseUrl
-
         return Retrofit.Builder()
-            .baseUrl(baseUrl)
+            .baseUrl("https://api-devnet.helius-rpc.com/v0/")
+            .client(okHttpClient)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+            .create(HeliusApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    @Named("heliusApiMainnet")
+    fun provideHeliusMainnetApi(
+        @Named("helius") okHttpClient: OkHttpClient,
+        json: Json
+    ): HeliusApi {
+        return Retrofit.Builder()
+            .baseUrl("https://api-mainnet.helius-rpc.com/v0/")
             .client(okHttpClient)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
@@ -110,13 +119,15 @@ object SolanaDataModule {
     fun provideSolanaBlockchainRepository(
         @Named("heliusRpcDevnet") rpcDevnetConnection: Connection,
         @Named("heliusRpcMainnet") rpcMainnetConnection: Connection,
-        heliusApi: HeliusApi,
+        @Named("heliusApiDevnet") devnetApi: HeliusApi,
+        @Named("heliusApiMainnet") mainnetApi: HeliusApi,
         logger: Logger
     ): SolanaBlockchainRepository {
         return SolanaBlockchainRepositoryImpl(
             rpcDevnetConnection = rpcDevnetConnection,
             rpcMainnetConnection = rpcMainnetConnection,
-            heliusApi = heliusApi
+            devnetApi = devnetApi,
+            mainnetApi = mainnetApi
         )
     }
 
@@ -133,8 +144,8 @@ object SolanaDataModule {
         logger: Logger
     ): SolanaTransactionRepository {
         return SolanaTransactionRepositoryImpl(
-            solanaTransactionDao,
-            logger
+            solanaTransactionDao = solanaTransactionDao,
+            logger = logger
         )
     }
 }
