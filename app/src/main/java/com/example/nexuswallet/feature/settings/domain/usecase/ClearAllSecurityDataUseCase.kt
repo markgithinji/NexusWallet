@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.settings.domain.usecase
 
-import com.example.nexuswallet.feature.core.data.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger

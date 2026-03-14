@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.solana.domain.usecase
 
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.core.data.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result

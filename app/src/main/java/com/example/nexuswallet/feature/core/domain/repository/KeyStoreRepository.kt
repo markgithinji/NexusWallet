@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.core.data.repository
+package com.example.nexuswallet.feature.core.domain.repository
 
 interface KeyStoreRepository {
     suspend fun encrypt(plaintext: ByteArray): Pair<ByteArray, ByteArray>

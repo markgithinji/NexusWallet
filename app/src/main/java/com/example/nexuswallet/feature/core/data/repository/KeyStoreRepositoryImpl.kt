@@ -1,9 +1,9 @@
-package com.example.nexuswallet.feature.core.domain.repository
+package com.example.nexuswallet.feature.core.data.repository
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.example.nexuswallet.feature.authentication.data.util.safeKeyStoreCall
-import com.example.nexuswallet.feature.core.data.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.toHex
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
