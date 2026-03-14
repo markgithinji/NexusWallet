@@ -2,10 +2,9 @@ package com.example.nexuswallet.feature.solana.domain.usecase
 
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.solana.data.toStorageString
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,7 +23,10 @@ class SyncSolanaTransactionsUseCase @Inject constructor(
 
     suspend operator fun invoke(walletId: String, network: SolanaNetwork): Result<Unit> =
         withContext(Dispatchers.IO) {
-            logger.d(tag, "Syncing Solana transactions for wallet: $walletId, network: ${network.name}")
+            logger.d(
+                tag,
+                "Syncing Solana transactions for wallet: $walletId, network: ${network.displayName}"
+            )
 
             val wallet = walletRepository.getWallet(walletId) ?: run {
                 logger.e(tag, "Wallet not found: $walletId")
@@ -35,13 +37,16 @@ class SyncSolanaTransactionsUseCase @Inject constructor(
             val solanaCoin = wallet.solanaCoins.find { it.network == network }
 
             if (solanaCoin == null) {
-                logger.e(tag, "Solana ${network.displayName} not enabled for wallet: ${wallet.name}")
+                logger.e(
+                    tag,
+                    "Solana ${network.displayName} not enabled for wallet: ${wallet.name}"
+                )
                 return@withContext Result.Error("Solana ${network.displayName} not enabled")
             }
 
             logger.d(
                 tag,
-                "Syncing for wallet: ${wallet.name}, Address: ${solanaCoin.address.take(8)}..., Network: ${solanaCoin.network}"
+                "Syncing for wallet: ${wallet.name}, Address: ${solanaCoin.address.take(8)}..., Network: ${solanaCoin.network.displayName}"
             )
 
             // Get transactions from Helius API
@@ -63,13 +68,9 @@ class SyncSolanaTransactionsUseCase @Inject constructor(
                     )
 
                     if (transactions.isNotEmpty()) {
-                        // Use the network's storage string via mapper
-                        val networkStorage = network.toStorageString()
-
-                        // Delete existing transactions for this specific wallet and network
                         solanaTransactionRepository.deleteForWalletAndNetwork(
                             walletId,
-                            networkStorage
+                            network
                         )
                         logger.d(tag, "Deleted existing transactions for ${network.displayName}")
 

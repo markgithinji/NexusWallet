@@ -3,10 +3,10 @@ package com.example.nexuswallet.feature.solana.data
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity
 import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.solana.domain.model.TransferInfo
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 
 fun SolanaTransactionEntity.toDomain(): SolanaTransaction {
@@ -24,7 +24,7 @@ fun SolanaTransactionEntity.toDomain(): SolanaTransaction {
         feeLamports = feeLamports,
         feeSol = feeSol,
         signature = signature,
-        network = network.toSolanaNetwork(),
+        network = network,
         isIncoming = isIncoming,
         slot = slot,
         blockTime = blockTime,
@@ -49,7 +49,7 @@ fun SolanaTransaction.toEntity(): SolanaTransactionEntity {
         feeLamports = feeLamports,
         feeSol = feeSol,
         signature = signature,
-        network = network.toStorageString(),
+        network = network,
         isIncoming = isIncoming,
         slot = slot,
         blockTime = blockTime,
@@ -57,17 +57,6 @@ fun SolanaTransaction.toEntity(): SolanaTransactionEntity {
         tokenSymbol = tokenSymbol,
         tokenDecimals = tokenDecimals
     )
-}
-
-fun SolanaNetwork.toStorageString(): String = when (this) {
-    SolanaNetwork.Mainnet -> SolanaNetwork.Mainnet.name
-    SolanaNetwork.Devnet -> SolanaNetwork.Devnet.name
-}
-
-fun String.toSolanaNetwork(): SolanaNetwork = when (this) {
-    SolanaNetwork.Mainnet.name -> SolanaNetwork.Mainnet
-    SolanaNetwork.Devnet.name-> SolanaNetwork.Devnet
-    else -> SolanaNetwork.Devnet
 }
 
 fun HeliusTransactionResponse.toDomain(

@@ -21,8 +21,11 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
 
     private val tag = "SyncBitcoinUC"
 
-    suspend operator fun invoke(walletId: String, network: String?): Result<Unit> = withContext(Dispatchers.IO) {
-        logger.d(tag, "Syncing Bitcoin transactions for wallet: $walletId, network: $network")
+    suspend operator fun invoke(
+        walletId: String,
+        network: BitcoinNetwork? = null
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        logger.d(tag, "Syncing Bitcoin transactions for wallet: $walletId, network: ${network?.displayName}")
 
         val wallet = walletRepository.getWallet(walletId) ?: run {
             logger.e(tag, "Wallet not found: $walletId")
@@ -31,28 +34,23 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
 
         // Filter Bitcoin coins by network if specified
         val bitcoinCoins = if (network != null) {
-            wallet.bitcoinCoins.filter { coin ->
-                when (network.lowercase()) {
-                    "mainnet" -> coin.network == BitcoinNetwork.Mainnet
-                    "testnet" -> coin.network == BitcoinNetwork.Testnet
-                    else -> false
-                }
-            }
+            wallet.bitcoinCoins.filter { it.network == network }
         } else {
             wallet.bitcoinCoins
         }
 
         if (bitcoinCoins.isEmpty()) {
-            val msg = if (network != null) "Bitcoin $network not enabled" else "Bitcoin not enabled"
+            val msg = if (network != null) "Bitcoin ${network.displayName} not enabled" else "Bitcoin not enabled"
             logger.e(tag, "$msg for wallet: ${wallet.name}")
             return@withContext Result.Error(msg)
         }
 
         var totalTransactions = 0
+        val errors = mutableListOf<String>()
 
         // Sync transactions for each Bitcoin coin
         bitcoinCoins.forEach { bitcoinCoin ->
-            logger.d(tag, "Syncing for ${bitcoinCoin.network}")
+            logger.d(tag, "Syncing for ${bitcoinCoin.network.displayName}")
 
             when (val result = bitcoinBlockchainRepository.getAddressTransactions(
                 walletId = walletId,
@@ -63,11 +61,10 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
                     val transactions = result.data
 
                     // Delete only this network's transactions
-                    val networkParam = when (bitcoinCoin.network) {
-                        BitcoinNetwork.Mainnet -> "mainnet"
-                        BitcoinNetwork.Testnet -> "testnet"
-                    }
-                    bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, networkParam)
+                    bitcoinTransactionRepository.deleteForWalletAndNetwork(
+                        walletId,
+                        bitcoinCoin.network
+                    )
 
                     // Save transactions
                     transactions.forEach { tx ->
@@ -75,16 +72,22 @@ class SyncBitcoinTransactionsUseCase @Inject constructor(
                         totalTransactions++
                     }
 
-                    logger.d(tag, "Synced ${transactions.size} transactions for ${bitcoinCoin.network}")
+                    logger.d(tag, "Synced ${transactions.size} transactions for ${bitcoinCoin.network.displayName}")
                 }
                 is Result.Error -> {
-                    logger.e(tag, "Failed to sync ${bitcoinCoin.network}: ${result.message}")
+                    val errorMsg = "Failed to sync ${bitcoinCoin.network.displayName}: ${result.message}"
+                    logger.e(tag, errorMsg)
+                    errors.add(errorMsg)
                 }
                 else -> {}
             }
         }
 
-        logger.d(tag, "Sync completed | total txCount=$totalTransactions")
-        Result.Success(Unit)
+        if (errors.isNotEmpty()) {
+            Result.Error(errors.first())
+        } else {
+            logger.d(tag, "Sync completed | total txCount=$totalTransactions")
+            Result.Success(Unit)
+        }
     }
 }
