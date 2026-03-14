@@ -1,45 +1,53 @@
 package com.example.nexuswallet
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
-import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
-
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.contentColorFor
 import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTabScreen(
     onNavigateToCreateWallet: () -> Unit,
-    onNavigateToWalletDetail: (String) -> Unit,
+    onNavigateToWalletDetail: (String) -> Unit,  // Now goes directly or via auth
     onNavigateToCoinDetail: (String, Network) -> Unit,
     onNavigateToTokenDetail: (String) -> Unit,
     onNavigateToReceive: (String, Network) -> Unit,
     onNavigateToSend: (String, Network) -> Unit,
     onNavigateToSecurity: () -> Unit,
-    onRequestAuthentication: (String, String) -> Unit,
     padding: PaddingValues
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -161,12 +169,12 @@ fun MainTabScreen(
                 onNavigateToReceive = onNavigateToReceive,
                 onNavigateToSend = onNavigateToSend,
                 onNavigateToCreateWallet = onNavigateToCreateWallet,
-                onRequestAuthentication = onRequestAuthentication,
                 padding = PaddingValues(
                     top = scaffoldPadding.calculateTopPadding(),
                     bottom = scaffoldPadding.calculateBottomPadding()
                 )
             )
+
             1 -> MarketScreen(
                 onNavigateToTokenDetail = onNavigateToTokenDetail,
                 padding = PaddingValues(
@@ -174,6 +182,7 @@ fun MainTabScreen(
                     bottom = scaffoldPadding.calculateBottomPadding()
                 )
             )
+
             2 -> SettingsScreen(
                 onNavigateToSecurity = onNavigateToSecurity
             )

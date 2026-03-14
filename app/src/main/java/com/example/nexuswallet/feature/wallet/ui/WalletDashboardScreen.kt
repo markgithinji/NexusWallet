@@ -45,7 +45,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -100,11 +99,11 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun WalletDashboardScreen(
+    onNavigateToWalletDetail: (String) -> Unit,
     onNavigateToCoinDetail: (String, Network) -> Unit,
     onNavigateToReceive: (String, Network) -> Unit,
     onNavigateToSend: (String, Network) -> Unit,
     onNavigateToCreateWallet: () -> Unit,
-    onRequestAuthentication: (String, String) -> Unit,
     padding: PaddingValues,
     viewModel: WalletDashboardViewModel = hiltViewModel()
 ) {
@@ -144,12 +143,7 @@ fun WalletDashboardScreen(
         ) {
             when (val state = uiState) {
                 is Result.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                    }
+                    FullScreenLoading(message = "Loading wallets...")
                 }
 
                 is Result.Error -> {
@@ -176,7 +170,7 @@ fun WalletDashboardScreen(
                             balances = balances,
                             isOperationLoading = isOperationLoading,
                             onWalletClick = { wallet ->
-                                onRequestAuthentication("walletDetail", wallet.id)
+                                onNavigateToWalletDetail(wallet.id)
                             },
                             onCoinClick = { walletId, network ->
                                 onNavigateToCoinDetail(walletId, network)
@@ -414,7 +408,8 @@ fun WalletCard(
                         )
 
                         Text(
-                            text = NumberFormat.getCurrencyInstance(Locale.US).format(totalUsdValue),
+                            text = NumberFormat.getCurrencyInstance(Locale.US)
+                                .format(totalUsdValue),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -526,7 +521,10 @@ fun WalletExpandedContent(
                 icon = painterResource(id = R.drawable.bitcoin),
                 symbol = "Bitcoin${if (coin.network.isTestnet) " (Testnet)" else ""}",
                 amount = if (btcBalance != null)
-                    "${NumberFormat.getNumberInstance(Locale.US).format(btcBalance.btc.toDoubleOrNull() ?: 0.0)} BTC"
+                    "${
+                        NumberFormat.getNumberInstance(Locale.US)
+                            .format(btcBalance.btc.toDoubleOrNull() ?: 0.0)
+                    } BTC"
                 else "0 BTC",
                 usdValue = btcBalance?.usdValue ?: 0.0,
                 color = bitcoinLight,
@@ -542,7 +540,10 @@ fun WalletExpandedContent(
                 icon = painterResource(id = R.drawable.solana),
                 symbol = "Solana${if (coin.network.isTestnet) " (Devnet)" else ""}",
                 amount = if (solBalance != null)
-                    "${NumberFormat.getNumberInstance(Locale.US).format(solBalance.sol.toDoubleOrNull() ?: 0.0)} SOL"
+                    "${
+                        NumberFormat.getNumberInstance(Locale.US)
+                            .format(solBalance.sol.toDoubleOrNull() ?: 0.0)
+                    } SOL"
                 else "0 SOL",
                 usdValue = solBalance?.usdValue ?: 0.0,
                 color = solanaLight,
@@ -554,7 +555,8 @@ fun WalletExpandedContent(
         val nativeTokens = wallet.evmTokens.filterIsInstance<NativeETH>()
         val usdcTokens = wallet.evmTokens.filterIsInstance<USDCToken>()
         val usdtTokens = wallet.evmTokens.filterIsInstance<USDTToken>()
-        val otherTokens = wallet.evmTokens.filter { it !is NativeETH && it !is USDCToken && it !is USDTToken }
+        val otherTokens =
+            wallet.evmTokens.filter { it !is NativeETH && it !is USDCToken && it !is USDTToken }
 
         // Native ETH tokens
         nativeTokens.forEach { token ->
@@ -563,7 +565,10 @@ fun WalletExpandedContent(
                 icon = painterResource(id = R.drawable.ethereum),
                 symbol = "Ethereum${if (token.network.isTestnet) " (${token.network.displayName})" else ""}",
                 amount = if (tokenBalance != null)
-                    "${NumberFormat.getNumberInstance(Locale.US).format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)} ETH"
+                    "${
+                        NumberFormat.getNumberInstance(Locale.US)
+                            .format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)
+                    } ETH"
                 else "0 ETH",
                 usdValue = tokenBalance?.usdValue ?: 0.0,
                 color = ethereumLight,
@@ -578,7 +583,10 @@ fun WalletExpandedContent(
                 icon = painterResource(id = R.drawable.usdc),
                 symbol = "USD Coin${if (token.network.isTestnet) " (${token.network.displayName})" else ""}",
                 amount = if (tokenBalance != null)
-                    "${NumberFormat.getNumberInstance(Locale.US).format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)} USDC"
+                    "${
+                        NumberFormat.getNumberInstance(Locale.US)
+                            .format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)
+                    } USDC"
                 else "0 USDC",
                 usdValue = tokenBalance?.usdValue ?: 0.0,
                 color = usdcLight,
@@ -593,7 +601,10 @@ fun WalletExpandedContent(
                 icon = painterResource(id = R.drawable.tether),
                 symbol = "Tether USD${if (token.network.isTestnet) " (${token.network.displayName})" else ""}",
                 amount = if (tokenBalance != null)
-                    "${NumberFormat.getNumberInstance(Locale.US).format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)} USDT"
+                    "${
+                        NumberFormat.getNumberInstance(Locale.US)
+                            .format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)
+                    } USDT"
                 else "0 USDT",
                 usdValue = tokenBalance?.usdValue ?: 0.0,
                 color = Color(0xFF26A17B),
@@ -608,7 +619,10 @@ fun WalletExpandedContent(
                 icon = Icons.Outlined.Token,
                 symbol = "${token.symbol}${if (token.network.isTestnet) " (${token.network.displayName})" else ""}",
                 amount = if (tokenBalance != null)
-                    "${NumberFormat.getNumberInstance(Locale.US).format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)} ${token.symbol}"
+                    "${
+                        NumberFormat.getNumberInstance(Locale.US)
+                            .format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)
+                    } ${token.symbol}"
                 else "0 ${token.symbol}",
                 usdValue = tokenBalance?.usdValue ?: 0.0,
                 color = MaterialTheme.colorScheme.primary,
@@ -681,6 +695,7 @@ fun SimpleBalanceRow(
                             modifier = Modifier.size(20.dp)
                         )
                     }
+
                     is Painter -> {
                         Icon(
                             painter = icon,
