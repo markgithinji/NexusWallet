@@ -133,7 +133,7 @@ fun TransactionDetailScreen(
     ) { padding ->
         when {
             state.isLoading && state.transaction == null -> {
-                TransactionDetailLoadingShimmer()
+                FullScreenLoading(message = "Loading transaction...")
             }
             state.error != null && state.transaction == null -> {
                 ErrorScreen(

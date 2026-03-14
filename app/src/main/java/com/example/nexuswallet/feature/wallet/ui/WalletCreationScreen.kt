@@ -108,7 +108,7 @@ fun WalletCreationScreen(
         }
     ) { padding ->
         if (currentStep < 4 && uiState is WalletCreationUiState.Loading) {
-            LoadingScreen()
+            FullScreenLoading(message = "Creating wallet...")
             return@Scaffold
         }
 
@@ -164,23 +164,7 @@ fun WalletCreationScreen(
                                     onBack = { viewModel.previousStep() }
                                 )
                             } else {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        CircularProgressIndicator(
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Text(
-                                            "Generating secure recovery phrase...",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
+                                FullScreenLoading(message = "Generating secure recovery phrase...")
                             }
                         }
                     }
@@ -214,29 +198,14 @@ fun WalletCreationScreen(
                                 )
                             }
                             is WalletCreationUiState.Loading -> {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        CircularProgressIndicator(
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Text(
-                                            "Creating wallet...",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
+                                FullScreenLoading(message = "Creating wallet...")
                             }
+
                             else -> {
                                 LaunchedEffect(Unit) {
                                     viewModel.previousStep()
                                 }
-                                LoadingScreen()
+                                FullScreenLoading(message = "Loading...")
                             }
                         }
                     }

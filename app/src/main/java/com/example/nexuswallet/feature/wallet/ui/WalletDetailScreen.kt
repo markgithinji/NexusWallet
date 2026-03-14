@@ -121,7 +121,7 @@ fun WalletDetailScreen(
 
     // Show full screen loading only on initial load with no wallet
     if (uiState.isLoading && uiState.wallet == null) {
-        LoadingScreen()
+        FullScreenLoading(message = "Loading wallet...")
         return
     }
 

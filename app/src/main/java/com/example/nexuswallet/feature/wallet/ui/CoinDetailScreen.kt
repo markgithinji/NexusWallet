@@ -75,7 +75,7 @@ fun CoinDetailScreen(
 
     // Show loading only on initial load
     if (state.isLoading && state.address.isEmpty()) {
-        LoadingScreen()
+        FullScreenLoading(message = "Loading coin details...")
         return
     }
 

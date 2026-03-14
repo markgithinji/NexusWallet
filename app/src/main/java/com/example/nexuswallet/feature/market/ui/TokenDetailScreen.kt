@@ -65,6 +65,8 @@ import com.example.nexuswallet.feature.market.domain.model.NewsArticle
 import com.example.nexuswallet.feature.market.domain.model.ChartData
 import com.example.nexuswallet.feature.market.domain.model.ChartDuration
 import com.example.nexuswallet.feature.market.domain.model.TokenDetail
+import com.example.nexuswallet.feature.wallet.ui.FullScreenLoading
+import com.example.nexuswallet.feature.wallet.ui.InlineLoading
 import com.example.nexuswallet.ui.theme.success
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -92,16 +94,7 @@ fun TokenDetailScreen(
     ) { padding ->
         when (val state = uiState) {
             is Result.Loading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+                FullScreenLoading(message = "Loading token details...")
             }
 
             is Result.Error -> {
@@ -354,17 +347,7 @@ fun PriceChart(
             ) {
                 when (chartState) {
                     is Result.Loading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(32.dp),
-                                color = MaterialTheme.colorScheme.primary,
-                                strokeWidth = 2.dp
-                            )
-                        }
+                        InlineLoading(message = "Loading chart...")
                     }
 
                     is Result.Error -> {

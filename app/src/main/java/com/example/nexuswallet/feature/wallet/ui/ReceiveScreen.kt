@@ -124,7 +124,7 @@ fun ReceiveScreen(
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         if (uiState.isLoading) {
-            LoadingView(modifier = Modifier.padding(paddingValues))
+            FullScreenLoading(message = "Loading receive address...")
         } else if (uiState.error != null) {
             ErrorView(
                 error = uiState.error,

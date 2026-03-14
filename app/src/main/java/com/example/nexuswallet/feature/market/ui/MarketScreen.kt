@@ -55,6 +55,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ButtonDefaults
+import com.example.nexuswallet.feature.wallet.ui.FullScreenLoading
 import com.example.nexuswallet.ui.theme.success
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -72,7 +73,6 @@ fun MarketScreen(
 
     var isRefreshing by remember { mutableStateOf(false) }
 
-    // Observe loading state to know when refresh is complete
     LaunchedEffect(uiState) {
         if (uiState is Result.Success && isRefreshing) {
             isRefreshing = false
@@ -127,7 +127,7 @@ fun MarketScreen(
                     when (uiState) {
                         Result.Loading -> {
                             if (tokens.isEmpty()) {
-                                LoadingView()
+                                FullScreenLoading(message = "Loading market data...")
                             } else {
                                 MarketList(
                                     tokens = tokens,
