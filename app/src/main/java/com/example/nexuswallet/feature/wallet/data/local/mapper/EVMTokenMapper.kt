@@ -1,11 +1,10 @@
 package com.example.nexuswallet.feature.wallet.data.local.mapper
 
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.data.local.entity.EVMTokenEntity
 import com.example.nexuswallet.feature.wallet.domain.model.ERC20Token
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import java.util.UUID

@@ -72,7 +72,7 @@ class GetEthereumDetailUseCase @Inject constructor(
         logger.d(tag, "Fetching native transactions from blockchain for ${network.displayName}...")
         val nativeTxResult = evmBlockchainRepository.getNativeTransactions(
             address = token.address,
-            network = network,  // Pass network directly
+            network = network,
             walletId = walletId,
             tokenExternalId = token.externalId
         )

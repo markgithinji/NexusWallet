@@ -38,8 +38,6 @@ class GetBitcoinDetailUseCase @Inject constructor(
         logger.d(tag, "Found Bitcoin coin with address: ${bitcoinCoin.address.take(8)}... on ${network.displayName}")
 
         // 3. Fetch fresh transactions from blockchain
-        val networkStorage = bitcoinCoin.network.name
-
         logger.d(tag, "Fetching transactions from blockchain for ${network.displayName}...")
 
         val txResult = bitcoinBlockchainRepository.getAddressTransactions(
@@ -53,7 +51,7 @@ class GetBitcoinDetailUseCase @Inject constructor(
                 logger.d(tag, " Fetched ${txResult.data.size} transactions from blockchain")
 
                 // Delete old transactions and save new ones
-                bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, networkStorage)
+                bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, bitcoinCoin.network)
                 logger.d(tag, "Deleted old transactions for wallet $walletId, network ${network.displayName}")
 
                 // Save transactions directly
@@ -76,18 +74,9 @@ class GetBitcoinDetailUseCase @Inject constructor(
         logger.d(tag, "Balance for ${network.displayName}: ${coinBalance?.btc ?: "0"} BTC")
 
         // 5. Get raw transactions from local DB
-        logger.d(tag, "Querying transactions with walletId=$walletId, network=$networkStorage")
-        val rawTransactions = bitcoinTransactionRepository.getTransactionsSync(walletId, networkStorage)
+        logger.d(tag, "Querying transactions with walletId=$walletId, network=${network.displayName}")
+        val rawTransactions = bitcoinTransactionRepository.getTransactionsSync(walletId, bitcoinCoin.network)
         logger.d(tag, "Retrieved ${rawTransactions.size} raw transactions from DB for ${network.displayName}")
-
-        // Log sample transactions for debugging
-        if (rawTransactions.isNotEmpty()) {
-            logger.d(tag, "Sample of saved transactions:")
-            rawTransactions.take(3).forEachIndexed { index, tx ->
-                logger.d(tag, "  Tx $index: ${tx.txHash?.take(8) ?: "unknown"}, amount: ${tx.amountBtc} BTC, " +
-                        "incoming: ${tx.isIncoming}")
-            }
-        }
 
         val result = BitcoinDetailResult(
             walletId = walletId,

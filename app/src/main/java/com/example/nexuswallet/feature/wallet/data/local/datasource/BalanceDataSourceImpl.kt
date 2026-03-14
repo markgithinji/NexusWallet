@@ -1,8 +1,6 @@
 package com.example.nexuswallet.feature.wallet.data.local.datasource
 
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.data.local.dao.BitcoinBalanceDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.BitcoinCoinDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.EVMBalanceDao
@@ -14,9 +12,11 @@ import com.example.nexuswallet.feature.wallet.data.local.mapper.toDomain
 import com.example.nexuswallet.feature.wallet.data.local.mapper.toEntity
 import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import java.util.UUID
 import javax.inject.Inject
@@ -65,7 +65,7 @@ class BalanceDataSourceImpl @Inject constructor(
 
         bitcoinBalanceEntities.forEach { balanceEntity ->
             val coin = bitcoinCoinDao.getById(balanceEntity.coinId)
-            coin?.network?.let { network ->
+            coin?.network?.let { network: BitcoinNetwork ->
                 bitcoinBalances[network] = balanceEntity.toDomain()
             }
         }
@@ -76,7 +76,7 @@ class BalanceDataSourceImpl @Inject constructor(
 
         solanaBalanceEntities.forEach { balanceEntity ->
             val coin = solanaCoinDao.getById(balanceEntity.coinId)
-            coin?.network?.let { network ->
+            coin?.network?.let { network: SolanaNetwork ->
                 solanaBalances[network] = balanceEntity.toDomain()
             }
         }
@@ -108,8 +108,8 @@ class BalanceDataSourceImpl @Inject constructor(
         val tokenIdentifier = parts.getOrNull(1) ?: "unknown"
 
         val network = when (chainId) {
-            "1" -> EthereumNetwork.Mainnet
-            "11155111" -> EthereumNetwork.Sepolia
+            EthereumNetwork.Mainnet.chainId -> EthereumNetwork.Mainnet
+            EthereumNetwork.Sepolia.chainId -> EthereumNetwork.Sepolia
             else -> EthereumNetwork.Mainnet
         }
 
@@ -131,7 +131,7 @@ class BalanceDataSourceImpl @Inject constructor(
                 TokenType.NATIVE -> "0x0000000000000000000000000000000000000000"
                 TokenType.USDC -> network.usdcContractAddress
                 TokenType.USDT -> network.usdtContractAddress
-                TokenType.ERC20 -> tokenIdentifier  // Fallback for unknown tokens
+                TokenType.ERC20 -> tokenIdentifier
             },
             symbol = when (tokenType) {
                 TokenType.NATIVE -> "ETH"

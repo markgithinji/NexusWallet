@@ -58,7 +58,7 @@ import com.example.nexuswallet.feature.wallet.data.local.migration.MIGRATION_4_5
     version = 4,  // Increment version from 3 to 4
     exportSchema = false
 )
-@TypeConverters(Converters::class)
+//@TypeConverters(Converters::class)
 abstract class WalletDatabase : RoomDatabase() {
     // Wallet DAOs
     abstract fun walletDao(): WalletDao
