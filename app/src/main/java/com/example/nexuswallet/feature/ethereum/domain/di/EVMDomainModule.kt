@@ -10,7 +10,6 @@ import com.example.nexuswallet.feature.ethereum.domain.usecase.GetPendingTransac
 import com.example.nexuswallet.feature.ethereum.domain.usecase.GetTransactionUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.GetWalletTransactionsUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.SendEVMAssetUseCase
-import com.example.nexuswallet.feature.ethereum.domain.usecase.SyncEthereumTransactionsUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.ValidateEVMSendUseCase
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
@@ -23,22 +22,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object EVMDomainModule {
-
-    @Provides
-    @Singleton
-    fun provideSyncEthereumTransactionsUseCase(
-        evmBlockchainRepository: EVMBlockchainRepository,
-        evmTransactionRepository: EVMTransactionRepository,
-        walletRepository: WalletRepository,
-        logger: Logger
-    ): SyncEthereumTransactionsUseCase {
-        return SyncEthereumTransactionsUseCase(
-            evmBlockchainRepository = evmBlockchainRepository,
-            evmTransactionRepository = evmTransactionRepository,
-            walletRepository = walletRepository,
-            logger = logger
-        )
-    }
 
     @Provides
     @Singleton

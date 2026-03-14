@@ -9,7 +9,6 @@ import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinFeeEstim
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinWalletUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.PrepareBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.SendBitcoinUseCase
-import com.example.nexuswallet.feature.bitcoin.domain.usecase.SyncBitcoinTransactionsUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.ValidateBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
@@ -22,22 +21,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object BitcoinDomainModule {
-
-    @Provides
-    @Singleton
-    fun provideSyncBitcoinTransactionsUseCase(
-        bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-        bitcoinTransactionRepository: BitcoinTransactionRepository,
-        walletRepository: WalletRepository,
-        logger: Logger
-    ): SyncBitcoinTransactionsUseCase {
-        return SyncBitcoinTransactionsUseCase(
-            bitcoinBlockchainRepository = bitcoinBlockchainRepository,
-            bitcoinTransactionRepository = bitcoinTransactionRepository,
-            walletRepository = walletRepository,
-            logger = logger
-        )
-    }
 
     @Provides
     @Singleton

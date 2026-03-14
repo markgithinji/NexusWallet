@@ -9,7 +9,6 @@ import com.example.nexuswallet.feature.solana.domain.usecase.GetSolanaBalanceUse
 import com.example.nexuswallet.feature.solana.domain.usecase.GetSolanaFeeEstimateUseCase
 import com.example.nexuswallet.feature.solana.domain.usecase.GetSolanaWalletUseCase
 import com.example.nexuswallet.feature.solana.domain.usecase.SendSolanaUseCase
-import com.example.nexuswallet.feature.solana.domain.usecase.SyncSolanaTransactionsUseCase
 import com.example.nexuswallet.feature.solana.domain.usecase.ValidateSolanaAddressUseCase
 import com.example.nexuswallet.feature.solana.domain.usecase.ValidateSolanaSendUseCase
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
@@ -22,22 +21,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object SolanaUseDomainModule {
-
-    @Provides
-    @Singleton
-    fun provideSyncSolanaTransactionsUseCase(
-        solanaBlockchainRepository: SolanaBlockchainRepository,
-        solanaTransactionRepository: SolanaTransactionRepository,
-        walletRepository: WalletRepository,
-        logger: Logger
-    ): SyncSolanaTransactionsUseCase {
-        return SyncSolanaTransactionsUseCase(
-            solanaBlockchainRepository = solanaBlockchainRepository,
-            solanaTransactionRepository = solanaTransactionRepository,
-            walletRepository = walletRepository,
-            logger = logger
-        )
-    }
 
     @Provides
     @Singleton
