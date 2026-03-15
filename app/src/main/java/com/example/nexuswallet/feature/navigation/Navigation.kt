@@ -4,7 +4,6 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -36,7 +35,7 @@ import com.example.nexuswallet.feature.wallet.ui.transactiondetail.TransactionDe
 import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationViewModel
-import com.example.nexuswallet.feature.wallet.ui.WalletDetailScreen
+import com.example.nexuswallet.feature.wallet.ui.walletdetail.WalletDetailScreen
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable

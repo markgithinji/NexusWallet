@@ -66,10 +66,10 @@ import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
-import com.example.nexuswallet.feature.wallet.ui.EmptyTransactionsView
+import com.example.nexuswallet.feature.wallet.ui.walletdetail.EmptyTransactionsView
 import com.example.nexuswallet.feature.wallet.ui.common.ErrorScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
-import com.example.nexuswallet.feature.wallet.ui.QuickActionItem
+import com.example.nexuswallet.feature.wallet.ui.walletdetail.QuickActionItem
 import com.example.nexuswallet.feature.wallet.ui.common.TransactionItem
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight

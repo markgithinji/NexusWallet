@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.ui
+package com.example.nexuswallet.feature.wallet.ui.walletdetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,8 +11,8 @@ import com.example.nexuswallet.feature.market.domain.MarketRepository
 import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
-import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.usecase.FormatBalanceUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetAllTransactionsUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncWalletBalancesUseCase
@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -34,33 +36,9 @@ class WalletDetailViewModel @Inject constructor(
     private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
     private val getAllTransactionsUseCase: GetAllTransactionsUseCase,
     private val marketRepository: MarketRepository,
-    private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase
+    private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
+    private val formatBalanceUseCase: FormatBalanceUseCase
 ) : ViewModel() {
-
-    data class WalletDetailUiState(
-        val wallet: Wallet? = null,
-        val balance: WalletBalance? = null,
-        val transactions: List<TransactionDisplayInfo> = emptyList(),
-        val pricePercentages: Map<String, Double> = emptyMap(),
-
-        // Granular loading states
-        val isLoading: Boolean = false,
-        val isLoadingBalance: Boolean = false,
-        val isLoadingTransactions: Boolean = false,
-        val isRefreshingBalance: Boolean = false,
-        val isRefreshingTransactions: Boolean = false,
-
-        // Timestamps for cache freshness
-        val lastBalanceSyncTime: Long = 0,
-        val lastTransactionSyncTime: Long = 0,
-
-        // Error states
-        val error: String? = null,
-        val hasSyncError: Boolean = false,
-        val syncErrorMessage: String? = null,
-        val balanceError: String? = null,
-        val transactionsError: String? = null
-    )
 
     private val _uiState = MutableStateFlow(WalletDetailUiState(isLoading = true))
     val uiState: StateFlow<WalletDetailUiState> = _uiState.asStateFlow()
@@ -69,6 +47,7 @@ class WalletDetailViewModel @Inject constructor(
     private companion object {
         const val BALANCE_CACHE_TIME = 2 * 60 * 1000      // 2 minutes
         const val TRANSACTIONS_CACHE_TIME = 5 * 60 * 1000 // 5 minutes
+        private val USD_FORMATTER = NumberFormat.getCurrencyInstance(Locale.US)
     }
 
     fun loadWallet(walletId: String) {
@@ -95,14 +74,10 @@ class WalletDetailViewModel @Inject constructor(
                 )
             }
 
-            try {
-                // STEP 1: Load wallet from repository (fast, local DB)
+            runCatching {
+                // STEP 1: Load wallet from repository
                 val loadedWallet = walletRepository.getWallet(walletId)
-
-                if (loadedWallet == null) {
-                    _uiState.update { it.copy(error = "Wallet not found", isLoading = false) }
-                    return@launch
-                }
+                    ?: throw IllegalStateException("Wallet not found")
 
                 // Update wallet immediately
                 _uiState.update { it.copy(wallet = loadedWallet) }
@@ -112,30 +87,27 @@ class WalletDetailViewModel @Inject constructor(
                     loadCachedBalance(walletId)
                 }
 
-                // STEP 3: Load market percentages (fast, usually cached)
+                // STEP 3: Load market percentages
                 launch {
                     loadMarketPercentages()
                 }
 
-                // STEP 4: Load cached transactions in parallel
+                // STEP 4: Load cached transactions
                 launch {
                     loadCachedTransactions(walletId)
                 }
 
-                // STEP 5: Start observing transactions for real-time updates
+                // STEP 5: Observe transactions
                 observeTransactions(walletId)
 
-                // STEP 6: Check if we need to refresh balance
+                // STEP 6: Refresh if needed
                 if (!isBalanceFresh) {
                     refreshBalanceInBackground(walletId, loadedWallet)
                 }
-
-                // STEP 7: Check if we need to refresh transactions
                 if (!isTransactionsFresh) {
                     refreshTransactionsInBackground(walletId)
                 }
-
-            } catch (e: Exception) {
+            }.onFailure { e ->
                 _uiState.update {
                     it.copy(
                         error = "Failed to load wallet: ${e.message}",
@@ -147,11 +119,11 @@ class WalletDetailViewModel @Inject constructor(
     }
 
     private suspend fun loadCachedBalance(walletId: String) {
-        try {
-            _uiState.update { it.copy(isLoadingBalance = true) }
+        _uiState.update { it.copy(isLoadingBalance = true) }
 
-            val loadedBalance = walletRepository.getWalletBalance(walletId)
-
+        runCatching {
+            walletRepository.getWalletBalance(walletId)
+        }.onSuccess { loadedBalance ->
             _uiState.update {
                 it.copy(
                     balance = loadedBalance,
@@ -160,7 +132,8 @@ class WalletDetailViewModel @Inject constructor(
                     lastBalanceSyncTime = System.currentTimeMillis()
                 )
             }
-        } catch (e: Exception) {
+            updateAssets()
+        }.onFailure {
             _uiState.update {
                 it.copy(
                     balanceError = "Failed to load balance",
@@ -172,16 +145,13 @@ class WalletDetailViewModel @Inject constructor(
     }
 
     private suspend fun loadCachedTransactions(walletId: String) {
-        try {
-            _uiState.update { it.copy(isLoadingTransactions = true) }
+        _uiState.update { it.copy(isLoadingTransactions = true) }
 
-            // Use invoke with observe=false and forceRefresh=false
+        runCatching {
             val flow = getAllTransactionsUseCase(walletId, forceRefresh = false, observe = false)
-            val initialTransactions = flow?.first() ?: emptyList()
-
-            // Format transactions using the existing use case
+            flow?.first() ?: emptyList()
+        }.onSuccess { initialTransactions ->
             val displayTransactions = formatTransactionList(initialTransactions)
-
             _uiState.update {
                 it.copy(
                     transactions = displayTransactions,
@@ -189,7 +159,7 @@ class WalletDetailViewModel @Inject constructor(
                     lastTransactionSyncTime = System.currentTimeMillis()
                 )
             }
-        } catch (e: Exception) {
+        }.onFailure {
             _uiState.update {
                 it.copy(
                     transactionsError = "Failed to load transactions",
@@ -200,20 +170,24 @@ class WalletDetailViewModel @Inject constructor(
     }
 
     private suspend fun loadMarketPercentages() {
-        try {
-            when (val percentagesResult = marketRepository.getLatestPricePercentages()) {
+        runCatching {
+            marketRepository.getLatestPricePercentages()
+        }.onSuccess { percentagesResult ->
+            when (percentagesResult) {
                 is Result.Success -> {
                     _uiState.update { it.copy(pricePercentages = percentagesResult.data) }
+                    updateAssets()
                 }
 
                 is Result.Error -> {
                     _uiState.update { it.copy(pricePercentages = emptyMap()) }
+                    updateAssets()
                 }
 
                 Result.Loading -> {}
             }
-        } catch (e: Exception) {
-            // Silently fail - market percentages are optional
+        }.onFailure {
+            // Silently fail
         }
     }
 
@@ -224,7 +198,6 @@ class WalletDetailViewModel @Inject constructor(
             when (val syncResult = syncWalletBalancesUseCase(wallet)) {
                 is Result.Success -> {
                     val updatedBalance = walletRepository.getWalletBalance(walletId)
-
                     if (updatedBalance != null) {
                         _uiState.update {
                             it.copy(
@@ -235,6 +208,7 @@ class WalletDetailViewModel @Inject constructor(
                                 lastBalanceSyncTime = System.currentTimeMillis()
                             )
                         }
+                        updateAssets()
                     }
                 }
 
@@ -246,11 +220,10 @@ class WalletDetailViewModel @Inject constructor(
                             isRefreshingBalance = false
                         )
                     }
-
-                    // Try to get whatever balance we have
                     val currentBalance = walletRepository.getWalletBalance(walletId)
                     if (currentBalance != null && currentBalance != _uiState.value.balance) {
                         _uiState.update { it.copy(balance = currentBalance) }
+                        updateAssets()
                     }
                 }
 
@@ -263,19 +236,16 @@ class WalletDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshingTransactions = true) }
 
-            try {
-                // Use invoke with forceRefresh=true and observe=false
+            runCatching {
                 getAllTransactionsUseCase(walletId, forceRefresh = true, observe = false)
-
-                // The flow will update automatically via observeTransactions
+            }.onSuccess {
                 _uiState.update {
                     it.copy(
                         isRefreshingTransactions = false,
                         lastTransactionSyncTime = System.currentTimeMillis()
                     )
                 }
-
-            } catch (e: Exception) {
+            }.onFailure { e ->
                 _uiState.update {
                     it.copy(
                         transactionsError = e.message,
@@ -288,16 +258,11 @@ class WalletDetailViewModel @Inject constructor(
 
     private fun observeTransactions(walletId: String) {
         viewModelScope.launch {
-            // Use invoke with observe=true to get the observation flow
             val flow = getAllTransactionsUseCase(walletId, observe = true)
-
             flow?.flowOn(Dispatchers.IO)
-                ?.catch { e ->
-                    // Silently handle observation errors
-                }
+                ?.catch { e -> /* silent */ }
                 ?.collect { updatedTransactions ->
                     val displayTransactions = formatTransactionList(updatedTransactions)
-
                     _uiState.update {
                         it.copy(
                             transactions = displayTransactions,
@@ -309,7 +274,28 @@ class WalletDetailViewModel @Inject constructor(
         }
     }
 
-    // Helper function to format a list of transactions using the existing use case
+    private fun updateAssets() {
+        val state = _uiState.value
+        val wallet = state.wallet ?: return
+
+        val assets = formatBalanceUseCase(
+            walletId = wallet.id,
+            wallet = wallet,
+            balance = state.balance,
+            pricePercentages = state.pricePercentages
+        )
+
+        val totalUsd = assets.sumOf { it.usdValue }
+        val totalFormatted = USD_FORMATTER.format(totalUsd)
+
+        _uiState.update {
+            it.copy(
+                assets = assets,
+                totalBalanceFormatted = totalFormatted
+            )
+        }
+    }
+
     private fun formatTransactionList(transactions: List<Any>): List<TransactionDisplayInfo> {
         return transactions.map { transaction ->
             val coinType = determineCoinType(transaction)
@@ -333,58 +319,11 @@ class WalletDetailViewModel @Inject constructor(
 
     fun getWalletName(): String = _uiState.value.wallet?.name ?: "Wallet Details"
 
-    fun getTotalUsdValue(): Double {
-        val balance = _uiState.value.balance
-        var total = 0.0
-
-        balance?.bitcoinBalances?.forEach { (network, btcBalance) ->
-            total += btcBalance.usdValue
-        }
-
-        balance?.solanaBalances?.forEach { (network, solBalance) ->
-            total += solBalance.usdValue
-        }
-
-        balance?.evmBalances?.forEach { evmBalance ->
-            total += evmBalance.usdValue
-        }
-
-        return total
-    }
-
-    fun getFullAddress(): String {
-        val wallet = _uiState.value.wallet ?: return ""
-        return wallet.bitcoinCoins.firstOrNull()?.address
-            ?: wallet.solanaCoins.firstOrNull()?.address
-            ?: wallet.evmTokens.firstOrNull()?.address
-            ?: ""
-    }
-
     fun refresh() {
         _uiState.value.wallet?.let { wallet ->
             viewModelScope.launch {
                 loadWallet(wallet.id)
             }
         }
-    }
-
-    // Helper functions for UI
-    fun isBalanceLoading(): Boolean =
-        _uiState.value.isLoadingBalance || _uiState.value.isRefreshingBalance || _uiState.value.isLoading
-
-    fun isTransactionsLoading(): Boolean =
-        _uiState.value.isLoadingTransactions || _uiState.value.isRefreshingTransactions
-
-    fun getBalanceLoadingMessage(): String = when {
-        _uiState.value.isRefreshingBalance -> "Updating balances..."
-        _uiState.value.isLoadingBalance -> "Loading balances..."
-        _uiState.value.isLoading -> "Loading wallet..."
-        else -> ""
-    }
-
-    fun getTransactionsLoadingMessage(): String = when {
-        _uiState.value.isRefreshingTransactions -> "Updating transactions..."
-        _uiState.value.isLoadingTransactions -> "Loading transactions..."
-        else -> ""
     }
 }
