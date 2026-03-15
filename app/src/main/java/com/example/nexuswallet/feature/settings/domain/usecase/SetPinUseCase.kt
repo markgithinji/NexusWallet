@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.settings.domain.usecase
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.toHex
+import com.example.nexuswallet.feature.core.util.toHex
 import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.inject.Inject
