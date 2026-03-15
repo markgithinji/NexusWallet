@@ -70,7 +70,7 @@ import com.example.nexuswallet.feature.wallet.ui.EmptyTransactionsView
 import com.example.nexuswallet.feature.wallet.ui.common.ErrorScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.QuickActionItem
-import com.example.nexuswallet.feature.wallet.ui.TransactionItem
+import com.example.nexuswallet.feature.wallet.ui.common.TransactionItem
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight

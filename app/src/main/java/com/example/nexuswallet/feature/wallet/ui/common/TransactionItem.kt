@@ -1,5 +1,4 @@
-package com.example.nexuswallet.feature.wallet.ui
-
+package com.example.nexuswallet.feature.wallet.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,11 +45,12 @@ fun TransactionItem(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
-    val (symbol, displayName, coinColor) = when (transaction.coinType) {
-        CoinType.BITCOIN -> Triple("BTC", "Bitcoin", bitcoinLight)
-        CoinType.ETHEREUM -> Triple("ETH", "Ethereum", ethereumLight)
-        CoinType.SOLANA -> Triple("SOL", "Solana", solanaLight)
-        CoinType.USDC -> Triple("USDC", "USD Coin", usdcLight)
+    val coinType = transaction.coinType
+    val (symbol, displayName, coinColor) = when (coinType) {
+        CoinType.BITCOIN -> Triple(coinType.symbol, coinType.displayName, bitcoinLight)
+        CoinType.ETHEREUM -> Triple(coinType.symbol, coinType.displayName, ethereumLight)
+        CoinType.SOLANA -> Triple(coinType.symbol, coinType.displayName, solanaLight)
+        CoinType.USDC -> Triple(coinType.symbol, coinType.displayName, usdcLight)
     }
 
     val (statusColor, statusBgColor) = when (transaction.status) {
@@ -58,17 +58,18 @@ fun TransactionItem(
             MaterialTheme.colorScheme.success,
             MaterialTheme.colorScheme.success.copy(alpha = 0.1f)
         )
+
         TransactionStatus.PENDING -> Pair(
             MaterialTheme.colorScheme.warning,
             MaterialTheme.colorScheme.warning.copy(alpha = 0.1f)
         )
+
         TransactionStatus.FAILED -> Pair(
             MaterialTheme.colorScheme.error,
             MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
         )
     }
 
-    // Amount color: receive = green, send = blue
     val amountColor = if (transaction.isIncoming)
         MaterialTheme.colorScheme.success
     else
@@ -90,7 +91,6 @@ fun TransactionItem(
                 .padding(vertical = 12.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Status icon
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -111,7 +111,6 @@ fun TransactionItem(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Transaction details
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -135,7 +134,6 @@ fun TransactionItem(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Amount and status
             Column(
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.widthIn(min = 80.dp, max = 120.dp)
