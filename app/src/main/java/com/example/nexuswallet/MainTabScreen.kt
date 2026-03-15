@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
 import com.example.nexuswallet.feature.wallet.domain.model.Network
-import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
+import com.example.nexuswallet.feature.wallet.ui.walletdashboard.WalletDashboardScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

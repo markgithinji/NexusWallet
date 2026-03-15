@@ -67,7 +67,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInf
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.ui.EmptyTransactionsView
-import com.example.nexuswallet.feature.wallet.ui.ErrorScreen
+import com.example.nexuswallet.feature.wallet.ui.common.ErrorScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.QuickActionItem
 import com.example.nexuswallet.feature.wallet.ui.TransactionItem
@@ -90,11 +90,6 @@ fun CoinDetailScreen(
     onNavigateToSend: (String, Network) -> Unit,
     onNavigateToAllTransactions: (String, Network) -> Unit,
     onNavigateToTransactionDetail: (String, String) -> Unit,
-    onCopyAddress: (String) -> Unit,
-    onRefresh: () -> Unit,
-    onRetry: () -> Unit,
-    onSPLTokenClick: (SPLToken) -> Unit,
-    onEVMTokenClick: (EVMToken) -> Unit,
     walletId: String,
     network: Network,
     viewModel: CoinDetailViewModel = hiltViewModel()
@@ -103,41 +98,6 @@ fun CoinDetailScreen(
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        viewModel.loadCoinDetails(walletId, network)
-    }
-
-    // Create handlers that use the hoisted callbacks
-    val handleCopyAddress: (String) -> Unit = { address ->
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clip = ClipData.newPlainText("Address", address)
-        clipboard.setPrimaryClip(clip)
-        Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
-        onCopyAddress(address)
-    }
-
-    val handleReceive: () -> Unit = {
-        onNavigateToReceive(walletId, network)
-    }
-
-    val handleSend: () -> Unit = {
-        onNavigateToSend(walletId, network)
-    }
-
-    val handleViewAllTransactions: () -> Unit = {
-        onNavigateToAllTransactions(walletId, network)
-    }
-
-    val handleTransactionClick: (TransactionDisplayInfo) -> Unit = { transaction ->
-        onNavigateToTransactionDetail(walletId, transaction.id)
-    }
-
-    val handleRefresh: () -> Unit = {
-        onRefresh()
-        viewModel.refresh()
-    }
-
-    val handleRetry: () -> Unit = {
-        onRetry()
         viewModel.loadCoinDetails(walletId, network)
     }
 
@@ -151,7 +111,9 @@ fun CoinDetailScreen(
     state.error?.let { errorMessage ->
         ErrorScreen(
             message = errorMessage,
-            onRetry = handleRetry
+            onRetry = {
+                viewModel.loadCoinDetails(walletId, network)
+            }
         )
         return
     }
@@ -167,7 +129,9 @@ fun CoinDetailScreen(
                 displayName = displayName,
                 isLoading = state.isLoading,
                 onNavigateUp = onNavigateUp,
-                onRefresh = handleRefresh
+                onRefresh = {
+                    viewModel.refresh()
+                }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -179,13 +143,20 @@ fun CoinDetailScreen(
             iconRes = iconRes,
             displayName = displayName,
             network = network,
-            onCopyAddress = handleCopyAddress,
-            onReceive = handleReceive,
-            onSend = handleSend,
-            onViewAllTransactions = handleViewAllTransactions,
-            onTransactionClick = handleTransactionClick,
-            onSPLTokenClick = onSPLTokenClick,
-            onEVMTokenClick = onEVMTokenClick,
+            onCopyAddress = { address ->
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("Address", address)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
+            },
+            onReceive = { onNavigateToReceive(walletId, network) },
+            onSend = { onNavigateToSend(walletId, network) },
+            onViewAllTransactions = { onNavigateToAllTransactions(walletId, network) },
+            onTransactionClick = { transaction ->
+                onNavigateToTransactionDetail(walletId, transaction.id)
+            },
+            onSPLTokenClick = {},
+            onEVMTokenClick = {},
             modifier = Modifier.padding(padding)
         )
     }
