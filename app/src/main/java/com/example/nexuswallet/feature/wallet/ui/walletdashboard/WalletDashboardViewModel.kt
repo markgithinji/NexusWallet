@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.ui
+package com.example.nexuswallet.feature.wallet.ui.walletdashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
