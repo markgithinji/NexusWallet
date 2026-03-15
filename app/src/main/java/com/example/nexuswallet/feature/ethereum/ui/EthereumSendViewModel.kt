@@ -337,7 +337,7 @@ class EthereumSendViewModel @Inject constructor(
             fromAddress = state.fromAddress,
             tokenBalance = state.tokenBalance,
             ethBalance = state.ethBalance,
-            feeLevel = state.feeLevel,
+            feeEstimate = state.feeEstimate,
             token = token
         )
 
