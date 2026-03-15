@@ -1,14 +1,8 @@
 package com.example.nexuswallet.feature.wallet.ui
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
@@ -18,10 +12,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
-import java.text.NumberFormat
-import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -50,50 +43,18 @@ class WalletDashboardViewModel @Inject constructor(
     val operationError: StateFlow<String?> = _operationError.asStateFlow()
 
     init {
-        Log.d("WalletVM", "ViewModel initialized")
         observeWallets()
     }
 
     private fun observeWallets() {
-        Log.d("WalletVM", "Starting to observe wallets")
         viewModelScope.launch {
             walletRepository.observeWallets()
                 .catch { e ->
-                    Log.e("WalletVM", "Error observing wallets: ${e.message}", e)
                     _uiState.value = Result.Error("Failed to load wallets: ${e.message}")
                 }
                 .collectLatest { walletsList ->
-                    Log.d("WalletVM", "Collected wallets: ${walletsList.size} wallets found")
-
-                    // Log each wallet's details
-                    walletsList.forEachIndexed { index, wallet ->
-                        Log.d("WalletVM", "Wallet $index: id=${wallet.id}, name=${wallet.name}, " +
-                                "bitcoinCoins=${wallet.bitcoinCoins.size}, " +
-                                "solanaCoins=${wallet.solanaCoins.size}, " +
-                                "evmTokens=${wallet.evmTokens.size}")
-
-                        // Log Bitcoin coins
-                        wallet.bitcoinCoins.forEachIndexed { coinIdx, coin ->
-                            Log.d("WalletVM", "  BTC Coin $coinIdx: network=${coin.network.name}, address=${coin.address.take(8)}...")
-                        }
-
-                        // Log Solana coins
-                        wallet.solanaCoins.forEachIndexed { coinIdx, coin ->
-                            Log.d("WalletVM", "  SOL Coin $coinIdx: network=${coin.network.name}, address=${coin.address.take(8)}...")
-                        }
-
-                        // Log EVM token externalIds
-                        wallet.evmTokens.forEachIndexed { tokenIdx, token ->
-                            Log.d("WalletVM", "  Token $tokenIdx: ${token.symbol} - externalId: ${token.externalId}")
-                        }
-                    }
-
-                    if (walletsList.isEmpty()) {
-                        Log.d("WalletVM", "No wallets found, setting empty success state")
-                        _uiState.value = Result.Success(emptyList())
-                    } else {
-                        Log.d("WalletVM", "Wallets found, setting success state and loading balances")
-                        _uiState.value = Result.Success(walletsList)
+                    _uiState.value = Result.Success(walletsList)
+                    if (walletsList.isNotEmpty()) {
                         loadBalances(walletsList)
                     }
                 }
@@ -101,319 +62,66 @@ class WalletDashboardViewModel @Inject constructor(
     }
 
     private fun loadBalances(wallets: List<Wallet>) {
-        Log.d("WalletVM", "Loading balances for ${wallets.size} wallets")
         viewModelScope.launch {
-            try {
-                val balancesMap = mutableMapOf<String, WalletBalance>()
-                wallets.forEach { wallet ->
-                    Log.d("WalletVM", "Fetching balance for wallet: ${wallet.id}")
-                    val balance = walletRepository.getWalletBalance(wallet.id)
-                    if (balance != null) {
-                        Log.d("WalletVM", "Balance found for wallet ${wallet.id}: " +
-                                "bitcoinBalances=${balance.bitcoinBalances.size}, " +
-                                "solanaBalances=${balance.solanaBalances.size}, " +
-                                "evmBalances=${balance.evmBalances.size}")
-
-                        // Log Bitcoin balances
-                        balance.bitcoinBalances.forEach { (network, btcBalance) ->
-                            Log.d("WalletVM", "  Bitcoin ${network.displayName}: ${btcBalance.btc} BTC, value=${btcBalance.usdValue}")
-                        }
-
-                        // Log Solana balances
-                        balance.solanaBalances.forEach { (network, solBalance) ->
-                            Log.d("WalletVM", "  Solana ${network.displayName}: ${solBalance.sol} SOL, value=${solBalance.usdValue}")
-                        }
-
-                        // Log EVM balance details
-                        balance.evmBalances.forEachIndexed { idx, evmBalance ->
-                            Log.d("WalletVM", "  EVM Balance $idx: externalTokenId=${evmBalance.externalTokenId}, " +
-                                    "value=${evmBalance.usdValue}, address=${evmBalance.address.take(8)}...")
-                        }
-
-                        balancesMap[wallet.id] = balance
-                    } else {
-                        Log.d("WalletVM", "No balance found for wallet: ${wallet.id}")
-                    }
+            val balancesMap = wallets.mapNotNull { wallet ->
+                runCatching { // TODO: Move catching to repo safeApicall
+                    walletRepository.getWalletBalance(wallet.id)
+                }.getOrNull()?.let { balance ->
+                    wallet.id to balance
                 }
-                Log.d("WalletVM", "Loaded balances for ${balancesMap.size} wallets")
-                _balances.value = balancesMap
+            }.toMap()
 
-                calculateTotalPortfolio(wallets)
-
-            } catch (e: Exception) {
-                Log.e("WalletVM", "Failed to load balances: ${e.message}", e)
-            }
+            _balances.value = balancesMap
+            calculateTotalPortfolio(wallets)
         }
     }
 
     private fun calculateTotalPortfolio(wallets: List<Wallet>) {
-        viewModelScope.launch {
-            Log.d("WalletVM", "Calculating total portfolio")
-            var total = BigDecimal.ZERO
-
-            wallets.forEach { wallet ->
-                val balance = _balances.value[wallet.id]
-                val walletValue = balance?.let {
-                    // Calculate total including all balances
-                    var walletTotal = BigDecimal.ZERO
-
-                    // Add all Bitcoin balances
-                    it.bitcoinBalances.forEach { (_, btcBalance) ->
-                        walletTotal = walletTotal.add(BigDecimal(btcBalance.usdValue))
-                    }
-
-                    // Add all Solana balances
-                    it.solanaBalances.forEach { (_, solBalance) ->
-                        walletTotal = walletTotal.add(BigDecimal(solBalance.usdValue))
-                    }
-
-                    // Add all EVM token balances
-                    it.evmBalances.forEach { evmBalance ->
-                        walletTotal = walletTotal.add(BigDecimal(evmBalance.usdValue))
-                    }
-
-                    Log.d("WalletVM", "Wallet ${wallet.id} value: $walletTotal")
-                    walletTotal
-                } ?: BigDecimal.ZERO
-
-                total = total.add(walletValue)
-            }
-
-            _totalPortfolioValue.value = total
-            Log.d("WalletVM", "Total portfolio calculated: $total")
+        val total = wallets.sumOf { wallet ->
+            _balances.value[wallet.id]?.let { balance ->
+                balance.bitcoinBalances.values.sumOf { BigDecimal(it.usdValue) } +
+                        balance.solanaBalances.values.sumOf { BigDecimal(it.usdValue) } +
+                        balance.evmBalances.sumOf { BigDecimal(it.usdValue) }
+            } ?: BigDecimal.ZERO
         }
-    }
 
-    fun getWalletBalance(walletId: String): WalletBalance? {
-        val balance = _balances.value[walletId]
-        Log.d("WalletVM", "getWalletBalance for $walletId: ${balance != null}")
-        return balance
-    }
-
-    fun getBitcoinBalance(walletId: String, network: BitcoinNetwork): BitcoinBalance? {
-        return _balances.value[walletId]?.bitcoinBalances?.get(network)
-    }
-
-    fun getSolanaBalance(walletId: String, network: SolanaNetwork): SolanaBalance? {
-        return _balances.value[walletId]?.solanaBalances?.get(network)
-    }
-
-    fun getTokenBalance(walletId: String, externalTokenId: String): EVMBalance? {
-        return _balances.value[walletId]?.evmBalances?.find { it.externalTokenId == externalTokenId }
+        _totalPortfolioValue.value = total
     }
 
     fun deleteWallet(walletId: String) {
-        Log.d("WalletVM", "Deleting wallet: $walletId")
         viewModelScope.launch {
-            _isOperationLoading.value = true
-            _operationError.value = null
-            try {
+            _isOperationLoading.update { true }
+            _operationError.update { null }
+
+            runCatching {
                 walletRepository.deleteWallet(walletId)
-                Log.d("WalletVM", "Wallet deleted successfully: $walletId")
-            } catch (e: Exception) {
-                Log.e("WalletVM", "Failed to delete wallet: ${e.message}", e)
-                _operationError.value = "Failed to delete wallet: ${e.message}"
-            } finally {
-                _isOperationLoading.value = false
+            }.onFailure { e ->
+                _operationError.update { "Failed to delete wallet: ${e.message}" }
             }
+
+            _isOperationLoading.update { false }
         }
     }
 
     fun refresh() {
-        Log.d("WalletVM", "Manual refresh triggered")
         viewModelScope.launch {
-            _isOperationLoading.value = true
-            _operationError.value = null
-            try {
-                val currentWallets = when (val state = _uiState.value) {
-                    is Result.Success -> {
-                        Log.d("WalletVM", "Current state has ${state.data.size} wallets")
-                        state.data
-                    }
-                    else -> {
-                        Log.d("WalletVM", "Current state is not Success: ${_uiState.value}")
-                        emptyList()
-                    }
-                }
+            _isOperationLoading.update { true }
+            _operationError.update { null }
+
+            runCatching {
+                val currentWallets = (_uiState.value as? Result.Success)?.data ?: emptyList()
                 if (currentWallets.isNotEmpty()) {
-                    Log.d("WalletVM", "Refreshing balances for ${currentWallets.size} wallets")
                     loadBalances(currentWallets)
-                } else {
-                    Log.d("WalletVM", "No wallets to refresh")
                 }
-            } catch (e: Exception) {
-                Log.e("WalletVM", "Failed to refresh: ${e.message}", e)
-                _operationError.value = "Failed to refresh: ${e.message}"
-            } finally {
-                _isOperationLoading.value = false
+            }.onFailure { e ->
+                _operationError.update { "Failed to refresh: ${e.message}" }
             }
+
+            _isOperationLoading.update { false }
         }
     }
 
     fun clearOperationError() {
-        _operationError.value = null
-    }
-
-    fun hasWallets(): Boolean {
-        val hasWallets = when (val state = _uiState.value) {
-            is Result.Success -> {
-                val result = state.data.isNotEmpty()
-                Log.d("WalletVM", "hasWallets check: $result, size=${state.data.size}")
-                result
-            }
-            else -> {
-                Log.d("WalletVM", "hasWallets check: false, state=${_uiState.value}")
-                false
-            }
-        }
-        return hasWallets
-    }
-
-    fun getWalletCount(): Int {
-        val count = when (val state = _uiState.value) {
-            is Result.Success -> state.data.size
-            else -> 0
-        }
-        Log.d("WalletVM", "getWalletCount: $count")
-        return count
-    }
-
-    fun getWallets(): List<Wallet> {
-        val wallets = when (val state = _uiState.value) {
-            is Result.Success -> state.data
-            else -> emptyList()
-        }
-        Log.d("WalletVM", "getWallets: ${wallets.size} wallets")
-        return wallets
-    }
-
-    // Helper to get formatted portfolio value
-    fun getFormattedPortfolioValue(): String {
-        return NumberFormat.getCurrencyInstance(Locale.US).format(_totalPortfolioValue.value)
-    }
-
-    // Helper to get all tokens across all wallets for portfolio tracking
-    fun getAllTokensWithBalances(): List<TokenWithBalance> {
-        val result = mutableListOf<TokenWithBalance>()
-
-        val wallets = when (val state = _uiState.value) {
-            is Result.Success -> state.data
-            else -> emptyList()
-        }
-
-        wallets.forEach { wallet ->
-            val balance = _balances.value[wallet.id]
-
-            // Add Bitcoin balances (all networks)
-            wallet.bitcoinCoins.forEach { coin ->
-                val btcBalance = balance?.bitcoinBalances?.get(coin.network)
-                btcBalance?.let {
-                    result.add(
-                        TokenWithBalance(
-                            walletId = wallet.id,
-                            walletName = wallet.name,
-                            tokenName = "Bitcoin",
-                            tokenSymbol = "BTC",
-                            balance = it.btc,
-                            usdValue = it.usdValue,
-                            network = coin.network.displayName,
-                            networkKey = coin.network.name
-                        )
-                    )
-                }
-            }
-
-            // Add Solana balances (all networks)
-            wallet.solanaCoins.forEach { coin ->
-                val solBalance = balance?.solanaBalances?.get(coin.network)
-                solBalance?.let {
-                    result.add(
-                        TokenWithBalance(
-                            walletId = wallet.id,
-                            walletName = wallet.name,
-                            tokenName = "Solana",
-                            tokenSymbol = "SOL",
-                            balance = it.sol,
-                            usdValue = it.usdValue,
-                            network = coin.network.displayName,
-                            networkKey = coin.network.name
-                        )
-                    )
-                }
-            }
-
-            // Add EVM tokens
-            wallet.evmTokens.forEach { token ->
-                val tokenBalance = balance?.evmBalances?.find { it.externalTokenId == token.externalId }
-                tokenBalance?.let {
-                    result.add(
-                        TokenWithBalance(
-                            walletId = wallet.id,
-                            walletName = wallet.name,
-                            tokenName = token.name,
-                            tokenSymbol = token.symbol,
-                            balance = it.balanceDecimal,
-                            usdValue = it.usdValue,
-                            network = token.network.displayName,
-                            externalTokenId = token.externalId
-                        )
-                    )
-                }
-            }
-        }
-
-        return result
+        _operationError.update { null }
     }
 }
-
-// Data class for portfolio items
-data class TokenWithBalance(
-    val walletId: String,
-    val walletName: String,
-    val tokenName: String,
-    val tokenSymbol: String,
-    val balance: String,
-    val usdValue: Double,
-    val network: String,
-    val networkKey: String? = null,
-    val externalTokenId: String? = null
-)
-
-// Extension property for WalletBalance with polymorphic support
-val WalletBalance.totalUsdValue: Double
-    get() {
-        var total = 0.0
-        Log.d("WalletVM", "Calculating totalUsdValue for wallet $walletId")
-
-        // Add all Bitcoin balances
-        bitcoinBalances.forEach { (network, btcBalance) ->
-            total += btcBalance.usdValue
-            Log.d("WalletVM", "  + Bitcoin ${network.displayName}: ${btcBalance.usdValue}")
-        }
-
-        // Add all Solana balances
-        solanaBalances.forEach { (network, solBalance) ->
-            total += solBalance.usdValue
-            Log.d("WalletVM", "  + Solana ${network.displayName}: ${solBalance.usdValue}")
-        }
-
-        // Add all EVM token balances
-        evmBalances.forEachIndexed { index, evmBalance ->
-            total += evmBalance.usdValue
-            Log.d("WalletVM", "  + EVM Balance $index: ${evmBalance.symbol ?: "Unknown"} - $${evmBalance.usdValue}")
-        }
-
-        Log.d("WalletVM", "  Total = $total")
-        return total
-    }
-
-// Add helper extension to EVMBalance for better logging
-val EVMBalance.symbol: String?
-    get() {
-        return when {
-            externalTokenId.contains("eth") -> "ETH"
-            externalTokenId.contains("usdc") -> "USDC"
-            externalTokenId.contains("usdt") -> "USDT"
-            else -> null
-        }
-    }

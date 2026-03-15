@@ -77,6 +77,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
@@ -109,11 +110,11 @@ fun WalletDashboardScreen(
     padding: PaddingValues,
     viewModel: WalletDashboardViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val balances by viewModel.balances.collectAsState()
-    val totalPortfolio by viewModel.totalPortfolioValue.collectAsState()
-    val isOperationLoading by viewModel.isOperationLoading.collectAsState()
-    val operationError by viewModel.operationError.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val balances by viewModel.balances.collectAsStateWithLifecycle()
+    val totalPortfolio by viewModel.totalPortfolioValue.collectAsStateWithLifecycle()
+    val isOperationLoading by viewModel.isOperationLoading.collectAsStateWithLifecycle()
+    val operationError by viewModel.operationError.collectAsStateWithLifecycle()
 
     var isRefreshing by remember { mutableStateOf(false) }
 
@@ -410,8 +411,7 @@ fun WalletCard(
                         )
 
                         Text(
-                            text = NumberFormat.getCurrencyInstance(Locale.US)
-                                .format(totalUsdValue),
+                            text = totalUsdValue.formatAsCurrency(),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -728,9 +728,7 @@ fun SimpleBalanceRow(
         }
 
         Text(
-            text = if (usdValue > 0)
-                NumberFormat.getCurrencyInstance(Locale.US).format(usdValue)
-            else "$0.00",
+            text = usdValue.formatAsCurrency(),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (usdValue > 0) FontWeight.SemiBold else FontWeight.Normal,
             color = if (usdValue > 0)
@@ -806,7 +804,7 @@ fun AnimatedPortfolioHeader(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = NumberFormat.getCurrencyInstance(Locale.US).format(animatedValue.value),
+                text = totalPortfolio.toDouble().formatAsCurrency(),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -1086,3 +1084,9 @@ fun DeleteWalletDialog(
         }
     )
 }
+
+fun Double.formatAsCurrency(): String =
+    NumberFormat.getCurrencyInstance(Locale.US).format(this)
+
+fun BigDecimal.formatAsCurrency(): String =
+    NumberFormat.getCurrencyInstance(Locale.US).format(this.toDouble())
