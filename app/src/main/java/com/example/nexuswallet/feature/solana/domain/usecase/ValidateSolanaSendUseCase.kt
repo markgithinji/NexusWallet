@@ -11,7 +11,6 @@ import javax.inject.Singleton
 
 @Singleton
 class ValidateSolanaSendUseCase @Inject constructor(
-    private val solanaBlockchainRepository: SolanaBlockchainRepository,
     private val logger: Logger
 ) {
 
@@ -22,7 +21,8 @@ class ValidateSolanaSendUseCase @Inject constructor(
         amountValue: BigDecimal,
         walletAddress: String,
         balance: BigDecimal,
-        feeEstimate: SolanaFeeEstimate?
+        feeEstimate: SolanaFeeEstimate?,
+        isAddressValid: Boolean = true
     ): SendValidationResult {
 
         // Validate address is not empty
@@ -34,9 +34,7 @@ class ValidateSolanaSendUseCase @Inject constructor(
             )
         }
 
-        // Validate address format
-        val addressValid = solanaBlockchainRepository.validateAddress(toAddress)
-        if (addressValid is Result.Error || addressValid is Result.Success && !addressValid.data) {
+        if (!isAddressValid) {
             logger.w(tag, "Invalid address format")
             return SendValidationResult(
                 isValid = false,
@@ -72,9 +70,7 @@ class ValidateSolanaSendUseCase @Inject constructor(
             return SendValidationResult(
                 isValid = false,
                 balanceError = "Insufficient balance. You have ${balance.setScale(9)} SOL but need ${
-                    totalRequired.setScale(
-                        9
-                    )
+                    totalRequired.setScale(9)
                 } SOL (including fees)"
             )
         }

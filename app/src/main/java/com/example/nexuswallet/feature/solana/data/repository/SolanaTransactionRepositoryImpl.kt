@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.solana.data.repository
 
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionDao
 import com.example.nexuswallet.feature.solana.data.toDomain
 import com.example.nexuswallet.feature.solana.data.toEntity
@@ -15,36 +14,23 @@ import javax.inject.Singleton
 
 @Singleton
 class SolanaTransactionRepositoryImpl @Inject constructor(
-    private val solanaTransactionDao: SolanaTransactionDao,
-    private val logger: Logger
+    private val solanaTransactionDao: SolanaTransactionDao
 ) : SolanaTransactionRepository {
 
     override suspend fun saveTransaction(transaction: SolanaTransaction) {
-        logger.d("SolanaTxRepo", "Saving transaction: ${transaction.id.take(8)}...")
-        logger.d("SolanaTxRepo", "  walletId: ${transaction.walletId}")
-        logger.d("SolanaTxRepo", "  network: ${transaction.network.displayName}")
-        logger.d("SolanaTxRepo", "  tokenSymbol: ${transaction.tokenSymbol}")
 
         val entity = transaction.toEntity()
         solanaTransactionDao.insert(entity)
 
         val saved = solanaTransactionDao.getById(transaction.id)
-        logger.d("SolanaTxRepo", "Verification - transaction exists after save: ${saved != null}")
     }
 
     override suspend fun getTransactionsSync(
         walletId: String,
         network: SolanaNetwork
     ): List<SolanaTransaction> {
-        logger.d(
-            "SolanaTxRepo",
-            "getTransactionsSync called for wallet: $walletId, network: ${network.displayName}"
-        )
         val entities = solanaTransactionDao.getByWalletIdAndNetworkSync(walletId, network)
-        logger.d(
-            "SolanaTxRepo",
-            "Found ${entities.size} transactions for wallet: $walletId, network: ${network.displayName}"
-        )
+
         return entities.map { it.toDomain() }
     }
 
