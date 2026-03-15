@@ -14,7 +14,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,17 +30,17 @@ import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Network
-import com.example.nexuswallet.feature.wallet.ui.ErrorMessage
-import com.example.nexuswallet.feature.wallet.ui.MaxAmountDialog
-import com.example.nexuswallet.feature.wallet.ui.NetworkSelectorCard
-import com.example.nexuswallet.feature.wallet.ui.NetworkSelectorDialog
-import com.example.nexuswallet.feature.wallet.ui.SendAddressInput
-import com.example.nexuswallet.feature.wallet.ui.SendAmountInput
-import com.example.nexuswallet.feature.wallet.ui.SendBalanceCard
-import com.example.nexuswallet.feature.wallet.ui.SendBottomBar
-import com.example.nexuswallet.feature.wallet.ui.SendFeeSelection
-import com.example.nexuswallet.feature.wallet.ui.SendTopBar
-import com.example.nexuswallet.feature.wallet.ui.rememberSendErrorState
+import com.example.nexuswallet.feature.core.ui.ErrorMessage
+import com.example.nexuswallet.feature.core.ui.MaxAmountDialog
+import com.example.nexuswallet.feature.core.ui.NetworkSelectorCard
+import com.example.nexuswallet.feature.core.ui.NetworkSelectorDialog
+import com.example.nexuswallet.feature.core.ui.SendAddressInput
+import com.example.nexuswallet.feature.core.ui.SendAmountInput
+import com.example.nexuswallet.feature.core.ui.SendBalanceCard
+import com.example.nexuswallet.feature.core.ui.SendBottomBar
+import com.example.nexuswallet.feature.core.ui.SendFeeSelection
+import com.example.nexuswallet.feature.core.ui.SendTopBar
+import com.example.nexuswallet.feature.core.ui.rememberSendErrorState
 import com.example.nexuswallet.ui.theme.bitcoinLight
 
 @OptIn(ExperimentalMaterial3Api::class)

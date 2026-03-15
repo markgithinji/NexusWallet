@@ -1,5 +1,6 @@
-package com.example.nexuswallet.feature.wallet.ui
+package com.example.nexuswallet.feature.core.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -92,6 +93,7 @@ import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
+import com.example.nexuswallet.ui.theme.usdtLight
 import com.example.nexuswallet.ui.theme.warning
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -881,7 +883,7 @@ fun FeeLevelButton(
         colors = CardDefaults.cardColors(
             containerColor = if (selected) color.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant
         ),
-        border = if (selected) androidx.compose.foundation.BorderStroke(1.dp, color) else null
+        border = if (selected) BorderStroke(1.dp, color) else null
     ) {
         Row(
             modifier = Modifier
