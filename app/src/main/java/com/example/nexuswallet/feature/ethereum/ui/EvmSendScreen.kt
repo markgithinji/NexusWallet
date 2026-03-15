@@ -27,6 +27,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
@@ -48,9 +49,9 @@ import com.example.nexuswallet.feature.wallet.ui.SendTopBar
 import com.example.nexuswallet.feature.wallet.ui.TokenSelectorCard
 import com.example.nexuswallet.feature.wallet.ui.TokenSelectorDialog
 import com.example.nexuswallet.feature.wallet.ui.rememberSendErrorState
-import com.example.nexuswallet.feature.wallet.ui.usdtLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.usdcLight
+import com.example.nexuswallet.ui.theme.usdtLight
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import java.math.RoundingMode
@@ -77,7 +78,7 @@ fun EthereumSendScreen(
     var addressFocused by remember { mutableStateOf(false) }
     var amountFocused by remember { mutableStateOf(false) }
 
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     // Initialize ViewModel with the network directly
     LaunchedEffect(Unit) {

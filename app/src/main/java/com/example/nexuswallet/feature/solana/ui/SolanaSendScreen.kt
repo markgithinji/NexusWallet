@@ -25,6 +25,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
@@ -64,7 +65,7 @@ fun SolanaSendScreen(
     var addressFocused by remember { mutableStateOf(false) }
     var amountFocused by remember { mutableStateOf(false) }
 
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     // Initialize ViewModel with the network directly
     LaunchedEffect(Unit) {

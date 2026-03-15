@@ -54,6 +54,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ButtonDefaults
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.ui.theme.success
 
@@ -64,11 +65,11 @@ fun MarketScreen(
     padding: PaddingValues
 ) {
     val viewModel: MarketViewModel = hiltViewModel()
-    val uiState by viewModel.uiState.collectAsState()
-    val tokens by viewModel.filteredTokens.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val isWebSocketConnected by viewModel.isWebSocketConnected.collectAsState()
-    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val tokens by viewModel.filteredTokens.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val isWebSocketConnected by viewModel.isWebSocketConnected.collectAsStateWithLifecycle()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsStateWithLifecycle()
 
     var isRefreshing by remember { mutableStateOf(false) }
 

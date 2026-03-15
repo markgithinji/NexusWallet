@@ -59,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.domain.model.NewsArticle
@@ -77,10 +78,10 @@ fun TokenDetailScreen(
     tokenId: String,
     viewModel: TokenDetailViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val chartState by viewModel.chartState.collectAsState()
-    val newsState by viewModel.newsState.collectAsState()
-    val selectedDuration by viewModel.selectedDuration.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val chartState by viewModel.chartState.collectAsStateWithLifecycle()
+    val newsState by viewModel.newsState.collectAsStateWithLifecycle()
+    val selectedDuration by viewModel.selectedDuration.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {

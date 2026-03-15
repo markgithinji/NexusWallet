@@ -72,6 +72,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewEffect
@@ -126,9 +127,9 @@ fun TransactionReviewScreen(
     var txStatus by remember { mutableStateOf("") }
     var showSuccessBanner by remember { mutableStateOf(false) }
 
-    val ethereumState = ethereumViewModel.uiState.collectAsState()
-    val solanaState = solanaViewModel.state.collectAsState()
-    val bitcoinState = bitcoinReviewViewModel.state.collectAsState()
+    val ethereumState = ethereumViewModel.uiState.collectAsStateWithLifecycle()
+    val solanaState = solanaViewModel.state.collectAsStateWithLifecycle()
+    val bitcoinState = bitcoinReviewViewModel.state.collectAsStateWithLifecycle()
 
     val coinType = network.coinType
 

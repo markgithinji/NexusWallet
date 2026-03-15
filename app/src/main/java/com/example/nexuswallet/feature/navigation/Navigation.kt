@@ -8,6 +8,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -45,9 +46,9 @@ fun Navigation(
     val navController = rememberNavController()
     val navigationViewModel: NavigationViewModel = hiltViewModel()
 
-    val wallets by navigationViewModel.wallets.collectAsState()
-    val isWalletsLoading by navigationViewModel.isWalletsLoading.collectAsState()
-    val isAuthenticationRequired by navigationViewModel.isAuthenticationRequired.collectAsState()
+    val wallets by navigationViewModel.wallets.collectAsStateWithLifecycle()
+    val isWalletsLoading by navigationViewModel.isWalletsLoading.collectAsStateWithLifecycle()
+    val isAuthenticationRequired by navigationViewModel.isAuthenticationRequired.collectAsStateWithLifecycle()
 
     if (isWalletsLoading) {
         FullScreenLoading(message = "Loading wallets...")

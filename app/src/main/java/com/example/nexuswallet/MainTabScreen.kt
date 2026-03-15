@@ -42,7 +42,7 @@ import com.example.nexuswallet.feature.wallet.ui.WalletDashboardScreen
 @Composable
 fun MainTabScreen(
     onNavigateToCreateWallet: () -> Unit,
-    onNavigateToWalletDetail: (String) -> Unit,  // Now goes directly or via auth
+    onNavigateToWalletDetail: (String) -> Unit,
     onNavigateToCoinDetail: (String, Network) -> Unit,
     onNavigateToTokenDetail: (String) -> Unit,
     onNavigateToReceive: (String, Network) -> Unit,

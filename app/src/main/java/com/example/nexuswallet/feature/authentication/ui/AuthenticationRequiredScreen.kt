@@ -62,6 +62,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.feature.authentication.domain.model.AuthType
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.ui.theme.warning
@@ -79,11 +80,11 @@ fun AuthenticationRequiredScreen(
     val activity = LocalActivity.current as? AppCompatActivity
     val context = LocalContext.current
 
-    val authenticationResult by viewModel.authenticationResult.collectAsState()
-    val showPinDialog by viewModel.showPinDialog.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
-    val isPinAvailable by viewModel.isPinAvailable.collectAsState()
-    val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
+    val authenticationResult by viewModel.authenticationResult.collectAsStateWithLifecycle()
+    val showPinDialog by viewModel.showPinDialog.collectAsStateWithLifecycle()
+    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    val isPinAvailable by viewModel.isPinAvailable.collectAsStateWithLifecycle()
+    val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsStateWithLifecycle()
 
     val biometricPrompt = remember(activity) {
         if (activity == null) return@remember null
