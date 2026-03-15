@@ -15,6 +15,7 @@ import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.usecase.CreateWalletUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GenerateMnemonicUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.GenerateQrCodeUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetAllTransactionsUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetBitcoinDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetEthereumDetailUseCase
@@ -180,5 +181,11 @@ object WalletDomainModule {
             solanaBlockchainRepository = solanaBlockchainRepository,
             logger = logger
         )
+    }
+
+    @Provides
+    @Singleton
+    fun provideGenerateQrCodeUseCase(): GenerateQrCodeUseCase {
+        return GenerateQrCodeUseCase()
     }
 }

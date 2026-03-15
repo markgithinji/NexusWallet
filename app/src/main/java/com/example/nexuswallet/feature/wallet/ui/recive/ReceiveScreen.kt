@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.ui
+package com.example.nexuswallet.feature.wallet.ui.recive
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -6,7 +6,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import com.example.nexuswallet.R
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,7 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Error
@@ -36,7 +35,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,6 +66,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
@@ -76,8 +75,7 @@ import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.qrcode.QRCodeWriter
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReceiveScreen(
@@ -110,7 +108,6 @@ fun ReceiveScreen(
         topBar = {
             ReceiveScreenTopBar(
                 iconRes = iconRes,
-                coinColor = coinColor,
                 coinName = coinType.name.lowercase().replaceFirstChar { it.uppercase() },
                 networkDisplayName = uiState.networkDisplayName,
                 onNavigateUp = onNavigateUp
@@ -130,11 +127,13 @@ fun ReceiveScreen(
         } else {
             ReceiveContent(
                 address = uiState.address,
+                qrCodeBitmap = uiState.qrCodeBitmap,
                 coinType = coinType,
                 networkDisplayName = uiState.networkDisplayName,
                 copiedToClipboard = uiState.copiedToClipboard,
                 onCopy = {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clipboard =
+                        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = ClipData.newPlainText("Wallet Address", uiState.address)
                     clipboard.setPrimaryClip(clip)
                     viewModel.onCopyClicked()
@@ -151,7 +150,6 @@ fun ReceiveScreen(
 @Composable
 private fun ReceiveScreenTopBar(
     iconRes: Int,
-    coinColor: Color,
     coinName: String,
     networkDisplayName: String,
     onNavigateUp: () -> Unit
@@ -181,7 +179,7 @@ private fun ReceiveScreenTopBar(
         navigationIcon = {
             IconButton(onClick = onNavigateUp) {
                 Icon(
-                    Icons.Default.ArrowBack,
+                    Icons.AutoMirrored.Filled.ArrowBack,
                     "Back",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -197,6 +195,7 @@ private fun ReceiveScreenTopBar(
 @Composable
 private fun ReceiveContent(
     address: String,
+    qrCodeBitmap: Bitmap?,
     coinType: CoinType,
     networkDisplayName: String,
     copiedToClipboard: Boolean,
@@ -216,6 +215,7 @@ private fun ReceiveContent(
         // QR Code Section
         item {
             ReceiveQrCodeSection(
+                qrCodeBitmap = qrCodeBitmap,
                 address = address,
                 coinColor = coinColor
             )
@@ -242,6 +242,7 @@ private fun ReceiveContent(
 
 @Composable
 private fun ReceiveQrCodeSection(
+    qrCodeBitmap: Bitmap?,
     address: String,
     coinColor: Color
 ) {
@@ -268,10 +269,6 @@ private fun ReceiveQrCodeSection(
                     .border(1.dp, coinColor.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                val qrCodeBitmap = remember(address) {
-                    generateQrCode(address)
-                }
-
                 if (qrCodeBitmap != null) {
                     Image(
                         bitmap = qrCodeBitmap.asImageBitmap(),
@@ -279,12 +276,21 @@ private fun ReceiveQrCodeSection(
                         modifier = Modifier.size(220.dp)
                     )
                 } else {
-                    Icon(
-                        Icons.Outlined.QrCode,
-                        contentDescription = "QR Code",
-                        modifier = Modifier.size(140.dp),
-                        tint = coinColor
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            Icons.Outlined.QrCode,
+                            contentDescription = "QR Code Error",
+                            modifier = Modifier.size(80.dp),
+                            tint = coinColor
+                        )
+                        Text(
+                            text = "Unable to generate QR code",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
@@ -476,18 +482,6 @@ private fun SecurityTip(
 }
 
 @Composable
-private fun LoadingView(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator(
-            color = MaterialTheme.colorScheme.primary
-        )
-    }
-}
-
-@Composable
 private fun ErrorView(
     error: String?,
     onRetry: () -> Unit,
@@ -563,30 +557,5 @@ private fun getCoinTypeConfig(coinType: CoinType): Pair<Color, Int> {
         CoinType.ETHEREUM -> Pair(ethereumLight, R.drawable.ethereum)
         CoinType.SOLANA -> Pair(solanaLight, R.drawable.solana)
         CoinType.USDC -> Pair(usdcLight, R.drawable.usdc)
-    }
-}
-
-// Helper function to generate QR code
-private fun generateQrCode(content: String): Bitmap? {
-    return try {
-        val writer = QRCodeWriter()
-        val bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, 512, 512)
-        val width = bitMatrix.width
-        val height = bitMatrix.height
-        val pixels = IntArray(width * height)
-
-        for (y in 0 until height) {
-            for (x in 0 until width) {
-                pixels[y * width + x] = if (bitMatrix.get(x, y)) {
-                    android.graphics.Color.BLACK
-                } else {
-                    android.graphics.Color.WHITE
-                }
-            }
-        }
-
-        Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)
-    } catch (e: Exception) {
-        null
     }
 }

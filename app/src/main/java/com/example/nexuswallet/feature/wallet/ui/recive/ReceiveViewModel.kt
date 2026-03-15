@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.ui
+package com.example.nexuswallet.feature.wallet.ui.recive
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,6 +11,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.usecase.GenerateQrCodeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,22 +23,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ReceiveViewModel @Inject constructor(
-    private val walletRepository: WalletRepository
+    private val walletRepository: WalletRepository,
+    private val generateQrCodeUseCase: GenerateQrCodeUseCase
 ) : ViewModel() {
-
-    data class ReceiveUiState(
-        val walletId: String = "",
-        val walletName: String = "",
-        val address: String = "",
-        val network: Network? = null,
-        val networkDisplayName: String = "",
-        val isLoading: Boolean = false,
-        val error: String? = null,
-        val copiedToClipboard: Boolean = false,
-        val shareUrl: String = ""
-    ) {
-        val coinType: CoinType? get() = network?.coinType
-    }
 
     private val _uiState = MutableStateFlow(ReceiveUiState())
     val uiState: StateFlow<ReceiveUiState> = _uiState.asStateFlow()
@@ -78,6 +66,9 @@ class ReceiveViewModel @Inject constructor(
                     CoinType.SOLANA -> "solana:$address"
                 }
 
+                // Generate QR code
+                val qrCodeBitmap = generateQrCodeUseCase(address)
+
                 _uiState.update {
                     it.copy(
                         walletId = walletId,
@@ -86,6 +77,7 @@ class ReceiveViewModel @Inject constructor(
                         network = network,
                         networkDisplayName = networkDisplayName,
                         shareUrl = shareUrl,
+                        qrCodeBitmap = qrCodeBitmap,
                         isLoading = false
                     )
                 }
