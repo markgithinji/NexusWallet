@@ -1,12 +1,12 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
-import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.ERC20Token
@@ -85,7 +85,7 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 val btcBalance = balanceResult.data
                 val satoshiBalance =
                     (btcBalance * BigDecimal("100000000")).toBigInteger().toString()
-                val usdValue = calculateUsdValue(btcBalance, "BTC")
+                val usdValue = calculateUsdValue(btcBalance, CoinType.BITCOIN)
 
                 val currentBalance = balanceDataSource.loadWalletBalance(walletId)
                     ?: WalletBalance(
@@ -107,13 +107,18 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 )
 
                 balanceDataSource.saveWalletBalance(updatedBalance)
-                logger.d(tag, "Bitcoin ${coin.network.displayName} balance updated: ${btcBalance} BTC")
+                logger.d(
+                    tag,
+                    "Bitcoin ${coin.network.displayName} balance updated: $btcBalance BTC"
+                )
                 Result.Success(Unit)
             }
+
             is Result.Error -> {
                 logger.e(tag, "Failed to sync Bitcoin: ${balanceResult.message}")
                 Result.Error("Bitcoin (${coin.network.displayName}): ${balanceResult.message}")
             }
+
             else -> Result.Error("Unknown error syncing Bitcoin")
         }
     }
@@ -129,7 +134,7 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 val solBalance = solBalanceResult.data
                 val lamportsBalance =
                     (solBalance * BigDecimal("1000000000")).toBigInteger().toString()
-                val usdValue = calculateUsdValue(solBalance, "SOL")
+                val usdValue = calculateUsdValue(solBalance, CoinType.SOLANA)
 
                 val currentBalance = balanceDataSource.loadWalletBalance(walletId)
                     ?: WalletBalance(
@@ -154,13 +159,15 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 )
 
                 balanceDataSource.saveWalletBalance(updatedBalance)
-                logger.d(tag, "Solana ${coin.network.displayName} balance updated: ${solBalance} SOL")
+                logger.d(tag, "Solana ${coin.network.displayName} balance updated: $solBalance SOL")
                 Result.Success(Unit)
             }
+
             is Result.Error -> {
                 logger.e(tag, "Failed to sync Solana: ${solBalanceResult.message}")
                 Result.Error("Solana (${coin.network.displayName}): ${solBalanceResult.message}")
             }
+
             else -> Result.Error("Unknown error syncing Solana")
         }
     }
@@ -175,6 +182,7 @@ class SyncWalletBalancesUseCase @Inject constructor(
                     address = token.address,
                     network = token.network
                 )
+
                 is USDCToken, is USDTToken, is ERC20Token -> evmBlockchainRepository.getTokenBalance(
                     address = token.address,
                     tokenContract = token.contractAddress,
@@ -187,11 +195,21 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 is Result.Success -> {
                     val balance = balanceResult.data
                     val balanceWei = when (token) {
-                        is NativeETH -> (balance * BigDecimal("1000000000000000000")).toBigInteger().toString()
-                        else -> (balance * BigDecimal.TEN.pow(token.decimals)).toBigInteger().toString()
+                        is NativeETH -> (balance * BigDecimal("1000000000000000000")).toBigInteger()
+                            .toString()
+
+                        else -> (balance * BigDecimal.TEN.pow(token.decimals)).toBigInteger()
+                            .toString()
                     }
 
-                    val usdValue = calculateTokenUsdValue(balance, token.symbol)
+                    val coinType = when (token) {
+                        is NativeETH -> CoinType.ETHEREUM
+                        is USDCToken -> CoinType.USDC
+                        is USDTToken -> CoinType.USDC  // Treat USDT as USDC for USD value
+                        else -> CoinType.ETHEREUM  // Default for other ERC20 tokens
+                    }
+
+                    val usdValue = calculateTokenUsdValue(balance, coinType)
 
                     evmBalances.add(
                         EVMBalance(
@@ -203,11 +221,17 @@ class SyncWalletBalancesUseCase @Inject constructor(
                         )
                     )
 
-                    logger.d(tag, "${token.symbol} on ${token.network.displayName} balance updated: $balance")
+                    logger.d(
+                        tag,
+                        "${token.symbol} on ${token.network.displayName} balance updated: $balance"
+                    )
                 }
 
                 is Result.Error -> {
-                    logger.e(tag, "Failed to sync ${token.symbol} on ${token.network.displayName}: ${balanceResult.message}")
+                    logger.e(
+                        tag,
+                        "Failed to sync ${token.symbol} on ${token.network.displayName}: ${balanceResult.message}"
+                    )
                     errors.add("${token.symbol}: ${balanceResult.message}")
                 }
 
@@ -238,29 +262,23 @@ class SyncWalletBalancesUseCase @Inject constructor(
         }
     }
 
-    private fun calculateUsdValue(amount: BigDecimal, symbol: String): Double {
-        val price = when (symbol) {
-            "BTC" -> 45000.0
-            "ETH" -> 3000.0
-            "SOL" -> 30.0
-            else -> 1.0
+    // TODO: fetch from price API
+    private fun calculateUsdValue(amount: BigDecimal, coinType: CoinType): Double {
+        val price = when (coinType) {
+            CoinType.BITCOIN -> 45000.0
+            CoinType.ETHEREUM -> 3000.0
+            CoinType.SOLANA -> 30.0
+            CoinType.USDC -> 1.0
         }
         return amount.toDouble() * price
     }
 
-    private fun calculateTokenUsdValue(amount: BigDecimal, symbol: String): Double {
-        return when (symbol) {
-            "USDC", "USDT" -> amount.toDouble()  // Stablecoins are 1:1
-            else -> amount.toDouble() * getTokenPrice(symbol)
-        }
-    }
-
-    private fun getTokenPrice(symbol: String): Double {
-        // TODO: fetch from price API
-        return when (symbol) {
-            "ETH" -> 3000.0
-            "SOL" -> 30.0
-            else -> 1.0
+    // TODO: fetch from price API
+    private fun calculateTokenUsdValue(amount: BigDecimal, coinType: CoinType): Double {
+        return when (coinType) {
+            CoinType.USDC -> amount.toDouble()
+            CoinType.ETHEREUM -> amount.toDouble() * 3000.0
+            else -> amount.toDouble()
         }
     }
 }
