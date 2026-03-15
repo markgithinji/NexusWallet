@@ -5,7 +5,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -122,6 +121,7 @@ fun TransactionReviewScreen(
     var isSending by remember { mutableStateOf(false) }
     var sendError by remember { mutableStateOf<String?>(null) }
     var txHash by remember { mutableStateOf<String?>(null) }
+    var explorerUrl by remember { mutableStateOf<String?>(null) }
     var txStatus by remember { mutableStateOf("") }
     var showSuccessBanner by remember { mutableStateOf(false) }
 
@@ -139,9 +139,11 @@ fun TransactionReviewScreen(
                     sendError = effect.message
                     isSending = false
                 }
+
                 is BitcoinReviewEffect.TransactionPrepared -> {}
                 is BitcoinReviewEffect.TransactionSent -> {
                     txHash = effect.txHash
+                    explorerUrl = effect.explorerUrl
                     txStatus = "Transaction sent!"
                     isSending = false
                     showSuccessBanner = true
@@ -160,8 +162,10 @@ fun TransactionReviewScreen(
                     sendError = effect.message
                     isSending = false
                 }
+
                 is EthereumSendEffect.TransactionSent -> {
                     txHash = effect.txHash
+                    explorerUrl = effect.explorerUrl
                     txStatus = "Transaction sent!"
                     isSending = false
                     showSuccessBanner = true
@@ -180,8 +184,10 @@ fun TransactionReviewScreen(
                     sendError = effect.message
                     isSending = false
                 }
+
                 is SolanaSendEffect.TransactionSent -> {
                     txHash = effect.txHash
+                    explorerUrl = effect.explorerUrl
                     txStatus = "Transaction sent!"
                     isSending = false
                     showSuccessBanner = true
@@ -218,10 +224,12 @@ fun TransactionReviewScreen(
                         .firstOrNull()
 
                     // Find and select USDC token
-                    val usdcToken = ethereumState.value.availableTokens.firstOrNull { it is USDCToken }
+                    val usdcToken =
+                        ethereumState.value.availableTokens.firstOrNull { it is USDCToken }
                     usdcToken?.let { ethereumViewModel.selectToken(it) }
                 }
             }
+
             is SolanaNetwork -> {
                 solanaViewModel.init(walletId, network)
                 solanaViewModel.updateToAddress(toAddress)
@@ -230,6 +238,7 @@ fun TransactionReviewScreen(
                     solanaViewModel.updateFeeLevel(FeeLevel.valueOf(it))
                 }
             }
+
             is BitcoinNetwork -> {
                 bitcoinReviewViewModel.initialize(
                     walletId = walletId,
@@ -250,9 +259,10 @@ fun TransactionReviewScreen(
         is BitcoinNetwork -> bitcoinState.value.fromAddress
     }
 
-    val selectedToken = if (network is EthereumNetwork && (coinType == CoinType.ETHEREUM || coinType == CoinType.USDC)) {
-        ethereumState.value.selectedToken
-    } else null
+    val selectedToken =
+        if (network is EthereumNetwork && (coinType == CoinType.ETHEREUM || coinType == CoinType.USDC)) {
+            ethereumState.value.selectedToken
+        } else null
 
     val feeEstimate = when (network) {
         is EthereumNetwork -> ethereumState.value.feeEstimate
@@ -264,13 +274,6 @@ fun TransactionReviewScreen(
         is BitcoinNetwork -> bitcoinState.value.isFeeLoading
         is EthereumNetwork -> ethereumState.value.isFeeLoading
         is SolanaNetwork -> solanaState.value.isFeeLoading
-    }
-
-    LaunchedEffect(isFeeLoading, network) {
-        Log.d("TransactionReview", "Network: $network, isFeeLoading: $isFeeLoading")
-        if (network is SolanaNetwork) {
-            Log.d("TransactionReview", "Solana - isFeeLoading: ${solanaState.value.isFeeLoading}, feeEstimate: ${solanaState.value.feeEstimate}")
-        }
     }
 
     val isReady = when (network) {
@@ -351,6 +354,7 @@ fun TransactionReviewScreen(
                                 isSending = false
                             }
                         }
+
                         is SolanaNetwork -> {
                             solanaViewModel.send { hash ->
                                 txHash = hash
@@ -358,6 +362,7 @@ fun TransactionReviewScreen(
                                 isSending = false
                             }
                         }
+
                         is BitcoinNetwork -> {
                             bitcoinReviewViewModel.sendTransaction { hash ->
                                 txHash = hash
@@ -385,6 +390,7 @@ fun TransactionReviewScreen(
                 feeEstimate = feeEstimate,
                 isFeeLoading = isFeeLoading,
                 txHash = txHash,
+                explorerUrl = explorerUrl,
                 coinColor = coinColor,
                 iconRes = iconRes,
                 tokenIconRes = tokenIconRes,
@@ -396,8 +402,7 @@ fun TransactionReviewScreen(
                 onCopyAddress = { address ->
                     copyToClipboard(context, address)
                 },
-                onViewOnExplorer = { hash ->
-                    val url = ExplorerUrlHelper.getExplorerUrl(hash, network)
+                onViewOnExplorer = { hash, url ->
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     context.startActivity(intent)
                 },
@@ -412,9 +417,8 @@ fun TransactionReviewScreen(
             ) {
                 SuccessBanner(
                     txHash = txHash ?: "",
-                    network = network,
-                    onViewExplorer = { hash ->
-                        val url = ExplorerUrlHelper.getExplorerUrl(hash, network)
+                    explorerUrl = explorerUrl,
+                    onViewExplorer = { hash, url ->
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                         context.startActivity(intent)
                     },
@@ -431,8 +435,8 @@ fun TransactionReviewScreen(
 @Composable
 fun SuccessBanner(
     txHash: String,
-    network: Network,
-    onViewExplorer: (String) -> Unit,
+    explorerUrl: String?,
+    onViewExplorer: (String, String) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -493,16 +497,18 @@ fun SuccessBanner(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // Explorer button
-                IconButton(
-                    onClick = { onViewExplorer(txHash) },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        Icons.Outlined.OpenInBrowser,
-                        contentDescription = "View on Explorer",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
-                    )
+                if (explorerUrl != null) {
+                    IconButton(
+                        onClick = { onViewExplorer(txHash, explorerUrl) },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.OpenInBrowser,
+                            contentDescription = "View on Explorer",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
 
                 // Dismiss button
@@ -531,6 +537,7 @@ fun TransactionReviewContent(
     feeEstimate: Any?,
     isFeeLoading: Boolean,
     txHash: String?,
+    explorerUrl: String?,
     coinColor: Color,
     iconRes: Int,
     tokenIconRes: Int? = null,
@@ -540,7 +547,7 @@ fun TransactionReviewContent(
     isValid: Boolean = true,
     validationErrors: List<String> = emptyList(),
     onCopyAddress: (String) -> Unit,
-    onViewOnExplorer: (String) -> Unit,
+    onViewOnExplorer: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -621,7 +628,7 @@ fun TransactionReviewContent(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = getTokenSymbol(coinType, selectedToken),
+                        text = selectedToken?.symbol ?: coinType.symbol,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Medium,
                         color = coinColor,
@@ -702,13 +709,15 @@ fun TransactionReviewContent(
 
         // Success Message
         txHash?.let { hash ->
-            TransactionSuccessCard(
-                hash = hash,
-                network = networkObject,
-                coinType = coinType,
-                coinColor = coinColor,
-                onViewOnExplorer = { onViewOnExplorer(hash) }
-            )
+            explorerUrl?.let { url ->
+                TransactionSuccessCard(
+                    hash = hash,
+                    explorerUrl = url,
+                    coinType = coinType,
+                    coinColor = coinColor,
+                    onViewOnExplorer = { onViewOnExplorer(hash, url) }
+                )
+            }
         }
     }
 }
@@ -1037,7 +1046,7 @@ private fun getPriorityColor(priority: FeeLevel): Color {
 @Composable
 fun TransactionSuccessCard(
     hash: String,
-    network: Network? = null,
+    explorerUrl: String,
     coinType: CoinType,
     coinColor: Color,
     onViewOnExplorer: () -> Unit
@@ -1134,7 +1143,8 @@ fun TransactionSuccessCard(
                     // Copy hash button
                     IconButton(
                         onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clipboard =
+                                context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             val clip = ClipData.newPlainText("Transaction Hash", hash)
                             clipboard.setPrimaryClip(clip)
                             Toast.makeText(context, "Hash copied", Toast.LENGTH_SHORT).show()
@@ -1170,7 +1180,7 @@ fun TransactionSuccessCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    "View on ${getExplorerName(coinType)}",
+                    "View on ${coinType.explorerName}",
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -1303,22 +1313,3 @@ private fun copyToClipboard(context: Context, address: String) {
     Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
 }
 
-private fun getTokenSymbol(coinType: CoinType, token: EVMToken? = null): String {
-    return when {
-        token != null -> token.symbol
-        coinType == CoinType.BITCOIN -> "BTC"
-        coinType == CoinType.ETHEREUM -> "ETH"
-        coinType == CoinType.SOLANA -> "SOL"
-        coinType == CoinType.USDC -> "USDC"
-        else -> ""
-    }
-}
-
-private fun getExplorerName(coinType: CoinType): String {
-    return when (coinType) {
-        CoinType.BITCOIN -> "Blockstream"
-        CoinType.ETHEREUM -> "Etherscan"
-        CoinType.SOLANA -> "Solscan"
-        CoinType.USDC -> "Etherscan"
-    }
-}
