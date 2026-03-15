@@ -31,7 +31,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.ui.coindetail.CoinDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.recive.ReceiveScreen
-import com.example.nexuswallet.feature.wallet.ui.TransactionDetailScreen
+import com.example.nexuswallet.feature.wallet.ui.transactiondetail.TransactionDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel

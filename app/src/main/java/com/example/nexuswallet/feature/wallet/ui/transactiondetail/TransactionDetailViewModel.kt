@@ -1,23 +1,14 @@
-package com.example.nexuswallet.feature.wallet.ui
+package com.example.nexuswallet.feature.wallet.ui.transactiondetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
-import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDetailDisplayUseCase
-import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetTransactionDetailUseCase
 import com.example.nexuswallet.feature.wallet.util.ExplorerUrlHelper
+import com.example.nexuswallet.feature.wallet.util.TransactionFormatHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,8 +18,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
-import java.math.RoundingMode
 import java.text.NumberFormat
 import java.util.Locale
 import javax.inject.Inject
@@ -37,22 +26,7 @@ import javax.inject.Inject
 class TransactionDetailViewModel @Inject constructor(
     private val getTransactionDetailUseCase: GetTransactionDetailUseCase,
     private val formatTransactionDetailDisplayUseCase: FormatTransactionDetailDisplayUseCase,
-    private val logger: Logger
 ) : ViewModel() {
-
-    private val tag = "TransactionDetailVM"
-
-    data class TransactionDetailState(
-        val transaction: TransactionDetail? = null,
-        val formattedAmount: String = "",
-        val formattedFee: String = "",
-        val formattedTime: String = "",
-        val formattedUsd: String = "$0.00",
-        val usdValue: Double = 0.0,
-        val isLoading: Boolean = false,
-        val error: String? = null,
-        val isRefreshing: Boolean = false
-    )
 
     private val _state = MutableStateFlow(TransactionDetailState())
     val state: StateFlow<TransactionDetailState> = _state.asStateFlow()
@@ -87,7 +61,7 @@ class TransactionDetailViewModel @Inject constructor(
                         it.copy(
                             transaction = transaction,
                             formattedAmount = displayInfo.formattedAmount,
-                            formattedFee = formatCryptoAmount(transaction.fee),
+                            formattedFee = TransactionFormatHelper.formatAmount(transaction.fee),
                             formattedTime = displayInfo.formattedTime,
                             usdValue = usdValue,
                             formattedUsd = formattedUsd,
@@ -163,41 +137,5 @@ class TransactionDetailViewModel @Inject constructor(
 
     fun clearError() {
         _state.update { it.copy(error = null) }
-    }
-
-    companion object {
-        fun formatCryptoAmount(amount: String): String {
-            return try {
-                val amountDecimal = amount.toBigDecimal()
-                if (amountDecimal.compareTo(BigDecimal.ZERO) == 0) {
-                    return "0"
-                }
-
-                when {
-                    amountDecimal < BigDecimal("0.000001") -> {
-                        amountDecimal.setScale(8, RoundingMode.HALF_UP)
-                            .stripTrailingZeros()
-                            .toPlainString()
-                    }
-                    amountDecimal < BigDecimal("0.001") -> {
-                        amountDecimal.setScale(6, RoundingMode.HALF_UP)
-                            .stripTrailingZeros()
-                            .toPlainString()
-                    }
-                    amountDecimal < BigDecimal("1") -> {
-                        amountDecimal.setScale(4, RoundingMode.HALF_UP)
-                            .stripTrailingZeros()
-                            .toPlainString()
-                    }
-                    else -> {
-                        amountDecimal.setScale(8, RoundingMode.HALF_UP)
-                            .stripTrailingZeros()
-                            .toPlainString()
-                    }
-                }
-            } catch (e: Exception) {
-                amount
-            }
-        }
     }
 }

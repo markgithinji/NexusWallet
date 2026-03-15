@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.ui
+package com.example.nexuswallet.feature.wallet.ui.transactiondetail
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -66,6 +66,7 @@ import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
+import com.example.nexuswallet.feature.wallet.ui.ErrorScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
@@ -95,15 +96,24 @@ fun TransactionDetailScreen(
                 is TransactionDetailViewModel.TransactionDetailEffect.ShowError -> {
                     Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
                 }
+
                 is TransactionDetailViewModel.TransactionDetailEffect.CopyToClipboard -> {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clipboard =
+                        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = ClipData.newPlainText(effect.label, effect.text)
                     clipboard.setPrimaryClip(clip)
                     Toast.makeText(context, "${effect.label} copied", Toast.LENGTH_SHORT).show()
                 }
+
                 is TransactionDetailViewModel.TransactionDetailEffect.ShareTransaction -> {
-                    shareTransaction(context, state.transaction, state.formattedAmount, state.formattedTime)
+                    shareTransaction(
+                        context,
+                        state.transaction,
+                        state.formattedAmount,
+                        state.formattedTime
+                    )
                 }
+
                 is TransactionDetailViewModel.TransactionDetailEffect.OpenExplorer -> {
                     val intent = Intent(Intent.ACTION_VIEW, effect.url.toUri())
                     context.startActivity(intent)
@@ -136,12 +146,14 @@ fun TransactionDetailScreen(
             state.isLoading && state.transaction == null -> {
                 FullScreenLoading(message = "Loading transaction...")
             }
+
             state.error != null && state.transaction == null -> {
                 ErrorScreen(
                     message = state.error!!,
                     onRetry = { viewModel.loadTransactionDetail(walletId, transactionId) }
                 )
             }
+
             state.transaction != null -> {
                 TransactionDetailContent(
                     transaction = state.transaction!!,
@@ -167,7 +179,12 @@ fun TransactionDetailScreen(
     }
 }
 
-private fun shareTransaction(context: Context, transaction: TransactionDetail?, formattedAmount: String, formattedTime: String) {
+private fun shareTransaction(
+    context: Context,
+    transaction: TransactionDetail?,
+    formattedAmount: String,
+    formattedTime: String
+) {
     transaction?.let { tx ->
         val shareText = buildString {
             appendLine("Transaction Details")
@@ -295,7 +312,8 @@ fun TransactionDetailContent(
                 formattedAmount = formattedAmount,
                 formattedUsd = formattedUsd,
                 coinColor = coinColor,
-                iconRes = iconRes
+                iconRes = iconRes,
+                coinType = transaction.coinType
             )
         }
 
@@ -320,7 +338,8 @@ fun TransactionDetailContent(
             NetworkFeeCard(
                 transaction = transaction,
                 formattedFee = formattedFee,
-                coinColor = coinColor
+                coinColor = coinColor,
+                coinType = transaction.coinType
             )
         }
 
@@ -351,7 +370,7 @@ fun TransactionDetailContent(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    "View on Explorer",
+                    "View on ${transaction.coinType.explorerName}",
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -371,11 +390,13 @@ fun TransactionStatusCard(
             Icons.Outlined.CheckCircle,
             "Success"
         )
+
         TransactionStatus.PENDING -> Triple(
             MaterialTheme.colorScheme.warning,
             Icons.Outlined.HourglassEmpty,
             "Pending"
         )
+
         TransactionStatus.FAILED -> Triple(
             MaterialTheme.colorScheme.error,
             Icons.Outlined.Error,
@@ -457,15 +478,9 @@ fun TransactionAmountCard(
     formattedAmount: String,
     formattedUsd: String,
     coinColor: Color,
-    iconRes: Int
+    iconRes: Int,
+    coinType: CoinType
 ) {
-    val coinSymbol = when (transaction.coinType) {
-        CoinType.BITCOIN -> "BTC"
-        CoinType.ETHEREUM -> "ETH"
-        CoinType.SOLANA -> "SOL"
-        CoinType.USDC -> "USDC"
-    }
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -509,7 +524,7 @@ fun TransactionAmountCard(
 
                 Column {
                     Text(
-                        text = "$formattedAmount $coinSymbol",
+                        text = "$formattedAmount ${coinType.symbol}",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = if (transaction.isIncoming)
@@ -698,7 +713,8 @@ fun AddressRow(
 fun NetworkFeeCard(
     transaction: TransactionDetail,
     formattedFee: String,
-    coinColor: Color
+    coinColor: Color,
+    coinType: CoinType
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -737,7 +753,7 @@ fun NetworkFeeCard(
             // Fee
             DetailRow(
                 label = "Fee",
-                value = "$formattedFee ${getSymbol(transaction.coinType, transaction.tokenSymbol)}",
+                value = "$formattedFee ${transaction.tokenSymbol ?: coinType.symbol}",
                 valueColor = MaterialTheme.colorScheme.onSurface
             )
         }
@@ -887,57 +903,11 @@ fun DetailRow(
     }
 }
 
-@Composable
-fun TransactionDetailLoadingShimmer() {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(5) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    repeat(3) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(20.dp)
-                                .shimmer()
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-                }
-            }
-        }
-    }
-}
-
 private fun getCoinDetailConfig(coinType: CoinType): Pair<Color, Int> {
     return when (coinType) {
         CoinType.BITCOIN -> Pair(bitcoinLight, R.drawable.bitcoin)
         CoinType.ETHEREUM -> Pair(ethereumLight, R.drawable.ethereum)
         CoinType.SOLANA -> Pair(solanaLight, R.drawable.solana)
         CoinType.USDC -> Pair(usdcLight, R.drawable.usdc)
-    }
-}
-
-private fun getSymbol(coinType: CoinType, tokenSymbol: String?): String {
-    return when {
-        tokenSymbol != null -> tokenSymbol
-        coinType == CoinType.BITCOIN -> "BTC"
-        coinType == CoinType.ETHEREUM -> "ETH"
-        coinType == CoinType.SOLANA -> "SOL"
-        coinType == CoinType.USDC -> "USDC"
-        else -> ""
     }
 }
