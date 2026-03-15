@@ -50,7 +50,6 @@ import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.domain.model.Token
-import kotlinx.coroutines.delay
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -660,39 +659,6 @@ fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
                 )
                 drawRect(brush = brush)
             }
-    )
-}
-
-@Composable
-fun LiveIndicator(isConnected: Boolean) {
-    var pulse by remember { mutableStateOf(0f) }
-
-    LaunchedEffect(isConnected) {
-        if (isConnected) {
-            while (true) {
-                pulse = 1f
-                delay(1000)
-                pulse = 0f
-                delay(1000)
-            }
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .size(8.dp)
-            .clip(CircleShape)
-            .graphicsLayer {
-                alpha = 0.7f + pulse * 0.3f
-                scaleX = 1f + pulse * 0.3f
-                scaleY = 1f + pulse * 0.3f
-            }
-            .background(
-                color = if (isConnected)
-                    MaterialTheme.colorScheme.success
-                else
-                    MaterialTheme.colorScheme.error
-            )
     )
 }
 

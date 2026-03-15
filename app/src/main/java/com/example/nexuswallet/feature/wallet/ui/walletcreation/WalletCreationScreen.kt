@@ -507,10 +507,10 @@ fun NetworkSelectionStep(
             iconRes = R.drawable.tether,
             color = usdtLight,
             network = EthereumNetwork.Mainnet,
-            coinType = CoinType.USDT,
-            isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(CoinType.USDT) == true,
+            coinType = CoinType.USDC,
+            isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(CoinType.USDC) == true,
             onSelectedChange = { isSelected ->
-                onTokenToggle(EthereumNetwork.Mainnet, CoinType.USDT, isSelected)
+                onTokenToggle(EthereumNetwork.Mainnet, CoinType.USDC, isSelected)
             }
         )
 

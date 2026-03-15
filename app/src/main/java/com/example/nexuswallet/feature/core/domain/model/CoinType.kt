@@ -12,5 +12,4 @@ enum class CoinType(
     ETHEREUM("Ethereum", "ETH", "Etherscan"),
     SOLANA("Solana", "SOL", "Solscan"),
     USDC("USDC", "USDC", "Etherscan"),
-    USDT("USDT", "USDT", "Etherscan");
 }

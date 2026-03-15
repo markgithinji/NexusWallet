@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -29,7 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -41,8 +40,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -70,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
@@ -280,7 +281,6 @@ fun TransactionReviewScreen(
         is BitcoinNetwork -> bitcoinState.value.transactionPrepared
         is EthereumNetwork -> ethereumState.value.validationResult.isValid
         is SolanaNetwork -> solanaState.value.isValid
-        else -> false
     }
 
     val isPreparing = when (network) {
@@ -321,7 +321,7 @@ fun TransactionReviewScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateUp) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             "Back",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -402,8 +402,8 @@ fun TransactionReviewScreen(
                 onCopyAddress = { address ->
                     copyToClipboard(context, address)
                 },
-                onViewOnExplorer = { hash, url ->
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                onViewOnExplorer = { _, url ->
+                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                     context.startActivity(intent)
                 },
                 modifier = Modifier.fillMaxSize()
@@ -419,7 +419,7 @@ fun TransactionReviewScreen(
                     txHash = txHash ?: "",
                     explorerUrl = explorerUrl,
                     onViewExplorer = { hash, url ->
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                         context.startActivity(intent)
                     },
                     onDismiss = { showSuccessBanner = false },
@@ -530,6 +530,7 @@ fun SuccessBanner(
 
 @Composable
 fun TransactionReviewContent(
+    modifier: Modifier = Modifier,
     coinType: CoinType,
     amount: String,
     fromAddress: String?,
@@ -547,8 +548,7 @@ fun TransactionReviewContent(
     isValid: Boolean = true,
     validationErrors: List<String> = emptyList(),
     onCopyAddress: (String) -> Unit,
-    onViewOnExplorer: (String, String) -> Unit,
-    modifier: Modifier = Modifier
+    onViewOnExplorer: (String, String) -> Unit
 ) {
     Column(
         modifier = modifier
@@ -686,7 +686,6 @@ fun TransactionReviewContent(
             address = toAddress,
             coinColor = coinColor,
             iconRes = tokenIconRes ?: iconRes,
-            isToAddress = true,
             onCopy = { onCopyAddress(toAddress) }
         )
 
@@ -712,7 +711,6 @@ fun TransactionReviewContent(
             explorerUrl?.let { url ->
                 TransactionSuccessCard(
                     hash = hash,
-                    explorerUrl = url,
                     coinType = coinType,
                     coinColor = coinColor,
                     onViewOnExplorer = { onViewOnExplorer(hash, url) }
@@ -728,7 +726,6 @@ fun AddressCard(
     address: String,
     coinColor: Color,
     iconRes: Int,
-    isToAddress: Boolean = false,
     onCopy: () -> Unit
 ) {
     Card(
@@ -995,8 +992,9 @@ fun FeePreviewCard(
                 }
 
                 if (estimatedTime != null) {
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.padding(vertical = 4.dp),
+                        thickness = DividerDefaults.Thickness,
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                     )
 
@@ -1046,7 +1044,6 @@ private fun getPriorityColor(priority: FeeLevel): Color {
 @Composable
 fun TransactionSuccessCard(
     hash: String,
-    explorerUrl: String,
     coinType: CoinType,
     coinColor: Color,
     onViewOnExplorer: () -> Unit
@@ -1265,8 +1262,9 @@ fun FeeLoadingShimmer() {
 
             // Estimated time section
             Spacer(modifier = Modifier.height(4.dp))
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier.padding(vertical = 4.dp),
+                thickness = DividerDefaults.Thickness,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
             )
             Spacer(modifier = Modifier.height(4.dp))

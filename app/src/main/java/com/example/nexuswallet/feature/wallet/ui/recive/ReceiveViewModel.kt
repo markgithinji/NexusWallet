@@ -34,62 +34,65 @@ class ReceiveViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            try {
-                val wallet = walletRepository.getWallet(walletId)
-                if (wallet == null) {
+            runCatching { // TODO: Move catching to repo safeApicall
+                walletRepository.getWallet(walletId)
+            }.fold(
+                onSuccess = { wallet ->
+                    if (wallet == null) {
+                        _uiState.update {
+                            it.copy(
+                                error = "Wallet not found",
+                                isLoading = false
+                            )
+                        }
+                        return@launch
+                    }
+
+                    val addressResult = getAddressForNetwork(wallet, network)
+
+                    if (addressResult == null) {
+                        _uiState.update {
+                            it.copy(
+                                error = "No receive address available for ${network.displayName}",
+                                isLoading = false
+                            )
+                        }
+                        return@launch
+                    }
+
+                    val (address, networkDisplayName) = addressResult
+
+                    val shareUrl = when (network.coinType) {
+                        CoinType.BITCOIN -> "bitcoin:$address"
+                        CoinType.ETHEREUM, CoinType.USDC -> "ethereum:$address"
+                        CoinType.SOLANA -> "solana:$address"
+                    }
+
+                    // Generate QR code
+                    val qrCodeBitmap = generateQrCodeUseCase(address)
+
                     _uiState.update {
                         it.copy(
-                            error = "Wallet not found",
+                            walletId = walletId,
+                            walletName = wallet.name,
+                            address = address,
+                            network = network,
+                            networkDisplayName = networkDisplayName,
+                            shareUrl = shareUrl,
+                            qrCodeBitmap = qrCodeBitmap,
                             isLoading = false
                         )
                     }
-                    return@launch
-                }
-
-                val addressResult = getAddressForNetwork(wallet, network)
-
-                if (addressResult == null) {
+                },
+                onFailure = { e ->
                     _uiState.update {
                         it.copy(
-                            error = "No receive address available for ${network.displayName}",
+                            error = "Failed to load wallet: ${e.message}",
                             isLoading = false
                         )
                     }
-                    return@launch
                 }
-
-                val (address, networkDisplayName) = addressResult
-
-                val shareUrl = when (network.coinType) {
-                    CoinType.BITCOIN -> "bitcoin:$address"
-                    CoinType.ETHEREUM, CoinType.USDC -> "ethereum:$address"
-                    CoinType.SOLANA -> "solana:$address"
-                }
-
-                // Generate QR code
-                val qrCodeBitmap = generateQrCodeUseCase(address)
-
-                _uiState.update {
-                    it.copy(
-                        walletId = walletId,
-                        walletName = wallet.name,
-                        address = address,
-                        network = network,
-                        networkDisplayName = networkDisplayName,
-                        shareUrl = shareUrl,
-                        qrCodeBitmap = qrCodeBitmap,
-                        isLoading = false
-                    )
-                }
-
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        error = "Failed to load wallet: ${e.message}",
-                        isLoading = false
-                    )
-                }
-            }
+            )
         }
     }
 
