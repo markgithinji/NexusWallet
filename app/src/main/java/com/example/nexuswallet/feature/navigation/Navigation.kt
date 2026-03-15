@@ -33,8 +33,8 @@ import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.recive.ReceiveScreen
 import com.example.nexuswallet.feature.wallet.ui.transactiondetail.TransactionDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
-import com.example.nexuswallet.feature.wallet.ui.WalletCreationScreen
-import com.example.nexuswallet.feature.wallet.ui.WalletCreationViewModel
+import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationScreen
+import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationViewModel
 import com.example.nexuswallet.feature.wallet.ui.WalletDetailScreen
 
 @RequiresApi(Build.VERSION_CODES.O)
