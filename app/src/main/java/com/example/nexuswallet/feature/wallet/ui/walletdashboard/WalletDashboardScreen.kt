@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
@@ -47,6 +48,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -102,9 +104,6 @@ import java.util.Locale
 @Composable
 fun WalletDashboardScreen(
     onNavigateToWalletDetail: (String) -> Unit,
-    onNavigateToCoinDetail: (String, Network) -> Unit,
-    onNavigateToReceive: (String, Network) -> Unit,
-    onNavigateToSend: (String, Network) -> Unit,
     onNavigateToCreateWallet: () -> Unit,
     padding: PaddingValues,
     viewModel: WalletDashboardViewModel = hiltViewModel()
@@ -126,13 +125,7 @@ fun WalletDashboardScreen(
     Scaffold(
         topBar = {
             DashboardTopBar(
-                onRefresh = {
-                    isRefreshing = true
-                    viewModel.refresh()
-                    isRefreshing = false
-                },
                 onCreateWallet = onNavigateToCreateWallet,
-                isRefreshing = isRefreshing || isOperationLoading
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -170,18 +163,8 @@ fun WalletDashboardScreen(
                             wallets = state.data,
                             totalPortfolio = totalPortfolio,
                             balances = balances,
-                            isOperationLoading = isOperationLoading,
                             onWalletClick = { wallet ->
                                 onNavigateToWalletDetail(wallet.id)
-                            },
-                            onCoinClick = { walletId, network ->
-                                onNavigateToCoinDetail(walletId, network)
-                            },
-                            onReceiveClick = { walletId, network ->
-                                onNavigateToReceive(walletId, network)
-                            },
-                            onSendClick = { walletId, network ->
-                                onNavigateToSend(walletId, network)
                             },
                             onDeleteWallet = { walletId ->
                                 viewModel.deleteWallet(walletId)
@@ -209,9 +192,7 @@ fun WalletDashboardScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardTopBar(
-    onRefresh: () -> Unit,
     onCreateWallet: () -> Unit,
-    isRefreshing: Boolean
 ) {
     TopAppBar(
         title = {
@@ -256,11 +237,7 @@ fun DashboardContent(
     wallets: List<Wallet>,
     totalPortfolio: BigDecimal,
     balances: Map<String, WalletBalance>,
-    isOperationLoading: Boolean,
     onWalletClick: (Wallet) -> Unit,
-    onCoinClick: (String, Network) -> Unit,
-    onReceiveClick: (String, Network) -> Unit,
-    onSendClick: (String, Network) -> Unit,
     onDeleteWallet: (String) -> Unit
 ) {
     val configuration = LocalConfiguration.current
@@ -508,10 +485,10 @@ fun WalletExpandedContent(
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
-        Divider(
+        HorizontalDivider(
             modifier = Modifier.padding(bottom = 12.dp),
-            color = MaterialTheme.colorScheme.outline,
-            thickness = 1.dp
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outline
         )
 
         // Bitcoin coins
@@ -839,7 +816,7 @@ fun AnimatedPortfolioHeader(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.TrendingUp,
+                        imageVector = Icons.AutoMirrored.Outlined.TrendingUp,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.success

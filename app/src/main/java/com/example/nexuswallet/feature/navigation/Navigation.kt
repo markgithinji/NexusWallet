@@ -13,8 +13,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.nexuswallet.BackupScreen
-import com.example.nexuswallet.MainTabScreen
-import com.example.nexuswallet.WelcomeScreen
+import com.example.nexuswallet.feature.wallet.ui.walletcreation.WelcomeScreen
 import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredScreen
 import com.example.nexuswallet.feature.bitcoin.ui.send.BitcoinSendScreen
 import com.example.nexuswallet.feature.core.domain.model.CoinType
@@ -160,13 +159,13 @@ fun Navigation(
                 onNavigateUp = {
                     navController.navigateUp()
                 },
-                onNavigateToCoinDetail = { walletId, network ->
+                onAssetClick = { walletId, network ->
                     navController.navigate(CoinDetailRoute(walletId, network))
                 },
-                onNavigateToReceive = { walletId, network ->
+                onReceiveClick = { walletId, network ->
                     navController.navigate(ReceiveRoute(walletId, network))
                 },
-                onNavigateToSend = { walletId, network ->
+                onSendClick = { walletId, network ->
                     navController.navigate(SendRoute(walletId, network))
                 },
                 onNavigateToAllTransactions = { walletId ->

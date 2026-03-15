@@ -1,4 +1,4 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.wallet.ui.walletcreation
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -18,7 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.material3.MaterialTheme

@@ -1,4 +1,4 @@
-package com.example.nexuswallet
+package com.example.nexuswallet.feature.navigation
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -165,9 +165,6 @@ fun MainTabScreen(
         when (selectedTab) {
             0 -> WalletDashboardScreen(
                 onNavigateToWalletDetail = onNavigateToWalletDetail,
-                onNavigateToCoinDetail = onNavigateToCoinDetail,
-                onNavigateToReceive = onNavigateToReceive,
-                onNavigateToSend = onNavigateToSend,
                 onNavigateToCreateWallet = onNavigateToCreateWallet,
                 padding = PaddingValues(
                     top = scaffoldPadding.calculateTopPadding(),

@@ -80,8 +80,8 @@ import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
-import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.ErrorScreen
+import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.TransactionItem
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
@@ -97,11 +97,11 @@ import java.util.Locale
 @Composable
 fun WalletDetailScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToCoinDetail: (String, Network) -> Unit,
-    onNavigateToReceive: (String, Network) -> Unit,
-    onNavigateToSend: (String, Network) -> Unit,
     onNavigateToAllTransactions: (String) -> Unit,
     onNavigateToTransactionDetail: (String, String) -> Unit,
+    onReceiveClick: (String, Network) -> Unit,
+    onSendClick: (String, Network) -> Unit,
+    onAssetClick: (String, Network) -> Unit,
     walletId: String,
     walletViewModel: WalletDetailViewModel = hiltViewModel(),
 ) {
@@ -216,11 +216,13 @@ fun WalletDetailScreen(
                     uiState.isLoadingTransactions -> "Loading transactions..."
                     else -> ""
                 },
-                onNavigateToCoinDetail = onNavigateToCoinDetail,
-                onNavigateToReceive = onNavigateToReceive,
-                onNavigateToSend = onNavigateToSend,
-                onNavigateToAllTransactions = onNavigateToAllTransactions,
-                onNavigateToTransactionDetail = onNavigateToTransactionDetail,
+                onAssetClick = { network -> onAssetClick(walletId, network) },
+                onReceiveClick = { network -> onReceiveClick(walletId, network) },
+                onSendClick = { network -> onSendClick(walletId, network) },
+                onViewAllTransactionsClick = { onNavigateToAllTransactions(walletId) },
+                onTransactionClick = { transaction ->
+                    onNavigateToTransactionDetail(walletId, transaction.id)
+                },
                 padding = padding
             )
         } ?: run {
@@ -244,11 +246,11 @@ fun WalletDetailContent(
     isRefreshingTransactions: Boolean,
     balanceLoadingMessage: String,
     transactionsLoadingMessage: String,
-    onNavigateToCoinDetail: (String, Network) -> Unit,
-    onNavigateToReceive: (String, Network) -> Unit,
-    onNavigateToSend: (String, Network) -> Unit,
-    onNavigateToAllTransactions: (String) -> Unit,
-    onNavigateToTransactionDetail: (String, String) -> Unit,
+    onAssetClick: (Network) -> Unit,
+    onReceiveClick: (Network) -> Unit,
+    onSendClick: (Network) -> Unit,
+    onViewAllTransactionsClick: () -> Unit,
+    onTransactionClick: (TransactionDisplayInfo) -> Unit,
     padding: PaddingValues
 ) {
     LazyColumn(
@@ -266,26 +268,8 @@ fun WalletDetailContent(
                 hasSyncError = hasSyncError,
                 isLoadingBalance = isLoadingBalance || isRefreshingBalance,
                 balanceLoadingMessage = balanceLoadingMessage,
-                onReceive = {
-                    // Default to first available coin for receive
-                    val defaultNetwork = when {
-                        wallet.evmTokens.isNotEmpty() -> EthereumNetwork.Mainnet
-                        wallet.bitcoinCoins.isNotEmpty() -> BitcoinNetwork.Mainnet
-                        wallet.solanaCoins.isNotEmpty() -> SolanaNetwork.Mainnet
-                        else -> BitcoinNetwork.Mainnet
-                    }
-                    onNavigateToReceive(wallet.id, defaultNetwork)
-                },
-                onSend = {
-                    // Default to first available coin for send
-                    val defaultNetwork = when {
-                        wallet.evmTokens.isNotEmpty() -> EthereumNetwork.Mainnet
-                        wallet.bitcoinCoins.isNotEmpty() -> BitcoinNetwork.Mainnet
-                        wallet.solanaCoins.isNotEmpty() -> SolanaNetwork.Mainnet
-                        else -> BitcoinNetwork.Mainnet
-                    }
-                    onNavigateToSend(wallet.id, defaultNetwork)
-                }
+                onReceive = { onReceiveClick(getDefaultNetwork(wallet)) },
+                onSend = { onSendClick(getDefaultNetwork(wallet)) }
             )
         }
 
@@ -296,9 +280,7 @@ fun WalletDetailContent(
         ) { asset ->
             AssetCard(
                 asset = asset,
-                onClick = {
-                    onNavigateToCoinDetail(wallet.id, asset.network)
-                }
+                onClick = { onAssetClick(asset.network) }
             )
         }
 
@@ -308,13 +290,18 @@ fun WalletDetailContent(
                 transactions = transactions,
                 isLoading = isLoadingTransactions || isRefreshingTransactions,
                 loadingMessage = transactionsLoadingMessage,
-                onViewAll = { onNavigateToAllTransactions(wallet.id) },
-                onTransactionClick = { transaction ->
-                    onNavigateToTransactionDetail(wallet.id, transaction.id)
-                }
+                onViewAll = onViewAllTransactionsClick,
+                onTransactionClick = onTransactionClick
             )
         }
     }
+}
+
+private fun getDefaultNetwork(wallet: Wallet): Network = when {
+    wallet.evmTokens.isNotEmpty() -> EthereumNetwork.Mainnet
+    wallet.bitcoinCoins.isNotEmpty() -> BitcoinNetwork.Mainnet
+    wallet.solanaCoins.isNotEmpty() -> SolanaNetwork.Mainnet
+    else -> BitcoinNetwork.Mainnet
 }
 
 @Composable
