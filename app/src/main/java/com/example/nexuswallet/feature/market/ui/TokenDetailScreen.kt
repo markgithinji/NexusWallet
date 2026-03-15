@@ -65,8 +65,8 @@ import com.example.nexuswallet.feature.market.domain.model.NewsArticle
 import com.example.nexuswallet.feature.market.domain.model.ChartData
 import com.example.nexuswallet.feature.market.domain.model.ChartDuration
 import com.example.nexuswallet.feature.market.domain.model.TokenDetail
-import com.example.nexuswallet.feature.wallet.ui.FullScreenLoading
-import com.example.nexuswallet.feature.wallet.ui.InlineLoading
+import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
+import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
 import com.example.nexuswallet.ui.theme.success
 
 @RequiresApi(Build.VERSION_CODES.O)

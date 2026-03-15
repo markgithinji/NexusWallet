@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.ui
+package com.example.nexuswallet.feature.wallet.ui.common
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box

@@ -29,7 +29,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.ui.coindetail.CoinDetailScreen
-import com.example.nexuswallet.feature.wallet.ui.FullScreenLoading
+import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.ReceiveScreen
 import com.example.nexuswallet.feature.wallet.ui.TransactionDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen

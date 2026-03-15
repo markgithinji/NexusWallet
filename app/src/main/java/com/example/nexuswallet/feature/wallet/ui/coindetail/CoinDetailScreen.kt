@@ -68,7 +68,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.ui.EmptyTransactionsView
 import com.example.nexuswallet.feature.wallet.ui.ErrorScreen
-import com.example.nexuswallet.feature.wallet.ui.FullScreenLoading
+import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.QuickActionItem
 import com.example.nexuswallet.feature.wallet.ui.TransactionItem
 import com.example.nexuswallet.ui.theme.bitcoinLight
