@@ -1,22 +1,24 @@
 package com.example.nexuswallet.feature.market.ui
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
 import com.example.nexuswallet.feature.market.domain.CoinGeckoRepository
-import com.example.nexuswallet.feature.market.domain.model.Token
 import com.example.nexuswallet.feature.market.domain.WebSocketRepository
+import com.example.nexuswallet.feature.market.domain.model.Token
+import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
 @HiltViewModel
 class MarketViewModel @Inject constructor(
     private val coinGeckoRepository: CoinGeckoRepository,
@@ -50,9 +52,24 @@ class MarketViewModel @Inject constructor(
     // Flag to track if initial data is loaded
     private var isInitialDataLoaded = false
 
+    // Debounce time for search
+    private val searchDebounceTime = 300L
+
     init {
         loadInitialData()
         setupWebSocketObservers()
+        setupSearchDebounce()
+    }
+
+    @OptIn(FlowPreview::class)
+    private fun setupSearchDebounce() {
+        viewModelScope.launch {
+            _searchQuery
+                .debounce(searchDebounceTime)
+                .collect { query ->
+                    applySearchFilter(query)
+                }
+        }
     }
 
     private fun loadInitialData() {
@@ -68,7 +85,7 @@ class MarketViewModel @Inject constructor(
                     allTokensCache = firstPage
                     isInitialDataLoaded = true
                     _uiState.value = Result.Success(firstPage)
-                    applySearchFilter()
+                    applySearchFilter(_searchQuery.value)
                     currentPage = 2
 
                     // Load next pages in background
@@ -99,7 +116,6 @@ class MarketViewModel @Inject constructor(
             remainingPagesJobs.awaitAll()
 
             _isLoadingMore.value = false
-            Log.d("MarketVM", "Total tokens loaded: ${allTokensCache.size}")
         }
     }
 
@@ -113,13 +129,13 @@ class MarketViewModel @Inject constructor(
                 if (tokens.isNotEmpty()) {
                     allTokensCache = allTokensCache + tokens
                     _uiState.value = Result.Success(allTokensCache)
-                    applySearchFilter()
+                    applySearchFilter(_searchQuery.value)
                     currentPage = page + 1
                 }
             }
 
             is Result.Error -> {
-                Log.e("MarketVM", "Error loading page $page: ${result.message}")
+                // Error silently handled - UI will show error state if needed
             }
 
             Result.Loading -> {}
@@ -154,7 +170,6 @@ class MarketViewModel @Inject constructor(
         connectionStateJob = viewModelScope.launch {
             webSocketRepository.getConnectionState().collect { isConnected ->
                 _isWebSocketConnected.value = isConnected
-                Log.d("MarketVM", "WebSocket connection state: $isConnected")
             }
         }
     }
@@ -175,11 +190,10 @@ class MarketViewModel @Inject constructor(
 
         allTokensCache = updatedTokens
         _uiState.value = Result.Success(updatedTokens)
-        applySearchFilter()
+        applySearchFilter(_searchQuery.value)
     }
 
-    private fun applySearchFilter() {
-        val query = _searchQuery.value
+    private fun applySearchFilter(query: String) {
         val tokens = allTokensCache
 
         _filteredTokens.value = if (query.isBlank()) {
@@ -194,12 +208,10 @@ class MarketViewModel @Inject constructor(
 
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
-        applySearchFilter()
     }
 
     fun clearSearch() {
         _searchQuery.value = ""
-        applySearchFilter()
     }
 
     fun refreshData() {
@@ -221,15 +233,17 @@ class MarketViewModel @Inject constructor(
                     allTokensCache = firstPage
                     isInitialDataLoaded = true
                     _uiState.value = Result.Success(firstPage)
-                    applySearchFilter()
+                    applySearchFilter(_searchQuery.value)
                     currentPage = 2
 
                     // Load remaining pages in background
                     loadRemainingPages()
                 }
+
                 is Result.Error -> {
                     _uiState.value = Result.Error(result.message, result.throwable)
                 }
+
                 Result.Loading -> {}
             }
         }
@@ -239,8 +253,6 @@ class MarketViewModel @Inject constructor(
         // Only reconnect if disconnected
         if (!_isWebSocketConnected.value) {
             viewModelScope.launch {
-                Log.d("MarketVM", "Reconnecting WebSocket...")
-
                 // Cancel existing collectors
                 webSocketCollectorJob?.cancel()
                 connectionStateJob?.cancel()
