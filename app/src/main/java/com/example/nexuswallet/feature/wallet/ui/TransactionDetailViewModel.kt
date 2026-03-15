@@ -17,6 +17,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDetailDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetTransactionDetailUseCase
+import com.example.nexuswallet.feature.wallet.util.ExplorerUrlHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow

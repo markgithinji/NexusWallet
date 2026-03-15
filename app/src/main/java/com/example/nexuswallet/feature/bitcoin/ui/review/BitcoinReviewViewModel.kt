@@ -215,7 +215,8 @@ class BitcoinReviewViewModel @Inject constructor(
                                 preparedTransaction = null
                             )
                         }
-                        _effect.emit(BitcoinReviewEffect.TransactionSent(sendResult.txHash))
+                        val explorerUrl = ExplorerUrlProvider.getExplorerUrl(sendResult.txHash, state.network)
+                        _effect.emit(BitcoinReviewEffect.TransactionSent(sendResult.txHash, explorerUrl))
                         onSuccess(sendResult.txHash)
                     } else {
                         _state.update {

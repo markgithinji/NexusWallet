@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.ui
+package com.example.nexuswallet.feature.wallet.util
 
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork

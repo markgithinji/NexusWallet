@@ -302,7 +302,8 @@ class SolanaSendViewModel @Inject constructor(
                     val sendResult = result.data
                     if (sendResult.success) {
                         _state.update { it.copy(isLoading = false, step = "Sent!") }
-                        _effect.emit(SolanaSendEffect.TransactionSent(sendResult.txHash))
+                        val explorerUrl = ExplorerUrlProvider.getExplorerUrl(sendResult.txHash, state.network)
+                        _effect.emit(SolanaSendEffect.TransactionSent(sendResult.txHash, explorerUrl))
                         onSuccess(sendResult.txHash)
                     } else {
                         _state.update {
