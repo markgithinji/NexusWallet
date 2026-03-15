@@ -26,7 +26,6 @@ import javax.inject.Singleton
 
 @Singleton
 class SyncWalletBalancesUseCase @Inject constructor(
-    private val walletDataSource: WalletDataSource,
     private val balanceDataSource: BalanceDataSource,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
@@ -108,12 +107,12 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 )
 
                 balanceDataSource.saveWalletBalance(updatedBalance)
-                logger.d(tag, "Bitcoin ${coin.network} balance updated: ${btcBalance} BTC")
+                logger.d(tag, "Bitcoin ${coin.network.displayName} balance updated: ${btcBalance} BTC")
                 Result.Success(Unit)
             }
             is Result.Error -> {
                 logger.e(tag, "Failed to sync Bitcoin: ${balanceResult.message}")
-                Result.Error("Bitcoin (${coin.network}): ${balanceResult.message}")
+                Result.Error("Bitcoin (${coin.network.displayName}): ${balanceResult.message}")
             }
             else -> Result.Error("Unknown error syncing Bitcoin")
         }
@@ -151,17 +150,16 @@ class SyncWalletBalancesUseCase @Inject constructor(
                     lastUpdated = System.currentTimeMillis(),
                     bitcoinBalances = currentBalance.bitcoinBalances,
                     solanaBalances = updatedSolanaBalances,
-                    evmBalances = currentBalance.evmBalances,
-                    splBalances = currentBalance.splBalances
+                    evmBalances = currentBalance.evmBalances
                 )
 
                 balanceDataSource.saveWalletBalance(updatedBalance)
-                logger.d(tag, "Solana ${coin.network} balance updated: ${solBalance} SOL")
+                logger.d(tag, "Solana ${coin.network.displayName} balance updated: ${solBalance} SOL")
                 Result.Success(Unit)
             }
             is Result.Error -> {
                 logger.e(tag, "Failed to sync Solana: ${solBalanceResult.message}")
-                Result.Error("Solana (${coin.network}): ${solBalanceResult.message}")
+                Result.Error("Solana (${coin.network.displayName}): ${solBalanceResult.message}")
             }
             else -> Result.Error("Unknown error syncing Solana")
         }
@@ -205,11 +203,11 @@ class SyncWalletBalancesUseCase @Inject constructor(
                         )
                     )
 
-                    logger.d(tag, "${token.symbol} balance updated: $balance (externalId: ${token.externalId})")
+                    logger.d(tag, "${token.symbol} on ${token.network.displayName} balance updated: $balance")
                 }
 
                 is Result.Error -> {
-                    logger.e(tag, "Failed to sync ${token.symbol} (${token.externalId}): ${balanceResult.message}")
+                    logger.e(tag, "Failed to sync ${token.symbol} on ${token.network.displayName}: ${balanceResult.message}")
                     errors.add("${token.symbol}: ${balanceResult.message}")
                 }
 
@@ -263,69 +261,6 @@ class SyncWalletBalancesUseCase @Inject constructor(
             "ETH" -> 3000.0
             "SOL" -> 30.0
             else -> 1.0
-        }
-    }
-
-    // method to sync a single token by its externalId
-    suspend fun syncTokenBalance(walletId: String, token: EVMToken): Result<EVMBalance?> {
-        val balanceResult = when (token) {
-            is NativeETH -> evmBlockchainRepository.getNativeBalance(
-                address = token.address,
-                network = token.network
-            )
-            is USDCToken, is USDTToken, is ERC20Token -> evmBlockchainRepository.getTokenBalance(
-                address = token.address,
-                tokenContract = token.contractAddress,
-                tokenDecimals = token.decimals,
-                network = token.network
-            )
-        }
-
-        return when (balanceResult) {
-            is Result.Success -> {
-                val balance = balanceResult.data
-                val balanceWei = when (token) {
-                    is NativeETH -> (balance * BigDecimal("1000000000000000000")).toBigInteger().toString()
-                    else -> (balance * BigDecimal.TEN.pow(token.decimals)).toBigInteger().toString()
-                }
-
-                val usdValue = calculateTokenUsdValue(balance, token.symbol)
-
-                val evmBalance = EVMBalance(
-                    externalTokenId = token.externalId,
-                    address = token.address,
-                    balanceWei = balanceWei,
-                    balanceDecimal = balance.toPlainString(),
-                    usdValue = usdValue
-                )
-
-                // Update just this token's balance
-                val currentBalance = balanceDataSource.loadWalletBalance(walletId)
-                val updatedEvmBalances = currentBalance?.evmBalances?.toMutableList() ?: mutableListOf()
-
-                // Remove old balance for this token if exists
-                updatedEvmBalances.removeAll { it.externalTokenId == token.externalId }
-                updatedEvmBalances.add(evmBalance)
-
-                val updatedBalance = (currentBalance ?: WalletBalance(
-                    walletId,
-                    System.currentTimeMillis()
-                ))
-                    .copy(
-                        evmBalances = updatedEvmBalances,
-                        lastUpdated = System.currentTimeMillis()
-                    )
-
-                balanceDataSource.saveWalletBalance(updatedBalance)
-                logger.d(tag, "Updated ${token.symbol} balance: $balance")
-
-                Result.Success(evmBalance)
-            }
-            is Result.Error -> {
-                logger.e(tag, "Failed to sync ${token.symbol}: ${balanceResult.message}")
-                Result.Error(balanceResult.message)
-            }
-            else -> Result.Error("Unknown error")
         }
     }
 }

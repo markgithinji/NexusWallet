@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.wallet.ui
+package com.example.nexuswallet.feature.wallet.ui.coindetail
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -6,43 +6,71 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.LocalGasStation
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Token
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import com.example.nexuswallet.R
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
-import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
-import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
+import com.example.nexuswallet.feature.wallet.ui.EmptyTransactionsView
+import com.example.nexuswallet.feature.wallet.ui.ErrorScreen
+import com.example.nexuswallet.feature.wallet.ui.FullScreenLoading
+import com.example.nexuswallet.feature.wallet.ui.QuickActionItem
+import com.example.nexuswallet.feature.wallet.ui.TransactionItem
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -52,7 +80,7 @@ import com.example.nexuswallet.ui.theme.warning
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
-import java.util.*
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +90,11 @@ fun CoinDetailScreen(
     onNavigateToSend: (String, Network) -> Unit,
     onNavigateToAllTransactions: (String, Network) -> Unit,
     onNavigateToTransactionDetail: (String, String) -> Unit,
+    onCopyAddress: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onRetry: () -> Unit,
+    onSPLTokenClick: (SPLToken) -> Unit,
+    onEVMTokenClick: (EVMToken) -> Unit,
     walletId: String,
     network: Network,
     viewModel: CoinDetailViewModel = hiltViewModel()
@@ -70,6 +103,41 @@ fun CoinDetailScreen(
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
+        viewModel.loadCoinDetails(walletId, network)
+    }
+
+    // Create handlers that use the hoisted callbacks
+    val handleCopyAddress: (String) -> Unit = { address ->
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("Address", address)
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
+        onCopyAddress(address)
+    }
+
+    val handleReceive: () -> Unit = {
+        onNavigateToReceive(walletId, network)
+    }
+
+    val handleSend: () -> Unit = {
+        onNavigateToSend(walletId, network)
+    }
+
+    val handleViewAllTransactions: () -> Unit = {
+        onNavigateToAllTransactions(walletId, network)
+    }
+
+    val handleTransactionClick: (TransactionDisplayInfo) -> Unit = { transaction ->
+        onNavigateToTransactionDetail(walletId, transaction.id)
+    }
+
+    val handleRefresh: () -> Unit = {
+        onRefresh()
+        viewModel.refresh()
+    }
+
+    val handleRetry: () -> Unit = {
+        onRetry()
         viewModel.loadCoinDetails(walletId, network)
     }
 
@@ -83,7 +151,7 @@ fun CoinDetailScreen(
     state.error?.let { errorMessage ->
         ErrorScreen(
             message = errorMessage,
-            onRetry = { viewModel.loadCoinDetails(walletId, network) }
+            onRetry = handleRetry
         )
         return
     }
@@ -99,7 +167,7 @@ fun CoinDetailScreen(
                 displayName = displayName,
                 isLoading = state.isLoading,
                 onNavigateUp = onNavigateUp,
-                onRefresh = { viewModel.refresh() }
+                onRefresh = handleRefresh
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -111,22 +179,13 @@ fun CoinDetailScreen(
             iconRes = iconRes,
             displayName = displayName,
             network = network,
-            onCopyAddress = { address ->
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("Address", address)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
-            },
-            onReceive = { walletId, network ->
-                onNavigateToReceive(walletId, network)
-            },
-            onSend = { walletId, network ->
-                onNavigateToSend(walletId, network)
-            },
-            onViewAllTransactions = { walletId, network ->
-                onNavigateToAllTransactions(walletId, network)
-            },
-            onNavigateToTransactionDetail = onNavigateToTransactionDetail,
+            onCopyAddress = handleCopyAddress,
+            onReceive = handleReceive,
+            onSend = handleSend,
+            onViewAllTransactions = handleViewAllTransactions,
+            onTransactionClick = handleTransactionClick,
+            onSPLTokenClick = onSPLTokenClick,
+            onEVMTokenClick = onEVMTokenClick,
             modifier = Modifier.padding(padding)
         )
     }
@@ -197,17 +256,19 @@ private fun CoinDetailTopBar(
 
 @Composable
 private fun CoinDetailContent(
-    state: CoinDetailViewModel.CoinDetailState,
+    state: CoinDetailState,
     coinType: CoinType,
     coinColor: Color,
     iconRes: Int,
     displayName: String,
     network: Network,
     onCopyAddress: (String) -> Unit,
-    onReceive: (String, Network) -> Unit,
-    onSend: (String, Network) -> Unit,
-    onViewAllTransactions: (String, Network) -> Unit,
-    onNavigateToTransactionDetail: (String, String) -> Unit,
+    onReceive: () -> Unit,
+    onSend: () -> Unit,
+    onViewAllTransactions: () -> Unit,
+    onTransactionClick: (TransactionDisplayInfo) -> Unit,
+    onSPLTokenClick: (SPLToken) -> Unit,
+    onEVMTokenClick: (EVMToken) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val networkDisplayName = network.displayName
@@ -226,7 +287,7 @@ private fun CoinDetailContent(
                 displayName = displayName,
                 balanceFormatted = state.balanceFormatted,
                 address = state.address,
-                network = networkDisplayName,
+                network = network,
                 usdValue = state.usdValue,
                 onCopyAddress = onCopyAddress
             )
@@ -235,8 +296,8 @@ private fun CoinDetailContent(
         // Actions
         item {
             CoinDetailActionsCard(
-                onReceive = { onReceive(state.walletId, network) },
-                onSend = { onSend(state.walletId, network) }
+                onReceive = onReceive,
+                onSend = onSend
             )
         }
 
@@ -252,9 +313,7 @@ private fun CoinDetailContent(
                 CoinDetailSPLTokensCard(
                     splTokens = state.splTokens,
                     isTestnet = isTestnet,
-                    onTokenClick = { token ->
-                        // TODO: create a token detail screen
-                    }
+                    onTokenClick = onSPLTokenClick
                 )
             }
         }
@@ -264,15 +323,7 @@ private fun CoinDetailContent(
                 CoinDetailOtherTokensCard(
                     tokens = state.evmTokens.filter { it !is NativeETH },
                     isTestnet = isTestnet,
-                    onTokenClick = { token ->
-                        when (token) {
-                            is USDCToken -> onSend(state.walletId, network)
-                            is USDTToken -> onSend(state.walletId, network)
-                            else -> {
-                                // TODO: Handle other ERC20 tokens
-                            }
-                        }
-                    }
+                    onTokenClick = onEVMTokenClick
                 )
             }
         }
@@ -281,10 +332,8 @@ private fun CoinDetailContent(
             CoinDetailTransactionsContainer(
                 transactions = state.transactions,
                 coinType = coinType,
-                onViewAll = { onViewAllTransactions(state.walletId, network) },
-                onTransactionClick = { transaction ->
-                    onNavigateToTransactionDetail(state.walletId, transaction.id)
-                }
+                onViewAll = onViewAllTransactions,
+                onTransactionClick = onTransactionClick
             )
         }
     }
@@ -502,7 +551,7 @@ private fun CoinDetailBalanceCard(
     displayName: String,
     balanceFormatted: String,
     address: String,
-    network: String,
+    network: Network,
     usdValue: Double,
     onCopyAddress: (String) -> Unit
 ) {
@@ -552,9 +601,9 @@ private fun CoinDetailBalanceCard(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        if (network != "MAINNET" && network != "Mainnet" && network != "Bitcoin" && network != "Ethereum" && network != "Solana") {
+                        if (network.isTestnet) {
                             Text(
-                                text = network,
+                                text = network.displayName,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -693,7 +742,10 @@ private fun CoinDetailEthGasBalanceCard(ethBalance: BigDecimal?) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "${ethBalance?.setScale(6, RoundingMode.HALF_UP)?.stripTrailingZeros()?.toPlainString() ?: "0"} ETH",
+                    text = "${
+                        ethBalance?.setScale(6, RoundingMode.HALF_UP)?.stripTrailingZeros()
+                            ?.toPlainString() ?: "0"
+                    } ETH",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

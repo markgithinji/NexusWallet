@@ -1,20 +1,16 @@
-package com.example.nexuswallet.feature.wallet.ui
+package com.example.nexuswallet.feature.wallet.ui.coindetail
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Network
-import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetBitcoinDetailUseCase
@@ -26,7 +22,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
@@ -36,25 +31,6 @@ class CoinDetailViewModel @Inject constructor(
     private val getSolanaDetailUseCase: GetSolanaDetailUseCase,
     private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase
 ) : ViewModel() {
-
-    data class CoinDetailState(
-        val walletId: String = "",
-        val address: String = "",
-        val balance: String = "0",
-        val balanceFormatted: String = "0",
-        val usdValue: Double = 0.0,
-        val network: Network? = null,
-        val networkDisplayName: String = "",
-        val coinType: CoinType? = null,
-        val ethGasBalance: BigDecimal? = null,
-        val splTokens: List<SPLToken> = emptyList(),
-        val evmTokens: List<EVMToken> = emptyList(),
-        val transactions: List<TransactionDisplayInfo> = emptyList(),
-        val externalTokenId: String? = null,
-        val isLoading: Boolean = false,
-        val isRefreshing: Boolean = false,
-        val error: String? = null
-    )
 
     private val _state = MutableStateFlow(CoinDetailState())
     val state: StateFlow<CoinDetailState> = _state.asStateFlow()
@@ -76,28 +52,25 @@ class CoinDetailViewModel @Inject constructor(
                 )
             }
 
-            Log.d(
-                "CoinDetailVM",
-                "=== Loading ${network.coinType} details for wallet: $walletId with network: ${network.displayName} ==="
-            )
-
             val result = when (network) {
                 is BitcoinNetwork -> {
                     getBitcoinDetailUseCase(walletId, network)
                 }
+
                 is EthereumNetwork -> {
                     when (network.coinType) {
-                        CoinType.ETHEREUM -> getEthereumDetailUseCase.getEthDetails(walletId, network)
+                        CoinType.ETHEREUM -> getEthereumDetailUseCase.getEthDetails(
+                            walletId,
+                            network
+                        )
+
                         CoinType.USDC -> getEthereumDetailUseCase.getUsdcDetails(walletId, network)
                         else -> {
-                            Log.e(
-                                "CoinDetailVM",
-                                "Unexpected coinType for EthereumNetwork: ${network.coinType}"
-                            )
                             return@launch
                         }
                     }
                 }
+
                 is SolanaNetwork -> {
                     getSolanaDetailUseCase(walletId, network)
                 }
