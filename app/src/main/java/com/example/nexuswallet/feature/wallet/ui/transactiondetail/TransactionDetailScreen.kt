@@ -460,10 +460,7 @@ fun TransactionStatusCard(
                 contentColor = coinColor
             ) {
                 Text(
-                    text = when {
-                        transaction.network.isTestnet -> "${transaction.network.displayName} Testnet"
-                        else -> transaction.network.displayName
-                    },
+                    text = transaction.network.displayName,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
@@ -741,10 +738,7 @@ fun NetworkFeeCard(
             // Network
             DetailRow(
                 label = "Network",
-                value = when {
-                    transaction.network.isTestnet -> "${transaction.network.displayName} Testnet"
-                    else -> transaction.network.displayName
-                },
+                value = transaction.network.displayName,
                 valueColor = coinColor
             )
 
