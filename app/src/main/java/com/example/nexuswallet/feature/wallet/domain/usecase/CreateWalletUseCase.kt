@@ -90,11 +90,11 @@ class CreateWalletUseCase @Inject constructor(
                             evmTokens.add(usdcToken)
                             logger.d(tag, "USDC token created on ${network.displayName}")
                         }
-                        CoinType.USDT -> {
-                            val usdtToken = createUSDTToken(nativeEth)
-                            evmTokens.add(usdtToken)
-                            logger.d(tag, "USDT token created on ${network.displayName}")
-                        }
+//                        CoinType.USDT -> {
+//                            val usdtToken = createUSDTToken(nativeEth)
+//                            evmTokens.add(usdtToken)
+//                            logger.d(tag, "USDT token created on ${network.displayName}")
+//                        }
                         else -> {
                             logger.w(tag, "Unsupported token type: ${coinType.symbol} on ${network.displayName}")
                         }

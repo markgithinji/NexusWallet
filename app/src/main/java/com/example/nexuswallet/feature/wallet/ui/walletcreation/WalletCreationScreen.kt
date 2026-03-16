@@ -502,19 +502,19 @@ fun NetworkSelectionStep(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // USDT on Ethereum Mainnet
-        TokenToggleCard(
-            iconRes = R.drawable.tether,
-            color = usdtLight,
-            network = EthereumNetwork.Mainnet,
-            coinType = CoinType.USDC,
-            isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(CoinType.USDC) == true,
-            onSelectedChange = { isSelected ->
-                onTokenToggle(EthereumNetwork.Mainnet, CoinType.USDC, isSelected)
-            }
-        )
+//        // USDT on Ethereum Mainnet
+//        TokenToggleCard(
+//            iconRes = R.drawable.tether,
+//            color = usdtLight,
+//            network = EthereumNetwork.Mainnet,
+//            coinType = CoinType.USDT,  // Changed from CoinType.USDC to CoinType.USDT
+//            isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(CoinType.USDT) == true,  // Check for USDT
+//            onSelectedChange = { isSelected ->
+//                onTokenToggle(EthereumNetwork.Mainnet, CoinType.USDT, isSelected)  // Pass USDT
+//            }
+//        )
 
-        Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.weight(1f))
         Spacer(modifier = Modifier.height(16.dp))
 
         // Summary Card
