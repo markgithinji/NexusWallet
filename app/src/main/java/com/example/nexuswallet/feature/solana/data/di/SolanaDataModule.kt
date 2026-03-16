@@ -22,10 +22,18 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
+import com.example.nexuswallet.BuildConfig
 
 @Module
 @InstallIn(SingletonComponent::class)
 object SolanaDataModule {
+
+    @Provides
+    @Singleton
+    @Named("helius_api_key")
+    fun provideHeliusApiKey(): String {
+        return BuildConfig.HELIUS_API_KEY
+    }
 
     @Provides
     @Singleton
@@ -44,15 +52,21 @@ object SolanaDataModule {
     @Provides
     @Singleton
     @Named("helius_rpc_devnet")
-    fun provideHeliusRpcDevnetConnection(): Connection {
-        return Connection("https://devnet.helius-rpc.com/")
+    fun provideHeliusRpcDevnetConnection(
+        @Named("helius_api_key") apiKey: String
+    ): Connection {
+        val url = "https://devnet.helius-rpc.com/?api-key=$apiKey"
+        return Connection(url)
     }
 
     @Provides
     @Singleton
     @Named("helius_rpc_mainnet")
-    fun provideHeliusRpcMainnetConnection(): Connection {
-        return Connection("https://mainnet.helius-rpc.com/")
+    fun provideHeliusRpcMainnetConnection(
+        @Named("helius_api_key") apiKey: String
+    ): Connection {
+        val url = "https://mainnet.helius-rpc.com/?api-key=$apiKey"
+        return Connection(url)
     }
 
     @Provides
@@ -91,8 +105,7 @@ object SolanaDataModule {
         @Named("helius_rpc_devnet") rpcDevnetConnection: Connection,
         @Named("helius_rpc_mainnet") rpcMainnetConnection: Connection,
         @Named("helius_api_devnet") devnetApi: HeliusApi,
-        @Named("helius_api_mainnet") mainnetApi: HeliusApi,
-        logger: Logger
+        @Named("helius_api_mainnet") mainnetApi: HeliusApi
     ): SolanaBlockchainRepository {
         return SolanaBlockchainRepositoryImpl(
             rpcDevnetConnection = rpcDevnetConnection,
@@ -111,10 +124,10 @@ object SolanaDataModule {
     @Provides
     @Singleton
     fun provideSolanaTransactionRepository(
-        solanaTransactionDao: SolanaTransactionDao,
+        solanaTransactionDao: SolanaTransactionDao
     ): SolanaTransactionRepository {
         return SolanaTransactionRepositoryImpl(
-            solanaTransactionDao = solanaTransactionDao,
+            solanaTransactionDao = solanaTransactionDao
         )
     }
 }
