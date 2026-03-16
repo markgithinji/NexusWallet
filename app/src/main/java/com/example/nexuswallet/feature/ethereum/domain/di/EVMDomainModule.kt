@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.ethereum.domain.di
 
-import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.ethereum.domain.usecase.GetEthereumWalletUseCase
@@ -66,7 +66,6 @@ object EVMDomainModule {
         logger: Logger
     ): ValidateEVMSendUseCase {
         return ValidateEVMSendUseCase(
-            evmBlockchainRepository = evmBlockchainRepository,
             logger = logger
         )
     }

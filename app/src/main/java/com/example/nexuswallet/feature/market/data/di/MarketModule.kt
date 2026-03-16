@@ -1,9 +1,10 @@
 package com.example.nexuswallet.feature.market.data.di
 
-import com.example.nexuswallet.feature.core.data.remote.ApiKeyInterceptor
 import com.example.nexuswallet.feature.market.data.remote.BinanceWebSocketImpl
 import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
 import com.example.nexuswallet.feature.market.data.remote.CryptoPanicApi
+import com.example.nexuswallet.feature.market.data.remote.interceptor.CoinGeckoInterceptor
+import com.example.nexuswallet.feature.market.data.remote.interceptor.CryptoPanicInterceptor
 import com.example.nexuswallet.feature.market.data.repository.CoinGeckoRepositoryImpl
 import com.example.nexuswallet.feature.market.data.repository.MarketRepositoryImpl
 import com.example.nexuswallet.feature.market.data.repository.WebSocketRepositoryImpl
@@ -23,7 +24,6 @@ import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import javax.inject.Named
 import javax.inject.Singleton
-import com.example.nexuswallet.BuildConfig
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -48,29 +48,25 @@ object MarketModule {
 
     @Provides
     @Singleton
-    @Named("coingecko")
-    fun provideCoinGeckoApiKey(): String = BuildConfig.COINGECKO_API_KEY
-
-    @Provides
-    @Singleton
-    @Named("coingecko")
-    fun provideCoinGeckoApiKeyParam(): String = "x_cg_demo_api_key"
+    @Named("coingecko_okhttp")
+    fun provideCoinGeckoOkHttpClient(
+        coinGeckoInterceptor: CoinGeckoInterceptor,
+        okHttpClient: OkHttpClient
+    ): OkHttpClient {
+        return okHttpClient.newBuilder()
+            .addInterceptor(coinGeckoInterceptor)
+            .build()
+    }
 
     @Provides
     @Singleton
     fun provideCoinGeckoApi(
-        @Named("coingecko") apiKey: String,
-        @Named("coingecko") apiKeyParam: String,
-        json: Json,
-        okHttpClient: OkHttpClient
+        @Named("coingecko_okhttp") client: OkHttpClient,
+        json: Json
     ): CoinGeckoApi {
-        val clientWithInterceptor = okHttpClient.newBuilder()
-            .addInterceptor(ApiKeyInterceptor(apiKey, apiKeyParam))
-            .build()
-
         return Retrofit.Builder()
             .baseUrl(COINGECKO_BASE_URL)
-            .client(clientWithInterceptor)
+            .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(CoinGeckoApi::class.java)
@@ -78,29 +74,25 @@ object MarketModule {
 
     @Provides
     @Singleton
-    @Named("cryptopanic")
-    fun provideCryptoPanicApiKey(): String = BuildConfig.CRYPTOPANIC_API_KEY
-
-    @Provides
-    @Singleton
-    @Named("cryptopanic")
-    fun provideCryptoPanicApiKeyParam(): String = "auth_token"
+    @Named("cryptopanic_okhttp")
+    fun provideCryptoPanicOkHttpClient(
+        cryptoPanicInterceptor: CryptoPanicInterceptor,
+        okHttpClient: OkHttpClient
+    ): OkHttpClient {
+        return okHttpClient.newBuilder()
+            .addInterceptor(cryptoPanicInterceptor)
+            .build()
+    }
 
     @Provides
     @Singleton
     fun provideCryptoPanicApi(
-        @Named("cryptopanic") apiKey: String,
-        @Named("cryptopanic") apiKeyParam: String,
-        json: Json,
-        okHttpClient: OkHttpClient
+        @Named("cryptopanic_okhttp") client: OkHttpClient,
+        json: Json
     ): CryptoPanicApi {
-        val clientWithInterceptor = okHttpClient.newBuilder()
-            .addInterceptor(ApiKeyInterceptor(apiKey, apiKeyParam))
-            .build()
-
         return Retrofit.Builder()
             .baseUrl(CRYPTOPANIC_BASE_URL)
-            .client(clientWithInterceptor)
+            .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(CryptoPanicApi::class.java)

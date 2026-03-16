@@ -97,7 +97,6 @@ object SolanaUseDomainModule {
         logger: Logger
     ): ValidateSolanaSendUseCase {
         return ValidateSolanaSendUseCase(
-            solanaBlockchainRepository = solanaBlockchainRepository,
             logger = logger
         )
     }

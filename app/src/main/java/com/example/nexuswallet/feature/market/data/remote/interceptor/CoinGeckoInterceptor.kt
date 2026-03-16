@@ -1,20 +1,17 @@
-package com.example.nexuswallet.feature.core.data.remote
+package com.example.nexuswallet.feature.market.data.remote.interceptor
 
 import okhttp3.Interceptor
 import okhttp3.Response
 import javax.inject.Inject
-import javax.inject.Named
+import com.example.nexuswallet.BuildConfig
 
-class ApiKeyInterceptor @Inject constructor(
-    @Named("apiKey") private val apiKey: String,
-    @Named("apiKeyParam") private val apiKeyParam: String
-) : Interceptor {
+class CoinGeckoInterceptor @Inject constructor() : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
         val originalUrl = originalRequest.url
 
         val newUrl = originalUrl.newBuilder()
-            .addQueryParameter(apiKeyParam, apiKey)
+            .addQueryParameter("x_cg_demo_api_key", BuildConfig.COINGECKO_API_KEY)
             .build()
 
         val newRequest = originalRequest.newBuilder()
