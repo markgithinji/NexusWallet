@@ -29,7 +29,9 @@ import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Receipt
+import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Token
 import androidx.compose.material.icons.outlined.TrendingDown
 import androidx.compose.material.icons.outlined.TrendingUp
@@ -102,6 +104,8 @@ fun WalletDetailScreen(
     onReceiveClick: (String, Network) -> Unit,
     onSendClick: (String, Network) -> Unit,
     onAssetClick: (String, Network) -> Unit,
+    onSwapClick: () -> Unit = {},
+    onMoreClick: () -> Unit = {},
     walletId: String,
     walletViewModel: WalletDetailViewModel = hiltViewModel(),
 ) {
@@ -219,6 +223,8 @@ fun WalletDetailScreen(
                 onAssetClick = { network -> onAssetClick(walletId, network) },
                 onReceiveClick = { network -> onReceiveClick(walletId, network) },
                 onSendClick = { network -> onSendClick(walletId, network) },
+                onSwapClick = onSwapClick,
+                onMoreClick = onMoreClick,
                 onViewAllTransactionsClick = { onNavigateToAllTransactions(walletId) },
                 onTransactionClick = { transaction ->
                     onNavigateToTransactionDetail(walletId, transaction.id)
@@ -249,6 +255,8 @@ fun WalletDetailContent(
     onAssetClick: (Network) -> Unit,
     onReceiveClick: (Network) -> Unit,
     onSendClick: (Network) -> Unit,
+    onSwapClick: () -> Unit,
+    onMoreClick: () -> Unit,
     onViewAllTransactionsClick: () -> Unit,
     onTransactionClick: (TransactionDisplayInfo) -> Unit,
     padding: PaddingValues
@@ -269,7 +277,9 @@ fun WalletDetailContent(
                 isLoadingBalance = isLoadingBalance || isRefreshingBalance,
                 balanceLoadingMessage = balanceLoadingMessage,
                 onReceive = { onReceiveClick(getDefaultNetwork(wallet)) },
-                onSend = { onSendClick(getDefaultNetwork(wallet)) }
+                onSend = { onSendClick(getDefaultNetwork(wallet)) },
+                onSwap = onSwapClick,
+                onMore = onMoreClick
             )
         }
 
@@ -444,7 +454,9 @@ fun WalletHeaderCard(
     isLoadingBalance: Boolean = false,
     balanceLoadingMessage: String = "",
     onReceive: () -> Unit,
-    onSend: () -> Unit
+    onSend: () -> Unit,
+    onSwap: (() -> Unit)? = null,
+    onMore: (() -> Unit)? = null
 ) {
     val assetCount = wallet.bitcoinCoins.size +
             wallet.solanaCoins.size +
@@ -549,11 +561,12 @@ fun WalletHeaderCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Quick action buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Receive button
                 QuickActionItem(
                     icon = Icons.Outlined.ArrowDownward,
                     label = "Receive",
@@ -561,6 +574,8 @@ fun WalletHeaderCard(
                     color = MaterialTheme.colorScheme.success,
                     modifier = Modifier.weight(1f)
                 )
+
+                // Send button
                 QuickActionItem(
                     icon = Icons.Outlined.ArrowUpward,
                     label = "Send",
@@ -568,6 +583,28 @@ fun WalletHeaderCard(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
+
+                // Swap button
+                if (onSwap != null) {
+                    QuickActionItem(
+                        icon = Icons.Outlined.SwapHoriz,
+                        label = "Swap",
+                        onClick = onSwap,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // More button
+                if (onMore != null) {
+                    QuickActionItem(
+                        icon = Icons.Outlined.MoreHoriz,
+                        label = "More",
+                        onClick = onMore,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
