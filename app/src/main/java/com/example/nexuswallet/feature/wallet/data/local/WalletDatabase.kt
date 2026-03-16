@@ -27,10 +27,6 @@ import com.example.nexuswallet.feature.wallet.data.local.entity.SPLTokenEntity
 import com.example.nexuswallet.feature.wallet.data.local.entity.SolanaBalanceEntity
 import com.example.nexuswallet.feature.wallet.data.local.entity.SolanaCoinEntity
 import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
-import com.example.nexuswallet.feature.wallet.data.local.migration.MIGRATION_1_2
-import com.example.nexuswallet.feature.wallet.data.local.migration.MIGRATION_2_3
-import com.example.nexuswallet.feature.wallet.data.local.migration.MIGRATION_3_4
-import com.example.nexuswallet.feature.wallet.data.local.migration.MIGRATION_4_5
 
 @Database(
     entities = [
@@ -55,10 +51,10 @@ import com.example.nexuswallet.feature.wallet.data.local.migration.MIGRATION_4_5
         EVMBalanceEntity::class,
         EVMTransactionEntity::class
     ],
-    version = 4,  // Increment version from 3 to 4
+    version = 8,  // Increment from 7 to 8
     exportSchema = false
 )
-//@TypeConverters(Converters::class)
+@TypeConverters(Converters::class)
 abstract class WalletDatabase : RoomDatabase() {
     // Wallet DAOs
     abstract fun walletDao(): WalletDao
@@ -92,12 +88,6 @@ abstract class WalletDatabase : RoomDatabase() {
                     WalletDatabase::class.java,
                     "wallet_database"
                 )
-                    .addMigrations(
-                        MIGRATION_1_2,
-                        MIGRATION_2_3,
-                        MIGRATION_3_4,
-                        MIGRATION_4_5
-                    )
 //                 .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

@@ -12,6 +12,7 @@ import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_OUT
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.util.ExplorerUrlHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -215,8 +216,14 @@ class BitcoinReviewViewModel @Inject constructor(
                                 preparedTransaction = null
                             )
                         }
-                        val explorerUrl = ExplorerUrlProvider.getExplorerUrl(sendResult.txHash, state.network)
-                        _effect.emit(BitcoinReviewEffect.TransactionSent(sendResult.txHash, explorerUrl))
+                        val explorerUrl =
+                            ExplorerUrlHelper.getExplorerUrl(sendResult.txHash, state.network)
+                        _effect.emit(
+                            BitcoinReviewEffect.TransactionSent(
+                                sendResult.txHash,
+                                explorerUrl
+                            )
+                        )
                         onSuccess(sendResult.txHash)
                     } else {
                         _state.update {

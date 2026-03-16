@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.market.data.remote
 
-import com.example.nexuswallet.core.di.IoDispatcher
 import com.example.nexuswallet.feature.market.domain.BinanceWebSocket
 import com.example.nexuswallet.feature.market.domain.model.ConnectionState
 import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
@@ -105,7 +104,8 @@ class BinanceWebSocketImpl @Inject constructor(
                 val symbol = jsonObject["s"]?.jsonPrimitive?.content ?: return
                 val price = jsonObject["c"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: return
                 val priceChange = jsonObject["p"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
-                val priceChangePercent = jsonObject["P"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
+                val priceChangePercent =
+                    jsonObject["P"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
 
                 val tokenId = symbolMapping[symbol]
                 if (tokenId != null) {

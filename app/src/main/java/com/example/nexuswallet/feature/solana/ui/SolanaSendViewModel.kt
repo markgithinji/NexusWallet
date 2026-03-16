@@ -13,6 +13,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.util.ExplorerUrlHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -302,8 +303,14 @@ class SolanaSendViewModel @Inject constructor(
                     val sendResult = result.data
                     if (sendResult.success) {
                         _state.update { it.copy(isLoading = false, step = "Sent!") }
-                        val explorerUrl = ExplorerUrlProvider.getExplorerUrl(sendResult.txHash, state.network)
-                        _effect.emit(SolanaSendEffect.TransactionSent(sendResult.txHash, explorerUrl))
+                        val explorerUrl =
+                            ExplorerUrlHelper.getExplorerUrl(sendResult.txHash, state.network)
+                        _effect.emit(
+                            SolanaSendEffect.TransactionSent(
+                                sendResult.txHash,
+                                explorerUrl
+                            )
+                        )
                         onSuccess(sendResult.txHash)
                     } else {
                         _state.update {

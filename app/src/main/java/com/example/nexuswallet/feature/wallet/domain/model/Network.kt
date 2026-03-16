@@ -9,7 +9,6 @@ sealed interface Network {
     val name: String
     val displayName: String
     val isTestnet: Boolean
-    val apiValue: String
     val coinType: CoinType
 }
 
@@ -20,10 +19,6 @@ sealed class SolanaNetwork : Network {
     abstract override val displayName: String
     abstract override val isTestnet: Boolean
     override val coinType: CoinType = CoinType.SOLANA
-    override val apiValue: String = when (this) {
-        Mainnet -> "mainnet"
-        Devnet -> "devnet"
-    }
 
     @Serializable
     @SerialName("SolanaMainnet")
@@ -49,7 +44,6 @@ sealed class BitcoinNetwork : Network {
     abstract override val displayName: String
     abstract override val isTestnet: Boolean
     override val coinType: CoinType = CoinType.BITCOIN
-    override val apiValue: String = if (isTestnet) "testnet" else "mainnet"
 
     @Serializable
     @SerialName("BitcoinMainnet")
@@ -78,10 +72,6 @@ sealed class EthereumNetwork : Network {
     abstract override val displayName: String
     abstract override val isTestnet: Boolean
     override val coinType: CoinType = CoinType.ETHEREUM
-    override val apiValue: String = when (this) {
-        Mainnet -> "mainnet"
-        Sepolia -> "sepolia"
-    }
 
     @Serializable
     @SerialName("Mainnet")
