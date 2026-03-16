@@ -77,6 +77,22 @@ fun EsploraTransactionDto.toDomain(
         ).toPlainString()
     } else "0"
 
+    // Convert seconds to milliseconds for confirmed transactions
+    val timestampMillis = when {
+        status.blockTime != null -> {
+            // blockTime is in seconds, convert to milliseconds
+            status.blockTime * 1000L
+        }
+        status.confirmed -> {
+            // If confirmed but no blockTime, use a reasonable default (24 hours ago)
+            System.currentTimeMillis() - 24 * 60 * 60 * 1000
+        }
+        else -> {
+            // Pending transaction - use current time
+            System.currentTimeMillis()
+        }
+    }
+
     return BitcoinTransaction(
         id = txid,
         walletId = walletId,
@@ -93,7 +109,7 @@ fun EsploraTransactionDto.toDomain(
         txHash = txid,
         status = if (status.confirmed) TransactionStatus.SUCCESS else TransactionStatus.PENDING,
         note = null,
-        timestamp = (status.blockTime ?: (System.currentTimeMillis() / 1000)) * 1000,  // Convert to milliseconds
+        timestamp = timestampMillis,
         feeLevel = FeeLevel.NORMAL,
         network = network,
         isIncoming = isIncoming
