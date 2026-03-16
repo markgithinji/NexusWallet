@@ -288,28 +288,4 @@ class Converters {
             emptyList()
         }
     }
-
-    // ============ BITCOIN TRANSACTION TYPE ============
-
-    @TypeConverter
-    fun fromBitcoinTransactionType(type: BitcoinTransactionType): String {
-        return type.name
-    }
-
-    @TypeConverter
-    fun toBitcoinTransactionType(type: String): BitcoinTransactionType {
-        if (type.isBlank()) {
-            return BitcoinTransactionType.SEND
-        }
-        return try {
-            BitcoinTransactionType.valueOf(type)
-        } catch (e: IllegalArgumentException) {
-            BitcoinTransactionType.SEND
-        }
-    }
-}
-
-enum class BitcoinTransactionType {
-    SEND,
-    RECEIVE
 }

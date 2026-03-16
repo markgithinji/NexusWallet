@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
+import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.domain.model.SendSolanaResult
@@ -235,7 +236,7 @@ class SendSolanaUseCase @Inject constructor(
         } else {
             privateKeyHex
         }
-        val privateKeyBytes = cleanPrivateKeyHex.hexToByteArray()
+        val privateKeyBytes = cleanPrivateKeyHex.decodeHex()
         when (privateKeyBytes.size) {
             KEYPAIR_64_BYTES -> Keypair.fromSecretKey(privateKeyBytes)
             KEYPAIR_32_BYTES -> Keypair.fromSecretKey(privateKeyBytes + ByteArray(KEYPAIR_32_BYTES))

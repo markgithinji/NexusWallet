@@ -11,7 +11,9 @@ import javax.inject.Singleton
 
 
 @Singleton
-class Web3jFactory @Inject constructor() {
+class Web3jFactory @Inject constructor(
+    private val okHttpClient: OkHttpClient
+) {
 
     fun create(network: EthereumNetwork): Web3j {
         val alchemyApiKey = BuildConfig.ALCHEMY_API_KEY
@@ -24,7 +26,7 @@ class Web3jFactory @Inject constructor() {
         return Web3j.build(
             HttpService(
                 rpcUrl,
-                OkHttpClient.Builder()
+                okHttpClient.newBuilder()
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .writeTimeout(30, TimeUnit.SECONDS)

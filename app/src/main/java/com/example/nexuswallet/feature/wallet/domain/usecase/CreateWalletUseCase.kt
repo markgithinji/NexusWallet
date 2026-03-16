@@ -9,6 +9,7 @@ import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_TES
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
+import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
@@ -140,7 +141,7 @@ class CreateWalletUseCase @Inject constructor(
         securityPreferencesRepository.storeEncryptedMnemonic(
             walletId = walletId,
             encryptedMnemonic = encryptedHex,
-            iv = ivHex.hexToByteArray()
+            iv = ivHex.decodeHex()
         )
         logger.d(tag, "Mnemonic secured successfully")
 
@@ -158,7 +159,7 @@ class CreateWalletUseCase @Inject constructor(
                 walletId = walletId,
                 keyType = keyType,
                 encryptedKey = encryptedKeyHex,
-                iv = keyIvHex.hexToByteArray()
+                iv = keyIvHex.decodeHex()
             )
             logger.d(tag, "Bitcoin private key stored for ${coin.network.displayName}")
         }
@@ -173,7 +174,7 @@ class CreateWalletUseCase @Inject constructor(
                 walletId = walletId,
                 keyType = KEY_ETHEREUM_MAIN,
                 encryptedKey = encryptedKeyHex,
-                iv = keyIvHex.hexToByteArray()
+                iv = keyIvHex.decodeHex()
             )
             logger.d(tag, "Ethereum private key stored successfully")
         }
@@ -192,7 +193,7 @@ class CreateWalletUseCase @Inject constructor(
                 walletId = walletId,
                 keyType = keyType,
                 encryptedKey = encryptedKeyHex,
-                iv = keyIvHex.hexToByteArray()
+                iv = keyIvHex.decodeHex()
             )
             logger.d(tag, "Solana private key stored for ${coin.network.displayName}")
         }

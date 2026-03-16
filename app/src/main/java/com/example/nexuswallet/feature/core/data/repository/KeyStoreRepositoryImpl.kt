@@ -4,6 +4,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.example.nexuswallet.feature.authentication.data.util.safeKeyStoreCall
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -19,7 +20,6 @@ import javax.inject.Singleton
  * Handles encryption/decryption using Android KeyStore
  * Provides hardware-backed security when available
  */
-
 @Singleton
 class KeyStoreRepositoryImpl @Inject constructor(
     private val keyStore: KeyStore,
@@ -61,8 +61,8 @@ class KeyStoreRepositoryImpl @Inject constructor(
     override suspend fun decryptString(encryptedHex: String, ivHex: String): String =
         withContext(ioDispatcher) {
             safeKeyStoreCall {
-                val encryptedBytes = encryptedHex.hexToByteArray()
-                val iv = ivHex.toByteArray()
+                val encryptedBytes = encryptedHex.decodeHex()
+                val iv = ivHex.decodeHex()
                 val decryptedBytes = decrypt(encryptedBytes, iv)
                 String(decryptedBytes, Charsets.UTF_8)
             }
