@@ -66,9 +66,10 @@ fun Navigation(
         WelcomeRoute
     }
 
-    val networkTypeMap = remember {
+    val typeMap = remember {
         mapOf(
-            typeOf<Network>() to NetworkNavType
+            typeOf<Network>() to NetworkNavType,
+            typeOf<AuthTarget>() to AuthTargetNavType
         )
     }
 
@@ -102,7 +103,7 @@ fun Navigation(
                     if (isAuthenticationRequired) {
                         navController.navigate(
                             AuthenticateRoute(
-                                targetRoute = WalletDetailRoute(walletId).toString()
+                                target = AuthTarget.WalletDetail(walletId)
                             )
                         )
                     } else {
@@ -110,16 +111,40 @@ fun Navigation(
                     }
                 },
                 onNavigateToCoinDetail = { walletId, network ->
-                    navController.navigate(CoinDetailRoute(walletId, network))
+                    if (isAuthenticationRequired) {
+                        navController.navigate(
+                            AuthenticateRoute(
+                                target = AuthTarget.CoinDetail(walletId, network)
+                            )
+                        )
+                    } else {
+                        navController.navigate(CoinDetailRoute(walletId, network))
+                    }
                 },
                 onNavigateToTokenDetail = { tokenId ->
                     navController.navigate(TokenDetailRoute(tokenId))
                 },
                 onNavigateToReceive = { walletId, network ->
-                    navController.navigate(ReceiveRoute(walletId, network))
+                    if (isAuthenticationRequired) {
+                        navController.navigate(
+                            AuthenticateRoute(
+                                target = AuthTarget.Receive(walletId, network)
+                            )
+                        )
+                    } else {
+                        navController.navigate(ReceiveRoute(walletId, network))
+                    }
                 },
                 onNavigateToSend = { walletId, network ->
-                    navController.navigate(SendRoute(walletId, network))
+                    if (isAuthenticationRequired) {
+                        navController.navigate(
+                            AuthenticateRoute(
+                                target = AuthTarget.Send(walletId, network)
+                            )
+                        )
+                    } else {
+                        navController.navigate(SendRoute(walletId, network))
+                    }
                 },
                 onNavigateToSecurity = {
                     navController.navigate(SecuritySettingsRoute)
@@ -190,7 +215,7 @@ fun Navigation(
         }
 
         composable<CoinDetailRoute>(
-            typeMap = networkTypeMap
+            typeMap = typeMap
         ) { backStackEntry ->
 
             val args = backStackEntry.toRoute<CoinDetailRoute>()
@@ -225,7 +250,7 @@ fun Navigation(
         }
 
         composable<ReceiveRoute>(
-            typeMap = networkTypeMap
+            typeMap = typeMap
         ) { backStackEntry ->
 
             val args = backStackEntry.toRoute<ReceiveRoute>()
@@ -238,7 +263,7 @@ fun Navigation(
         }
 
         composable<SendRoute>(
-            typeMap = networkTypeMap
+            typeMap = typeMap
         ) { backStackEntry ->
 
             val args = backStackEntry.toRoute<SendRoute>()
@@ -314,7 +339,7 @@ fun Navigation(
         }
 
         composable<ReviewRoute>(
-            typeMap = networkTypeMap
+            typeMap = typeMap
         ) { backStackEntry ->
 
             val args = backStackEntry.toRoute<ReviewRoute>()
@@ -359,15 +384,41 @@ fun Navigation(
             )
         }
 
-        composable<AuthenticateRoute> { backStackEntry ->
+        composable<AuthenticateRoute>(
+            typeMap = typeMap
+        ) { backStackEntry ->
 
             val args = backStackEntry.toRoute<AuthenticateRoute>()
 
             AuthenticationRequiredScreen(
                 canAuthenticate = canAuthenticate,
                 onAuthenticated = {
-                    navController.navigate(args.targetRoute) {
-                        popUpTo<AuthenticateRoute> { inclusive = true }
+                    when (val target = args.target) {
+                        is AuthTarget.WalletDetail -> {
+                            navController.navigate(WalletDetailRoute(target.walletId)) {
+                                popUpTo<AuthenticateRoute> { inclusive = true }
+                            }
+                        }
+                        is AuthTarget.CoinDetail -> {
+                            navController.navigate(CoinDetailRoute(target.walletId, target.network)) {
+                                popUpTo<AuthenticateRoute> { inclusive = true }
+                            }
+                        }
+                        is AuthTarget.Send -> {
+                            navController.navigate(SendRoute(target.walletId, target.network)) {
+                                popUpTo<AuthenticateRoute> { inclusive = true }
+                            }
+                        }
+                        is AuthTarget.Receive -> {
+                            navController.navigate(ReceiveRoute(target.walletId, target.network)) {
+                                popUpTo<AuthenticateRoute> { inclusive = true }
+                            }
+                        }
+                        is AuthTarget.TransactionDetail -> {
+                            navController.navigate(TransactionDetailRoute(target.walletId, target.transactionId)) {
+                                popUpTo<AuthenticateRoute> { inclusive = true }
+                            }
+                        }
                     }
                 },
                 onCancel = {

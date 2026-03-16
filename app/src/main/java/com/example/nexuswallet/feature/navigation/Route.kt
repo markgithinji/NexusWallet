@@ -56,5 +56,5 @@ data class TransactionDetailRoute(val walletId: String, val transactionId: Strin
 
 @Serializable
 data class AuthenticateRoute(
-    val targetRoute: String
+    val target: AuthTarget
 )
