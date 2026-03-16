@@ -1,19 +1,21 @@
 package com.example.nexuswallet.feature.navigation
 
 import android.os.Build
+import android.os.Bundle
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.nexuswallet.BackupScreen
-import com.example.nexuswallet.feature.wallet.ui.walletcreation.WelcomeScreen
 import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredScreen
 import com.example.nexuswallet.feature.bitcoin.ui.send.BitcoinSendScreen
 import com.example.nexuswallet.feature.core.domain.model.CoinType
@@ -26,15 +28,20 @@ import com.example.nexuswallet.feature.settings.ui.SettingsScreen
 import com.example.nexuswallet.feature.solana.ui.SolanaSendScreen
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
 import com.example.nexuswallet.feature.wallet.ui.coindetail.CoinDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.recive.ReceiveScreen
 import com.example.nexuswallet.feature.wallet.ui.transactiondetail.TransactionDetailScreen
-import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationViewModel
+import com.example.nexuswallet.feature.wallet.ui.walletcreation.WelcomeScreen
 import com.example.nexuswallet.feature.wallet.ui.walletdetail.WalletDetailScreen
+import kotlinx.serialization.json.Json
+import kotlin.collections.mapOf
+import kotlin.reflect.typeOf
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -59,10 +66,17 @@ fun Navigation(
         WelcomeRoute
     }
 
+    val networkTypeMap = remember {
+        mapOf(
+            typeOf<Network>() to NetworkNavType
+        )
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination
     ) {
+
         composable<WelcomeRoute> {
             WelcomeScreen(
                 onCreateWallet = {
@@ -86,7 +100,11 @@ fun Navigation(
                 },
                 onNavigateToWalletDetail = { walletId ->
                     if (isAuthenticationRequired) {
-                        navController.navigate(AuthenticateRoute(WalletDetailRoute(walletId)))
+                        navController.navigate(
+                            AuthenticateRoute(
+                                targetRoute = WalletDetailRoute(walletId).toString()
+                            )
+                        )
                     } else {
                         navController.navigate(WalletDetailRoute(walletId))
                     }
@@ -112,8 +130,8 @@ fun Navigation(
 
         composable<MarketRoute> {
             MarketScreen(
-                onNavigateToTokenDetail = { tokenId ->
-                    navController.navigate(TokenDetailRoute(tokenId))
+                onNavigateToTokenDetail = {
+                    navController.navigate(TokenDetailRoute(it))
                 },
                 padding = PaddingValues(0.dp)
             )
@@ -121,18 +139,15 @@ fun Navigation(
 
         composable<CreateWalletRoute> {
             val viewModel = hiltViewModel<WalletCreationViewModel>()
+
             WalletCreationScreen(
-                onNavigateUp = {
-                    navController.navigateUp()
-                },
+                viewModel = viewModel,
+                onNavigateUp = { navController.navigateUp() },
                 onNavigateToMain = {
                     navController.navigate(MainRoute) {
-                        popUpTo(MainRoute) {
-                            inclusive = false
-                        }
+                        popUpTo(MainRoute) { inclusive = false }
                     }
-                },
-                viewModel = viewModel
+                }
             )
         }
 
@@ -146,9 +161,7 @@ fun Navigation(
 
         composable<SecuritySettingsRoute> {
             SecuritySettingsScreen(
-                onNavigateUp = {
-                    navController.navigateUp()
-                }
+                onNavigateUp = { navController.navigateUp() }
             )
         }
 
@@ -156,9 +169,8 @@ fun Navigation(
             val args = backStackEntry.toRoute<WalletDetailRoute>()
 
             WalletDetailScreen(
-                onNavigateUp = {
-                    navController.navigateUp()
-                },
+                walletId = args.walletId,
+                onNavigateUp = { navController.navigateUp() },
                 onAssetClick = { walletId, network ->
                     navController.navigate(CoinDetailRoute(walletId, network))
                 },
@@ -171,20 +183,22 @@ fun Navigation(
                 onNavigateToAllTransactions = { walletId ->
                     // TODO: Navigate to all transactions screen
                 },
-                onNavigateToTransactionDetail = { walletId, transactionId ->
-                    navController.navigate(TransactionDetailRoute(walletId, transactionId))
-                },
-                walletId = args.walletId
+                onNavigateToTransactionDetail = { walletId, txId ->
+                    navController.navigate(TransactionDetailRoute(walletId, txId))
+                }
             )
         }
 
-        composable<CoinDetailRoute> { backStackEntry ->
+        composable<CoinDetailRoute>(
+            typeMap = networkTypeMap
+        ) { backStackEntry ->
+
             val args = backStackEntry.toRoute<CoinDetailRoute>()
 
             CoinDetailScreen(
-                onNavigateUp = {
-                    navController.navigateUp()
-                },
+                walletId = args.walletId,
+                network = args.network,
+                onNavigateUp = { navController.navigateUp() },
                 onNavigateToReceive = { walletId, network ->
                     navController.navigate(ReceiveRoute(walletId, network))
                 },
@@ -194,11 +208,9 @@ fun Navigation(
                 onNavigateToAllTransactions = { walletId, network ->
                     // TODO: Navigate to all transactions screen
                 },
-                onNavigateToTransactionDetail = { walletId, transactionId ->
-                    navController.navigate(TransactionDetailRoute(walletId, transactionId))
-                },
-                walletId = args.walletId,
-                network = args.network
+                onNavigateToTransactionDetail = { walletId, txId ->
+                    navController.navigate(TransactionDetailRoute(walletId, txId))
+                }
             )
         }
 
@@ -206,112 +218,114 @@ fun Navigation(
             val args = backStackEntry.toRoute<TransactionDetailRoute>()
 
             TransactionDetailScreen(
-                onNavigateUp = {
-                    navController.navigateUp()
-                },
                 walletId = args.walletId,
-                transactionId = args.transactionId
+                transactionId = args.transactionId,
+                onNavigateUp = { navController.navigateUp() }
             )
         }
 
-        composable<ReceiveRoute> { backStackEntry ->
+        composable<ReceiveRoute>(
+            typeMap = networkTypeMap
+        ) { backStackEntry ->
+
             val args = backStackEntry.toRoute<ReceiveRoute>()
 
             ReceiveScreen(
-                onNavigateUp = {
-                    navController.navigateUp()
-                },
                 walletId = args.walletId,
-                network = args.network
+                network = args.network,
+                onNavigateUp = { navController.navigateUp() }
             )
         }
 
-        composable<SendRoute> { backStackEntry ->
+        composable<SendRoute>(
+            typeMap = networkTypeMap
+        ) { backStackEntry ->
+
             val args = backStackEntry.toRoute<SendRoute>()
 
             when (args.network) {
+
                 is BitcoinNetwork -> {
                     BitcoinSendScreen(
-                        onNavigateUp = {
-                            navController.navigateUp()
-                        },
+                        walletId = args.walletId,
+                        network = args.network,
+                        onNavigateUp = { navController.navigateUp() },
                         onNavigateToReview = { walletId, toAddress, amount, feeLevel, network ->
+
                             navController.navigate(
                                 ReviewRoute(
-                                    walletId = walletId,
-                                    toAddress = toAddress,
-                                    amount = amount,
-                                    feeLevel = feeLevel?.name,
-                                    network = network
+                                    walletId,
+                                    toAddress,
+                                    amount,
+                                    feeLevel?.name,
+                                    network
                                 )
                             ) {
                                 popUpTo<SendRoute> { inclusive = true }
                             }
-                        },
-                        walletId = args.walletId,
-                        network = args.network
+                        }
                     )
                 }
 
                 is EthereumNetwork -> {
-                    when (args.network.coinType) {
-                        CoinType.ETHEREUM, CoinType.USDC -> {
-                            EthereumSendScreen(
-                                onNavigateUp = {
-                                    navController.navigateUp()
-                                },
-                                onNavigateToReview = { walletId, toAddress, amount, feeLevel, network ->
-                                    navController.navigate(
-                                        ReviewRoute(
-                                            walletId = walletId,
-                                            toAddress = toAddress,
-                                            amount = amount,
-                                            feeLevel = feeLevel?.name,
-                                            network = network
-                                        )
-                                    ) {
-                                        popUpTo<SendRoute> { inclusive = true }
-                                    }
-                                },
-                                walletId = args.walletId,
-                                network = args.network
-                            )
-                        }
-
-                        else -> {}
-                    }
-                }
-
-                is SolanaNetwork -> {
-                    SolanaSendScreen(
-                        onNavigateUp = {
-                            navController.navigateUp()
-                        },
+                    EthereumSendScreen(
+                        walletId = args.walletId,
+                        network = args.network,
+                        onNavigateUp = { navController.navigateUp() },
                         onNavigateToReview = { walletId, toAddress, amount, feeLevel, network ->
+
                             navController.navigate(
                                 ReviewRoute(
-                                    walletId = walletId,
-                                    toAddress = toAddress,
-                                    amount = amount,
-                                    feeLevel = feeLevel?.name,
-                                    network = network
+                                    walletId,
+                                    toAddress,
+                                    amount,
+                                    feeLevel?.name,
+                                    network
                                 )
                             ) {
                                 popUpTo<SendRoute> { inclusive = true }
                             }
-                        },
+                        }
+                    )
+                }
+
+                is SolanaNetwork -> {
+                    SolanaSendScreen(
                         walletId = args.walletId,
-                        network = args.network
+                        network = args.network,
+                        onNavigateUp = { navController.navigateUp() },
+                        onNavigateToReview = { walletId, toAddress, amount, feeLevel, network ->
+
+                            navController.navigate(
+                                ReviewRoute(
+                                    walletId,
+                                    toAddress,
+                                    amount,
+                                    feeLevel?.name,
+                                    network
+                                )
+                            ) {
+                                popUpTo<SendRoute> { inclusive = true }
+                            }
+                        }
                     )
                 }
             }
         }
 
-        composable<ReviewRoute> { backStackEntry ->
+        composable<ReviewRoute>(
+            typeMap = networkTypeMap
+        ) { backStackEntry ->
+
             val args = backStackEntry.toRoute<ReviewRoute>()
             val feeLevel = args.feeLevel?.let { FeeLevel.valueOf(it) }
 
             TransactionReviewScreen(
+                walletId = args.walletId,
+                toAddress = args.toAddress,
+                amount = args.amount,
+                feeLevel = feeLevel.toString(),
+                network = args.network,
                 onNavigateUp = {
                     navController.navigate(WalletDetailRoute(args.walletId)) {
                         popUpTo(WalletDetailRoute(args.walletId)) { inclusive = true }
@@ -321,50 +335,44 @@ fun Navigation(
                     navController.navigate(WalletDetailRoute(walletId)) {
                         popUpTo(WalletDetailRoute(walletId)) { inclusive = true }
                     }
-                },
-                walletId = args.walletId,
-                toAddress = args.toAddress,
-                amount = args.amount,
-                feeLevel = feeLevel.toString(),
-                network = args.network
+                }
             )
         }
 
         composable<TokenDetailRoute> { backStackEntry ->
+
             val args = backStackEntry.toRoute<TokenDetailRoute>()
 
             TokenDetailScreen(
-                onNavigateUp = {
-                    navController.navigateUp()
-                },
-                tokenId = args.tokenId
+                tokenId = args.tokenId,
+                onNavigateUp = { navController.navigateUp() }
             )
         }
 
         composable<BackupRoute> { backStackEntry ->
+
             val args = backStackEntry.toRoute<BackupRoute>()
 
             BackupScreen(
-                onNavigateUp = {
-                    navController.navigateUp()
-                },
-                walletId = args.walletId
+                walletId = args.walletId,
+                onNavigateUp = { navController.navigateUp() }
             )
         }
 
         composable<AuthenticateRoute> { backStackEntry ->
+
             val args = backStackEntry.toRoute<AuthenticateRoute>()
 
             AuthenticationRequiredScreen(
+                canAuthenticate = canAuthenticate,
                 onAuthenticated = {
-                    navController.navigate(args.target) {
+                    navController.navigate(args.targetRoute) {
                         popUpTo<AuthenticateRoute> { inclusive = true }
                     }
                 },
                 onCancel = {
                     navController.popBackStack()
-                },
-                canAuthenticate = canAuthenticate
+                }
             )
         }
     }
