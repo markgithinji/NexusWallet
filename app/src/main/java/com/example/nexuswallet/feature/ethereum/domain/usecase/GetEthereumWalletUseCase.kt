@@ -33,7 +33,7 @@ class GetEthereumWalletUseCase @Inject constructor(
 
         logger.d(
             tag,
-            "Found wallet: ${wallet.name}, Address: ${nativeEth.address.take(8)}..., Network: ${nativeEth.network.displayName}"
+            "Found wallet: ${wallet.name}, Address: ${nativeEth.address.take(8)}..., Network: ${nativeEth.network.name}"
         )
 
         return Result.Success(

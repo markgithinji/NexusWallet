@@ -22,7 +22,7 @@ class GetFeeEstimateUseCase @Inject constructor(
         network: EthereumNetwork,
         isToken: Boolean
     ): Result<EVMFeeEstimate> {
-        logger.d(tag, "Getting fee estimate for $feeLevel on ${network.displayName} (isToken=$isToken)")
+        logger.d(tag, "Getting fee estimate for $feeLevel on ${network.name} (isToken=$isToken)")
         return evmBlockchainRepository.getFeeEstimate(feeLevel, network, isToken)
     }
 }
