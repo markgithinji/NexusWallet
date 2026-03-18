@@ -1,7 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain.model
 
 import com.example.nexuswallet.feature.core.domain.model.Transaction
-import java.math.BigDecimal
 
 // Base result interface
 sealed interface CoinDetailResult {
@@ -38,7 +37,7 @@ data class EthereumDetailResult(
     override val networkDisplayName: String,
     override val rawTransactions: List<Transaction>,
     val token: EVMToken,
-    val ethGasBalance: BigDecimal? = null,
+    val ethGasBalance: String,
     val availableTokens: List<EVMToken> = emptyList(),
     val chainId: String = network.chainId
 ) : CoinDetailResult

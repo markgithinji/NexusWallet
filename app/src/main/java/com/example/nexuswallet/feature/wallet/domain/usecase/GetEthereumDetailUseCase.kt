@@ -68,7 +68,6 @@ class GetEthereumDetailUseCase @Inject constructor(
             }
             is Result.Error -> {
                 logger.e(tag, "Failed to fetch native transactions: ${nativeTxResult.message}")
-                // Continue with existing transactions
             }
             Result.Loading -> {}
         }
@@ -105,14 +104,15 @@ class GetEthereumDetailUseCase @Inject constructor(
         }
 
         // 6. Get ETH balance for gas (for tokens)
-        var ethGasBalance: BigDecimal? = null
+        var ethGasBalance: String? = null
         if (!isEth) {
             val nativeEth = wallet.evmTokens.filterIsInstance<NativeETH>().find { it.network == network }
             ethGasBalance = nativeEth?.let { nativeToken ->
                 balance?.evmBalances?.find {
                     it.network == nativeToken.network && it.evmTokenType == EVMTokenType.NATIVE
                 }?.balanceDecimal?.toBigDecimalOrNull()
-            }
+            }?.stripTrailingZeros()?.toPlainString()
+
             logger.d(tag, "ETH gas balance for ${network.name}: $ethGasBalance")
         }
 
@@ -146,7 +146,12 @@ class GetEthereumDetailUseCase @Inject constructor(
                 }
             }
             else -> { // NativeETH
-                "${tokenBalance?.balanceDecimal ?: "0"} ${verifiedToken.symbol}"
+                val numericBalance = tokenBalance?.balanceDecimal?.toBigDecimalOrNull()
+                if (numericBalance != null) {
+                    "${numericBalance.stripTrailingZeros().toPlainString()} ${verifiedToken.symbol}"
+                } else {
+                    "0 ${verifiedToken.symbol}"
+                }
             }
         }
 
@@ -160,7 +165,7 @@ class GetEthereumDetailUseCase @Inject constructor(
             networkDisplayName = network.name,
             rawTransactions = filteredTxs,
             token = verifiedToken,
-            ethGasBalance = ethGasBalance,
+            ethGasBalance = ethGasBalance ?: "0",
             availableTokens = wallet.evmTokens.filter { it.network == network },
             chainId = network.chainId
         )

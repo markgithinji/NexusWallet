@@ -157,7 +157,6 @@ fun CoinDetailScreen(
                 onNavigateToTransactionDetail(walletId, transaction.id, transaction.coin)
             },
             onSPLTokenClick = { /* Handle SPL token click */ },
-            onEVMTokenClick = { /* Handle EVM token click */ },
             modifier = Modifier.padding(padding)
         )
     }
@@ -239,7 +238,6 @@ private fun CoinDetailContent(
     onViewAllTransactions: () -> Unit,
     onTransactionClick: (TransactionDisplayInfo) -> Unit,
     onSPLTokenClick: (SPLToken) -> Unit,
-    onEVMTokenClick: (EVMToken) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isTestnet = coin.network.isTestnet
@@ -271,11 +269,11 @@ private fun CoinDetailContent(
             )
         }
 
-        // Show ETH gas balance for EVM tokens (including USDC)
-        if (coin is EVMToken && state.ethGasBalance != null) {
+        // Show ETH gas balance for EVM tokens (including USDC) - FIXED: changed to ethGasBalance
+        if (coin is EVMToken && state.ethGasBalance != "0") {
             item {
                 CoinDetailEthGasBalanceCard(
-                    formattedEthBalance = state.formattedEthGasBalance
+                    formattedEthBalance = state.ethGasBalance
                 )
             }
         }

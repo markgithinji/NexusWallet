@@ -6,6 +6,7 @@ import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
 import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
 import com.example.nexuswallet.feature.ethereum.domain.model.SendEVMResult
@@ -270,9 +271,5 @@ class SendEVMAssetUseCase @Inject constructor(
                 Result.Error("Broadcast timeout")
             }
         }
-    }
-
-    companion object {
-        private const val KEY_ETHEREUM_MAIN = "ethereum_main"
     }
 }

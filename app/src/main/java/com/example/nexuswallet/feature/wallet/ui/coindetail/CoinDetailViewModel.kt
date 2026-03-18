@@ -14,15 +14,12 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDi
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetBitcoinDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetEthereumDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetSolanaDetailUseCase
-import com.example.nexuswallet.feature.wallet.util.TransactionFormatHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
-import java.math.RoundingMode
 import javax.inject.Inject
 
 @HiltViewModel
@@ -57,9 +54,11 @@ class CoinDetailViewModel @Inject constructor(
                 is BitcoinCoin -> {
                     getBitcoinDetailUseCase(walletId, coin.network)
                 }
+
                 is EVMToken -> {
                     getEthereumDetailUseCase(walletId, coin)
                 }
+
                 is SolanaCoin -> {
                     getSolanaDetailUseCase(walletId, coin.network)
                 }
@@ -119,23 +118,6 @@ class CoinDetailViewModel @Inject constructor(
                 formatTransactionDisplayUseCase(transaction, coin)
             }
 
-            // Format ETH gas balance
-            val formattedEthGasBalance = data.ethGasBalance?.let { ethGas ->
-                try {
-                    val ethAmount = if (ethGas > BigDecimal("1000000000000000")) {
-                        // Convert from Wei to ETH
-                        ethGas.divide(BigDecimal("1000000000000000000"), 18, RoundingMode.HALF_UP)
-                    } else {
-                        ethGas
-                    }
-
-                    // Use the helper to format the amount
-                    TransactionFormatHelper.formatAmount(ethAmount.toString())
-                } catch (e: Exception) {
-                    ethGas.toString()
-                }
-            }
-
             currentState.copy(
                 walletId = data.walletId,
                 address = data.address,
@@ -144,7 +126,6 @@ class CoinDetailViewModel @Inject constructor(
                 usdValue = data.usdValue,
                 transactions = displayTransactions,
                 ethGasBalance = data.ethGasBalance,
-                formattedEthGasBalance = formattedEthGasBalance ?: "0",
                 evmTokens = data.availableTokens,
                 isLoading = false,
                 isRefreshing = false,
