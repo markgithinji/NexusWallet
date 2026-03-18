@@ -7,7 +7,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import java.math.BigDecimal
 
-data class EthSendUiState(
+data class EVMSendUiState(
     val walletId: String = "",
     val walletName: String = "",
     val fromAddress: String = "",

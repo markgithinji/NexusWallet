@@ -103,7 +103,7 @@ class FormatBalanceUseCase @Inject constructor() {
         wallet.evmTokens.forEach { token ->
             // Find the matching balance using network and tokenType directly
             val tokenBalance = balance?.evmBalances?.find {
-                it.network == token.network && it.tokenType == token.tokenType
+                it.network == token.network && it.evmTokenType == token.evmTokenType
             }
 
             val percentage = when (token) {
@@ -114,7 +114,7 @@ class FormatBalanceUseCase @Inject constructor() {
 
             assets.add(
                 AssetDisplayInfo(
-                    id = "${token.network.chainId}_${token.tokenType}_${token.address}",
+                    id = "${token.network.chainId}_${token.evmTokenType}_${token.address}",
                     walletId = walletId,
                     coin = token,
                     name = token.name,

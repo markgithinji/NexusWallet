@@ -78,10 +78,10 @@ import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewEffect
 import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewViewModel
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
-import com.example.nexuswallet.feature.ethereum.ui.EthereumSendEffect
-import com.example.nexuswallet.feature.ethereum.ui.EthereumSendEvent
-import com.example.nexuswallet.feature.ethereum.ui.EthereumSendViewModel
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
+import com.example.nexuswallet.feature.ethereum.ui.EVMSendEffect
+import com.example.nexuswallet.feature.ethereum.ui.EVMSendEvent
+import com.example.nexuswallet.feature.ethereum.ui.EVMSendViewModel
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.ui.SolanaSendEffect
 import com.example.nexuswallet.feature.solana.ui.SolanaSendViewModel
@@ -114,7 +114,7 @@ fun TransactionReviewScreen(
     amount: String,
     feeLevel: String? = null,
     coin: Coin,
-    ethereumViewModel: EthereumSendViewModel = hiltViewModel(),
+    ethereumViewModel: EVMSendViewModel = hiltViewModel(),
     solanaViewModel: SolanaSendViewModel = hiltViewModel(),
     bitcoinReviewViewModel: BitcoinReviewViewModel = hiltViewModel()
 ) {
@@ -160,12 +160,12 @@ fun TransactionReviewScreen(
     LaunchedEffect(ethereumViewModel) {
         ethereumViewModel.effect.collect { effect ->
             when (effect) {
-                is EthereumSendEffect.ShowError -> {
+                is EVMSendEffect.ShowError -> {
                     sendError = effect.message
                     isSending = false
                 }
 
-                is EthereumSendEffect.TransactionSent -> {
+                is EVMSendEffect.TransactionSent -> {
                     txHash = effect.txHash
                     explorerUrl = effect.explorerUrl
                     txStatus = "Transaction sent!"
@@ -215,14 +215,14 @@ fun TransactionReviewScreen(
 
             is EVMToken -> {
                 ethereumViewModel.initialize(walletId, coin)
-                ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(toAddress))
-                ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(amount))
+                ethereumViewModel.onEvent(EVMSendEvent.ToAddressChanged(toAddress))
+                ethereumViewModel.onEvent(EVMSendEvent.AmountChanged(amount))
                 feeLevel?.let {
-                    ethereumViewModel.onEvent(EthereumSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
+                    ethereumViewModel.onEvent(EVMSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
                 }
 
                 // If this is USDC or USDT (non-native), select the appropriate token
-                if (coin.tokenType != TokenType.NATIVE) {
+                if (coin.evmTokenType != EVMTokenType.NATIVE) {
                     // Wait for initialization
                     snapshotFlow { ethereumState.value.isInitialized }
                         .filter { it }
@@ -230,7 +230,7 @@ fun TransactionReviewScreen(
 
                     // Find and select the token
                     val token = ethereumState.value.availableTokens.firstOrNull {
-                        it.tokenType == coin.tokenType
+                        it.evmTokenType == coin.evmTokenType
                     }
                     token?.let { ethereumViewModel.selectToken(it) }
                 }

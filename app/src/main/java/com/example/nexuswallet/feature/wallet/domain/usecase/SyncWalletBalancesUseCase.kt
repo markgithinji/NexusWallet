@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
@@ -177,13 +177,13 @@ class SyncWalletBalancesUseCase @Inject constructor(
         val errors = mutableListOf<String>()
 
         tokens.forEach { token ->
-            val balanceResult = when (token.tokenType) {
-                TokenType.NATIVE -> evmBlockchainRepository.getNativeBalance(
+            val balanceResult = when (token.evmTokenType) {
+                EVMTokenType.NATIVE -> evmBlockchainRepository.getNativeBalance(
                     address = token.address,
                     network = token.network
                 )
 
-                TokenType.USDC, TokenType.USDT -> evmBlockchainRepository.getTokenBalance(
+                EVMTokenType.USDC, EVMTokenType.USDT -> evmBlockchainRepository.getTokenBalance(
                     address = token.address,
                     tokenContract = token.contractAddress,
                     tokenDecimals = token.decimals,
@@ -194,8 +194,8 @@ class SyncWalletBalancesUseCase @Inject constructor(
             when (balanceResult) {
                 is Result.Success -> {
                     val balance = balanceResult.data
-                    val balanceWei = when (token.tokenType) {
-                        TokenType.NATIVE -> (balance * BigDecimal("1000000000000000000")).toBigInteger()
+                    val balanceWei = when (token.evmTokenType) {
+                        EVMTokenType.NATIVE -> (balance * BigDecimal("1000000000000000000")).toBigInteger()
                             .toString()
 
                         else -> (balance * BigDecimal.TEN.pow(token.decimals)).toBigInteger()
@@ -206,7 +206,7 @@ class SyncWalletBalancesUseCase @Inject constructor(
 
                     evmBalances.add(
                         EVMBalance(
-                            tokenType = token.tokenType,
+                            evmTokenType = token.evmTokenType,
                             network = token.network,
                             address = token.address,
                             balanceWei = balanceWei,
@@ -269,9 +269,9 @@ class SyncWalletBalancesUseCase @Inject constructor(
 
     // TODO: fetch from price API
     private fun calculateTokenUsdValue(amount: BigDecimal, token: EVMToken): Double {
-        return when (token.tokenType) {
-            TokenType.USDC, TokenType.USDT -> amount.toDouble()
-            TokenType.NATIVE -> amount.toDouble() * 3000.0
+        return when (token.evmTokenType) {
+            EVMTokenType.USDC, EVMTokenType.USDT -> amount.toDouble()
+            EVMTokenType.NATIVE -> amount.toDouble() * 3000.0
         }
     }
 }

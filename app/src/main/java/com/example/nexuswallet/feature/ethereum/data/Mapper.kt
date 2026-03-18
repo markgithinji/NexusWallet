@@ -7,7 +7,7 @@ import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity
 import com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionDto
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
 import com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse
@@ -26,7 +26,7 @@ fun EtherscanTransactionDto.toNativeETHTransaction(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,
-    tokenType: TokenType = TokenType.NATIVE
+    evmTokenType: EVMTokenType = EVMTokenType.NATIVE
 ): NativeETHTransaction {
     val weiAmount = value.toBigDecimalOrNull() ?: BigDecimal.ZERO
     val ethAmount = weiAmount.divide(
@@ -66,7 +66,7 @@ fun EtherscanTransactionDto.toNativeETHTransaction(
         txHash = hash,
         amount = ethAmount.toPlainString(),  // Human readable ETH amount
         fee = feeEth.toPlainString(),        // Human readable fee in ETH
-        symbol = tokenType.symbol,
+        symbol = evmTokenType.symbol,
         amountWei = value,
         amountEth = ethAmount.toPlainString(),
         gasPriceWei = gasPrice,
@@ -78,7 +78,7 @@ fun EtherscanTransactionDto.toNativeETHTransaction(
         chainId = network.chainId.toLong(),
         signedHex = null,
         transactionType = EVMTransactionType.NATIVE_ETH,
-        tokenType = tokenType,
+        evmTokenType = evmTokenType,
         data = input
     )
 }
@@ -90,10 +90,10 @@ fun List<EtherscanTransactionDto>.toNativeETHTransactionList(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,
-    tokenType: TokenType = TokenType.NATIVE
+    evmTokenType: EVMTokenType = EVMTokenType.NATIVE
 ): List<NativeETHTransaction> {
     return this.map { tx ->
-        tx.toNativeETHTransaction(walletId, network, walletAddress, tokenType)
+        tx.toNativeETHTransaction(walletId, network, walletAddress, evmTokenType)
     }
 }
 /**
@@ -103,10 +103,10 @@ fun TokenTransactionResponse.toTokenTransaction(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,
-    tokenType: TokenType
+    evmTokenType: EVMTokenType
 ): TokenTransaction {
     val weiAmount = value.toBigDecimalOrNull() ?: BigDecimal.ZERO
-    val decimals = tokenDecimal.toIntOrNull() ?: tokenType.decimals
+    val decimals = tokenDecimal.toIntOrNull() ?: evmTokenType.decimals
     val divisor = BigDecimal.TEN.pow(decimals)
     val tokenAmount = weiAmount.divide(divisor, decimals, RoundingMode.HALF_UP)
 
@@ -131,14 +131,14 @@ fun TokenTransactionResponse.toTokenTransaction(
         toAddress = to,
         status = TransactionStatus.SUCCESS,
         timestamp = timeStamp.toLongOrNull()?.times(1000) ?: System.currentTimeMillis(),
-        note = "${tokenType.displayName} (${tokenType.symbol})${if (network.isTestnet) " - Testnet" else ""}",
+        note = "${evmTokenType.displayName} (${evmTokenType.symbol})${if (network.isTestnet) " - Testnet" else ""}",
         feeLevel = FeeLevel.NORMAL,
         network = network,
         isIncoming = isIncoming,
         txHash = hash,
         amount = tokenAmount.toPlainString(),  // Human readable token amount
         fee = feeEth.toPlainString(),          // Fee in ETH
-        symbol = tokenType.symbol,
+        symbol = evmTokenType.symbol,
         amountWei = value,
         gasPriceWei = gasPrice,
         gasPriceGwei = gasPriceWei.divide(
@@ -153,7 +153,7 @@ fun TokenTransactionResponse.toTokenTransaction(
         chainId = network.chainId.toLong(),
         signedHex = null,
         transactionType = EVMTransactionType.TOKEN,
-        tokenType = tokenType,
+        evmTokenType = evmTokenType,
         tokenContract = contractAddress,
         data = input
     )
@@ -166,17 +166,17 @@ fun List<TokenTransactionResponse>.toTokenTransactionList(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,
-    tokenType: TokenType
+    evmTokenType: EVMTokenType
 ): List<TokenTransaction> {
     return this.map { tx ->
-        tx.toTokenTransaction(walletId, network, walletAddress, tokenType)
+        tx.toTokenTransaction(walletId, network, walletAddress, evmTokenType)
     }
 }
 
 fun EVMTransactionEntity.toDomain(): EVMTransaction {
     return when (transactionType) {
         EVMTransactionType.NATIVE_ETH -> {
-            val tokenTypeValue = tokenType ?: TokenType.NATIVE
+            val EVMTokenTypeValue = evmTokenType ?: EVMTokenType.NATIVE
             NativeETHTransaction(
                 id = id,
                 walletId = walletId,
@@ -191,7 +191,7 @@ fun EVMTransactionEntity.toDomain(): EVMTransaction {
                 txHash = txHash,
                 amount = amountDecimal,  // ETH amount
                 fee = feeEth,            // Fee in ETH
-                symbol = tokenTypeValue.symbol,
+                symbol = EVMTokenTypeValue.symbol,
                 amountWei = amountWei,
                 amountEth = amountDecimal,
                 gasPriceWei = gasPriceWei,
@@ -203,13 +203,13 @@ fun EVMTransactionEntity.toDomain(): EVMTransaction {
                 chainId = chainId,
                 signedHex = signedHex,
                 transactionType = EVMTransactionType.NATIVE_ETH,
-                tokenType = tokenTypeValue,
+                evmTokenType = EVMTokenTypeValue,
                 data = data ?: ""
             )
         }
 
         EVMTransactionType.TOKEN -> {
-            val tokenTypeValue = tokenType ?: TokenType.USDC
+            val EVMTokenTypeValue = evmTokenType ?: EVMTokenType.USDC
             TokenTransaction(
                 id = id,
                 walletId = walletId,
@@ -224,7 +224,7 @@ fun EVMTransactionEntity.toDomain(): EVMTransaction {
                 txHash = txHash,
                 amount = amountDecimal,  // Token amount
                 fee = feeEth,            // Fee in ETH
-                symbol = tokenTypeValue.symbol,
+                symbol = EVMTokenTypeValue.symbol,
                 amountWei = amountWei,
                 gasPriceWei = gasPriceWei,
                 gasPriceGwei = gasPriceGwei,
@@ -235,7 +235,7 @@ fun EVMTransactionEntity.toDomain(): EVMTransaction {
                 chainId = chainId,
                 signedHex = signedHex,
                 transactionType = EVMTransactionType.TOKEN,
-                tokenType = tokenTypeValue,
+                evmTokenType = EVMTokenTypeValue,
                 tokenContract = tokenContract ?: "",
                 data = data ?: ""
             )
@@ -268,7 +268,7 @@ fun EVMTransaction.toEntity(): EVMTransactionEntity {
             isIncoming = isIncoming,
             note = note,
             feeLevel = feeLevel.name,
-            tokenType = TokenType.NATIVE,
+            evmTokenType = EVMTokenType.NATIVE,
             tokenContract = null,
             transactionType = EVMTransactionType.NATIVE_ETH
         )
@@ -296,7 +296,7 @@ fun EVMTransaction.toEntity(): EVMTransactionEntity {
             isIncoming = isIncoming,
             note = note,
             feeLevel = feeLevel.name,
-            tokenType = tokenType,
+            evmTokenType = evmTokenType,
             tokenContract = tokenContract,
             transactionType = EVMTransactionType.TOKEN
         )

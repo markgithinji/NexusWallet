@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.wallet.domain.usecase
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
@@ -43,7 +43,7 @@ class GetEthereumDetailUseCase @Inject constructor(
         val verifiedToken = wallet.evmTokens.find {
             it.address == token.address &&
                     it.network == network &&
-                    it.tokenType == token.tokenType
+                    it.evmTokenType == token.evmTokenType
         } ?: return Result.Error("${token.symbol} not enabled for ${network.name}")
 
         val isEth = verifiedToken is NativeETH
@@ -56,7 +56,7 @@ class GetEthereumDetailUseCase @Inject constructor(
             address = verifiedToken.address,
             network = network,
             walletId = walletId,
-            tokenType = verifiedToken.tokenType
+            evmTokenType = verifiedToken.evmTokenType
         )
 
         when (nativeTxResult) {
@@ -81,7 +81,7 @@ class GetEthereumDetailUseCase @Inject constructor(
                 tokenContract = verifiedToken.contractAddress,
                 network = network,
                 walletId = walletId,
-                tokenType = verifiedToken.tokenType
+                evmTokenType = verifiedToken.evmTokenType
             )
 
             when (tokenTxResult) {
@@ -101,7 +101,7 @@ class GetEthereumDetailUseCase @Inject constructor(
         // 5. Get balance
         val balance = walletRepository.getWalletBalance(walletId)
         val tokenBalance = balance?.evmBalances?.find {
-            it.network == verifiedToken.network && it.tokenType == verifiedToken.tokenType
+            it.network == verifiedToken.network && it.evmTokenType == verifiedToken.evmTokenType
         }
 
         // 6. Get ETH balance for gas (for tokens)
@@ -110,7 +110,7 @@ class GetEthereumDetailUseCase @Inject constructor(
             val nativeEth = wallet.evmTokens.filterIsInstance<NativeETH>().find { it.network == network }
             ethGasBalance = nativeEth?.let { nativeToken ->
                 balance?.evmBalances?.find {
-                    it.network == nativeToken.network && it.tokenType == TokenType.NATIVE
+                    it.network == nativeToken.network && it.evmTokenType == EVMTokenType.NATIVE
                 }?.balanceDecimal?.toBigDecimalOrNull()
             }
             logger.d(tag, "ETH gas balance for ${network.name}: $ethGasBalance")
@@ -127,7 +127,7 @@ class GetEthereumDetailUseCase @Inject constructor(
             else -> {
                 allTxs.filterIsInstance<TokenTransaction>()
                     .filter { tx ->
-                        tx.tokenType == verifiedToken.tokenType &&
+                        tx.evmTokenType == verifiedToken.evmTokenType &&
                                 tx.network == verifiedToken.network
                     }
             }

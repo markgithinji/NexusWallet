@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.core.domain.model
 
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Network
@@ -64,7 +64,7 @@ sealed interface EVMTransaction : Transaction {
     val chainId: Long
     val signedHex: String?
     val transactionType: EVMTransactionType
-    val tokenType: TokenType?
+    val evmTokenType: EVMTokenType?
     override val fee: String
 }
 
@@ -96,7 +96,7 @@ data class NativeETHTransaction(
     override val chainId: Long,
     override val signedHex: String?,
     override val transactionType: EVMTransactionType = EVMTransactionType.NATIVE_ETH,
-    override val tokenType: TokenType = TokenType.NATIVE,
+    override val evmTokenType: EVMTokenType = EVMTokenType.NATIVE,
     val data: String = ""
 ) : EVMTransaction
 
@@ -127,7 +127,7 @@ data class TokenTransaction(
     override val chainId: Long,
     override val signedHex: String?,
     override val transactionType: EVMTransactionType = EVMTransactionType.TOKEN,
-    override val tokenType: TokenType,
+    override val evmTokenType: EVMTokenType,
     val tokenContract: String,
     val data: String
 ) : EVMTransaction

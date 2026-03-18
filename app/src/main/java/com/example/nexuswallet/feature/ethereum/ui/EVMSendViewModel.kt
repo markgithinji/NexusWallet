@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.usecase.GetFeeEstimateUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.SendEVMAssetUseCase
@@ -31,7 +31,7 @@ import java.math.RoundingMode
 import javax.inject.Inject
 
 @HiltViewModel
-class EthereumSendViewModel @Inject constructor(
+class EVMSendViewModel @Inject constructor(
     private val sendEVMAssetUseCase: SendEVMAssetUseCase,
     private val getFeeEstimateUseCase: GetFeeEstimateUseCase,
     private val evmBlockchainRepository: EVMBlockchainRepository,
@@ -39,11 +39,11 @@ class EthereumSendViewModel @Inject constructor(
     private val walletRepository: WalletRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(EthSendUiState())
-    val uiState: StateFlow<EthSendUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(EVMSendUiState())
+    val uiState: StateFlow<EVMSendUiState> = _uiState.asStateFlow()
 
-    private val _effect = MutableSharedFlow<EthereumSendEffect>()
-    val effect: SharedFlow<EthereumSendEffect> = _effect.asSharedFlow()
+    private val _effect = MutableSharedFlow<EVMSendEffect>()
+    val effect: SharedFlow<EVMSendEffect> = _effect.asSharedFlow()
 
     private var wallet: Wallet? = null
     private var evmTokensByNetwork: Map<EthereumNetwork, List<EVMToken>> = emptyMap()
@@ -275,7 +275,7 @@ class EthereumSendViewModel @Inject constructor(
         val feeEstimateResult = getFeeEstimateUseCase(
             feeLevel = state.feeLevel,
             network = state.network,
-            isToken = state.selectedToken?.tokenType != TokenType.NATIVE
+            isToken = state.selectedToken?.evmTokenType != EVMTokenType.NATIVE
         )
 
         when (feeEstimateResult) {
@@ -310,15 +310,15 @@ class EthereumSendViewModel @Inject constructor(
         }
     }
 
-    fun onEvent(event: EthereumSendEvent) {
+    fun onEvent(event: EVMSendEvent) {
         viewModelScope.launch {
             when (event) {
-                is EthereumSendEvent.ToAddressChanged -> {
+                is EVMSendEvent.ToAddressChanged -> {
                     _uiState.update { it.copy(toAddress = event.address) }
                     validateInputs()
                 }
 
-                is EthereumSendEvent.AmountChanged -> {
+                is EVMSendEvent.AmountChanged -> {
                     val amountValue = event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
                     _uiState.update {
                         it.copy(
@@ -329,14 +329,14 @@ class EthereumSendViewModel @Inject constructor(
                     validateInputs()
                 }
 
-                is EthereumSendEvent.NoteChanged -> _uiState.update { it.copy(note = event.note) }
-                is EthereumSendEvent.FeeLevelChanged -> {
+                is EVMSendEvent.NoteChanged -> _uiState.update { it.copy(note = event.note) }
+                is EVMSendEvent.FeeLevelChanged -> {
                     _uiState.update { it.copy(feeLevel = event.feeLevel) }
                     loadFeeEstimate()
                 }
 
-                EthereumSendEvent.Validate -> validateInputs()
-                EthereumSendEvent.ClearError -> clearError()
+                EVMSendEvent.Validate -> validateInputs()
+                EVMSendEvent.ClearError -> clearError()
             }
         }
     }
@@ -408,7 +408,7 @@ class EthereumSendViewModel @Inject constructor(
                         val explorerUrl =
                             ExplorerUrlHelper.getExplorerUrl(sendResult.txHash, state.network)
                         _effect.emit(
-                            EthereumSendEffect.TransactionSent(
+                            EVMSendEffect.TransactionSent(
                                 sendResult.txHash,
                                 explorerUrl
                             )
@@ -422,7 +422,7 @@ class EthereumSendViewModel @Inject constructor(
                             )
                         }
                         _effect.emit(
-                            EthereumSendEffect.ShowError(
+                            EVMSendEffect.ShowError(
                                 sendResult.error ?: "Send failed"
                             )
                         )
@@ -436,7 +436,7 @@ class EthereumSendViewModel @Inject constructor(
                             error = result.message
                         )
                     }
-                    _effect.emit(EthereumSendEffect.ShowError(result.message))
+                    _effect.emit(EVMSendEffect.ShowError(result.message))
                 }
 
                 Result.Loading -> {}

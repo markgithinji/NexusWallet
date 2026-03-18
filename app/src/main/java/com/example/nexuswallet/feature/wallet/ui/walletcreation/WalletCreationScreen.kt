@@ -82,7 +82,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
@@ -350,9 +350,9 @@ fun WalletCreationStepper(
 @Composable
 fun NetworkSelectionStep(
     selectedNetworks: Set<Network>,
-    selectedTokens: Map<EthereumNetwork, Set<TokenType>>,
+    selectedTokens: Map<EthereumNetwork, Set<EVMTokenType>>,
     onNetworkToggle: (Network, Boolean) -> Unit,
-    onTokenToggle: (EthereumNetwork, TokenType, Boolean) -> Unit,
+    onTokenToggle: (EthereumNetwork, EVMTokenType, Boolean) -> Unit,
     onNext: () -> Unit,
     hasSelections: Boolean
 ) {
@@ -494,13 +494,13 @@ fun NetworkSelectionStep(
                 iconRes = R.drawable.usdc,
                 color = usdcLight,
                 network = EthereumNetwork.Mainnet,
-                tokenType = TokenType.USDC,
+                evmTokenType = EVMTokenType.USDC,
                 tokenName = "USD Coin",
                 tokenSymbol = "USDC",
-                isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(TokenType.USDC) == true,
+                isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(EVMTokenType.USDC) == true,
                 networkEnabled = selectedNetworks.contains(EthereumNetwork.Mainnet),
                 onSelectedChange = { isSelected ->
-                    onTokenToggle(EthereumNetwork.Mainnet, TokenType.USDC, isSelected)
+                    onTokenToggle(EthereumNetwork.Mainnet, EVMTokenType.USDC, isSelected)
                 }
             )
 
@@ -511,13 +511,13 @@ fun NetworkSelectionStep(
                 iconRes = R.drawable.usdc,
                 color = usdcLight.copy(alpha = 0.7f),
                 network = EthereumNetwork.Sepolia,
-                tokenType = TokenType.USDC,
+                evmTokenType = EVMTokenType.USDC,
                 tokenName = "USD Coin",
                 tokenSymbol = "USDC",
-                isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(TokenType.USDC) == true,
+                isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(EVMTokenType.USDC) == true,
                 networkEnabled = selectedNetworks.contains(EthereumNetwork.Sepolia),
                 onSelectedChange = { isSelected ->
-                    onTokenToggle(EthereumNetwork.Sepolia, TokenType.USDC, isSelected)
+                    onTokenToggle(EthereumNetwork.Sepolia, EVMTokenType.USDC, isSelected)
                 }
             )
 
@@ -528,13 +528,13 @@ fun NetworkSelectionStep(
                 iconRes = R.drawable.tether,
                 color = usdtLight,
                 network = EthereumNetwork.Mainnet,
-                tokenType = TokenType.USDT,
+                evmTokenType = EVMTokenType.USDT,
                 tokenName = "Tether USD",
                 tokenSymbol = "USDT",
-                isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(TokenType.USDT) == true,
+                isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(EVMTokenType.USDT) == true,
                 networkEnabled = selectedNetworks.contains(EthereumNetwork.Mainnet),
                 onSelectedChange = { isSelected ->
-                    onTokenToggle(EthereumNetwork.Mainnet, TokenType.USDT, isSelected)
+                    onTokenToggle(EthereumNetwork.Mainnet, EVMTokenType.USDT, isSelected)
                 }
             )
 
@@ -545,13 +545,13 @@ fun NetworkSelectionStep(
                 iconRes = R.drawable.tether,
                 color = usdtLight.copy(alpha = 0.7f),
                 network = EthereumNetwork.Sepolia,
-                tokenType = TokenType.USDT,
+                evmTokenType = EVMTokenType.USDT,
                 tokenName = "Tether USD",
                 tokenSymbol = "USDT",
-                isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(TokenType.USDT) == true,
+                isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(EVMTokenType.USDT) == true,
                 networkEnabled = selectedNetworks.contains(EthereumNetwork.Sepolia),
                 onSelectedChange = { isSelected ->
-                    onTokenToggle(EthereumNetwork.Sepolia, TokenType.USDT, isSelected)
+                    onTokenToggle(EthereumNetwork.Sepolia, EVMTokenType.USDT, isSelected)
                 }
             )
         }
@@ -605,12 +605,12 @@ fun NetworkSelectionStep(
                     // Show selected tokens (excluding NATIVE which is handled by network selection)
                     selectedTokens.forEach { (network, tokenTypes) ->
                         tokenTypes
-                            .filter { it != TokenType.NATIVE } // Filter out NATIVE tokens
+                            .filter { it != EVMTokenType.NATIVE } // Filter out NATIVE tokens
                             .forEach { tokenType ->
                                 val (tokenName, tokenSymbol) = when (tokenType) {
-                                    TokenType.USDC -> "USD Coin" to "USDC"
-                                    TokenType.USDT -> "Tether USD" to "USDT"
-                                    TokenType.NATIVE -> "Ethereum" to "ETH" // Won't be shown due to filter
+                                    EVMTokenType.USDC -> "USD Coin" to "USDC"
+                                    EVMTokenType.USDT -> "Tether USD" to "USDT"
+                                    EVMTokenType.NATIVE -> "Ethereum" to "ETH" // Won't be shown due to filter
                                 }
                                 val networkType = if (network.isTestnet) " (Testnet)" else ""
                                 Text(
@@ -649,7 +649,7 @@ fun TokenToggleCard(
     iconRes: Int,
     color: Color,
     network: EthereumNetwork,
-    tokenType: TokenType,
+    evmTokenType: EVMTokenType,
     tokenName: String,
     tokenSymbol: String,
     isSelected: Boolean,

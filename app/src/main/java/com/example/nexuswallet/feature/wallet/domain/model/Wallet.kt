@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain.model
 
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -33,7 +33,7 @@ sealed class EVMToken : Coin {
     abstract override val name: String
     abstract val contractAddress: String
     abstract val decimals: Int
-    abstract val tokenType: TokenType
+    abstract val evmTokenType: EVMTokenType
 }
 
 @Serializable
@@ -45,7 +45,7 @@ data class NativeETH(
     override val symbol: String = "ETH",
     override val name: String = "Ethereum",
     override val decimals: Int = 18,
-    override val tokenType: TokenType = TokenType.NATIVE
+    override val evmTokenType: EVMTokenType = EVMTokenType.NATIVE
 ) : EVMToken()
 
 @Serializable
@@ -57,7 +57,7 @@ data class USDCToken(
     override val symbol: String = "USDC",
     override val name: String = "USD Coin",
     override val decimals: Int = 6,
-    override val tokenType: TokenType = TokenType.USDC
+    override val evmTokenType: EVMTokenType = EVMTokenType.USDC
 ) : EVMToken()
 
 @Serializable
@@ -69,7 +69,7 @@ data class USDTToken(
     override val symbol: String = "USDT",
     override val name: String = "Tether USD",
     override val decimals: Int = 6,
-    override val tokenType: TokenType = TokenType.USDT
+    override val evmTokenType: EVMTokenType = EVMTokenType.USDT
 ) : EVMToken()
 
 @Serializable

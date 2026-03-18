@@ -80,7 +80,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
@@ -418,10 +418,10 @@ fun WalletCard(
                         visibleTokens.forEach { token ->
                             CoinBadge(
                                 text = token.symbol,
-                                color = when (token.tokenType) {
-                                    TokenType.NATIVE -> ethereumLight
-                                    TokenType.USDC -> usdcLight
-                                    TokenType.USDT -> Color(0xFF26A17B)
+                                color = when (token.evmTokenType) {
+                                    EVMTokenType.NATIVE -> ethereumLight
+                                    EVMTokenType.USDC -> usdcLight
+                                    EVMTokenType.USDT -> Color(0xFF26A17B)
                                 },
                             )
                         }
@@ -522,14 +522,14 @@ fun WalletExpandedContent(
         }
 
         // Group EVM tokens by tokenType
-        val nativeTokens = wallet.evmTokens.filter { it.tokenType == TokenType.NATIVE }
-        val usdcTokens = wallet.evmTokens.filter { it.tokenType == TokenType.USDC }
-        val usdtTokens = wallet.evmTokens.filter { it.tokenType == TokenType.USDT }
+        val nativeTokens = wallet.evmTokens.filter { it.evmTokenType == EVMTokenType.NATIVE }
+        val usdcTokens = wallet.evmTokens.filter { it.evmTokenType == EVMTokenType.USDC }
+        val usdtTokens = wallet.evmTokens.filter { it.evmTokenType == EVMTokenType.USDT }
 
         // Native ETH tokens
         nativeTokens.forEach { token ->
             val tokenBalance = balance?.evmBalances?.find {
-                it.network == token.network && it.tokenType == TokenType.NATIVE
+                it.network == token.network && it.evmTokenType == EVMTokenType.NATIVE
             }
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.ethereum),
@@ -549,7 +549,7 @@ fun WalletExpandedContent(
         // USDC tokens
         usdcTokens.forEach { token ->
             val tokenBalance = balance?.evmBalances?.find {
-                it.network == token.network && it.tokenType == TokenType.USDC
+                it.network == token.network && it.evmTokenType == EVMTokenType.USDC
             }
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.usdc),
@@ -569,7 +569,7 @@ fun WalletExpandedContent(
         // USDT tokens
         usdtTokens.forEach { token ->
             val tokenBalance = balance?.evmBalances?.find {
-                it.network == token.network && it.tokenType == TokenType.USDT
+                it.network == token.network && it.evmTokenType == EVMTokenType.USDT
             }
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.tether),

@@ -59,7 +59,7 @@ class GetTransactionDetailUseCase @Inject constructor(
                 is NativeETHTransaction -> coin is NativeETH && transaction.network == coin.network
                 is TokenTransaction -> {
                     coin is EVMToken &&
-                            transaction.tokenType == coin.tokenType &&
+                            transaction.evmTokenType == coin.evmTokenType &&
                             transaction.network == coin.network
                 }
             }

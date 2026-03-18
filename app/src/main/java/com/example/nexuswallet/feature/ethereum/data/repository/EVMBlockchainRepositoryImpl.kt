@@ -17,10 +17,9 @@ import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.USDT_GAS_LIMIT
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.usdc.Web3jFactory
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.web3j.abi.FunctionEncoder
 import org.web3j.abi.FunctionReturnDecoder
@@ -121,7 +120,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         address: String,
         network: EthereumNetwork,
         walletId: String,
-        tokenType: TokenType?
+        evmTokenType: EVMTokenType?
     ): Result<List<NativeETHTransaction>> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val chainId = network.chainId
@@ -136,7 +135,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
                     walletId = walletId,
                     network = network,
                     walletAddress = address,
-                    tokenType = tokenType ?: TokenType.NATIVE
+                    evmTokenType = evmTokenType ?: EVMTokenType.NATIVE
                 )
             } else {
                 throw Exception("API error: ${response.message}")
@@ -149,7 +148,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         tokenContract: String,
         network: EthereumNetwork,
         walletId: String,
-        tokenType: TokenType
+        evmTokenType: EVMTokenType
     ): Result<List<TokenTransaction>> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val chainId = network.chainId
@@ -165,7 +164,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
                     walletId = walletId,
                     network = network,
                     walletAddress = address,
-                    tokenType = tokenType
+                    evmTokenType = evmTokenType
                 )
             } else {
                 throw Exception("API error: ${response.message}")
@@ -214,7 +213,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         nonce: BigInteger,
         chainId: Long,
         network: EthereumNetwork,
-        tokenType: TokenType
+        evmTokenType: EVMTokenType
     ): Result<Triple<RawTransaction, String, String>> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val function = Function(
@@ -226,8 +225,8 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
             val encodedFunction = FunctionEncoder.encode(function)
 
             // Apply token-specific gas limits
-            val gasLimit = when (tokenType) {
-                TokenType.USDT -> BigInteger.valueOf(USDT_GAS_LIMIT)
+            val gasLimit = when (evmTokenType) {
+                EVMTokenType.USDT -> BigInteger.valueOf(USDT_GAS_LIMIT)
                 else -> BigInteger.valueOf(DEFAULT_TOKEN_GAS_LIMIT)
             }
 

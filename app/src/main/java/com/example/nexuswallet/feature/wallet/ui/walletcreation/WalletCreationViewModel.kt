@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.wallet.ui.walletcreation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Network
@@ -49,8 +49,8 @@ class WalletCreationViewModel @Inject constructor(
     val selectedNetworks: StateFlow<Set<Network>> = _selectedNetworks.asStateFlow()
 
     // Selected tokens (USDC, USDT on specific networks)
-    private val _selectedTokens = MutableStateFlow<Map<EthereumNetwork, Set<TokenType>>>(emptyMap())
-    val selectedTokens: StateFlow<Map<EthereumNetwork, Set<TokenType>>> =
+    private val _selectedTokens = MutableStateFlow<Map<EthereumNetwork, Set<EVMTokenType>>>(emptyMap())
+    val selectedTokens: StateFlow<Map<EthereumNetwork, Set<EVMTokenType>>> =
         _selectedTokens.asStateFlow()
 
     // Wallet name
@@ -98,15 +98,15 @@ class WalletCreationViewModel @Inject constructor(
         }
     }
 
-    fun toggleToken(network: EthereumNetwork, tokenType: TokenType, isSelected: Boolean) {
+    fun toggleToken(network: EthereumNetwork, evmTokenType: EVMTokenType, isSelected: Boolean) {
         _selectedTokens.update { current ->
             val currentTokens = current.toMutableMap()
             val networkTokens = currentTokens[network]?.toMutableSet() ?: mutableSetOf()
 
             if (isSelected) {
-                networkTokens.add(tokenType)
+                networkTokens.add(evmTokenType)
             } else {
-                networkTokens.remove(tokenType)
+                networkTokens.remove(evmTokenType)
             }
 
             if (networkTokens.isEmpty()) {

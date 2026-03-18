@@ -5,7 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.data.local.entity.EVMTokenEntity
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 
@@ -23,17 +23,17 @@ interface EVMTokenDao {
     @Query("SELECT * FROM evm_tokens WHERE walletId = :walletId")
     suspend fun getByWalletId(walletId: String): List<EVMTokenEntity>
 
-    @Query("SELECT * FROM evm_tokens WHERE walletId = :walletId AND tokenType = :tokenType AND network = :network")
+    @Query("SELECT * FROM evm_tokens WHERE walletId = :walletId AND evmTokenType = :evmTokenType AND network = :network")
     suspend fun getByTokenTypeAndNetwork(
         walletId: String,
-        tokenType: TokenType,
+        evmTokenType: EVMTokenType,
         network: EthereumNetwork
     ): EVMTokenEntity?
 
-    @Query("SELECT * FROM evm_tokens WHERE walletId = :walletId AND tokenType = :tokenType")
+    @Query("SELECT * FROM evm_tokens WHERE walletId = :walletId AND evmTokenType = :evmTokenType")
     suspend fun getByTokenType(
         walletId: String,
-        tokenType: TokenType
+        evmTokenType: EVMTokenType
     ): List<EVMTokenEntity>
 
     @Query("SELECT * FROM evm_tokens WHERE walletId = :walletId AND network = :network")
@@ -45,10 +45,10 @@ interface EVMTokenDao {
     @Query("DELETE FROM evm_tokens WHERE walletId = :walletId")
     suspend fun deleteByWalletId(walletId: String)
 
-    @Query("DELETE FROM evm_tokens WHERE walletId = :walletId AND tokenType = :tokenType AND network = :network")
+    @Query("DELETE FROM evm_tokens WHERE walletId = :walletId AND evmTokenType = :evmTokenType AND network = :network")
     suspend fun deleteByTokenTypeAndNetwork(
         walletId: String,
-        tokenType: TokenType,
+        evmTokenType: EVMTokenType,
         network: EthereumNetwork
     )
 

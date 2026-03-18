@@ -6,7 +6,7 @@ import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionDao
 import com.example.nexuswallet.feature.ethereum.data.toDomain
 import com.example.nexuswallet.feature.ethereum.data.toEntity
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.coroutines.flow.Flow
@@ -48,9 +48,9 @@ class EVMTransactionRepositoryImpl @Inject constructor(
 
     override fun getTransactionsByTokenType(
         walletId: String,
-        tokenType: TokenType
+        evmTokenType: EVMTokenType
     ): Flow<List<EVMTransaction>> {
-        return evmTransactionDao.getByWalletIdAndTokenType(walletId, tokenType)
+        return evmTransactionDao.getByWalletIdAndTokenType(walletId, evmTokenType)
             .map { entities -> entities.map { it.toDomain() } }
     }
 
@@ -76,9 +76,9 @@ class EVMTransactionRepositoryImpl @Inject constructor(
 
     override suspend fun getTransactionsForTokenType(
         walletId: String,
-        tokenType: TokenType
+        evmTokenType: EVMTokenType
     ): List<EVMTransaction> {
-        return evmTransactionDao.getTransactionsForTokenType(walletId, tokenType)
+        return evmTransactionDao.getTransactionsForTokenType(walletId, evmTokenType)
             .map { it.toDomain() }
     }
 
@@ -95,8 +95,8 @@ class EVMTransactionRepositoryImpl @Inject constructor(
         evmTransactionDao.deleteByWalletId(walletId)
     }
 
-    override suspend fun deleteForWalletAndTokenType(walletId: String, tokenType: TokenType) {
-        evmTransactionDao.deleteByWalletIdAndTokenType(walletId, tokenType)
+    override suspend fun deleteForWalletAndTokenType(walletId: String, evmTokenType: EVMTokenType) {
+        evmTransactionDao.deleteByWalletIdAndTokenType(walletId, evmTokenType)
     }
 
     override suspend fun updateTransactionStatus(transactionId: String, status: TransactionStatus) {
@@ -105,14 +105,14 @@ class EVMTransactionRepositoryImpl @Inject constructor(
 
     override suspend fun getNativeTransaction(id: String): NativeETHTransaction? {
         val entity = evmTransactionDao.getById(id)
-        return if (entity?.tokenType == TokenType.NATIVE) {
+        return if (entity?.evmTokenType == EVMTokenType.NATIVE) {
             entity.toDomain() as? NativeETHTransaction
         } else null
     }
 
-    override suspend fun getTokenTransaction(id: String, tokenType: TokenType): TokenTransaction? {
+    override suspend fun getTokenTransaction(id: String, evmTokenType: EVMTokenType): TokenTransaction? {
         val entity = evmTransactionDao.getById(id)
-        return if (entity?.tokenType == tokenType) {
+        return if (entity?.evmTokenType == evmTokenType) {
             entity.toDomain() as? TokenTransaction
         } else null
     }

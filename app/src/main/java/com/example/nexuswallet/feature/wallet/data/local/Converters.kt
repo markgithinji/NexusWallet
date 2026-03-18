@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.wallet.data.local
 
 import androidx.room.TypeConverter
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
@@ -102,7 +102,7 @@ class Converters {
     // ============ TOKEN TYPE ============
 
     @TypeConverter
-    fun fromTokenType(type: TokenType): String {
+    fun fromTokenType(type: EVMTokenType): String {
         return type.name
     }
 

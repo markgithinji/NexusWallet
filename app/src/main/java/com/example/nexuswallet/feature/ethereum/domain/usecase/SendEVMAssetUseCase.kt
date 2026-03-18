@@ -6,11 +6,10 @@ import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
 import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
-import com.example.nexuswallet.feature.ethereum.domain.model.SendEthereumResult
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.SendEVMResult
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
@@ -43,7 +42,7 @@ class SendEVMAssetUseCase @Inject constructor(
         feeLevel: FeeLevel,
         token: EVMToken,
         note: String?
-    ): Result<SendEthereumResult> = withContext(Dispatchers.IO) {
+    ): Result<SendEVMResult> = withContext(Dispatchers.IO) {
         logger.d(tag, "WalletId: $walletId, To: $toAddress, Amount: $amount ${token.symbol}")
 
         // Validate wallet exists
@@ -57,7 +56,7 @@ class SendEVMAssetUseCase @Inject constructor(
             it.address == token.address &&
                     it.contractAddress == token.contractAddress &&
                     it.network == token.network &&
-                    it.tokenType == token.tokenType
+                    it.evmTokenType == token.evmTokenType
         }
         if (!hasToken) {
             logger.e(tag, "Token ${token.symbol} not enabled for wallet: $walletId")
@@ -104,7 +103,7 @@ class SendEVMAssetUseCase @Inject constructor(
         val feeResult = evmBlockchainRepository.getFeeEstimate(
             feeLevel = feeLevel,
             network = token.network,
-            isToken = token.tokenType != TokenType.NATIVE
+            isToken = token.evmTokenType != EVMTokenType.NATIVE
         )
 
         if (feeResult is Result.Error) {
@@ -118,8 +117,8 @@ class SendEVMAssetUseCase @Inject constructor(
         logger.d(tag, "Step 4: Creating and signing transaction...")
         val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
 
-        val createResult = when (token.tokenType) {
-            TokenType.NATIVE -> evmBlockchainRepository.createAndSignNativeTransaction(
+        val createResult = when (token.evmTokenType) {
+            EVMTokenType.NATIVE -> evmBlockchainRepository.createAndSignNativeTransaction(
                 fromAddress = token.address,
                 fromPrivateKey = privateKey,
                 toAddress = toAddress,
@@ -129,7 +128,7 @@ class SendEVMAssetUseCase @Inject constructor(
                 chainId = token.network.chainId.toLong(),
                 network = token.network
             )
-            TokenType.USDC, TokenType.USDT -> evmBlockchainRepository.createAndSignTokenTransaction(
+            EVMTokenType.USDC, EVMTokenType.USDT -> evmBlockchainRepository.createAndSignTokenTransaction(
                 fromAddress = token.address,
                 fromPrivateKey = privateKey,
                 toAddress = toAddress,
@@ -140,7 +139,7 @@ class SendEVMAssetUseCase @Inject constructor(
                 nonce = nonce,
                 chainId = token.network.chainId.toLong(),
                 network = token.network,
-                tokenType = token.tokenType
+                evmTokenType = token.evmTokenType
             )
         }
 
@@ -169,8 +168,8 @@ class SendEVMAssetUseCase @Inject constructor(
                         "Step 6: Creating and saving transaction record after successful broadcast..."
                     )
 
-                    val transaction = when (token.tokenType) {
-                        TokenType.NATIVE -> NativeETHTransaction(
+                    val transaction = when (token.evmTokenType) {
+                        EVMTokenType.NATIVE -> NativeETHTransaction(
                             id = finalTxHash,
                             walletId = walletId,
                             fromAddress = token.address,
@@ -196,11 +195,11 @@ class SendEVMAssetUseCase @Inject constructor(
                             chainId = token.network.chainId.toLong(),
                             signedHex = signedHex,
                             transactionType = EVMTransactionType.NATIVE_ETH,
-                            tokenType = token.tokenType,
+                            evmTokenType = token.evmTokenType,
                             data = ""
                         )
 
-                        TokenType.USDC, TokenType.USDT -> TokenTransaction(
+                        EVMTokenType.USDC, EVMTokenType.USDT -> TokenTransaction(
                             id = finalTxHash,
                             walletId = walletId,
                             fromAddress = token.address,
@@ -225,7 +224,7 @@ class SendEVMAssetUseCase @Inject constructor(
                             chainId = token.network.chainId.toLong(),
                             signedHex = signedHex,
                             transactionType = EVMTransactionType.TOKEN,
-                            tokenType = token.tokenType,
+                            evmTokenType = token.evmTokenType,
                             tokenContract = token.contractAddress,
                             data = ""
                         )
@@ -245,7 +244,7 @@ class SendEVMAssetUseCase @Inject constructor(
                     )
                 }
 
-                val sendResult = SendEthereumResult(
+                val sendResult = SendEVMResult(
                     transactionId = finalTxHash,
                     txHash = finalTxHash,
                     success = broadcastData.success,

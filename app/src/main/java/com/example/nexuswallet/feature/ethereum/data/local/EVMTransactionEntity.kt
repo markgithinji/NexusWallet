@@ -5,7 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import java.util.UUID
@@ -51,7 +51,7 @@ data class EVMTransactionEntity(
     val data: String,
     val isIncoming: Boolean = false,
     val tokenContract: String? = null,
-    val tokenType: TokenType? = null,
+    val evmTokenType: EVMTokenType? = null,
     val transactionType: EVMTransactionType,
     val updatedAt: Long = System.currentTimeMillis()
 )

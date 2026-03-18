@@ -62,7 +62,7 @@ fun EthereumSendScreen(
     onNavigateToReview: (String, String, String, FeeLevel?, Coin) -> Unit,
     walletId: String,
     coin: Coin,
-    viewModel: EthereumSendViewModel = hiltViewModel()
+    viewModel: EVMSendViewModel = hiltViewModel()
 ) {
     var showMaxDialog by remember { mutableStateOf(false) }
     var showNetworkSelector by remember { mutableStateOf(false) }
@@ -91,7 +91,7 @@ fun EthereumSendScreen(
         // Select the specific token that matches the passed coin
         val targetToken = state.availableTokens.firstOrNull {
             it.network == coin.network &&
-                    it.tokenType == coin.tokenType &&
+                    it.evmTokenType == coin.evmTokenType &&
                     it.contractAddress == coin.contractAddress
         }
         targetToken?.let { viewModel.selectToken(it) }
@@ -232,7 +232,7 @@ fun EthereumSendScreen(
                     toAddress = state.toAddress,
                     onAddressChange = {
                         addressTouched = true
-                        viewModel.onEvent(EthereumSendEvent.ToAddressChanged(it))
+                        viewModel.onEvent(EVMSendEvent.ToAddressChanged(it))
                     },
                     onFocusChange = { isFocused ->
                         addressFocused = isFocused
@@ -245,7 +245,7 @@ fun EthereumSendScreen(
                     errorMessage = errorState.addressErrorMessage,
                     onPaste = { pastedText ->
                         addressTouched = true
-                        viewModel.onEvent(EthereumSendEvent.ToAddressChanged(pastedText))
+                        viewModel.onEvent(EVMSendEvent.ToAddressChanged(pastedText))
                     },
                     focusRequester = addressFocusRequester
                 )
@@ -256,7 +256,7 @@ fun EthereumSendScreen(
                     coin = selectedToken ?: coin,
                     onAmountChange = {
                         amountTouched = true
-                        viewModel.onEvent(EthereumSendEvent.AmountChanged(it))
+                        viewModel.onEvent(EVMSendEvent.AmountChanged(it))
                     },
                     onFocusChange = { isFocused ->
                         amountFocused = isFocused
@@ -278,7 +278,7 @@ fun EthereumSendScreen(
                 // Fee Selection
                 SendFeeSelection(
                     feeLevel = state.feeLevel,
-                    onFeeLevelChange = { viewModel.onEvent(EthereumSendEvent.FeeLevelChanged(it)) },
+                    onFeeLevelChange = { viewModel.onEvent(EVMSendEvent.FeeLevelChanged(it)) },
                     feeEstimate = state.feeEstimate,
                     coin = selectedToken ?: coin
                 )
@@ -316,7 +316,7 @@ fun EthereumSendScreen(
             onDismiss = { showMaxDialog = false },
             onConfirm = { maxAmount ->
                 amountTouched = true
-                viewModel.onEvent(EthereumSendEvent.AmountChanged(maxAmount))
+                viewModel.onEvent(EVMSendEvent.AmountChanged(maxAmount))
                 showMaxDialog = false
             }
         )

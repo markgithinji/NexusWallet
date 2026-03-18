@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.wallet.data.local.mapper
 
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.data.local.entity.EVMTokenEntity
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
@@ -16,26 +16,26 @@ fun EVMToken.toEntity(walletId: String): EVMTokenEntity = EVMTokenEntity(
     derivationPath = "m/44'/60'/0'/0/0",
     network = network,
     contractAddress = contractAddress,
-    tokenType = tokenType,
+    evmTokenType = evmTokenType,
     updatedAt = System.currentTimeMillis()
 )
 
-fun EVMTokenEntity.toDomain(): EVMToken = when (tokenType) {
-    TokenType.NATIVE -> NativeETH(
+fun EVMTokenEntity.toDomain(): EVMToken = when (evmTokenType) {
+    EVMTokenType.NATIVE -> NativeETH(
         address = address,
         publicKey = publicKey,
         network = network,
         contractAddress = contractAddress,
     )
 
-    TokenType.USDC -> USDCToken(
+    EVMTokenType.USDC -> USDCToken(
         address = address,
         publicKey = publicKey,
         network = network,
         contractAddress = contractAddress,
     )
 
-    TokenType.USDT -> USDTToken(
+    EVMTokenType.USDT -> USDTToken(
         address = address,
         publicKey = publicKey,
         network = network,

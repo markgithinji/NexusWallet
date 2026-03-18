@@ -9,7 +9,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class GetEthereumWalletUseCase @Inject constructor(
+class GetEVMWalletUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val logger: Logger
 ) {

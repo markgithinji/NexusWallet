@@ -111,7 +111,7 @@ class GetAllTransactionsUseCase @Inject constructor(
                 address = address,
                 network = network,
                 walletId = walletId,
-                tokenType = nativeToken?.tokenType
+                evmTokenType = nativeToken?.evmTokenType
             )
             if (nativeRes is Result.Success) {
                 nativeRes.data.forEach { evmTransactionRepository.saveTransaction(it) }
@@ -124,7 +124,7 @@ class GetAllTransactionsUseCase @Inject constructor(
                     tokenContract = token.contractAddress,
                     network = token.network,
                     walletId = walletId,
-                    tokenType = token.tokenType
+                    evmTokenType = token.evmTokenType
                 )
                 if (tokenRes is Result.Success) {
                     tokenRes.data.forEach { evmTransactionRepository.saveTransaction(it) }

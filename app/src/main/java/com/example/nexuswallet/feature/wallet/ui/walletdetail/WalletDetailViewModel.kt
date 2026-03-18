@@ -267,8 +267,8 @@ class WalletDetailViewModel @Inject constructor(
     private fun findTokenForTransaction(transaction: TokenTransaction, wallet: Wallet): EVMToken {
         //  Find the token that matches both network AND token type
         return wallet.evmTokens.find {
-            it.network == transaction.network && it.tokenType == transaction.tokenType
-        } ?: error("No token found for ${transaction.tokenType} on ${transaction.network.name}")
+            it.network == transaction.network && it.evmTokenType == transaction.evmTokenType
+        } ?: error("No token found for ${transaction.evmTokenType} on ${transaction.network.name}")
     }
 
     fun getWalletName(): String = _uiState.value.wallet?.name ?: "Wallet Details"

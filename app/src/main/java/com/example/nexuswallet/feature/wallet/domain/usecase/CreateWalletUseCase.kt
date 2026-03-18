@@ -9,7 +9,7 @@ import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MA
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
 import com.example.nexuswallet.feature.core.util.decodeHex
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
@@ -50,7 +50,7 @@ class CreateWalletUseCase @Inject constructor(
         mnemonic: List<String>,
         name: String,
         selectedNetworks: Set<Network>,
-        selectedTokens: Map<EthereumNetwork, Set<TokenType>>
+        selectedTokens: Map<EthereumNetwork, Set<EVMTokenType>>
     ): Result<Wallet> {
         val networkLog = selectedNetworks.joinToString { network ->
             when (network) {
@@ -95,17 +95,17 @@ class CreateWalletUseCase @Inject constructor(
                 val networkTokens = selectedTokens[network] ?: emptySet()
                 networkTokens.forEach { tokenType ->
                     when (tokenType) {
-                        TokenType.USDC -> {
+                        EVMTokenType.USDC -> {
                             val usdcToken = createUSDCToken(nativeEth)
                             evmTokens.add(usdcToken)
                             logger.d(tag, "USDC token created on ${network.name}")
                         }
-                        TokenType.USDT -> {
+                        EVMTokenType.USDT -> {
                             val usdtToken = createUSDTToken(nativeEth)
                             evmTokens.add(usdtToken)
                             logger.d(tag, "USDT token created on ${network.name}")
                         }
-                        TokenType.NATIVE -> {
+                        EVMTokenType.NATIVE -> {
                             // Native ETH is already added via network selection, skip
                             logger.d(tag, "Native ETH already included for ${network.name}")
                         }

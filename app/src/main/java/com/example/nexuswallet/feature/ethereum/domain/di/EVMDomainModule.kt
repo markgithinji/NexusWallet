@@ -4,7 +4,7 @@ import com.example.nexuswallet.feature.authentication.domain.repository.Security
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
-import com.example.nexuswallet.feature.ethereum.domain.usecase.GetEthereumWalletUseCase
+import com.example.nexuswallet.feature.ethereum.domain.usecase.GetEVMWalletUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.GetFeeEstimateUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.GetPendingTransactionsUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.GetTransactionUseCase
@@ -75,8 +75,8 @@ object EVMDomainModule {
     fun provideGetEthereumWalletUseCase(
         walletRepository: WalletRepository,
         logger: Logger
-    ): GetEthereumWalletUseCase {
-        return GetEthereumWalletUseCase(
+    ): GetEVMWalletUseCase {
+        return GetEVMWalletUseCase(
             walletRepository = walletRepository,
             logger = logger
         )

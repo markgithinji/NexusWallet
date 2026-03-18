@@ -3,7 +3,7 @@ package com.example.nexuswallet.feature.ethereum.domain.model
 import kotlinx.serialization.Serializable
 
 @Serializable
-enum class TokenType(
+enum class EVMTokenType(
     val symbol: String,
     val displayName: String,
     val decimals: Int,

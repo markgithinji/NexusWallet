@@ -8,7 +8,7 @@ fun EVMBalance.toEntity(walletId: String): EVMBalanceEntity =
     EVMBalanceEntity(
         id = UUID.randomUUID().toString(),
         walletId = walletId,
-        tokenType = tokenType,
+        evmTokenType = evmTokenType,
         network = network,
         address = address,
         balanceWei = balanceWei,
@@ -19,7 +19,7 @@ fun EVMBalance.toEntity(walletId: String): EVMBalanceEntity =
 
 fun EVMBalanceEntity.toDomain(): EVMBalance =
     EVMBalance(
-        tokenType = tokenType,
+        evmTokenType = evmTokenType,
         network = network,
         address = address,
         balanceWei = balanceWei,

@@ -113,7 +113,7 @@ class ReceiveViewModel @Inject constructor(
                 wallet.evmTokens.find {
                     it.network == coin.network &&
                             it.address == coin.address &&
-                            it.tokenType == coin.tokenType
+                            it.evmTokenType == coin.evmTokenType
                 }?.let { foundToken ->
                     Pair(foundToken.address, "${foundToken.symbol} on ${foundToken.network.name}")
                 }

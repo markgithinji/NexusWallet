@@ -7,7 +7,7 @@ import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.data.model.GasPrice
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import org.web3j.crypto.RawTransaction
 import java.math.BigDecimal
@@ -30,7 +30,7 @@ interface EVMBlockchainRepository {
         address: String,
         network: EthereumNetwork,
         walletId: String,
-        tokenType: TokenType?  // Changed from tokenExternalId: String?
+        evmTokenType: EVMTokenType?  // Changed from tokenExternalId: String?
     ): Result<List<NativeETHTransaction>>
 
     suspend fun getTokenTransactions(
@@ -38,7 +38,7 @@ interface EVMBlockchainRepository {
         tokenContract: String,
         network: EthereumNetwork,
         walletId: String,
-        tokenType: TokenType
+        evmTokenType: EVMTokenType
     ): Result<List<TokenTransaction>>
 
     suspend fun createAndSignNativeTransaction(
@@ -63,7 +63,7 @@ interface EVMBlockchainRepository {
         nonce: BigInteger,
         chainId: Long,
         network: EthereumNetwork,
-        tokenType: TokenType
+        evmTokenType: EVMTokenType
     ): Result<Triple<RawTransaction, String, String>>
 
     suspend fun getCurrentGasPrice(
