@@ -2,8 +2,8 @@ package com.example.nexuswallet.feature.wallet.ui.walletcreation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Network
@@ -49,8 +49,8 @@ class WalletCreationViewModel @Inject constructor(
     val selectedNetworks: StateFlow<Set<Network>> = _selectedNetworks.asStateFlow()
 
     // Selected tokens (USDC, USDT on specific networks)
-    private val _selectedTokens = MutableStateFlow<Map<EthereumNetwork, Set<CoinType>>>(emptyMap())
-    val selectedTokens: StateFlow<Map<EthereumNetwork, Set<CoinType>>> =
+    private val _selectedTokens = MutableStateFlow<Map<EthereumNetwork, Set<TokenType>>>(emptyMap())
+    val selectedTokens: StateFlow<Map<EthereumNetwork, Set<TokenType>>> =
         _selectedTokens.asStateFlow()
 
     // Wallet name
@@ -89,17 +89,24 @@ class WalletCreationViewModel @Inject constructor(
                 current - network
             }
         }
+
+        // If deselecting an Ethereum network, also remove its tokens
+        if (!isSelected && network is EthereumNetwork) {
+            _selectedTokens.update { current ->
+                current - network
+            }
+        }
     }
 
-    fun toggleToken(network: EthereumNetwork, coinType: CoinType, isSelected: Boolean) {
+    fun toggleToken(network: EthereumNetwork, tokenType: TokenType, isSelected: Boolean) {
         _selectedTokens.update { current ->
             val currentTokens = current.toMutableMap()
             val networkTokens = currentTokens[network]?.toMutableSet() ?: mutableSetOf()
 
             if (isSelected) {
-                networkTokens.add(coinType)
+                networkTokens.add(tokenType)
             } else {
-                networkTokens.remove(coinType)
+                networkTokens.remove(tokenType)
             }
 
             if (networkTokens.isEmpty()) {
@@ -112,30 +119,8 @@ class WalletCreationViewModel @Inject constructor(
         }
     }
 
-    fun isTokenSelected(network: EthereumNetwork, coinType: CoinType): Boolean {
-        return _selectedTokens.value[network]?.contains(coinType) ?: false
-    }
-
     fun hasSelections(): Boolean {
         return _selectedNetworks.value.isNotEmpty() || _selectedTokens.value.isNotEmpty()
-    }
-
-    fun getSelectedNetworksCount(): Int {
-        return _selectedNetworks.value.size
-    }
-
-    fun getSelectedTokensCount(): Int {
-        return _selectedTokens.value.values.sumOf { it.size }
-    }
-
-    fun getSelectedNetworksByType(coinType: CoinType): List<Network> {
-        return _selectedNetworks.value.filter { it.coinType == coinType }
-    }
-
-    fun getSelectedTokensList(): List<Pair<EthereumNetwork, CoinType>> {
-        return _selectedTokens.value.flatMap { (network, tokens) ->
-            tokens.map { network to it }
-        }
     }
 
     fun setWalletName(name: String) {
@@ -143,7 +128,7 @@ class WalletCreationViewModel @Inject constructor(
     }
 
     fun addWordToVerification(word: String) {
-        _enteredWords.value = _enteredWords.value + word
+        _enteredWords.value += word
     }
 
     fun removeWordFromVerification(index: Int) {
@@ -193,7 +178,7 @@ class WalletCreationViewModel @Inject constructor(
 
     fun previousStep() {
         if (_currentStep.value > 0) {
-            _currentStep.value = _currentStep.value - 1
+            _currentStep.value -= 1
         }
     }
 
@@ -207,7 +192,7 @@ class WalletCreationViewModel @Inject constructor(
                     return@launch
                 }
 
-                val name = if (_walletName.value.isBlank()) "My Wallet" else _walletName.value
+                val name = _walletName.value.ifBlank { "My Wallet" }
 
                 val result = createWalletUseCase(
                     mnemonic = mnemonicList,

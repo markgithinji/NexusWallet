@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Dashboard
@@ -81,7 +82,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
-import com.example.nexuswallet.feature.core.domain.model.CoinType
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
@@ -182,8 +183,8 @@ fun WalletCreationScreen(
                         onNetworkToggle = { network, isSelected ->
                             viewModel.toggleNetwork(network, isSelected)
                         },
-                        onTokenToggle = { network, coinType, isSelected ->
-                            viewModel.toggleToken(network, coinType, isSelected)
+                        onTokenToggle = { network, tokenClass, isSelected ->
+                            viewModel.toggleToken(network, tokenClass, isSelected)
                         },
                         onNext = { viewModel.nextStep() },
                         hasSelections = viewModel.hasSelections()
@@ -349,9 +350,9 @@ fun WalletCreationStepper(
 @Composable
 fun NetworkSelectionStep(
     selectedNetworks: Set<Network>,
-    selectedTokens: Map<EthereumNetwork, Set<CoinType>>,
+    selectedTokens: Map<EthereumNetwork, Set<TokenType>>,
     onNetworkToggle: (Network, Boolean) -> Unit,
-    onTokenToggle: (EthereumNetwork, CoinType, Boolean) -> Unit,
+    onTokenToggle: (EthereumNetwork, TokenType, Boolean) -> Unit,
     onNext: () -> Unit,
     hasSelections: Boolean
 ) {
@@ -362,7 +363,7 @@ fun NetworkSelectionStep(
     ) {
         // ============ BITCOIN SECTION ============
         Text(
-            text = CoinType.BITCOIN.displayName,
+            text = "Bitcoin",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = bitcoinLight,
@@ -374,6 +375,8 @@ fun NetworkSelectionStep(
             iconRes = R.drawable.bitcoin,
             color = bitcoinLight,
             network = BitcoinNetwork.Mainnet,
+            coinName = "Bitcoin",
+            coinSymbol = "BTC",
             isSelected = selectedNetworks.contains(BitcoinNetwork.Mainnet),
             onSelectedChange = { isSelected ->
                 onNetworkToggle(BitcoinNetwork.Mainnet, isSelected)
@@ -387,6 +390,8 @@ fun NetworkSelectionStep(
             iconRes = R.drawable.bitcoin,
             color = bitcoinLight.copy(alpha = 0.7f),
             network = BitcoinNetwork.Testnet,
+            coinName = "Bitcoin",
+            coinSymbol = "BTC",
             isSelected = selectedNetworks.contains(BitcoinNetwork.Testnet),
             onSelectedChange = { isSelected ->
                 onNetworkToggle(BitcoinNetwork.Testnet, isSelected)
@@ -397,18 +402,20 @@ fun NetworkSelectionStep(
 
         // ============ ETHEREUM SECTION ============
         Text(
-            text = CoinType.ETHEREUM.displayName,
+            text = "Ethereum",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = ethereumLight,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        // Ethereum Mainnet
+        // Ethereum Mainnet (includes Native ETH)
         NetworkToggleCard(
             iconRes = R.drawable.ethereum,
             color = ethereumLight,
             network = EthereumNetwork.Mainnet,
+            coinName = "Ethereum",
+            coinSymbol = "ETH",
             isSelected = selectedNetworks.contains(EthereumNetwork.Mainnet),
             onSelectedChange = { isSelected ->
                 onNetworkToggle(EthereumNetwork.Mainnet, isSelected)
@@ -422,6 +429,8 @@ fun NetworkSelectionStep(
             iconRes = R.drawable.ethereum,
             color = ethereumLight.copy(alpha = 0.7f),
             network = EthereumNetwork.Sepolia,
+            coinName = "Ethereum",
+            coinSymbol = "ETH",
             isSelected = selectedNetworks.contains(EthereumNetwork.Sepolia),
             onSelectedChange = { isSelected ->
                 onNetworkToggle(EthereumNetwork.Sepolia, isSelected)
@@ -432,7 +441,7 @@ fun NetworkSelectionStep(
 
         // ============ SOLANA SECTION ============
         Text(
-            text = CoinType.SOLANA.displayName,
+            text = "Solana",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = solanaLight,
@@ -444,6 +453,8 @@ fun NetworkSelectionStep(
             iconRes = R.drawable.solana,
             color = solanaLight,
             network = SolanaNetwork.Mainnet,
+            coinName = "Solana",
+            coinSymbol = "SOL",
             isSelected = selectedNetworks.contains(SolanaNetwork.Mainnet),
             onSelectedChange = { isSelected ->
                 onNetworkToggle(SolanaNetwork.Mainnet, isSelected)
@@ -457,6 +468,8 @@ fun NetworkSelectionStep(
             iconRes = R.drawable.solana,
             color = solanaLight.copy(alpha = 0.7f),
             network = SolanaNetwork.Devnet,
+            coinName = "Solana",
+            coinSymbol = "SOL",
             isSelected = selectedNetworks.contains(SolanaNetwork.Devnet),
             onSelectedChange = { isSelected ->
                 onNetworkToggle(SolanaNetwork.Devnet, isSelected)
@@ -466,55 +479,84 @@ fun NetworkSelectionStep(
         Spacer(modifier = Modifier.height(24.dp))
 
         // ============ TOKENS SECTION ============
-        Text(
-            text = "Tokens",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        // Only show tokens if Ethereum network is selected
+        if (selectedNetworks.any { it is EthereumNetwork }) {
+            Text(
+                text = "Tokens",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
-        // USDC on Ethereum Mainnet
-        TokenToggleCard(
-            iconRes = R.drawable.usdc,
-            color = usdcLight,
-            network = EthereumNetwork.Mainnet,
-            coinType = CoinType.USDC,
-            isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(CoinType.USDC) == true,
-            onSelectedChange = { isSelected ->
-                onTokenToggle(EthereumNetwork.Mainnet, CoinType.USDC, isSelected)
-            }
-        )
+            // USDC on Ethereum Mainnet
+            TokenToggleCard(
+                iconRes = R.drawable.usdc,
+                color = usdcLight,
+                network = EthereumNetwork.Mainnet,
+                tokenType = TokenType.USDC,
+                tokenName = "USD Coin",
+                tokenSymbol = "USDC",
+                isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(TokenType.USDC) == true,
+                networkEnabled = selectedNetworks.contains(EthereumNetwork.Mainnet),
+                onSelectedChange = { isSelected ->
+                    onTokenToggle(EthereumNetwork.Mainnet, TokenType.USDC, isSelected)
+                }
+            )
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        // USDC on Ethereum Sepolia
-        TokenToggleCard(
-            iconRes = R.drawable.usdc,
-            color = usdcLight.copy(alpha = 0.7f),
-            network = EthereumNetwork.Sepolia,
-            coinType = CoinType.USDC,
-            isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(CoinType.USDC) == true,
-            onSelectedChange = { isSelected ->
-                onTokenToggle(EthereumNetwork.Sepolia, CoinType.USDC, isSelected)
-            }
-        )
+            // USDC on Ethereum Sepolia
+            TokenToggleCard(
+                iconRes = R.drawable.usdc,
+                color = usdcLight.copy(alpha = 0.7f),
+                network = EthereumNetwork.Sepolia,
+                tokenType = TokenType.USDC,
+                tokenName = "USD Coin",
+                tokenSymbol = "USDC",
+                isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(TokenType.USDC) == true,
+                networkEnabled = selectedNetworks.contains(EthereumNetwork.Sepolia),
+                onSelectedChange = { isSelected ->
+                    onTokenToggle(EthereumNetwork.Sepolia, TokenType.USDC, isSelected)
+                }
+            )
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-//        // USDT on Ethereum Mainnet
-//        TokenToggleCard(
-//            iconRes = R.drawable.tether,
-//            color = usdtLight,
-//            network = EthereumNetwork.Mainnet,
-//            coinType = CoinType.USDT,  // Changed from CoinType.USDC to CoinType.USDT
-//            isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(CoinType.USDT) == true,  // Check for USDT
-//            onSelectedChange = { isSelected ->
-//                onTokenToggle(EthereumNetwork.Mainnet, CoinType.USDT, isSelected)  // Pass USDT
-//            }
-//        )
+            // USDT on Ethereum Mainnet
+            TokenToggleCard(
+                iconRes = R.drawable.tether,
+                color = usdtLight,
+                network = EthereumNetwork.Mainnet,
+                tokenType = TokenType.USDT,
+                tokenName = "Tether USD",
+                tokenSymbol = "USDT",
+                isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(TokenType.USDT) == true,
+                networkEnabled = selectedNetworks.contains(EthereumNetwork.Mainnet),
+                onSelectedChange = { isSelected ->
+                    onTokenToggle(EthereumNetwork.Mainnet, TokenType.USDT, isSelected)
+                }
+            )
 
-                    Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // USDT on Ethereum Sepolia
+            TokenToggleCard(
+                iconRes = R.drawable.tether,
+                color = usdtLight.copy(alpha = 0.7f),
+                network = EthereumNetwork.Sepolia,
+                tokenType = TokenType.USDT,
+                tokenName = "Tether USD",
+                tokenSymbol = "USDT",
+                isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(TokenType.USDT) == true,
+                networkEnabled = selectedNetworks.contains(EthereumNetwork.Sepolia),
+                onSelectedChange = { isSelected ->
+                    onTokenToggle(EthereumNetwork.Sepolia, TokenType.USDT, isSelected)
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
         Spacer(modifier = Modifier.height(16.dp))
 
         // Summary Card
@@ -546,23 +588,38 @@ fun NetworkSelectionStep(
                 } else {
                     // Show selected networks
                     selectedNetworks.forEach { network ->
+                        val (coinName, coinSymbol) = when (network) {
+                            is BitcoinNetwork -> "Bitcoin" to "BTC"
+                            is EthereumNetwork -> "Ethereum" to "ETH"
+                            is SolanaNetwork -> "Solana" to "SOL"
+                        }
+                        val networkType = if (network.isTestnet) " (Testnet)" else ""
                         Text(
-                            text = "• ${network.coinType.displayName} - ${network.displayName}",
+                            text = "• $coinName$networkType - $coinSymbol",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(vertical = 2.dp)
                         )
                     }
-                    // Show selected tokens
-                    selectedTokens.forEach { (network, tokens) ->
-                        tokens.forEach { coinType ->
-                            Text(
-                                text = "• ${coinType.displayName} on ${network.displayName}",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(vertical = 2.dp)
-                            )
-                        }
+
+                    // Show selected tokens (excluding NATIVE which is handled by network selection)
+                    selectedTokens.forEach { (network, tokenTypes) ->
+                        tokenTypes
+                            .filter { it != TokenType.NATIVE } // Filter out NATIVE tokens
+                            .forEach { tokenType ->
+                                val (tokenName, tokenSymbol) = when (tokenType) {
+                                    TokenType.USDC -> "USD Coin" to "USDC"
+                                    TokenType.USDT -> "Tether USD" to "USDT"
+                                    TokenType.NATIVE -> "Ethereum" to "ETH" // Won't be shown due to filter
+                                }
+                                val networkType = if (network.isTestnet) " (Testnet)" else ""
+                                Text(
+                                    text = "• $tokenName ($tokenSymbol) on Ethereum$networkType",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(vertical = 2.dp)
+                                )
+                            }
                     }
                 }
             }
@@ -588,31 +645,39 @@ fun NetworkSelectionStep(
 }
 
 @Composable
-fun NetworkToggleCard(
+fun TokenToggleCard(
     iconRes: Int,
     color: Color,
-    network: Network,
+    network: EthereumNetwork,
+    tokenType: TokenType,
+    tokenName: String,
+    tokenSymbol: String,
     isSelected: Boolean,
+    networkEnabled: Boolean,
     onSelectedChange: (Boolean) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) color.copy(alpha = 0.05f)
+            containerColor = if (isSelected && networkEnabled) color.copy(alpha = 0.05f)
             else MaterialTheme.colorScheme.surface
         ),
-        border = if (isSelected) BorderStroke(1.dp, color) else BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-        ),
+        border = if (isSelected && networkEnabled) BorderStroke(1.dp, color)
+        else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
-                .clickable { onSelectedChange(!isSelected) },
+                .then(
+                    if (networkEnabled) {
+                        Modifier.clickable { onSelectedChange(!isSelected) }
+                    } else {
+                        Modifier
+                    }
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -621,8 +686,8 @@ fun NetworkToggleCard(
             ) {
                 Icon(
                     painter = painterResource(id = iconRes),
-                    contentDescription = network.coinType.displayName,
-                    tint = Color.Unspecified,
+                    contentDescription = tokenName,
+                    tint = if (networkEnabled) Color.Unspecified else Color.Unspecified.copy(alpha = 0.5f),
                     modifier = Modifier.size(36.dp)
                 )
             }
@@ -633,37 +698,62 @@ fun NetworkToggleCard(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = network.coinType.displayName,
+                    text = tokenName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
+                    color = if (isSelected && networkEnabled) color
+                    else if (!networkEnabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "${network.coinType.symbol} • ${network.displayName}",
+                    text = "$tokenSymbol on ${network.name}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (!networkEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                        alpha = 0.5f
+                    )
+                    else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Checkbox(
-                checked = isSelected,
-                onCheckedChange = onSelectedChange,
-                colors = CustomCheckboxDefaults.colors(
-                    checkedBackgroundColor = color,
-                    checkedBorderColor = color,
-                    uncheckedBorderColor = MaterialTheme.colorScheme.outline,
-                    checkedIconColor = MaterialTheme.colorScheme.onPrimary
+
+            if (!networkEnabled) {
+                // Show disabled state
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Network not enabled",
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+            } else {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = onSelectedChange,
+                    colors = CustomCheckboxDefaults.colors(
+                        checkedBackgroundColor = color,
+                        checkedBorderColor = color,
+                        uncheckedBorderColor = MaterialTheme.colorScheme.outline,
+                        checkedIconColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 )
-            )
+            }
         }
     }
 }
 
 @Composable
-fun TokenToggleCard(
+fun NetworkToggleCard(
     iconRes: Int,
     color: Color,
-    network: EthereumNetwork,
-    coinType: CoinType,
+    network: Network,
+    coinName: String,
+    coinSymbol: String,
     isSelected: Boolean,
     onSelectedChange: (Boolean) -> Unit
 ) {
@@ -693,7 +783,7 @@ fun TokenToggleCard(
             ) {
                 Icon(
                     painter = painterResource(id = iconRes),
-                    contentDescription = coinType.displayName,
+                    contentDescription = coinName,
                     tint = Color.Unspecified,
                     modifier = Modifier.size(36.dp)
                 )
@@ -705,13 +795,13 @@ fun TokenToggleCard(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = coinType.displayName,
+                    text = coinName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "${coinType.symbol} on ${network.displayName}",
+                    text = "$coinSymbol • ${network.name}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1758,8 +1848,7 @@ fun WalletSuccessStep(
 
                 // Bitcoin Coins with icons
                 wallet.bitcoinCoins.forEach { coin ->
-                    val networkSuffix =
-                        if (coin.network != BitcoinNetwork.Mainnet) " (Testnet)" else ""
+                    val networkSuffix = if (coin.network.isTestnet) " (Testnet)" else ""
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(vertical = 4.dp)
@@ -1772,7 +1861,7 @@ fun WalletSuccessStep(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Bitcoin$networkSuffix",
+                            text = "${coin.name}$networkSuffix",
                             color = bitcoinLight,
                             fontWeight = FontWeight.Medium
                         )
@@ -1781,8 +1870,7 @@ fun WalletSuccessStep(
 
                 // Solana Coins with icons
                 wallet.solanaCoins.forEach { coin ->
-                    val networkSuffix =
-                        if (coin.network != SolanaNetwork.Mainnet) " (Devnet)" else ""
+                    val networkSuffix = if (coin.network.isTestnet) " (Testnet)" else ""
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(vertical = 4.dp)
@@ -1795,7 +1883,7 @@ fun WalletSuccessStep(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Solana$networkSuffix",
+                            text = "${coin.name}$networkSuffix",
                             color = solanaLight,
                             fontWeight = FontWeight.Medium
                         )
@@ -1851,42 +1939,23 @@ fun WalletSuccessStep(
                         is NativeETH -> Pair(ethereumLight, R.drawable.ethereum)
                         is USDCToken -> Pair(usdcLight, R.drawable.usdc)
                         is USDTToken -> Pair(usdtLight, R.drawable.tether)
-                        else -> Pair(MaterialTheme.colorScheme.primary, null)
                     }
 
-                    val networkSuffix =
-                        if (token.network != EthereumNetwork.Mainnet) " (Sepolia)" else ""
+                    val networkSuffix = if (token.network.isTestnet) " (Testnet)" else ""
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(vertical = 4.dp)
                     ) {
-                        if (iconRes != null) {
-                            Icon(
-                                painter = painterResource(id = iconRes),
-                                contentDescription = token.symbol,
-                                modifier = Modifier.size(20.dp),
-                                tint = Color.Unspecified
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .clip(CircleShape)
-                                    .background(color.copy(alpha = 0.1f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Token,
-                                    contentDescription = token.symbol,
-                                    modifier = Modifier.size(12.dp),
-                                    tint = color
-                                )
-                            }
-                        }
+                        Icon(
+                            painter = painterResource(id = iconRes),
+                            contentDescription = token.symbol,
+                            modifier = Modifier.size(20.dp),
+                            tint = Color.Unspecified
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "${token.symbol}$networkSuffix",
+                            text = "${token.name}$networkSuffix",
                             color = color,
                             fontWeight = FontWeight.Medium
                         )
