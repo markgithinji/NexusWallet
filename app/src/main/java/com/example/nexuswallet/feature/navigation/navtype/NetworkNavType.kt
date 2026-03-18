@@ -1,9 +1,9 @@
-package com.example.nexuswallet.feature.navigation
+package com.example.nexuswallet.feature.navigation.navtype
 
 import android.os.Bundle
 import androidx.navigation.NavType
-import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.Network
 import kotlinx.serialization.json.Json
 
 object NetworkNavType : NavType<Network>(isNullableAllowed = false) {

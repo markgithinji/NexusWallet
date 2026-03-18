@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.navigation
 
-import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -28,13 +28,13 @@ data object SecuritySettingsRoute : Route
 data class WalletDetailRoute(val walletId: String) : Route
 
 @Serializable
-data class CoinDetailRoute(val walletId: String, val network: Network) : Route
+data class CoinDetailRoute(val walletId: String, val coin: Coin) : Route
 
 @Serializable
-data class ReceiveRoute(val walletId: String, val network: Network) : Route
+data class ReceiveRoute(val walletId: String, val coin: Coin) : Route
 
 @Serializable
-data class SendRoute(val walletId: String, val network: Network) : Route
+data class SendRoute(val walletId: String, val coin: Coin) : Route
 
 @Serializable
 data class ReviewRoute(
@@ -42,7 +42,7 @@ data class ReviewRoute(
     val toAddress: String,
     val amount: String,
     val feeLevel: String? = null,
-    val network: Network
+    val coin: Coin
 ) : Route
 
 @Serializable
@@ -52,9 +52,9 @@ data class TokenDetailRoute(val tokenId: String) : Route
 data class BackupRoute(val walletId: String) : Route
 
 @Serializable
-data class TransactionDetailRoute(val walletId: String, val transactionId: String) : Route
+data class TransactionDetailRoute(val walletId: String, val transactionId: String, val coin: Coin) : Route
 
 @Serializable
 data class AuthenticateRoute(
     val target: AuthTarget
-)
+) : Route
