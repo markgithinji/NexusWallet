@@ -29,14 +29,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.nexuswallet.feature.core.domain.model.CoinType
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
+import com.example.nexuswallet.ui.theme.usdtLight
 import com.example.nexuswallet.ui.theme.warning
 
 @Composable
@@ -45,12 +50,13 @@ fun TransactionItem(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
-    val coinType = transaction.coinType
-    val (symbol, displayName, coinColor) = when (coinType) {
-        CoinType.BITCOIN -> Triple(coinType.symbol, coinType.displayName, bitcoinLight)
-        CoinType.ETHEREUM -> Triple(coinType.symbol, coinType.displayName, ethereumLight)
-        CoinType.SOLANA -> Triple(coinType.symbol, coinType.displayName, solanaLight)
-        CoinType.USDC -> Triple(coinType.symbol, coinType.displayName, usdcLight)
+    val coin = transaction.coin
+    val (symbol, displayName, coinColor) = when (coin) {
+        is BitcoinCoin -> Triple(coin.symbol, coin.name, bitcoinLight)
+        is NativeETH -> Triple(coin.symbol, coin.name, ethereumLight)
+        is SolanaCoin -> Triple(coin.symbol, coin.name, solanaLight)
+        is USDCToken -> Triple(coin.symbol, coin.name, usdcLight)
+        is USDTToken -> Triple(coin.symbol, coin.name, usdtLight)
     }
 
     val (statusColor, statusBgColor) = when (transaction.status) {
@@ -71,9 +77,9 @@ fun TransactionItem(
     }
 
     val amountColor = if (transaction.isIncoming)
-        MaterialTheme.colorScheme.success
+        MaterialTheme.colorScheme.success  // Green for received
     else
-        MaterialTheme.colorScheme.primary
+        MaterialTheme.colorScheme.primary   // Blue for sent
 
     Card(
         modifier = modifier
