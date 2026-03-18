@@ -109,7 +109,6 @@ object WalletDataModule {
         solanaCoinDao: SolanaCoinDao,
         bitcoinBalanceDao: BitcoinBalanceDao,
         solanaBalanceDao: SolanaBalanceDao,
-        evmTokenDao: EVMTokenDao,
         evmBalanceDao: EVMBalanceDao
     ): BalanceDataSource {
         return BalanceDataSourceImpl(
@@ -117,7 +116,6 @@ object WalletDataModule {
             solanaCoinDao = solanaCoinDao,
             bitcoinBalanceDao = bitcoinBalanceDao,
             solanaBalanceDao = solanaBalanceDao,
-            evmTokenDao = evmTokenDao,
             evmBalanceDao = evmBalanceDao
         )
     }

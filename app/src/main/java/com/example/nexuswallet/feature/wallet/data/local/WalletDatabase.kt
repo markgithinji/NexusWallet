@@ -51,7 +51,7 @@ import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
         EVMBalanceEntity::class,
         EVMTransactionEntity::class
     ],
-    version = 8,  // Increment from 7 to 8
+    version = 1,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

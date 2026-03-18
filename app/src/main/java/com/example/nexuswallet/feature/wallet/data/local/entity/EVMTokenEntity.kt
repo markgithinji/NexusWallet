@@ -20,8 +20,7 @@ import java.util.UUID
     ],
     indices = [
         Index(value = ["walletId"]),
-        Index(value = ["walletId", "contractAddress", "network"], unique = true),
-        Index(value = ["externalId"])
+        Index(value = ["walletId", "tokenType", "network"], unique = true)
     ]
 )
 data class EVMTokenEntity(
@@ -32,10 +31,6 @@ data class EVMTokenEntity(
     val derivationPath: String,
     val network: EthereumNetwork,
     val contractAddress: String,
-    val symbol: String,
-    val name: String,
-    val decimals: Int,
     val tokenType: TokenType,
-    val externalId: String,
     val updatedAt: Long = System.currentTimeMillis()
 )

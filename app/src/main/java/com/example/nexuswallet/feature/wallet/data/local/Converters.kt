@@ -1,7 +1,6 @@
 package com.example.nexuswallet.feature.wallet.data.local
 
 import androidx.room.TypeConverter
-import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
@@ -100,42 +99,11 @@ class Converters {
         }
     }
 
-    // ============ COIN TYPE ============
-
-    @TypeConverter
-    fun fromCoinType(type: CoinType): String {
-        return type.name
-    }
-
-    @TypeConverter
-    fun toCoinType(type: String): CoinType {
-        if (type.isBlank()) {
-            return CoinType.BITCOIN
-        }
-        return try {
-            CoinType.valueOf(type)
-        } catch (e: IllegalArgumentException) {
-            CoinType.BITCOIN
-        }
-    }
-
     // ============ TOKEN TYPE ============
 
     @TypeConverter
     fun fromTokenType(type: TokenType): String {
         return type.name
-    }
-
-    @TypeConverter
-    fun toTokenType(type: String): TokenType {
-        if (type.isBlank()) {
-            return TokenType.ERC20
-        }
-        return try {
-            TokenType.valueOf(type)
-        } catch (e: IllegalArgumentException) {
-            TokenType.ERC20
-        }
     }
 
     // ============ EVM TOKEN CONVERTER ============

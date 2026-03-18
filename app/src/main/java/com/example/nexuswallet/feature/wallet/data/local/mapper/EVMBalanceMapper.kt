@@ -1,16 +1,15 @@
 package com.example.nexuswallet.feature.wallet.data.local.mapper
 
 import com.example.nexuswallet.feature.wallet.data.local.entity.EVMBalanceEntity
-import com.example.nexuswallet.feature.wallet.data.local.entity.EVMTokenEntity
 import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
 import java.util.UUID
 
-fun EVMBalance.toEntity(walletId: String, tokenEntity: EVMTokenEntity): EVMBalanceEntity =
+fun EVMBalance.toEntity(walletId: String): EVMBalanceEntity =
     EVMBalanceEntity(
         id = UUID.randomUUID().toString(),
         walletId = walletId,
-        tokenId = tokenEntity.id,
-        externalTokenId = externalTokenId,
+        tokenType = tokenType,
+        network = network,
         address = address,
         balanceWei = balanceWei,
         balanceDecimal = balanceDecimal,
@@ -20,7 +19,8 @@ fun EVMBalance.toEntity(walletId: String, tokenEntity: EVMTokenEntity): EVMBalan
 
 fun EVMBalanceEntity.toDomain(): EVMBalance =
     EVMBalance(
-        externalTokenId = externalTokenId,
+        tokenType = tokenType,
+        network = network,
         address = address,
         balanceWei = balanceWei,
         balanceDecimal = balanceDecimal,

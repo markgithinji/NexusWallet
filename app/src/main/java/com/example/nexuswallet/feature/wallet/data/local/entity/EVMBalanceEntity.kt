@@ -4,7 +4,9 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import java.util.UUID
 
 @Entity(
@@ -15,24 +17,19 @@ import java.util.UUID
             parentColumns = ["id"],
             childColumns = ["walletId"],
             onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = EVMTokenEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["tokenId"],
-            onDelete = ForeignKey.CASCADE
         )
     ],
     indices = [
-        Index(value = ["walletId", "tokenId"], unique = true),
-        Index(value = ["tokenId"])
+        Index(value = ["walletId", "tokenType", "network"], unique = true),
+        Index(value = ["tokenType"]),
+        Index(value = ["network"])
     ]
 )
 data class EVMBalanceEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val walletId: String,
-    val tokenId: String,
-    val externalTokenId: String,
+    val tokenType: TokenType,
+    val network: EthereumNetwork,
     val address: String,
     val balanceWei: String,
     val balanceDecimal: String,
