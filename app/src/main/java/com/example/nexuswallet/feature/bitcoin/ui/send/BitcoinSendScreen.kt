@@ -26,10 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
-import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.core.ui.ErrorMessage
 import com.example.nexuswallet.feature.core.ui.MaxAmountDialog
 import com.example.nexuswallet.feature.core.ui.NetworkSelectorCard
@@ -41,15 +38,18 @@ import com.example.nexuswallet.feature.core.ui.SendBottomBar
 import com.example.nexuswallet.feature.core.ui.SendFeeSelection
 import com.example.nexuswallet.feature.core.ui.SendTopBar
 import com.example.nexuswallet.feature.core.ui.rememberSendErrorState
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.ui.theme.bitcoinLight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BitcoinSendScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToReview: (String, String, String, FeeLevel?, Network) -> Unit,
+    onNavigateToReview: (String, String, String, FeeLevel?, Coin) -> Unit,
     walletId: String,
-    network: Network,
+    coin: Coin,
     viewModel: BitcoinSendViewModel = hiltViewModel()
 ) {
     var showMaxDialog by remember { mutableStateOf(false) }
@@ -67,7 +67,7 @@ fun BitcoinSendScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        viewModel.handleEvent(BitcoinSendEvent.Initialize(walletId, network as BitcoinNetwork))
+        viewModel.handleEvent(BitcoinSendEvent.Initialize(walletId, coin as BitcoinCoin))
     }
 
     val availableNetworks = listOf(
@@ -86,7 +86,7 @@ fun BitcoinSendScreen(
     Scaffold(
         topBar = {
             SendTopBar(
-                title = "Send Bitcoin",
+                title = "Send ${coin.symbol}",
                 iconRes = R.drawable.bitcoin,
                 coinColor = bitcoinLight,
                 isLoading = state.isLoading,
@@ -159,7 +159,7 @@ fun BitcoinSendScreen(
                             addressTouched = true
                         }
                     },
-                    placeholder = if (state.network == BitcoinNetwork.Testnet)
+                    placeholder = if (state.network.isTestnet)
                         "Enter Bitcoin testnet address"
                     else
                         "Enter Bitcoin address",
@@ -175,7 +175,7 @@ fun BitcoinSendScreen(
                 // Amount Input
                 SendAmountInput(
                     amount = state.amount,
-                    coinType = CoinType.BITCOIN,
+                    coin = coin,  // Pass the coin directly
                     onAmountChange = {
                         amountTouched = true
                         viewModel.handleEvent(BitcoinSendEvent.UpdateAmount(it))
@@ -187,7 +187,7 @@ fun BitcoinSendScreen(
                         }
                     },
                     balance = state.balance,
-                    symbol = "BTC",
+                    symbol = coin.symbol,
                     coinColor = bitcoinLight,
                     onMaxClick = {
                         amountTouched = true
@@ -204,7 +204,7 @@ fun BitcoinSendScreen(
                         viewModel.handleEvent(BitcoinSendEvent.UpdateFeeLevel(it))
                     },
                     feeEstimate = state.feeEstimate,
-                    coinType = CoinType.BITCOIN
+                    coin = coin  // Pass the coin directly
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -222,7 +222,7 @@ fun BitcoinSendScreen(
                         state.toAddress,
                         state.amount,
                         state.feeLevel,
-                        state.network
+                        state.coin ?: coin
                     )
                 },
                 modifier = Modifier.align(Alignment.BottomCenter)
@@ -235,8 +235,8 @@ fun BitcoinSendScreen(
         MaxAmountDialog(
             balance = state.balance,
             feeEstimate = state.feeEstimate,
-            tokenSymbol = "BTC",
-            coinType = CoinType.BITCOIN,
+            tokenSymbol = coin.symbol,
+            coin = coin,  // Pass the coin directly
             onDismiss = { showMaxDialog = false },
             onConfirm = { maxAmount ->
                 amountTouched = true

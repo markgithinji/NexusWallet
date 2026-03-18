@@ -38,11 +38,12 @@ class BitcoinSendViewModel @Inject constructor(
 
     private var wallet: Wallet? = null
     private var bitcoinCoins: Map<BitcoinNetwork, BitcoinCoin> = emptyMap()
+    private var currentCoin: BitcoinCoin? = null
 
     fun handleEvent(event: BitcoinSendEvent) {
         viewModelScope.launch {
             when (event) {
-                is BitcoinSendEvent.Initialize -> initialize(event.walletId, event.network)
+                is BitcoinSendEvent.Initialize -> initialize(event.walletId, event.coin)
                 is BitcoinSendEvent.UpdateAddress -> updateAddress(event.address)
                 is BitcoinSendEvent.UpdateAmount -> updateAmount(event.amount)
                 is BitcoinSendEvent.UpdateFeeLevel -> updateFeeLevel(event.feeLevel)
@@ -51,7 +52,7 @@ class BitcoinSendViewModel @Inject constructor(
         }
     }
 
-    private suspend fun initialize(walletId: String, network: BitcoinNetwork?) {
+    private suspend fun initialize(walletId: String, coin: BitcoinCoin?) {
         _state.update {
             it.copy(
                 walletId = walletId,
@@ -69,22 +70,26 @@ class BitcoinSendViewModel @Inject constructor(
         }
 
         bitcoinCoins = wallet!!.bitcoinCoins.associateBy { it.network }
+        val availableCoins = wallet!!.bitcoinCoins
 
-        if (bitcoinCoins.isEmpty()) {
+        if (availableCoins.isEmpty()) {
             handleError("Bitcoin not enabled for this wallet")
             return
         }
 
         val availableNetworks = bitcoinCoins.keys.toList()
-        val targetNetwork = network ?: availableNetworks.firstOrNull() ?: BitcoinNetwork.Testnet
-        val bitcoinCoin = bitcoinCoins[targetNetwork]
 
-        if (bitcoinCoin == null) {
-            handleError("Bitcoin not enabled for network $targetNetwork")
+        // Determine target coin
+        val targetCoin = coin ?: availableCoins.firstOrNull()
+
+        if (targetCoin == null) {
+            handleError("Bitcoin not enabled")
             return
         }
 
-        when (val result = getBitcoinWalletUseCase(walletId, targetNetwork)) {
+        currentCoin = targetCoin
+
+        when (val result = getBitcoinWalletUseCase(walletId, targetCoin.network)) {
             is Result.Success -> {
                 val walletInfo = result.data
                 _state.update {
@@ -93,6 +98,7 @@ class BitcoinSendViewModel @Inject constructor(
                         walletName = walletInfo.walletName,
                         walletAddress = walletInfo.walletAddress,
                         network = walletInfo.network,
+                        coin = targetCoin,
                         availableNetworks = availableNetworks,
                         isLoading = false,
                         isInitialized = true
@@ -170,9 +176,12 @@ class BitcoinSendViewModel @Inject constructor(
 
     private suspend fun switchNetwork(network: BitcoinNetwork) {
         val bitcoinCoin = bitcoinCoins[network] ?: return
+        currentCoin = bitcoinCoin
+
         _state.update {
             it.copy(
                 network = network,
+                coin = bitcoinCoin,
                 walletAddress = bitcoinCoin.address,
                 toAddress = "",
                 amount = "",
