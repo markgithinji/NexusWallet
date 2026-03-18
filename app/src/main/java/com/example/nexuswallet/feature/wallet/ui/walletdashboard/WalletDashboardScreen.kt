@@ -39,14 +39,11 @@ import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.Token
-import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -83,12 +80,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import com.example.nexuswallet.feature.wallet.domain.model.Network
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
-import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
@@ -410,20 +402,14 @@ fun WalletCard(
                     ) {
                         wallet.bitcoinCoins.forEach { coin ->
                             CoinBadge(
-                                text = when (coin.network) {
-                                    is BitcoinNetwork.Mainnet -> "BTC"
-                                    is BitcoinNetwork.Testnet -> "BTC (Test)"
-                                },
+                                text = if (coin.network.isTestnet) "${coin.symbol} (Test)" else coin.symbol,
                                 color = bitcoinLight,
                             )
                         }
 
                         wallet.solanaCoins.forEach { coin ->
                             CoinBadge(
-                                text = when (coin.network) {
-                                    is SolanaNetwork.Mainnet -> "SOL"
-                                    is SolanaNetwork.Devnet -> "SOL (Dev)"
-                                },
+                                text = if (coin.network.isTestnet) "${coin.symbol} (Dev)" else coin.symbol,
                                 color = solanaLight,
                             )
                         }
@@ -432,11 +418,10 @@ fun WalletCard(
                         visibleTokens.forEach { token ->
                             CoinBadge(
                                 text = token.symbol,
-                                color = when (token) {
-                                    is NativeETH -> ethereumLight
-                                    is USDCToken -> usdcLight
-                                    is USDTToken -> Color(0xFF26A17B)
-                                    else -> MaterialTheme.colorScheme.primary
+                                color = when (token.tokenType) {
+                                    TokenType.NATIVE -> ethereumLight
+                                    TokenType.USDC -> usdcLight
+                                    TokenType.USDT -> Color(0xFF26A17B)
                                 },
                             )
                         }
@@ -504,13 +489,13 @@ fun WalletExpandedContent(
 
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.bitcoin),
-                symbol = "Bitcoin${if (coin.network.isTestnet) " (Testnet)" else ""}",
+                symbol = "${coin.name}${if (coin.network.isTestnet) " (Testnet)" else ""}",
                 amount = if (btcBalance != null)
                     "${
                         NumberFormat.getNumberInstance(Locale.US)
                             .format(btcBalance.btc.toDoubleOrNull() ?: 0.0)
-                    } BTC"
-                else "0 BTC",
+                    } ${coin.symbol}"
+                else "0 ${coin.symbol}",
                 usdValue = btcBalance?.usdValue ?: 0.0,
                 color = bitcoinLight,
                 showZeroBalance = true
@@ -523,38 +508,38 @@ fun WalletExpandedContent(
 
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.solana),
-                symbol = "Solana${if (coin.network.isTestnet) " (Devnet)" else ""}",
+                symbol = "${coin.name}${if (coin.network.isTestnet) " (Devnet)" else ""}",
                 amount = if (solBalance != null)
                     "${
                         NumberFormat.getNumberInstance(Locale.US)
                             .format(solBalance.sol.toDoubleOrNull() ?: 0.0)
-                    } SOL"
-                else "0 SOL",
+                    } ${coin.symbol}"
+                else "0 ${coin.symbol}",
                 usdValue = solBalance?.usdValue ?: 0.0,
                 color = solanaLight,
                 showZeroBalance = true
             )
         }
 
-        // Group EVM tokens
-        val nativeTokens = wallet.evmTokens.filterIsInstance<NativeETH>()
-        val usdcTokens = wallet.evmTokens.filterIsInstance<USDCToken>()
-        val usdtTokens = wallet.evmTokens.filterIsInstance<USDTToken>()
-        val otherTokens =
-            wallet.evmTokens.filter { it !is NativeETH && it !is USDCToken && it !is USDTToken }
+        // Group EVM tokens by tokenType
+        val nativeTokens = wallet.evmTokens.filter { it.tokenType == TokenType.NATIVE }
+        val usdcTokens = wallet.evmTokens.filter { it.tokenType == TokenType.USDC }
+        val usdtTokens = wallet.evmTokens.filter { it.tokenType == TokenType.USDT }
 
         // Native ETH tokens
         nativeTokens.forEach { token ->
-            val tokenBalance = balance?.evmBalances?.find { it.externalTokenId == token.externalId }
+            val tokenBalance = balance?.evmBalances?.find {
+                it.network == token.network && it.tokenType == TokenType.NATIVE
+            }
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.ethereum),
-                symbol = "Ethereum${if (token.network.isTestnet) " (${token.network.displayName})" else ""}",
+                symbol = "${token.name}${if (token.network.isTestnet) " (${token.network.name})" else ""}",
                 amount = if (tokenBalance != null)
                     "${
                         NumberFormat.getNumberInstance(Locale.US)
                             .format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)
-                    } ETH"
-                else "0 ETH",
+                    } ${token.symbol}"
+                else "0 ${token.symbol}",
                 usdValue = tokenBalance?.usdValue ?: 0.0,
                 color = ethereumLight,
                 showZeroBalance = true
@@ -563,16 +548,18 @@ fun WalletExpandedContent(
 
         // USDC tokens
         usdcTokens.forEach { token ->
-            val tokenBalance = balance?.evmBalances?.find { it.externalTokenId == token.externalId }
+            val tokenBalance = balance?.evmBalances?.find {
+                it.network == token.network && it.tokenType == TokenType.USDC
+            }
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.usdc),
-                symbol = "USD Coin${if (token.network.isTestnet) " (${token.network.displayName})" else ""}",
+                symbol = "${token.name}${if (token.network.isTestnet) " (${token.network.name})" else ""}",
                 amount = if (tokenBalance != null)
                     "${
                         NumberFormat.getNumberInstance(Locale.US)
                             .format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)
-                    } USDC"
-                else "0 USDC",
+                    } ${token.symbol}"
+                else "0 ${token.symbol}",
                 usdValue = tokenBalance?.usdValue ?: 0.0,
                 color = usdcLight,
                 showZeroBalance = true
@@ -581,28 +568,12 @@ fun WalletExpandedContent(
 
         // USDT tokens
         usdtTokens.forEach { token ->
-            val tokenBalance = balance?.evmBalances?.find { it.externalTokenId == token.externalId }
+            val tokenBalance = balance?.evmBalances?.find {
+                it.network == token.network && it.tokenType == TokenType.USDT
+            }
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.tether),
-                symbol = "Tether USD${if (token.network.isTestnet) " (${token.network.displayName})" else ""}",
-                amount = if (tokenBalance != null)
-                    "${
-                        NumberFormat.getNumberInstance(Locale.US)
-                            .format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)
-                    } USDT"
-                else "0 USDT",
-                usdValue = tokenBalance?.usdValue ?: 0.0,
-                color = Color(0xFF26A17B),
-                showZeroBalance = true
-            )
-        }
-
-        // Other ERC20 tokens
-        otherTokens.forEach { token ->
-            val tokenBalance = balance?.evmBalances?.find { it.externalTokenId == token.externalId }
-            SimpleBalanceRow(
-                icon = Icons.Outlined.Token,
-                symbol = "${token.symbol}${if (token.network.isTestnet) " (${token.network.displayName})" else ""}",
+                symbol = "${token.name}${if (token.network.isTestnet) " (${token.network.name})" else ""}",
                 amount = if (tokenBalance != null)
                     "${
                         NumberFormat.getNumberInstance(Locale.US)
@@ -610,7 +581,7 @@ fun WalletExpandedContent(
                     } ${token.symbol}"
                 else "0 ${token.symbol}",
                 usdValue = tokenBalance?.usdValue ?: 0.0,
-                color = MaterialTheme.colorScheme.primary,
+                color = Color(0xFF26A17B),
                 showZeroBalance = true
             )
         }
@@ -997,6 +968,3 @@ fun DeleteWalletDialog(
 
 fun Double.formatAsCurrency(): String =
     NumberFormat.getCurrencyInstance(Locale.US).format(this)
-
-fun BigDecimal.formatAsCurrency(): String =
-    NumberFormat.getCurrencyInstance(Locale.US).format(this.toDouble())
