@@ -22,9 +22,8 @@ data class WalletDetailUiState(
     val isRefreshingBalance: Boolean = false,
     val isRefreshingTransactions: Boolean = false,
 
-    // Timestamps for cache freshness
+    // Timestamp for cache freshness
     val lastBalanceSyncTime: Long = 0,
-    val lastTransactionSyncTime: Long = 0,
 
     // Error states
     val error: String? = null,

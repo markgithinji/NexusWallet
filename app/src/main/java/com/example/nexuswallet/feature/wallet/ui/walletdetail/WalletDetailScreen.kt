@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.TrendingDown
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.ArrowDownward
@@ -32,16 +34,12 @@ import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.outlined.SwapHoriz
-import androidx.compose.material.icons.outlined.Token
-import androidx.compose.material.icons.outlined.TrendingDown
-import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -75,12 +73,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
-import com.example.nexuswallet.feature.wallet.domain.model.AssetType
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.Network
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.Coin
+import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
+import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.ui.common.ErrorScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
@@ -100,10 +99,10 @@ import java.util.Locale
 fun WalletDetailScreen(
     onNavigateUp: () -> Unit,
     onNavigateToAllTransactions: (String) -> Unit,
-    onNavigateToTransactionDetail: (String, String) -> Unit,
-    onReceiveClick: (String, Network) -> Unit,
-    onSendClick: (String, Network) -> Unit,
-    onAssetClick: (String, Network) -> Unit,
+    onNavigateToTransactionDetail: (String, String, Coin) -> Unit,
+    onReceiveClick: (String, Coin) -> Unit,
+    onSendClick: (String, Coin) -> Unit,
+    onAssetClick: (String, Coin) -> Unit,
     onSwapClick: () -> Unit = {},
     onMoreClick: () -> Unit = {},
     walletId: String,
@@ -220,14 +219,18 @@ fun WalletDetailScreen(
                     uiState.isLoadingTransactions -> "Loading transactions..."
                     else -> ""
                 },
-                onAssetClick = { network -> onAssetClick(walletId, network) },
-                onReceiveClick = { network -> onReceiveClick(walletId, network) },
-                onSendClick = { network -> onSendClick(walletId, network) },
+                onAssetClick = { coin -> onAssetClick(walletId, coin) },
+                onReceiveClick = { coin -> onReceiveClick(walletId, coin) },
+                onSendClick = { coin -> onSendClick(walletId, coin) },
                 onSwapClick = onSwapClick,
                 onMoreClick = onMoreClick,
                 onViewAllTransactionsClick = { onNavigateToAllTransactions(walletId) },
                 onTransactionClick = { transaction ->
-                    onNavigateToTransactionDetail(walletId, transaction.id)
+                    onNavigateToTransactionDetail(
+                        walletId,
+                        transaction.id,
+                        transaction.coin
+                    )
                 },
                 padding = padding
             )
@@ -252,9 +255,9 @@ fun WalletDetailContent(
     isRefreshingTransactions: Boolean,
     balanceLoadingMessage: String,
     transactionsLoadingMessage: String,
-    onAssetClick: (Network) -> Unit,
-    onReceiveClick: (Network) -> Unit,
-    onSendClick: (Network) -> Unit,
+    onAssetClick: (Coin) -> Unit,
+    onReceiveClick: (Coin) -> Unit,
+    onSendClick: (Coin) -> Unit,
     onSwapClick: () -> Unit,
     onMoreClick: () -> Unit,
     onViewAllTransactionsClick: () -> Unit,
@@ -276,8 +279,14 @@ fun WalletDetailContent(
                 hasSyncError = hasSyncError,
                 isLoadingBalance = isLoadingBalance || isRefreshingBalance,
                 balanceLoadingMessage = balanceLoadingMessage,
-                onReceive = { onReceiveClick(getDefaultNetwork(wallet)) },
-                onSend = { onSendClick(getDefaultNetwork(wallet)) },
+                onReceive = {
+                    val defaultCoin = getDefaultCoin(wallet)
+                    defaultCoin?.let { onReceiveClick(it) }
+                },
+                onSend = {
+                    val defaultCoin = getDefaultCoin(wallet)
+                    defaultCoin?.let { onSendClick(it) }
+                },
                 onSwap = onSwapClick,
                 onMore = onMoreClick
             )
@@ -290,7 +299,7 @@ fun WalletDetailContent(
         ) { asset ->
             AssetCard(
                 asset = asset,
-                onClick = { onAssetClick(asset.network) }
+                onClick = { onAssetClick(asset.coin) }
             )
         }
 
@@ -307,11 +316,11 @@ fun WalletDetailContent(
     }
 }
 
-private fun getDefaultNetwork(wallet: Wallet): Network = when {
-    wallet.evmTokens.isNotEmpty() -> EthereumNetwork.Mainnet
-    wallet.bitcoinCoins.isNotEmpty() -> BitcoinNetwork.Mainnet
-    wallet.solanaCoins.isNotEmpty() -> SolanaNetwork.Mainnet
-    else -> BitcoinNetwork.Mainnet
+private fun getDefaultCoin(wallet: Wallet): Coin? = when {
+    wallet.evmTokens.isNotEmpty() -> wallet.evmTokens.first()
+    wallet.bitcoinCoins.isNotEmpty() -> wallet.bitcoinCoins.first()
+    wallet.solanaCoins.isNotEmpty() -> wallet.solanaCoins.first()
+    else -> null
 }
 
 @Composable
@@ -319,13 +328,12 @@ fun AssetCard(
     asset: AssetDisplayInfo,
     onClick: () -> Unit
 ) {
-    val (iconRes, iconColor, iconSize) = when (asset.assetType) {
-        AssetType.BITCOIN -> Triple(R.drawable.bitcoin, bitcoinLight, 20.dp)
-        AssetType.SOLANA -> Triple(R.drawable.solana, solanaLight, 20.dp)
-        AssetType.ETHEREUM -> Triple(R.drawable.ethereum, ethereumLight, 24.dp)
-        AssetType.USDC -> Triple(R.drawable.usdc, usdcLight, 20.dp)
-        AssetType.USDT -> Triple(R.drawable.tether, usdtLight, 20.dp)
-        AssetType.ERC20, AssetType.SPL -> Triple(null, MaterialTheme.colorScheme.primary, 20.dp)
+    val (iconRes, iconColor, iconSize) = when (asset.coin) {
+        is BitcoinCoin -> Triple(R.drawable.bitcoin, bitcoinLight, 20.dp)
+        is SolanaCoin -> Triple(R.drawable.solana, solanaLight, 20.dp)
+        is NativeETH -> Triple(R.drawable.ethereum, ethereumLight, 24.dp)
+        is USDCToken -> Triple(R.drawable.usdc, usdcLight, 20.dp)
+        is USDTToken -> Triple(R.drawable.tether, usdtLight, 20.dp)
     }
 
     Card(
@@ -352,29 +360,12 @@ fun AssetCard(
                     .clip(CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                if (iconRes != null) {
-                    Icon(
-                        painter = painterResource(id = iconRes),
-                        contentDescription = asset.symbol,
-                        modifier = Modifier.size(iconSize),
-                        tint = Color.Unspecified
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(iconColor.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Token,
-                            contentDescription = asset.symbol,
-                            tint = iconColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
+                Icon(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = asset.coin.symbol,
+                    modifier = Modifier.size(iconSize),
+                    tint = Color.Unspecified
+                )
             }
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -388,13 +379,13 @@ fun AssetCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = asset.symbol,
+                        text = asset.coin.symbol,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    if (asset.isTestnet) {
+                    if (asset.coin.network.isTestnet) {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
                             color = MaterialTheme.colorScheme.warning.copy(alpha = 0.1f)
@@ -410,7 +401,7 @@ fun AssetCard(
                 }
 
                 Text(
-                    text = "${asset.balanceFormatted} ${asset.symbol}",
+                    text = "${asset.balanceFormatted} ${asset.coin.symbol}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -679,10 +670,10 @@ fun TransactionsContainer(
                 repeat(3) { index ->
                     TransactionLoadingSkeleton()
                     if (index < 2) {
-                        Divider(
-                            color = MaterialTheme.colorScheme.outline,
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp),
                             thickness = 1.dp,
-                            modifier = Modifier.padding(vertical = 8.dp)
+                            color = MaterialTheme.colorScheme.outline
                         )
                     }
                 }
@@ -740,9 +731,9 @@ fun PriceChangeIndicator(formatted: String) {
     ) {
         Icon(
             imageVector = if (isPositive)
-                Icons.Outlined.TrendingUp
+                Icons.AutoMirrored.Outlined.TrendingUp
             else
-                Icons.Outlined.TrendingDown,
+                Icons.AutoMirrored.Outlined.TrendingDown,
             contentDescription = null,
             modifier = Modifier.size(12.dp),
             tint = changeColor
