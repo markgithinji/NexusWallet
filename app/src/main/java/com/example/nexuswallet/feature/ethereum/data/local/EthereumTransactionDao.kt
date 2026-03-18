@@ -5,8 +5,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import kotlinx.coroutines.flow.Flow
-
 @Dao
 interface EVMTransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -21,19 +21,29 @@ interface EVMTransactionDao {
     @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId ORDER BY timestamp DESC")
     fun getByWalletId(walletId: String): Flow<List<EVMTransactionEntity>>
 
-    @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId AND tokenContract = :tokenContract ORDER BY timestamp DESC")
+    @Query("""
+        SELECT * FROM evm_transactions 
+        WHERE walletId = :walletId 
+        AND tokenContract = :tokenContract 
+        ORDER BY timestamp DESC
+    """)
     fun getByWalletIdAndToken(
         walletId: String,
         tokenContract: String?
     ): Flow<List<EVMTransactionEntity>>
 
-    @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId AND tokenExternalId = :tokenExternalId ORDER BY timestamp DESC")
-    fun getByWalletIdAndTokenExternalId(
+    @Query("""
+        SELECT * FROM evm_transactions 
+        WHERE walletId = :walletId 
+        AND tokenType = :tokenType 
+        ORDER BY timestamp DESC
+    """)
+    fun getByWalletIdAndTokenType(
         walletId: String,
-        tokenExternalId: String
+        tokenType: TokenType
     ): Flow<List<EVMTransactionEntity>>
 
-    @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId AND tokenContract IS NULL ORDER BY timestamp DESC")
+    @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId AND tokenType IS NULL ORDER BY timestamp DESC")
     fun getNativeTransactions(walletId: String): Flow<List<EVMTransactionEntity>>
 
     @Query("SELECT * FROM evm_transactions WHERE status = 'PENDING'")
@@ -48,21 +58,26 @@ interface EVMTransactionDao {
     @Query("DELETE FROM evm_transactions WHERE walletId = :walletId")
     suspend fun deleteByWalletId(walletId: String)
 
-    @Query("DELETE FROM evm_transactions WHERE walletId = :walletId AND tokenExternalId = :tokenExternalId")
-    suspend fun deleteByWalletIdAndTokenExternalId(walletId: String, tokenExternalId: String)
+    @Query("DELETE FROM evm_transactions WHERE walletId = :walletId AND tokenType = :tokenType")
+    suspend fun deleteByWalletIdAndTokenType(walletId: String, tokenType: TokenType)
 
     @Query("UPDATE evm_transactions SET status = :status WHERE id = :transactionId")
     suspend fun updateStatus(transactionId: String, status: String)
 
-    @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId AND tokenExternalId = :tokenExternalId ORDER BY timestamp DESC")
-    suspend fun getTransactionsForToken(
+    @Query("""
+        SELECT * FROM evm_transactions 
+        WHERE walletId = :walletId 
+        AND tokenType = :tokenType 
+        ORDER BY timestamp DESC
+    """)
+    suspend fun getTransactionsForTokenType(
         walletId: String,
-        tokenExternalId: String
+        tokenType: TokenType
     ): List<EVMTransactionEntity>
 
     @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId ORDER BY timestamp DESC")
     suspend fun getByWalletIdSync(walletId: String): List<EVMTransactionEntity>
 
-    @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId AND tokenContract IS NULL ORDER BY timestamp DESC")
+    @Query("SELECT * FROM evm_transactions WHERE walletId = :walletId AND tokenType IS NULL ORDER BY timestamp DESC")
     suspend fun getNativeTransactionsSync(walletId: String): List<EVMTransactionEntity>
 }

@@ -10,8 +10,8 @@ import com.example.nexuswallet.feature.ethereum.data.remote.EtherscanApiService
 import com.example.nexuswallet.feature.ethereum.data.toNativeETHTransactionList
 import com.example.nexuswallet.feature.ethereum.data.toTokenTransactionList
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
-import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
@@ -19,6 +19,7 @@ import com.example.nexuswallet.feature.ethereum.util.EVMConstants.USDT_GAS_LIMIT
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.usdc.Web3jFactory
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.web3j.abi.FunctionEncoder
@@ -45,7 +46,8 @@ import javax.inject.Singleton
 @Singleton
 class EVMBlockchainRepositoryImpl @Inject constructor(
     private val etherscanApi: EtherscanApiService,
-    private val web3jFactory: Web3jFactory
+    private val web3jFactory: Web3jFactory,
+    private val ioDispatcher: CoroutineDispatcher
 ) : EVMBlockchainRepository {
 
     // Gas price cache - stores gas price per network with timestamp
@@ -56,7 +58,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
     override suspend fun getNativeBalance(
         address: String,
         network: EthereumNetwork
-    ): Result<BigDecimal> = withContext(Dispatchers.IO) {
+    ): Result<BigDecimal> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val web3j = web3jFactory.create(network)
             val wei = web3j.ethGetBalance(address, DefaultBlockParameterName.LATEST).send().balance
@@ -69,7 +71,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         tokenContract: String,
         tokenDecimals: Int,
         network: EthereumNetwork
-    ): Result<BigDecimal> = withContext(Dispatchers.IO) {
+    ): Result<BigDecimal> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val web3j = web3jFactory.create(network)
 
@@ -119,8 +121,8 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         address: String,
         network: EthereumNetwork,
         walletId: String,
-        tokenExternalId: String?
-    ): Result<List<NativeETHTransaction>> = withContext(Dispatchers.IO) {
+        tokenType: TokenType?
+    ): Result<List<NativeETHTransaction>> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val chainId = network.chainId
 
@@ -134,7 +136,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
                     walletId = walletId,
                     network = network,
                     walletAddress = address,
-                    tokenExternalId = tokenExternalId
+                    tokenType = tokenType ?: TokenType.NATIVE
                 )
             } else {
                 throw Exception("API error: ${response.message}")
@@ -147,8 +149,8 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         tokenContract: String,
         network: EthereumNetwork,
         walletId: String,
-        tokenExternalId: String
-    ): Result<List<TokenTransaction>> = withContext(Dispatchers.IO) {
+        tokenType: TokenType
+    ): Result<List<TokenTransaction>> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val chainId = network.chainId
 
@@ -163,7 +165,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
                     walletId = walletId,
                     network = network,
                     walletAddress = address,
-                    tokenExternalId = tokenExternalId
+                    tokenType = tokenType
                 )
             } else {
                 throw Exception("API error: ${response.message}")
@@ -182,7 +184,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         nonce: BigInteger,
         chainId: Long,
         network: EthereumNetwork
-    ): Result<Triple<RawTransaction, String, String>> = withContext(Dispatchers.IO) {
+    ): Result<Triple<RawTransaction, String, String>> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val rawTransaction = RawTransaction.createEtherTransaction(
                 nonce,
@@ -213,7 +215,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         chainId: Long,
         network: EthereumNetwork,
         tokenType: TokenType
-    ): Result<Triple<RawTransaction, String, String>> = withContext(Dispatchers.IO) {
+    ): Result<Triple<RawTransaction, String, String>> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val function = Function(
                 "transfer",
@@ -250,7 +252,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
 
     override suspend fun getCurrentGasPrice(
         network: EthereumNetwork
-    ): Result<GasPrice> = withContext(Dispatchers.IO) {
+    ): Result<GasPrice> = withContext(ioDispatcher) {
         val cacheKey = network.chainId
 
         // Check cache first
@@ -304,7 +306,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         feeLevel: FeeLevel,
         network: EthereumNetwork,
         isToken: Boolean
-    ): Result<EVMFeeEstimate> = withContext(Dispatchers.IO) {
+    ): Result<EVMFeeEstimate> = withContext(ioDispatcher) {
         val gasPriceResult = getCurrentGasPrice(network)
 
         when (gasPriceResult) {
@@ -360,7 +362,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
     override suspend fun getNonce(
         address: String,
         network: EthereumNetwork
-    ): Result<BigInteger> = withContext(Dispatchers.IO) {
+    ): Result<BigInteger> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val web3j = web3jFactory.create(network)
             val response = web3j.ethGetTransactionCount(
@@ -381,7 +383,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
     override suspend fun broadcastTransaction(
         signedHex: String,
         network: EthereumNetwork
-    ): Result<BroadcastResult> = withContext(Dispatchers.IO) {
+    ): Result<BroadcastResult> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val web3j = web3jFactory.create(network)
             val response = web3j.ethSendRawTransaction(signedHex).send()
