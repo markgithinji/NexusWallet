@@ -25,7 +25,7 @@ class GetSolanaDetailUseCase @Inject constructor(
         network: SolanaNetwork
     ): Result<SolanaDetailResult> {
         logger.d(tag, "=== GetSolanaDetailUseCase started ===")
-        logger.d(tag, "Getting Solana details for wallet: $walletId, network: ${network.displayName}")
+        logger.d(tag, "Getting Solana details for wallet: $walletId, network: ${network.name}")
 
         // 1. Get wallet
         val wallet = walletRepository.getWallet(walletId)
@@ -33,16 +33,19 @@ class GetSolanaDetailUseCase @Inject constructor(
 
         // 2. Find the specific Solana coin
         val solanaCoin = wallet.solanaCoins.find { it.network == network }
-            ?: return Result.Error("Solana ${network.displayName} not enabled for this wallet")
+            ?: return Result.Error("Solana ${network.name} not enabled for this wallet")
 
-        logger.d(tag, "Found Solana coin with address: ${solanaCoin.address.take(8)}... on ${network.displayName}")
+        logger.d(
+            tag,
+            "Found Solana coin with address: ${solanaCoin.address.take(8)}... on ${network.name}"
+        )
 
         // 3. Delete old transactions before fetching new ones
-        logger.d(tag, "Deleting old transactions for wallet $walletId, network ${network.displayName}")
+        logger.d(tag, "Deleting old transactions for wallet $walletId, network ${network.name}")
         solanaTransactionRepository.deleteForWalletAndNetwork(walletId, network)
 
         // 4. Fetch transactions from blockchain repository
-        logger.d(tag, "Fetching transactions from blockchain repository for ${network.displayName}...")
+        logger.d(tag, "Fetching transactions from blockchain repository for ${network.name}...")
         val blockchainResult = solanaBlockchainRepository.getTransactions(
             walletId = walletId,
             address = solanaCoin.address,
@@ -55,7 +58,10 @@ class GetSolanaDetailUseCase @Inject constructor(
         when (blockchainResult) {
             is Result.Success -> {
                 val transactions = blockchainResult.data
-                logger.d(tag, " Successfully fetched ${transactions.size} transactions from blockchain")
+                logger.d(
+                    tag,
+                    " Successfully fetched ${transactions.size} transactions from blockchain"
+                )
 
                 // Save all transactions to local DB
                 transactions.forEach { transaction ->
@@ -79,10 +85,10 @@ class GetSolanaDetailUseCase @Inject constructor(
         // 5. Get balance
         val balance = walletRepository.getWalletBalance(walletId)
         val coinBalance = balance?.solanaBalances?.get(network)
-        logger.d(tag, "Balance for ${network.displayName}: ${coinBalance?.sol ?: "0"} SOL")
+        logger.d(tag, "Balance for ${network.name}: ${coinBalance?.sol ?: "0"} SOL")
 
         // 6. Get transactions from local DB
-        logger.d(tag, "Getting transactions from local DB with network: ${network.displayName}...")
+        logger.d(tag, "Getting transactions from local DB with network: ${network.name}...")
         val allTransactions = solanaTransactionRepository.getTransactionsSync(walletId, network)
         logger.d(tag, "Retrieved ${allTransactions.size} total transactions from DB")
 
@@ -98,14 +104,17 @@ class GetSolanaDetailUseCase @Inject constructor(
             balanceFormatted = "${coinBalance?.sol ?: "0"} SOL",
             usdValue = coinBalance?.usdValue ?: 0.0,
             network = network,
-            networkDisplayName = network.displayName,
+            networkDisplayName = network.name,
             rawTransactions = solTransactions,
             solanaCoin = solanaCoin,
             splTokens = solanaCoin.splTokens,
             availableNetworks = wallet.solanaCoins.map { it.network }
         )
 
-        logger.d(tag, "=== GetSolanaDetailUseCase completed successfully with ${solTransactions.size} raw transactions on ${network.displayName} ===")
+        logger.d(
+            tag,
+            "=== GetSolanaDetailUseCase completed successfully with ${solTransactions.size} raw transactions on ${network.name} ==="
+        )
         return Result.Success(result)
     }
 }

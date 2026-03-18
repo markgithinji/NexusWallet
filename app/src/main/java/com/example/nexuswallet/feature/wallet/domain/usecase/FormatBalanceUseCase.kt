@@ -1,7 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
-import com.example.nexuswallet.feature.wallet.domain.model.AssetType
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
@@ -25,7 +24,6 @@ class FormatBalanceUseCase @Inject constructor() {
         balance: WalletBalance?,
         pricePercentages: Map<String, Double>
     ): List<AssetDisplayInfo> {
-        val balanceMap = balance?.evmBalances?.associateBy { it.externalTokenId } ?: emptyMap()
         val assets = mutableListOf<AssetDisplayInfo>()
 
         // Add Bitcoin assets
@@ -37,10 +35,10 @@ class FormatBalanceUseCase @Inject constructor() {
                 AssetDisplayInfo(
                     id = "btc_${coin.network.name}_${coin.address}",
                     walletId = walletId,
-                    name = "Bitcoin",
-                    symbol = "BTC",
+                    coin = coin,
+                    name = coin.name,
+                    symbol = coin.symbol,
                     network = coin.network,
-                    networkDisplayName = coin.network.displayName,
                     isTestnet = coin.network.isTestnet,
                     balance = coinBalance?.btc ?: "0",
                     balanceFormatted = formatCryptoAmount(coinBalance?.btc ?: "0"),
@@ -48,7 +46,6 @@ class FormatBalanceUseCase @Inject constructor() {
                     usdValueFormatted = usdFormatter.format(coinBalance?.usdValue ?: 0.0),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.let { formatPriceChange(it) },
-                    assetType = AssetType.BITCOIN,
                     address = coin.address
                 )
             )
@@ -63,10 +60,10 @@ class FormatBalanceUseCase @Inject constructor() {
                 AssetDisplayInfo(
                     id = "sol_${coin.network.name}_${coin.address}",
                     walletId = walletId,
-                    name = "Solana",
-                    symbol = "SOL",
+                    coin = coin,
+                    name = coin.name,
+                    symbol = coin.symbol,
                     network = coin.network,
-                    networkDisplayName = coin.network.displayName,
                     isTestnet = coin.network.isTestnet,
                     balance = coinBalance?.sol ?: "0",
                     balanceFormatted = formatCryptoAmount(coinBalance?.sol ?: "0"),
@@ -75,7 +72,6 @@ class FormatBalanceUseCase @Inject constructor() {
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.let { formatPriceChange(it) },
                     tokenCount = coin.splTokens.size,
-                    assetType = AssetType.SOLANA,
                     address = coin.address
                 )
             )
@@ -86,50 +82,44 @@ class FormatBalanceUseCase @Inject constructor() {
                     AssetDisplayInfo(
                         id = "spl_${token.mintAddress}",
                         walletId = walletId,
+                        coin = coin,
                         name = token.name,
                         symbol = token.symbol,
                         network = coin.network,
-                        networkDisplayName = coin.network.displayName,
                         isTestnet = coin.network.isTestnet,
-                        balance = "0", // TODO: Add SPL balance
+                        balance = "0",
                         balanceFormatted = "0",
                         usdValue = 0.0,
                         usdValueFormatted = "$0.00",
                         priceChangePercentage = null,
                         priceChangeFormatted = null,
-                        assetType = AssetType.SPL,
-                        address = token.mintAddress,
-                        externalId = token.mintAddress
+                        address = token.mintAddress
                     )
                 )
             }
         }
 
-        // Add EVM assets
+        // Add EVM assets - using direct filtering instead of map
         wallet.evmTokens.forEach { token ->
-            val tokenBalance = balanceMap[token.externalId]
+            // Find the matching balance using network and tokenType directly
+            val tokenBalance = balance?.evmBalances?.find {
+                it.network == token.network && it.tokenType == token.tokenType
+            }
+
             val percentage = when (token) {
                 is NativeETH -> pricePercentages["ethereum"]
                 is USDCToken -> pricePercentages["usd-coin"]
                 is USDTToken -> pricePercentages["tether"]
-                else -> null
-            }
-
-            val assetType = when (token) {
-                is NativeETH -> AssetType.ETHEREUM
-                is USDCToken -> AssetType.USDC
-                is USDTToken -> AssetType.USDT
-                else -> AssetType.ERC20
             }
 
             assets.add(
                 AssetDisplayInfo(
-                    id = token.externalId,
+                    id = "${token.network.chainId}_${token.tokenType}_${token.address}",
                     walletId = walletId,
+                    coin = token,
                     name = token.name,
                     symbol = token.symbol,
                     network = token.network,
-                    networkDisplayName = token.network.displayName,
                     isTestnet = token.network.isTestnet,
                     balance = tokenBalance?.balanceDecimal ?: "0",
                     balanceFormatted = formatCryptoAmount(tokenBalance?.balanceDecimal ?: "0"),
@@ -137,9 +127,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     usdValueFormatted = usdFormatter.format(tokenBalance?.usdValue ?: 0.0),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.let { formatPriceChange(it) },
-                    assetType = assetType,
-                    address = token.address,
-                    externalId = token.externalId
+                    address = token.address
                 )
             )
         }
@@ -152,13 +140,20 @@ class FormatBalanceUseCase @Inject constructor() {
             val amountDecimal = amount.toBigDecimal()
             when {
                 amountDecimal < BigDecimal("0.000001") ->
-                    amountDecimal.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+                    amountDecimal.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros()
+                        .toPlainString()
+
                 amountDecimal < BigDecimal("0.001") ->
-                    amountDecimal.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+                    amountDecimal.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros()
+                        .toPlainString()
+
                 amountDecimal < BigDecimal("1") ->
-                    amountDecimal.setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+                    amountDecimal.setScale(4, RoundingMode.HALF_UP).stripTrailingZeros()
+                        .toPlainString()
+
                 else ->
-                    amountDecimal.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+                    amountDecimal.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros()
+                        .toPlainString()
             }
         } catch (e: Exception) {
             amount

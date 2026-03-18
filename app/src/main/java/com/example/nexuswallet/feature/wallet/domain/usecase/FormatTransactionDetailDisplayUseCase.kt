@@ -19,7 +19,8 @@ class FormatTransactionDetailDisplayUseCase @Inject constructor() {
             timestamp = transaction.timestamp,
             formattedTime = TransactionFormatHelper.formatTimestamp(transaction.timestamp),
             hash = transaction.hash,
-            coinType = transaction.coinType
+            coin = transaction.coin,
+            symbol = transaction.coin.symbol,
         )
     }
 }

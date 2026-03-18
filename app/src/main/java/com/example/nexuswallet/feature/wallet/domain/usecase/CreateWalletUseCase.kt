@@ -1,7 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_MAINNET
@@ -10,6 +9,7 @@ import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MA
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
 import com.example.nexuswallet.feature.core.util.decodeHex
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
@@ -50,14 +50,23 @@ class CreateWalletUseCase @Inject constructor(
         mnemonic: List<String>,
         name: String,
         selectedNetworks: Set<Network>,
-        selectedTokens: Map<EthereumNetwork, Set<CoinType>>
+        selectedTokens: Map<EthereumNetwork, Set<TokenType>>
     ): Result<Wallet> {
-        logger.d(
-            tag,
-            "Creating wallet: $name, " +
-                    "Selected networks: ${selectedNetworks.map { "${it.coinType.symbol} - ${it.displayName}" }}, " +
-                    "Selected tokens: ${selectedTokens.flatMap { (network, tokens) -> tokens.map { "${it.symbol} on ${network.displayName}" } }}"
-        )
+        val networkLog = selectedNetworks.joinToString { network ->
+            when (network) {
+                is BitcoinNetwork -> "Bitcoin - ${network.name}"
+                is EthereumNetwork -> "Ethereum - ${network.name}"
+                is SolanaNetwork -> "Solana - ${network.name}"
+            }
+        }
+
+        val tokenLog = selectedTokens.flatMap { (network, tokens) ->
+            tokens.map { tokenType ->
+                "${tokenType.symbol} on ${network.name}"
+            }
+        }.joinToString()
+
+        logger.d(tag, "Creating wallet: $name, Selected networks: $networkLog, Selected tokens: $tokenLog")
 
         val walletId = "wallet_${System.currentTimeMillis()}"
         val bitcoinCoins = mutableListOf<BitcoinCoin>()
@@ -69,9 +78,9 @@ class CreateWalletUseCase @Inject constructor(
         bitcoinNetworks.forEach { network ->
             createBitcoinCoin(mnemonic, network)?.let { coin ->
                 bitcoinCoins.add(coin)
-                logger.d(tag, "Bitcoin ${network.displayName} coin created")
-            } ?: return Result.Error("Failed to create Bitcoin ${network.displayName} coin").also {
-                logger.e(tag, "Failed to create Bitcoin ${network.displayName} coin")
+                logger.d(tag, "Bitcoin ${network.name} coin created")
+            } ?: return Result.Error("Failed to create Bitcoin ${network.name} coin").also {
+                logger.e(tag, "Failed to create Bitcoin ${network.name} coin")
             }
         }
 
@@ -80,29 +89,30 @@ class CreateWalletUseCase @Inject constructor(
         ethereumNetworks.forEach { network ->
             createNativeETH(mnemonic, network)?.let { nativeEth ->
                 evmTokens.add(nativeEth)
-                logger.d(tag, "Ethereum ${network.displayName} coin created")
+                logger.d(tag, "Ethereum ${network.name} coin created")
 
                 // Create tokens on this network if any are selected
                 val networkTokens = selectedTokens[network] ?: emptySet()
-                networkTokens.forEach { coinType ->
-                    when (coinType) {
-                        CoinType.USDC -> {
+                networkTokens.forEach { tokenType ->
+                    when (tokenType) {
+                        TokenType.USDC -> {
                             val usdcToken = createUSDCToken(nativeEth)
                             evmTokens.add(usdcToken)
-                            logger.d(tag, "USDC token created on ${network.displayName}")
+                            logger.d(tag, "USDC token created on ${network.name}")
                         }
-//                        CoinType.USDT -> {
-//                            val usdtToken = createUSDTToken(nativeEth)
-//                            evmTokens.add(usdtToken)
-//                            logger.d(tag, "USDT token created on ${network.displayName}")
-//                        }
-                        else -> {
-                            logger.w(tag, "Unsupported token type: ${coinType.symbol} on ${network.displayName}")
+                        TokenType.USDT -> {
+                            val usdtToken = createUSDTToken(nativeEth)
+                            evmTokens.add(usdtToken)
+                            logger.d(tag, "USDT token created on ${network.name}")
+                        }
+                        TokenType.NATIVE -> {
+                            // Native ETH is already added via network selection, skip
+                            logger.d(tag, "Native ETH already included for ${network.name}")
                         }
                     }
                 }
-            } ?: return Result.Error("Failed to create Ethereum ${network.displayName} coin").also {
-                logger.e(tag, "Failed to create Ethereum ${network.displayName} coin")
+            } ?: return Result.Error("Failed to create Ethereum ${network.name} coin").also {
+                logger.e(tag, "Failed to create Ethereum ${network.name} coin")
             }
         }
 
@@ -111,9 +121,9 @@ class CreateWalletUseCase @Inject constructor(
         solanaNetworks.forEach { network ->
             createSolanaCoin(mnemonic, network)?.let { coin ->
                 solanaCoins.add(coin)
-                logger.d(tag, "Solana ${network.displayName} coin created")
-            } ?: return Result.Error("Failed to create Solana ${network.displayName} coin").also {
-                logger.e(tag, "Failed to create Solana ${network.displayName} coin")
+                logger.d(tag, "Solana ${network.name} coin created")
+            } ?: return Result.Error("Failed to create Solana ${network.name} coin").also {
+                logger.e(tag, "Failed to create Solana ${network.name} coin")
             }
         }
 
@@ -152,7 +162,7 @@ class CreateWalletUseCase @Inject constructor(
                 BitcoinNetwork.Testnet -> KEY_BITCOIN_TESTNET
             }
             val privateKey = deriveBitcoinPrivateKey(mnemonic, coin.network)
-                ?: return Result.Error("Failed to derive Bitcoin private key for ${coin.network.displayName}")
+                ?: return Result.Error("Failed to derive Bitcoin private key for ${coin.network.name}")
 
             val (encryptedKeyHex, keyIvHex) = keyStoreRepository.encryptString(privateKey)
             securityPreferencesRepository.storeEncryptedPrivateKey(
@@ -161,7 +171,7 @@ class CreateWalletUseCase @Inject constructor(
                 encryptedKey = encryptedKeyHex,
                 iv = keyIvHex.decodeHex()
             )
-            logger.d(tag, "Bitcoin private key stored for ${coin.network.displayName}")
+            logger.d(tag, "Bitcoin private key stored for ${coin.network.name}")
         }
 
         // Store Ethereum private key (same for all EVM networks)
@@ -186,7 +196,7 @@ class CreateWalletUseCase @Inject constructor(
                 SolanaNetwork.Devnet -> KEY_SOLANA_DEVNET
             }
             val privateKey = deriveSolanaPrivateKey(mnemonic, coin.derivationPath)
-                ?: return Result.Error("Failed to derive Solana private key for ${coin.network.displayName}")
+                ?: return Result.Error("Failed to derive Solana private key for ${coin.network.name}")
 
             val (encryptedKeyHex, keyIvHex) = keyStoreRepository.encryptString(privateKey)
             securityPreferencesRepository.storeEncryptedPrivateKey(
@@ -195,7 +205,7 @@ class CreateWalletUseCase @Inject constructor(
                 encryptedKey = encryptedKeyHex,
                 iv = keyIvHex.decodeHex()
             )
-            logger.d(tag, "Solana private key stored for ${coin.network.displayName}")
+            logger.d(tag, "Solana private key stored for ${coin.network.name}")
         }
 
         // Save wallet to database
@@ -240,11 +250,11 @@ class CreateWalletUseCase @Inject constructor(
             network = network,
             xpub = xpub
         ).also {
-            logger.d(tag, "Bitcoin ${network.displayName} address created: ${address.take(8)}...")
+            logger.d(tag, "Bitcoin ${network.name} address created: ${address.take(8)}...")
         }
 
     } catch (e: Exception) {
-        logger.e(tag, "Bitcoin coin creation failed for ${network.displayName}", e)
+        logger.e(tag, "Bitcoin coin creation failed for ${network.name}", e)
         null
     }
 
@@ -262,7 +272,7 @@ class CreateWalletUseCase @Inject constructor(
                 network = network
             )
         } catch (e: Exception) {
-            logger.e(tag, "Failed to create Native ETH for ${network.displayName}", e)
+            logger.e(tag, "Failed to create Native ETH for ${network.name}", e)
             null
         }
     }
@@ -308,11 +318,11 @@ class CreateWalletUseCase @Inject constructor(
             ).also {
                 logger.d(
                     tag,
-                    "Solana ${network.displayName} coin created with address: ${it.address.take(8)}... using path: $derivationPath"
+                    "Solana ${network.name} coin created with address: ${it.address.take(8)}... using path: $derivationPath"
                 )
             }
         } catch (e: Exception) {
-            logger.e(tag, "Failed to create Solana coin for ${network.displayName}", e)
+            logger.e(tag, "Failed to create Solana coin for ${network.name}", e)
             null
         }
     }
@@ -338,7 +348,7 @@ class CreateWalletUseCase @Inject constructor(
             val key = wallet.currentReceiveKey()
             key.getPrivateKeyEncoded(params).toString()
         } catch (e: Exception) {
-            logger.e(tag, "Failed to derive Bitcoin private key for ${network.displayName}", e)
+            logger.e(tag, "Failed to derive Bitcoin private key for ${network.name}", e)
             null
         } finally {
             if (originalContext != null) {
