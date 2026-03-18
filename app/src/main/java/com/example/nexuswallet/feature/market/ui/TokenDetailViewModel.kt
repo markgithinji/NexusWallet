@@ -146,16 +146,4 @@ class TokenDetailViewModel @Inject constructor(
         loadTokenDetails()
         loadChartData(_selectedDuration.value)
     }
-
-    fun clearErrors() {
-        if (_uiState.value is Result.Error) {
-            _uiState.value = Result.Loading
-        }
-        if (_chartState.value is Result.Error) {
-            _chartState.value = Result.Loading
-        }
-        if (_newsState.value is Result.Error) {
-            _newsState.value = Result.Loading
-        }
-    }
 }

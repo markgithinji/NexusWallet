@@ -35,7 +35,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
-import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.ui.walletdashboard.WalletDashboardScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,10 +42,7 @@ import com.example.nexuswallet.feature.wallet.ui.walletdashboard.WalletDashboard
 fun MainTabScreen(
     onNavigateToCreateWallet: () -> Unit,
     onNavigateToWalletDetail: (String) -> Unit,
-    onNavigateToCoinDetail: (String, Network) -> Unit,
     onNavigateToTokenDetail: (String) -> Unit,
-    onNavigateToReceive: (String, Network) -> Unit,
-    onNavigateToSend: (String, Network) -> Unit,
     onNavigateToSecurity: () -> Unit,
     padding: PaddingValues
 ) {
