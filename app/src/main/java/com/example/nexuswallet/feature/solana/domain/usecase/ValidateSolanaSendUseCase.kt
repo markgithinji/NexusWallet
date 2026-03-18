@@ -1,10 +1,9 @@
 package com.example.nexuswallet.feature.solana.domain.usecase
 
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
-import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
-import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
+import org.sol4k.PublicKey
 import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,8 +20,7 @@ class ValidateSolanaSendUseCase @Inject constructor(
         amountValue: BigDecimal,
         walletAddress: String,
         balance: BigDecimal,
-        feeEstimate: SolanaFeeEstimate?,
-        isAddressValid: Boolean = true
+        feeEstimate: SolanaFeeEstimate?
     ): SendValidationResult {
 
         // Validate address is not empty
@@ -34,12 +32,10 @@ class ValidateSolanaSendUseCase @Inject constructor(
             )
         }
 
-        if (!isAddressValid) {
-            logger.w(tag, "Invalid address format")
-            return SendValidationResult(
-                isValid = false,
-                addressError = "Invalid Solana address"
-            )
+        // Validate Solana address format using sol4k
+        val addressValidationResult = validateSolanaAddress(toAddress)
+        if (!addressValidationResult.isValid) {
+            return addressValidationResult
         }
 
         // Validate not sending to self
@@ -77,5 +73,22 @@ class ValidateSolanaSendUseCase @Inject constructor(
 
         // All validations passed
         return SendValidationResult(isValid = true)
+    }
+
+    private fun validateSolanaAddress(address: String): SendValidationResult {
+        return try {
+            // sol4k's PublicKey constructor validates the address format
+            // It will throw an exception if the address is invalid
+            PublicKey(address)
+
+            // If we get here, the address is valid
+            SendValidationResult(isValid = true)
+        } catch (e: Exception) {
+            logger.w(tag, "Invalid Solana address: $address", e)
+            SendValidationResult(
+                isValid = false,
+                addressError = "Invalid Solana address format"
+            )
+        }
     }
 }
