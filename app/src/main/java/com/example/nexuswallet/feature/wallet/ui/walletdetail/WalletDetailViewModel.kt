@@ -91,8 +91,8 @@ class WalletDetailViewModel @Inject constructor(
                     loadMarketPercentages()
                 }
 
-                // STEP 4: Observe transactions (this will also trigger initial load via onStart)
-                observeTransactions(walletId, loadedWallet)
+                // STEP 4: Observe transactions - initial load without force refresh
+                observeTransactions(walletId, loadedWallet, forceRefresh = false)
 
                 // STEP 5: Refresh balance if needed
                 if (!isBalanceFresh) {
@@ -140,10 +140,13 @@ class WalletDetailViewModel @Inject constructor(
             is Result.Success -> {
                 _uiState.update { it.copy(pricePercentages = percentagesResult.data) }
             }
+
             is Result.Error -> {
                 _uiState.update { it.copy(pricePercentages = emptyMap()) }
             }
-            Result.Loading -> { /* Ignored since this will be omitted */ }
+
+            Result.Loading -> { /* Ignored since this will be omitted */
+            }
         }
         updateAssets()
     }
@@ -189,13 +192,28 @@ class WalletDetailViewModel @Inject constructor(
         }
     }
 
-    private fun observeTransactions(walletId: String, wallet: Wallet) {
+    private fun observeTransactions(
+        walletId: String,
+        wallet: Wallet,
+        forceRefresh: Boolean = false
+    ) {
         viewModelScope.launch {
-            getAllTransactionsUseCase(walletId)
+            // Set loading state only if it's a manual refresh
+            if (forceRefresh) {
+                _uiState.update { it.copy(isRefreshingTransactions = true) }
+            } else if (_uiState.value.transactions.isEmpty()) {
+                _uiState.update { it.copy(isLoadingTransactions = true) }
+            }
+
+            getAllTransactionsUseCase(walletId, forceRefresh)
                 .flowOn(Dispatchers.IO)
                 .catch { e ->
                     _uiState.update {
-                        it.copy(transactionsError = e.message)
+                        it.copy(
+                            transactionsError = "Failed to load transactions: ${e.message}",
+                            isLoadingTransactions = false,
+                            isRefreshingTransactions = false
+                        )
                     }
                 }
                 .collect { updatedTransactions ->
@@ -233,7 +251,10 @@ class WalletDetailViewModel @Inject constructor(
         }
     }
 
-    private fun formatTransactionList(transactions: List<Transaction>, wallet: Wallet): List<TransactionDisplayInfo> {
+    private fun formatTransactionList(
+        transactions: List<Transaction>,
+        wallet: Wallet
+    ): List<TransactionDisplayInfo> {
         return transactions.map { transaction ->
             val coin = findCoinForTransaction(transaction, wallet)
             formatTransactionDisplayUseCase(transaction, coin)
@@ -243,21 +264,21 @@ class WalletDetailViewModel @Inject constructor(
     private fun findCoinForTransaction(transaction: Transaction, wallet: Wallet): Coin {
         return when (transaction) {
             is BitcoinTransaction -> {
-                //  Find the Bitcoin coin that matches the transaction's network
                 wallet.bitcoinCoins.find { it.network == transaction.network }
                     ?: error("No Bitcoin coin found for network ${transaction.network.name}")
             }
+
             is SolanaTransaction -> {
-                //  Find the Solana coin that matches the transaction's network
                 wallet.solanaCoins.find { it.network == transaction.network }
                     ?: error("No Solana coin found for network ${transaction.network.name}")
             }
+
             is NativeETHTransaction -> {
-                //  Find the Native ETH token that matches the transaction's network
                 wallet.evmTokens.find {
                     it is NativeETH && it.network == transaction.network
                 } ?: error("No NativeETH found for network ${transaction.network.name}")
             }
+
             is TokenTransaction -> {
                 findTokenForTransaction(transaction, wallet)
             }
@@ -265,7 +286,6 @@ class WalletDetailViewModel @Inject constructor(
     }
 
     private fun findTokenForTransaction(transaction: TokenTransaction, wallet: Wallet): EVMToken {
-        //  Find the token that matches both network AND token type
         return wallet.evmTokens.find {
             it.network == transaction.network && it.evmTokenType == transaction.evmTokenType
         } ?: error("No token found for ${transaction.evmTokenType} on ${transaction.network.name}")
@@ -276,7 +296,13 @@ class WalletDetailViewModel @Inject constructor(
     fun refresh() {
         _uiState.value.wallet?.let { wallet ->
             viewModelScope.launch {
+
+                // Refresh balance
                 refreshBalanceInBackground(wallet.id, wallet)
+
+                // Refresh transactions with forceRefresh = true
+                // This will trigger a new sync and update the UI when complete
+                observeTransactions(wallet.id, wallet, forceRefresh = true)
             }
         }
     }

@@ -12,11 +12,16 @@ import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransaction
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -36,18 +41,19 @@ class GetAllTransactionsUseCase @Inject constructor(
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
-    private val logger: Logger
+    private val logger: Logger,
+    private val ioDispatcher: CoroutineDispatcher
 ) {
 
     private val tag = "GetAllTransactionsUC"
 
     /**
      * Returns a reactive stream of transactions.
-     * 1. Emits cached data immediately.
+     * 1. Emits cached data immediately from DB.
      * 2. Triggers a background sync as a side effect.
      * 3. Automatically emits updated data once the sync writes to the DB.
      */
-    operator fun invoke(walletId: String): Flow<List<Transaction>> {
+    operator fun invoke(walletId: String, forceRefresh: Boolean = false): Flow<List<Transaction>> {
         return combine(
             bitcoinTransactionRepository.getTransactions(walletId, BitcoinNetwork.Mainnet),
             bitcoinTransactionRepository.getTransactions(walletId, BitcoinNetwork.Testnet),
@@ -60,93 +66,114 @@ class GetAllTransactionsUseCase @Inject constructor(
                 .also { logSummary(it) }
         }
             .onStart {
-                // Non-blocking background sync
-                syncTransactions(walletId)
+                // Only trigger the background sync if forceRefresh is requested
+                if (forceRefresh) {
+                    logger.d(tag, "Force refresh requested for wallet: $walletId")
+                    launchSyncTransactions(walletId)
+                }
             }
             .distinctUntilChanged()
     }
 
-    /**
-     * Orchestrates the remote fetch.
-     * It does not return data; it only writes to repositories.
-     */
+    private fun launchSyncTransactions(walletId: String) {
+        CoroutineScope(ioDispatcher).launch {
+            try {
+                syncTransactions(walletId)
+            } catch (e: Exception) {
+                logger.e(tag, "Background sync failed", e)
+            }
+        }
+    }
+
     private suspend fun syncTransactions(walletId: String) = coroutineScope {
-        logger.d(tag, "Starting background sync for wallet: $walletId")
         val wallet = walletRepository.getWallet(walletId) ?: return@coroutineScope
 
-        // Run different chains in parallel
-        val bitcoinJob = launch { syncBitcoin(walletId, wallet) }
-        val evmJob = launch { syncEVM(walletId, wallet) }
-        val solanaJob = launch { syncSolana(walletId, wallet) }
+        val jobs = mutableListOf<Job>()
 
-        // Wait for all to complete
-        listOf(bitcoinJob, evmJob, solanaJob).joinAll()
+        wallet.bitcoinCoins.forEach { jobs.add(launch { syncBitcoin(walletId, it) }) }
+        wallet.evmTokens.forEach { jobs.add(launch { syncEVM(walletId, it) }) }
+        wallet.solanaCoins.forEach { jobs.add(launch { syncSolana(walletId, it) }) }
+
+        jobs.joinAll()
     }
 
     // ============ BITCOIN SYNC ============
 
-    private suspend fun syncBitcoin(walletId: String, wallet: Wallet) {
-        wallet.bitcoinCoins.forEach { coin ->
+    private suspend fun syncBitcoin(walletId: String, coin: BitcoinCoin) {
+        try {
             val result = bitcoinBlockchainRepository.getAddressTransactions(
                 walletId = walletId,
                 address = coin.address,
                 network = coin.network
             )
-            if (result is Result.Success) {
+            if (result is Result.Success && result.data.isNotEmpty()) {
                 bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, coin.network)
                 result.data.forEach { bitcoinTransactionRepository.saveTransaction(it) }
+                logger.d(tag, "Saved ${result.data.size} Bitcoin transactions for ${coin.network}")
             }
+        } catch (e: Exception) {
+            logger.e(tag, "Error syncing Bitcoin for ${coin.network}", e)
         }
     }
 
     // ============ EVM SYNC ============
 
-    private suspend fun syncEVM(walletId: String, wallet: Wallet) {
-        wallet.evmTokens.groupBy { it.address to it.network }.forEach { (key, tokens) ->
-            val (address, network) = key
-
-            // Sync Native (ETH)
-            val nativeToken = tokens.find { it is NativeETH }
-            val nativeRes = evmBlockchainRepository.getNativeTransactions(
-                address = address,
-                network = network,
-                walletId = walletId,
-                evmTokenType = nativeToken?.evmTokenType
-            )
-            if (nativeRes is Result.Success) {
-                nativeRes.data.forEach { evmTransactionRepository.saveTransaction(it) }
-            }
-
-            // Sync Token Transactions (USDC, USDT)
-            tokens.filter { it !is NativeETH }.forEach { token ->
+    private suspend fun syncEVM(walletId: String, token: EVMToken) {
+        try {
+            if (token is NativeETH) {
+                // Sync Native (ETH) transactions
+                val nativeRes = evmBlockchainRepository.getNativeTransactions(
+                    address = token.address,
+                    network = token.network,
+                    walletId = walletId,
+                    evmTokenType = token.evmTokenType
+                )
+                if (nativeRes is Result.Success && nativeRes.data.isNotEmpty()) {
+                    nativeRes.data.forEach { evmTransactionRepository.saveTransaction(it) }
+                    logger.d(
+                        tag,
+                        "Saved ${nativeRes.data.size} Native ETH transactions for ${token.network}"
+                    )
+                }
+            } else {
+                // Sync Token Transactions (USDC, USDT)
                 val tokenRes = evmBlockchainRepository.getTokenTransactions(
-                    address = address,
+                    address = token.address,
                     tokenContract = token.contractAddress,
                     network = token.network,
                     walletId = walletId,
                     evmTokenType = token.evmTokenType
                 )
-                if (tokenRes is Result.Success) {
+                if (tokenRes is Result.Success && tokenRes.data.isNotEmpty()) {
                     tokenRes.data.forEach { evmTransactionRepository.saveTransaction(it) }
+                    logger.d(
+                        tag,
+                        "Saved ${tokenRes.data.size} ${token.evmTokenType} transactions for ${token.network}"
+                    )
                 }
             }
+        } catch (e: Exception) {
+            logger.e(tag, "Error syncing EVM for ${token.network}", e)
         }
     }
 
     // ============ SOLANA SYNC ============
 
-    private suspend fun syncSolana(walletId: String, wallet: Wallet) {
-        wallet.solanaCoins.forEach { coin ->
+    private suspend fun syncSolana(walletId: String, coin: SolanaCoin) {
+        try {
             val result = solanaBlockchainRepository.getTransactions(
                 walletId = walletId,
                 address = coin.address,
                 network = coin.network,
                 limit = 50
             )
-            if (result is Result.Success) {
+            if (result is Result.Success && result.data.isNotEmpty()) {
                 solanaTransactionRepository.deleteForWalletAndNetwork(walletId, coin.network)
                 result.data.forEach { solanaTransactionRepository.saveTransaction(it) }
+                logger.d(tag, "Saved ${result.data.size} Solana transactions for ${coin.network}")
             }
+        } catch (e: Exception) {
+            logger.e(tag, "Error syncing Solana for ${coin.network}", e)
         }
     }
 
@@ -154,6 +181,9 @@ class GetAllTransactionsUseCase @Inject constructor(
         val btcCount = list.count { it is BitcoinTransaction }
         val evmCount = list.count { it is EVMTransaction }
         val solCount = list.count { it is SolanaTransaction }
-        logger.d(tag, "Reactive Update - BTC: $btcCount, EVM: $evmCount, SOL: $solCount, Total: ${list.size}")
+        logger.d(
+            tag,
+            "Emitting - BTC: $btcCount, EVM: $evmCount, SOL: $solCount, Total: ${list.size}"
+        )
     }
 }

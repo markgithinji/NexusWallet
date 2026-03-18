@@ -27,6 +27,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Singleton
 
 @Module
@@ -63,6 +64,7 @@ object WalletDomainModule {
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
         evmBlockchainRepository: EVMBlockchainRepository,
         solanaBlockchainRepository: SolanaBlockchainRepository,
+        ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetAllTransactionsUseCase {
         return GetAllTransactionsUseCase(
@@ -73,6 +75,7 @@ object WalletDomainModule {
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
             evmBlockchainRepository = evmBlockchainRepository,
             solanaBlockchainRepository = solanaBlockchainRepository,
+            ioDispatcher = ioDispatcher,
             logger = logger
         )
     }
