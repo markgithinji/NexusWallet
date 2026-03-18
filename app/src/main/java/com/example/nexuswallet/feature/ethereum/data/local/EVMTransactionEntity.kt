@@ -23,7 +23,7 @@ import java.util.UUID
     indices = [
         Index(value = ["walletId"]),
         Index(value = ["txHash"], unique = true),
-        Index(value = ["walletId", "tokenType"]),
+        Index(value = ["walletId", "evmTokenType"]),
         Index(value = ["walletId", "transactionType"])
     ]
 )

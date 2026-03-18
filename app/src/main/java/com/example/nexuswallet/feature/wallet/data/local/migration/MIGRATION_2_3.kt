@@ -3,7 +3,6 @@ package com.example.nexuswallet.feature.wallet.data.local.migration
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-// Add this to your companion object
 val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(database: SupportSQLiteDatabase) {
         // BitcoinTransactionEntity - network column type change to enum

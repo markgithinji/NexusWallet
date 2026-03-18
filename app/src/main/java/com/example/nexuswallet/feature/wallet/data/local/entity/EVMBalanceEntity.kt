@@ -19,8 +19,8 @@ import java.util.UUID
         )
     ],
     indices = [
-        Index(value = ["walletId", "tokenType", "network"], unique = true),
-        Index(value = ["tokenType"]),
+        Index(value = ["walletId", "evmTokenType", "network"], unique = true),
+        Index(value = ["evmTokenType"]),
         Index(value = ["network"])
     ]
 )

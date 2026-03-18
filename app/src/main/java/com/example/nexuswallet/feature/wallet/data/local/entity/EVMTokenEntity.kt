@@ -20,7 +20,7 @@ import java.util.UUID
     ],
     indices = [
         Index(value = ["walletId"]),
-        Index(value = ["walletId", "tokenType", "network"], unique = true)
+        Index(value = ["walletId", "evmTokenType", "network"], unique = true)
     ]
 )
 data class EVMTokenEntity(
