@@ -2,26 +2,27 @@ package com.example.nexuswallet.feature.wallet.ui.coindetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinDetailResult
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.Coin
+import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumDetailResult
-import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetBitcoinDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetEthereumDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetSolanaDetailUseCase
+import com.example.nexuswallet.feature.wallet.util.TransactionFormatHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
+import java.math.RoundingMode
 import javax.inject.Inject
 
 @HiltViewModel
@@ -37,42 +38,30 @@ class CoinDetailViewModel @Inject constructor(
 
     fun loadCoinDetails(
         walletId: String,
-        network: Network,
+        coin: Coin,
         forceRefresh: Boolean = false
     ) {
         viewModelScope.launch {
-            // Set loading state
+            // Set loading state with the coin
             _state.update {
                 it.copy(
                     isLoading = !forceRefresh,
                     isRefreshing = forceRefresh,
                     error = null,
-                    network = network,
-                    coinType = network.coinType,
+                    coin = coin,
+                    walletId = walletId
                 )
             }
 
-            val result = when (network) {
-                is BitcoinNetwork -> {
-                    getBitcoinDetailUseCase(walletId, network)
+            val result = when (coin) {
+                is BitcoinCoin -> {
+                    getBitcoinDetailUseCase(walletId, coin.network)
                 }
-
-                is EthereumNetwork -> {
-                    when (network.coinType) {
-                        CoinType.ETHEREUM -> getEthereumDetailUseCase.getEthDetails(
-                            walletId,
-                            network
-                        )
-
-                        CoinType.USDC -> getEthereumDetailUseCase.getUsdcDetails(walletId, network)
-                        else -> {
-                            return@launch
-                        }
-                    }
+                is EVMToken -> {
+                    getEthereumDetailUseCase(walletId, coin)
                 }
-
-                is SolanaNetwork -> {
-                    getSolanaDetailUseCase(walletId, network)
+                is SolanaCoin -> {
+                    getSolanaDetailUseCase(walletId, coin.network)
                 }
             }
 
@@ -102,20 +91,19 @@ class CoinDetailViewModel @Inject constructor(
     }
 
     private fun updateStateWithBitcoinData(data: BitcoinDetailResult) {
-        val displayTransactions = data.rawTransactions.map { transaction ->
-            formatTransactionDisplayUseCase(transaction, CoinType.BITCOIN)
-        }
+        _state.update { currentState ->
+            val coin = currentState.coin ?: return@update currentState
 
-        _state.update {
-            it.copy(
+            val displayTransactions = data.rawTransactions.map { transaction ->
+                formatTransactionDisplayUseCase(transaction, coin)
+            }
+
+            currentState.copy(
                 walletId = data.walletId,
                 address = data.address,
                 balance = data.balance,
                 balanceFormatted = data.balanceFormatted,
                 usdValue = data.usdValue,
-                network = data.network,
-                networkDisplayName = data.network.displayName,
-                coinType = data.network.coinType,
                 transactions = displayTransactions,
                 isLoading = false,
                 isRefreshing = false
@@ -124,48 +112,61 @@ class CoinDetailViewModel @Inject constructor(
     }
 
     private fun updateStateWithEthereumData(data: EthereumDetailResult) {
-        // Determine coin type from the token data
-        val coinType = if (data.token is USDCToken) CoinType.USDC else CoinType.ETHEREUM
+        _state.update { currentState ->
+            val coin = data.token
 
-        val displayTransactions = data.rawTransactions.map { transaction ->
-            formatTransactionDisplayUseCase(transaction, coinType)
-        }
+            val displayTransactions = data.rawTransactions.map { transaction ->
+                formatTransactionDisplayUseCase(transaction, coin)
+            }
 
-        _state.update {
-            it.copy(
+            // Format ETH gas balance
+            val formattedEthGasBalance = data.ethGasBalance?.let { ethGas ->
+                try {
+                    val ethAmount = if (ethGas > BigDecimal("1000000000000000")) {
+                        // Convert from Wei to ETH
+                        ethGas.divide(BigDecimal("1000000000000000000"), 18, RoundingMode.HALF_UP)
+                    } else {
+                        ethGas
+                    }
+
+                    // Use the helper to format the amount
+                    TransactionFormatHelper.formatAmount(ethAmount.toString())
+                } catch (e: Exception) {
+                    ethGas.toString()
+                }
+            }
+
+            currentState.copy(
                 walletId = data.walletId,
                 address = data.address,
                 balance = data.balance,
                 balanceFormatted = data.balanceFormatted,
                 usdValue = data.usdValue,
-                network = data.network,
-                networkDisplayName = data.network.displayName,
-                coinType = coinType,
                 transactions = displayTransactions,
                 ethGasBalance = data.ethGasBalance,
-                evmTokens = listOf(data.token),
-                externalTokenId = data.externalTokenId,
+                formattedEthGasBalance = formattedEthGasBalance ?: "0",
+                evmTokens = data.availableTokens,
                 isLoading = false,
-                isRefreshing = false
+                isRefreshing = false,
+                coin = coin
             )
         }
     }
 
     private fun updateStateWithSolanaData(data: SolanaDetailResult) {
-        val displayTransactions = data.rawTransactions.map { transaction ->
-            formatTransactionDisplayUseCase(transaction, CoinType.SOLANA)
-        }
+        _state.update { currentState ->
+            val coin = currentState.coin ?: return@update currentState
 
-        _state.update {
-            it.copy(
+            val displayTransactions = data.rawTransactions.map { transaction ->
+                formatTransactionDisplayUseCase(transaction, coin)
+            }
+
+            currentState.copy(
                 walletId = data.walletId,
                 address = data.address,
                 balance = data.balance,
                 balanceFormatted = data.balanceFormatted,
                 usdValue = data.usdValue,
-                network = data.network,
-                networkDisplayName = data.network.displayName,
-                coinType = data.network.coinType,
                 transactions = displayTransactions,
                 splTokens = data.splTokens,
                 isLoading = false,
@@ -176,10 +177,10 @@ class CoinDetailViewModel @Inject constructor(
 
     fun refresh() {
         val currentState = _state.value
-        if (currentState.walletId.isNotEmpty() && currentState.network != null) {
+        if (currentState.walletId.isNotEmpty() && currentState.coin != null) {
             loadCoinDetails(
                 currentState.walletId,
-                currentState.network,
+                currentState.coin,
                 forceRefresh = true
             )
         }
