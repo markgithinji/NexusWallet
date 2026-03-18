@@ -2,9 +2,14 @@ package com.example.nexuswallet.feature.wallet.ui.transactiondetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.Coin
+import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
+import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDetailDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetTransactionDetailUseCase
 import com.example.nexuswallet.feature.wallet.util.ExplorerUrlHelper
@@ -34,21 +39,15 @@ class TransactionDetailViewModel @Inject constructor(
     private val _effects = MutableSharedFlow<TransactionDetailEffect>()
     val effects: SharedFlow<TransactionDetailEffect> = _effects.asSharedFlow()
 
-    sealed class TransactionDetailEffect {
-        data class ShowError(val message: String) : TransactionDetailEffect()
-        data class CopyToClipboard(val text: String, val label: String) : TransactionDetailEffect()
-        object ShareTransaction : TransactionDetailEffect()
-        data class OpenExplorer(val url: String) : TransactionDetailEffect()
-    }
-
     fun loadTransactionDetail(
         walletId: String,
-        transactionId: String
+        transactionId: String,
+        coin: Coin
     ) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
 
-            when (val result = getTransactionDetailUseCase(walletId, transactionId)) {
+            when (val result = getTransactionDetailUseCase(walletId, transactionId, coin)) {
                 is Result.Success -> {
                     val transaction = result.data
 
@@ -95,12 +94,13 @@ class TransactionDetailViewModel @Inject constructor(
             "usd-coin" to 1.0
         )
 
-        val priceKey = when (transaction.coinType) {
-            CoinType.BITCOIN -> "bitcoin"
-            CoinType.ETHEREUM -> "ethereum"
-            CoinType.SOLANA -> "solana"
-            CoinType.USDC -> "usd-coin"
-            else -> transaction.tokenSymbol?.lowercase() ?: ""
+        // Use coin from transaction to determine price key
+        val priceKey = when (transaction.coin) {
+            is BitcoinCoin -> "bitcoin"
+            is NativeETH -> "ethereum"
+            is SolanaCoin -> "solana"
+            is USDCToken -> "usd-coin"
+            is USDTToken -> "usd-coin"
         }
 
         val price = mockPrices[priceKey] ?: 0.0
@@ -110,7 +110,7 @@ class TransactionDetailViewModel @Inject constructor(
     fun refresh() {
         val currentState = _state.value
         currentState.transaction?.let { tx ->
-            loadTransactionDetail(tx.walletId, tx.id)
+            loadTransactionDetail(tx.walletId, tx.id, tx.coin)
         }
     }
 
@@ -129,7 +129,7 @@ class TransactionDetailViewModel @Inject constructor(
     fun openInExplorer() {
         viewModelScope.launch {
             _state.value.transaction?.let { tx ->
-                val url = ExplorerUrlHelper.getExplorerUrl(tx.hash, tx.network)
+                val url = ExplorerUrlHelper.getExplorerUrl(tx.hash, tx.coin.network)
                 _effects.emit(TransactionDetailEffect.OpenExplorer(url))
             }
         }

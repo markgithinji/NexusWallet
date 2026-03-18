@@ -63,9 +63,14 @@ import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
-import com.example.nexuswallet.feature.core.domain.model.CoinType
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.Coin
+import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
+import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.ui.common.ErrorScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.ui.theme.bitcoinLight
@@ -81,23 +86,24 @@ fun TransactionDetailScreen(
     onNavigateUp: () -> Unit,
     walletId: String,
     transactionId: String,
+    coin: Coin,
     viewModel: TransactionDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        viewModel.loadTransactionDetail(walletId, transactionId)
+        viewModel.loadTransactionDetail(walletId, transactionId, coin)
     }
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is TransactionDetailViewModel.TransactionDetailEffect.ShowError -> {
+                is TransactionDetailEffect.ShowError -> {
                     Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
                 }
 
-                is TransactionDetailViewModel.TransactionDetailEffect.CopyToClipboard -> {
+                is TransactionDetailEffect.CopyToClipboard -> {
                     val clipboard =
                         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = ClipData.newPlainText(effect.label, effect.text)
@@ -105,7 +111,7 @@ fun TransactionDetailScreen(
                     Toast.makeText(context, "${effect.label} copied", Toast.LENGTH_SHORT).show()
                 }
 
-                is TransactionDetailViewModel.TransactionDetailEffect.ShareTransaction -> {
+                is TransactionDetailEffect.ShareTransaction -> {
                     shareTransaction(
                         context,
                         state.transaction,
@@ -114,7 +120,7 @@ fun TransactionDetailScreen(
                     )
                 }
 
-                is TransactionDetailViewModel.TransactionDetailEffect.OpenExplorer -> {
+                is TransactionDetailEffect.OpenExplorer -> {
                     val intent = Intent(Intent.ACTION_VIEW, effect.url.toUri())
                     context.startActivity(intent)
                 }
@@ -122,13 +128,9 @@ fun TransactionDetailScreen(
         }
     }
 
-    val coinType = state.transaction?.coinType
-
-    val (coinColor, iconRes) = if (coinType != null) {
-        getCoinDetailConfig(coinType)
-    } else {
-        Pair(MaterialTheme.colorScheme.primary, R.drawable.bitcoin)
-    }
+    // Use the coin from the loaded transaction if available, otherwise use the passed coin
+    val currentCoin = state.transaction?.coin ?: coin
+    val (coinColor, iconRes) = getCoinDetailConfig(currentCoin)
 
     Scaffold(
         topBar = {
@@ -150,7 +152,7 @@ fun TransactionDetailScreen(
             state.error != null && state.transaction == null -> {
                 ErrorScreen(
                     message = state.error!!,
-                    onRetry = { viewModel.loadTransactionDetail(walletId, transactionId) }
+                    onRetry = { viewModel.loadTransactionDetail(walletId, transactionId, coin) }
                 )
             }
 
@@ -163,6 +165,7 @@ fun TransactionDetailScreen(
                     formattedUsd = state.formattedUsd,
                     coinColor = coinColor,
                     iconRes = iconRes,
+                    coin = currentCoin,
                     onCopyAddress = { address, label ->
                         viewModel.copyToClipboard(address, label)
                     },
@@ -193,7 +196,7 @@ private fun shareTransaction(
             appendLine("From: ${tx.fromAddress}")
             appendLine("To: ${tx.toAddress}")
             appendLine("Hash: ${tx.hash}")
-            appendLine("Network: ${tx.network.displayName}")
+            appendLine("Network: ${tx.network.name}")
             appendLine("Fee: ${tx.fee}")
             appendLine("Time: $formattedTime")
         }
@@ -286,6 +289,7 @@ fun TransactionDetailContent(
     formattedUsd: String,
     coinColor: Color,
     iconRes: Int,
+    coin: Coin,
     onCopyAddress: (String, String) -> Unit,
     onCopyHash: (String) -> Unit,
     onViewOnExplorer: () -> Unit,
@@ -301,7 +305,8 @@ fun TransactionDetailContent(
             TransactionStatusCard(
                 transaction = transaction,
                 formattedTime = formattedTime,
-                coinColor = coinColor
+                coinColor = coinColor,
+                coin = coin
             )
         }
 
@@ -313,7 +318,7 @@ fun TransactionDetailContent(
                 formattedUsd = formattedUsd,
                 coinColor = coinColor,
                 iconRes = iconRes,
-                coinType = transaction.coinType
+                coin = coin
             )
         }
 
@@ -339,7 +344,7 @@ fun TransactionDetailContent(
                 transaction = transaction,
                 formattedFee = formattedFee,
                 coinColor = coinColor,
-                coinType = transaction.coinType
+                coin = coin
             )
         }
 
@@ -370,7 +375,7 @@ fun TransactionDetailContent(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    "View on ${transaction.coinType.explorerName}",
+                    "View on ${coin.network.name} Explorer",
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -382,7 +387,8 @@ fun TransactionDetailContent(
 fun TransactionStatusCard(
     transaction: TransactionDetail,
     formattedTime: String,
-    coinColor: Color
+    coinColor: Color,
+    coin: Coin
 ) {
     val (statusColor, statusIcon, statusText) = when (transaction.status) {
         TransactionStatus.SUCCESS -> Triple(
@@ -460,7 +466,7 @@ fun TransactionStatusCard(
                 contentColor = coinColor
             ) {
                 Text(
-                    text = transaction.network.displayName,
+                    text = coin.network.name,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
@@ -476,7 +482,7 @@ fun TransactionAmountCard(
     formattedUsd: String,
     coinColor: Color,
     iconRes: Int,
-    coinType: CoinType
+    coin: Coin
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -521,7 +527,7 @@ fun TransactionAmountCard(
 
                 Column {
                     Text(
-                        text = "$formattedAmount ${coinType.symbol}",
+                        text = "$formattedAmount ${transaction.tokenSymbol ?: coin.symbol}",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = if (transaction.isIncoming)
@@ -711,7 +717,7 @@ fun NetworkFeeCard(
     transaction: TransactionDetail,
     formattedFee: String,
     coinColor: Color,
-    coinType: CoinType
+    coin: Coin
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -738,7 +744,7 @@ fun NetworkFeeCard(
             // Network
             DetailRow(
                 label = "Network",
-                value = transaction.network.displayName,
+                value = coin.network.name,
                 valueColor = coinColor
             )
 
@@ -747,7 +753,7 @@ fun NetworkFeeCard(
             // Fee
             DetailRow(
                 label = "Fee",
-                value = "$formattedFee ${transaction.tokenSymbol ?: coinType.symbol}",
+                value = "$formattedFee ${transaction.tokenSymbol ?: coin.symbol}",
                 valueColor = MaterialTheme.colorScheme.onSurface
             )
         }
@@ -897,11 +903,12 @@ fun DetailRow(
     }
 }
 
-private fun getCoinDetailConfig(coinType: CoinType): Pair<Color, Int> {
-    return when (coinType) {
-        CoinType.BITCOIN -> Pair(bitcoinLight, R.drawable.bitcoin)
-        CoinType.ETHEREUM -> Pair(ethereumLight, R.drawable.ethereum)
-        CoinType.SOLANA -> Pair(solanaLight, R.drawable.solana)
-        CoinType.USDC -> Pair(usdcLight, R.drawable.usdc)
+private fun getCoinDetailConfig(coin: Coin): Pair<Color, Int> {
+    return when (coin) {
+        is BitcoinCoin -> Pair(bitcoinLight, R.drawable.bitcoin)
+        is NativeETH -> Pair(ethereumLight, R.drawable.ethereum)
+        is USDCToken -> Pair(usdcLight, R.drawable.usdc)
+        is USDTToken -> Pair(Color(0xFF26A17B), R.drawable.tether)
+        is SolanaCoin -> Pair(solanaLight, R.drawable.solana)
     }
 }
