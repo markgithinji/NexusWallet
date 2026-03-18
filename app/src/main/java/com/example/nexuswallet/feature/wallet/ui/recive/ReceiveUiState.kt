@@ -1,20 +1,17 @@
 package com.example.nexuswallet.feature.wallet.ui.recive
 
 import android.graphics.Bitmap
-import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.Coin
 
 data class ReceiveUiState(
+    val isLoading: Boolean = false,
+    val error: String? = null,
     val walletId: String = "",
     val walletName: String = "",
     val address: String = "",
-    val network: Network? = null,
+    val coin: Coin? = null,
     val networkDisplayName: String = "",
+    val shareUrl: String = "",
     val qrCodeBitmap: Bitmap? = null,
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val copiedToClipboard: Boolean = false,
-    val shareUrl: String = ""
-) {
-    val coinType: CoinType? get() = network?.coinType
-}
+    val copiedToClipboard: Boolean = false
+)

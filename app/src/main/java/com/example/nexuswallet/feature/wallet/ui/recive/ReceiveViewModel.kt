@@ -2,13 +2,13 @@ package com.example.nexuswallet.feature.wallet.ui.recive
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.Coin
+import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import com.example.nexuswallet.feature.wallet.domain.model.Network
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.usecase.GenerateQrCodeUseCase
@@ -30,11 +30,11 @@ class ReceiveViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ReceiveUiState())
     val uiState: StateFlow<ReceiveUiState> = _uiState.asStateFlow()
 
-    fun initialize(walletId: String, network: Network) {
+    fun initialize(walletId: String, coin: Coin) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            runCatching { // TODO: Move catching to repo safeApicall
+            runCatching {
                 walletRepository.getWallet(walletId)
             }.fold(
                 onSuccess = { wallet ->
@@ -48,12 +48,12 @@ class ReceiveViewModel @Inject constructor(
                         return@launch
                     }
 
-                    val addressResult = getAddressForNetwork(wallet, network)
+                    val addressResult = getAddressForCoin(wallet, coin)
 
                     if (addressResult == null) {
                         _uiState.update {
                             it.copy(
-                                error = "No receive address available for ${network.displayName}",
+                                error = "No receive address available for ${coin.symbol} on ${coin.network.name}",
                                 isLoading = false
                             )
                         }
@@ -62,10 +62,11 @@ class ReceiveViewModel @Inject constructor(
 
                     val (address, networkDisplayName) = addressResult
 
-                    val shareUrl = when (network.coinType) {
-                        CoinType.BITCOIN -> "bitcoin:$address"
-                        CoinType.ETHEREUM, CoinType.USDC -> "ethereum:$address"
-                        CoinType.SOLANA -> "solana:$address"
+                    val shareUrl = when (coin) {
+                        is BitcoinCoin -> "bitcoin:$address"
+                        is NativeETH -> "ethereum:$address"
+                        is USDCToken, is USDTToken -> "ethereum:$address"
+                        is SolanaCoin -> "solana:$address"
                     }
 
                     // Generate QR code
@@ -76,7 +77,7 @@ class ReceiveViewModel @Inject constructor(
                             walletId = walletId,
                             walletName = wallet.name,
                             address = address,
-                            network = network,
+                            coin = coin,
                             networkDisplayName = networkDisplayName,
                             shareUrl = shareUrl,
                             qrCodeBitmap = qrCodeBitmap,
@@ -96,43 +97,33 @@ class ReceiveViewModel @Inject constructor(
         }
     }
 
-    private fun getAddressForNetwork(
+    private fun getAddressForCoin(
         wallet: Wallet,
-        network: Network
+        coin: Coin
     ): Pair<String, String>? {
-        return when (network) {
-            is BitcoinNetwork -> {
-                wallet.bitcoinCoins.find { it.network == network }?.let { coin ->
-                    Pair(coin.address, network.displayName)
+        return when (coin) {
+            is BitcoinCoin -> {
+                wallet.bitcoinCoins.find { it.network == coin.network && it.address == coin.address }
+                    ?.let { foundCoin ->
+                        Pair(foundCoin.address, "${foundCoin.symbol} on ${foundCoin.network.name}")
+                    }
+            }
+
+            is EVMToken -> {
+                wallet.evmTokens.find {
+                    it.network == coin.network &&
+                            it.address == coin.address &&
+                            it.tokenType == coin.tokenType
+                }?.let { foundToken ->
+                    Pair(foundToken.address, "${foundToken.symbol} on ${foundToken.network.name}")
                 }
             }
 
-            is EthereumNetwork -> {
-                when (network.coinType) {
-                    CoinType.ETHEREUM -> {
-                        wallet.evmTokens.filterIsInstance<NativeETH>()
-                            .find { it.network == network }
-                            ?.let { token ->
-                                Pair(token.address, network.displayName)
-                            }
+            is SolanaCoin -> {
+                wallet.solanaCoins.find { it.network == coin.network && it.address == coin.address }
+                    ?.let { foundCoin ->
+                        Pair(foundCoin.address, "${foundCoin.symbol} on ${foundCoin.network.name}")
                     }
-
-                    CoinType.USDC -> {
-                        wallet.evmTokens.filterIsInstance<USDCToken>()
-                            .find { it.network == network }
-                            ?.let { token ->
-                                Pair(token.address, "${token.symbol} on ${network.displayName}")
-                            }
-                    }
-
-                    else -> null
-                }
-            }
-
-            is SolanaNetwork -> {
-                wallet.solanaCoins.find { it.network == network }?.let { coin ->
-                    Pair(coin.address, network.displayName)
-                }
             }
         }
     }

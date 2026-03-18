@@ -27,7 +27,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.QrCode
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Visibility
@@ -49,7 +49,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -68,8 +67,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
-import com.example.nexuswallet.feature.core.domain.model.CoinType
-import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.Coin
+import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
+import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
+import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
@@ -82,7 +85,7 @@ import com.example.nexuswallet.ui.theme.usdcLight
 fun ReceiveScreen(
     onNavigateUp: () -> Unit,
     walletId: String,
-    network: Network,
+    coin: Coin,
     viewModel: ReceiveViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -90,7 +93,7 @@ fun ReceiveScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
-        viewModel.initialize(walletId, network)
+        viewModel.initialize(walletId, coin)
     }
 
     LaunchedEffect(uiState.copiedToClipboard) {
@@ -102,15 +105,15 @@ fun ReceiveScreen(
         }
     }
 
-    val coinType = uiState.coinType ?: network.coinType
-    val (coinColor, iconRes) = getCoinTypeConfig(coinType)
+    val currentCoin = uiState.coin ?: coin
+    val (coinColor, iconRes) = getCoinConfig(currentCoin)
 
     Scaffold(
         topBar = {
             ReceiveScreenTopBar(
                 iconRes = iconRes,
-                coinName = coinType.name.lowercase().replaceFirstChar { it.uppercase() },
-                networkDisplayName = uiState.networkDisplayName,
+                coinName = currentCoin.name,
+                networkDisplayName = uiState.networkDisplayName.ifEmpty { currentCoin.network.name },
                 onNavigateUp = onNavigateUp
             )
         },
@@ -122,15 +125,15 @@ fun ReceiveScreen(
         } else if (uiState.error != null) {
             ErrorView(
                 error = uiState.error,
-                onRetry = { viewModel.initialize(walletId, network) },
+                onRetry = { viewModel.initialize(walletId, coin) },
                 modifier = Modifier.padding(paddingValues)
             )
         } else {
             ReceiveContent(
                 address = uiState.address,
                 qrCodeBitmap = uiState.qrCodeBitmap,
-                coinType = coinType,
-                networkDisplayName = uiState.networkDisplayName,
+                coin = currentCoin,
+                networkDisplayName = uiState.networkDisplayName.ifEmpty { currentCoin.network.name },
                 copiedToClipboard = uiState.copiedToClipboard,
                 onCopy = {
                     val clipboard =
@@ -197,7 +200,7 @@ private fun ReceiveScreenTopBar(
 private fun ReceiveContent(
     address: String,
     qrCodeBitmap: Bitmap?,
-    coinType: CoinType,
+    coin: Coin,
     networkDisplayName: String,
     copiedToClipboard: Boolean,
     onCopy: () -> Unit,
@@ -226,7 +229,7 @@ private fun ReceiveContent(
         item {
             ReceiveAddressCard(
                 address = address,
-                coinType = coinType,
+                coin = coin,
                 networkDisplayName = networkDisplayName,
                 onCopy = onCopy,
                 copiedToClipboard = copiedToClipboard,
@@ -236,7 +239,7 @@ private fun ReceiveContent(
 
         // Security Tips
         item {
-            ReceiveSecurityTips(coinType = coinType, networkDisplayName = networkDisplayName)
+            ReceiveSecurityTips(coin = coin, networkDisplayName = networkDisplayName)
         }
     }
 }
@@ -281,7 +284,7 @@ private fun ReceiveQrCodeSection(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            Icons.Outlined.QrCode,
+                            Icons.Outlined.QrCodeScanner,
                             contentDescription = "QR Code Error",
                             modifier = Modifier.size(80.dp),
                             tint = coinColor
@@ -309,19 +312,12 @@ private fun ReceiveQrCodeSection(
 @Composable
 private fun ReceiveAddressCard(
     address: String,
-    coinType: CoinType,
+    coin: Coin,
     networkDisplayName: String,
     onCopy: () -> Unit,
     copiedToClipboard: Boolean,
     iconRes: Int
 ) {
-    val (coinColor, displayName) = when (coinType) {
-        CoinType.BITCOIN -> Pair(bitcoinLight, "BTC")
-        CoinType.ETHEREUM -> Pair(ethereumLight, "ETH")
-        CoinType.SOLANA -> Pair(solanaLight, "SOL")
-        CoinType.USDC -> Pair(usdcLight, "USDC")
-    }
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -348,7 +344,7 @@ private fun ReceiveAddressCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Your $displayName Address",
+                    text = "Your ${coin.symbol} Address",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -356,8 +352,8 @@ private fun ReceiveAddressCard(
                 // Network chip
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = coinColor.copy(alpha = 0.1f),
-                    contentColor = coinColor
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    contentColor = MaterialTheme.colorScheme.primary
                 ) {
                     Text(
                         text = networkDisplayName,
@@ -406,14 +402,7 @@ private fun ReceiveAddressCard(
 }
 
 @Composable
-private fun ReceiveSecurityTips(coinType: CoinType, networkDisplayName: String) {
-    val displayName = when (coinType) {
-        CoinType.BITCOIN -> "BTC"
-        CoinType.ETHEREUM -> "ETH"
-        CoinType.SOLANA -> "SOL"
-        CoinType.USDC -> "USDC"
-    }
-
+private fun ReceiveSecurityTips(coin: Coin, networkDisplayName: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -436,7 +425,7 @@ private fun ReceiveSecurityTips(coinType: CoinType, networkDisplayName: String) 
             )
 
             SecurityTip(
-                text = "Only send $displayName on $networkDisplayName to this address",
+                text = "Only send ${coin.symbol} on $networkDisplayName to this address",
                 icon = Icons.Outlined.Info
             )
             SecurityTip(
@@ -552,11 +541,12 @@ private fun ErrorView(
     }
 }
 
-private fun getCoinTypeConfig(coinType: CoinType): Pair<Color, Int> {
-    return when (coinType) {
-        CoinType.BITCOIN -> Pair(bitcoinLight, R.drawable.bitcoin)
-        CoinType.ETHEREUM -> Pair(ethereumLight, R.drawable.ethereum)
-        CoinType.SOLANA -> Pair(solanaLight, R.drawable.solana)
-        CoinType.USDC -> Pair(usdcLight, R.drawable.usdc)
+private fun getCoinConfig(coin: Coin): Pair<Color, Int> {
+    return when (coin) {
+        is BitcoinCoin -> Pair(bitcoinLight, R.drawable.bitcoin)
+        is NativeETH -> Pair(ethereumLight, R.drawable.ethereum)
+        is USDCToken -> Pair(usdcLight, R.drawable.usdc)
+        is USDTToken -> Pair(Color(0xFF26A17B), R.drawable.tether)
+        is SolanaCoin -> Pair(solanaLight, R.drawable.solana)
     }
 }
