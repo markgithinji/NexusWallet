@@ -45,8 +45,9 @@ class SolanaSendViewModel @Inject constructor(
 
     private var wallet: Wallet? = null
     private var solanaCoins: Map<SolanaNetwork, SolanaCoin> = emptyMap()
+    private var currentCoin: SolanaCoin? = null
 
-    fun init(walletId: String, network: SolanaNetwork? = null) {
+    fun init(walletId: String, coin: SolanaCoin? = null) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, isFeeLoading = true, error = null) }
 
@@ -58,35 +59,40 @@ class SolanaSendViewModel @Inject constructor(
             }
 
             // Get all Solana coins
-            solanaCoins = wallet!!.solanaCoins.associateBy { it.network }
+            val availableCoins = wallet!!.solanaCoins
+            solanaCoins = availableCoins.associateBy { it.network }
             val availableNetworks = solanaCoins.keys.toList()
 
-            if (availableNetworks.isEmpty()) {
+            if (availableCoins.isEmpty()) {
                 _state.update {
                     it.copy(
                         error = "Solana not enabled for this wallet",
-                        isLoading = false
-                    )
-                }
-                return@launch
-            }
-
-            // Determine target network
-            val targetNetwork = network ?: availableNetworks.firstOrNull() ?: SolanaNetwork.Devnet
-            val solanaCoin = solanaCoins[targetNetwork]
-
-            if (solanaCoin == null) {
-                _state.update {
-                    it.copy(
-                        error = "Solana not enabled for network $targetNetwork",
                         isLoading = false,
+                        availableCoins = availableCoins,
                         availableNetworks = availableNetworks
                     )
                 }
                 return@launch
             }
 
-            when (val result = getSolanaWalletUseCase(walletId, targetNetwork)) {
+            // Determine target coin
+            val targetCoin = coin ?: availableCoins.firstOrNull()
+
+            if (targetCoin == null) {
+                _state.update {
+                    it.copy(
+                        error = "Solana not enabled",
+                        isLoading = false,
+                        availableCoins = availableCoins,
+                        availableNetworks = availableNetworks
+                    )
+                }
+                return@launch
+            }
+
+            currentCoin = targetCoin
+
+            when (val result = getSolanaWalletUseCase(walletId, targetCoin.network)) {
                 is Result.Success -> {
                     val walletInfo = result.data
                     _state.update {
@@ -94,15 +100,17 @@ class SolanaSendViewModel @Inject constructor(
                             walletId = walletInfo.walletId,
                             walletName = walletInfo.walletName,
                             walletAddress = walletInfo.walletAddress,
-                            network = targetNetwork,
+                            network = targetCoin.network,
+                            coin = targetCoin,
                             availableNetworks = availableNetworks,
-                            availableSplTokens = solanaCoin.splTokens,
+                            availableCoins = availableCoins,
+                            availableSplTokens = targetCoin.splTokens,
                             isNativeSol = true,
                             isLoading = false
                         )
                     }
-                    loadBalance(walletInfo.walletAddress, targetNetwork)
-                    loadFeeEstimate(targetNetwork)
+                    loadBalance(targetCoin.address, targetCoin.network)
+                    loadFeeEstimate(targetCoin.network)
                 }
 
                 is Result.Error -> {
@@ -110,7 +118,8 @@ class SolanaSendViewModel @Inject constructor(
                         it.copy(
                             error = result.message,
                             isLoading = false,
-                            availableNetworks = availableNetworks
+                            availableNetworks = availableNetworks,
+                            availableCoins = availableCoins
                         )
                     }
                 }
@@ -123,13 +132,16 @@ class SolanaSendViewModel @Inject constructor(
     fun switchNetwork(network: SolanaNetwork) {
         val solanaCoin = solanaCoins[network]
         if (solanaCoin == null) {
-            _state.update { it.copy(error = "Solana not available on $network") }
+            _state.update { it.copy(error = "Solana not available on ${network.name}") }
             return
         }
+
+        currentCoin = solanaCoin
 
         _state.update {
             it.copy(
                 network = network,
+                coin = solanaCoin,
                 walletAddress = solanaCoin.address,
                 availableSplTokens = solanaCoin.splTokens,
                 isNativeSol = true,
@@ -178,7 +190,6 @@ class SolanaSendViewModel @Inject constructor(
     private suspend fun loadFeeEstimate(network: SolanaNetwork) {
         val currentState = _state.value
         if (currentState.walletId.isNotEmpty()) {
-            // Set fee loading state
             _state.update { it.copy(isFeeLoading = true) }
 
             when (val feeResult = getSolanaFeeEstimateUseCase(
@@ -276,7 +287,7 @@ class SolanaSendViewModel @Inject constructor(
     fun send(onSuccess: (String) -> Unit) {
         viewModelScope.launch {
             val state = _state.value
-            val solanaCoin = solanaCoins[state.network]
+            val solanaCoin = state.coin ?: currentCoin
 
             if (state.walletId.isEmpty() || solanaCoin == null) {
                 _state.update { it.copy(error = "Wallet not properly loaded") }
@@ -294,7 +305,7 @@ class SolanaSendViewModel @Inject constructor(
                 toAddress = state.toAddress,
                 amount = state.amountValue,
                 feeLevel = state.feeLevel,
-                network = state.network,
+                coin = solanaCoin,
                 note = null
             )
 
@@ -304,7 +315,7 @@ class SolanaSendViewModel @Inject constructor(
                     if (sendResult.success) {
                         _state.update { it.copy(isLoading = false, step = "Sent!") }
                         val explorerUrl =
-                            ExplorerUrlHelper.getExplorerUrl(sendResult.txHash, state.network)
+                            ExplorerUrlHelper.getExplorerUrl(sendResult.txHash, solanaCoin.network)
                         _effect.emit(
                             SolanaSendEffect.TransactionSent(
                                 sendResult.txHash,

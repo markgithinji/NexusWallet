@@ -1,24 +1,24 @@
 package com.example.nexuswallet.feature.solana.domain.usecase
 
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
+import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
 import com.example.nexuswallet.feature.core.util.decodeHex
+import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.domain.model.SendSolanaResult
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
-import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
-import com.example.nexuswallet.feature.core.util.toHex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.sol4k.Keypair
@@ -43,29 +43,33 @@ class SendSolanaUseCase @Inject constructor(
         toAddress: String,
         amount: BigDecimal,
         feeLevel: FeeLevel,
-        network: SolanaNetwork,
+        coin: SolanaCoin,
         note: String?
     ): Result<SendSolanaResult> = withContext(Dispatchers.IO) {
-        logger.d(tag, "Sending $amount SOL to $toAddress on $network")
+        logger.d(tag, "Sending $amount SOL to $toAddress on ${coin.network.name}")
 
         val wallet = walletRepository.getWallet(walletId) ?: run {
             logger.e(tag, "Wallet not found: $walletId")
             return@withContext Result.Error("Wallet not found")
         }
 
-        // Get the specific Solana coin for this network
-        val solanaCoin = wallet.solanaCoins.find { it.network == network }
-        if (solanaCoin == null) {
-            logger.e(tag, "Solana not enabled for network $network in wallet: $walletId")
-            return@withContext Result.Error("Solana not enabled for $network")
+        // Verify this Solana coin belongs to the wallet
+        val solanaCoin = wallet.solanaCoins.find {
+            it.address == coin.address && it.network == coin.network
         }
 
-        logger.d(tag, "Network: ${solanaCoin.network}")
+        if (solanaCoin == null) {
+            logger.e(tag, "Solana coin not found in wallet: $walletId for network ${coin.network.name}")
+            return@withContext Result.Error("Solana not enabled for ${coin.network.name}")
+        }
+
+        logger.d(tag, "Network: ${solanaCoin.network.name}")
+        logger.d(tag, "From address: ${solanaCoin.address.take(8)}...")
 
         // 1. Get fee estimate
-        val feeResult = solanaBlockchainRepository.getFeeEstimate(feeLevel, network)
+        val feeResult = solanaBlockchainRepository.getFeeEstimate(feeLevel, coin.network)
         if (feeResult is Result.Error) {
-            logger.e(tag, "Failed to get fee estimate on $network")
+            logger.e(tag, "Failed to get fee estimate on ${coin.network.name}")
             return@withContext Result.Error(feeResult.message)
         }
         val feeEstimate = (feeResult as Result.Success).data
@@ -73,7 +77,7 @@ class SendSolanaUseCase @Inject constructor(
         val lamports = amount.multiply(BigDecimal(LAMPORTS_PER_SOL)).toLong()
 
         // 2. Get private key
-        val keyType = when (network) {
+        val keyType = when (coin.network) {
             SolanaNetwork.Mainnet -> KEY_SOLANA_MAINNET
             SolanaNetwork.Devnet -> KEY_SOLANA_DEVNET
         }
@@ -114,17 +118,17 @@ class SendSolanaUseCase @Inject constructor(
             fromKeypair = keypair,
             toAddress = toAddress,
             lamports = lamports,
-            network = network
+            network = coin.network
         )
 
         if (signedTxResult is Result.Error) {
-            logger.e(tag, "Failed to sign transaction on $network: ${signedTxResult.message}")
+            logger.e(tag, "Failed to sign transaction on ${coin.network.name}: ${signedTxResult.message}")
             return@withContext Result.Error(signedTxResult.message)
         }
         val signedTx = (signedTxResult as Result.Success).data
 
         // 4. Broadcast transaction
-        val broadcastResult = broadcastTransaction(signedTx, network)
+        val broadcastResult = broadcastTransaction(signedTx, coin.network)
 
         // 5. save transaction after successful broadcast
         if (broadcastResult.success) {
@@ -134,8 +138,7 @@ class SendSolanaUseCase @Inject constructor(
                 amount = amount,
                 feeLevel = feeLevel,
                 note = note,
-                network = network,
-                solanaCoin = solanaCoin,
+                coin = solanaCoin,
                 feeEstimate = feeEstimate,
                 signature = signedTx.signature
             )
@@ -161,10 +164,10 @@ class SendSolanaUseCase @Inject constructor(
         if (sendResult.success) {
             logger.d(
                 tag,
-                "Send successful on $network: tx ${sendResult.txHash.take(SIGNATURE_PREVIEW_LENGTH)}..."
+                "Send successful on ${coin.network.name}: tx ${sendResult.txHash.take(SIGNATURE_PREVIEW_LENGTH)}..."
             )
         } else {
-            logger.e(tag, "Send failed on $network: ${sendResult.error}")
+            logger.e(tag, "Send failed on ${coin.network.name}: ${sendResult.error}")
         }
 
         Result.Success(sendResult)
@@ -176,31 +179,33 @@ class SendSolanaUseCase @Inject constructor(
         amount: BigDecimal,
         feeLevel: FeeLevel,
         note: String?,
-        network: SolanaNetwork,
-        solanaCoin: SolanaCoin,
+        coin: SolanaCoin,
         feeEstimate: SolanaFeeEstimate,
         signature: String?
     ): SolanaTransaction {
         val lamports = amount.multiply(BigDecimal(LAMPORTS_PER_SOL)).toLong()
 
         return SolanaTransaction(
-            id = signature ?: "sol_tx_${System.currentTimeMillis()}",  // Use signature if available, fallback to timestamp
+            id = signature ?: "sol_tx_${System.currentTimeMillis()}",
             walletId = walletId,
-            fromAddress = solanaCoin.address,
+            fromAddress = coin.address,
             toAddress = toAddress,
-            amountLamports = lamports,
-            amountSol = amount.toPlainString(),
-            feeLamports = feeEstimate.feeLamports,
-            feeSol = feeEstimate.feeSol,
-            signature = signature,
             status = TransactionStatus.SUCCESS,
-            note = note,
             timestamp = System.currentTimeMillis(),
+            note = note,
             feeLevel = feeLevel,
-            network = network,
+            network = coin.network,
             isIncoming = false,
+            txHash = signature,
+            amount = amount.toPlainString(),
+            fee = feeEstimate.feeSol,
+            symbol = coin.symbol,
+            amountLamports = lamports,
+            feeLamports = feeEstimate.feeLamports,
+            signature = signature,
             tokenMint = null,
             tokenSymbol = null,
+            tokenName = null,
             tokenDecimals = null,
             slot = null,
             blockTime = null
