@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.solana.domain.repository
 
-import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
+import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.coroutines.flow.Flow

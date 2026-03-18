@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
 import com.example.nexuswallet.BuildConfig
+import kotlinx.coroutines.CoroutineDispatcher
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -105,13 +106,15 @@ object SolanaDataModule {
         @Named("helius_rpc_devnet") rpcDevnetConnection: Connection,
         @Named("helius_rpc_mainnet") rpcMainnetConnection: Connection,
         @Named("helius_api_devnet") devnetApi: HeliusApi,
-        @Named("helius_api_mainnet") mainnetApi: HeliusApi
+        @Named("helius_api_mainnet") mainnetApi: HeliusApi,
+        coroutineDispatcher: CoroutineDispatcher
     ): SolanaBlockchainRepository {
         return SolanaBlockchainRepositoryImpl(
             rpcDevnetConnection = rpcDevnetConnection,
             rpcMainnetConnection = rpcMainnetConnection,
             devnetApi = devnetApi,
-            mainnetApi = mainnetApi
+            mainnetApi = mainnetApi,
+            ioDispatcher = coroutineDispatcher
         )
     }
 
