@@ -77,15 +77,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
-import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.ui.theme.bitcoinLight
@@ -156,9 +158,9 @@ fun NetworkSelectorCard(
     onClick: () -> Unit
 ) {
     val displayName = if (currentNetwork?.isTestnet == true) {
-        "${currentNetwork.displayName} Testnet"
+        "${currentNetwork.name} Testnet"
     } else {
-        currentNetwork?.displayName ?: "Select Network"
+        currentNetwork?.name ?: "Select Network"
     }
 
     Card(
@@ -233,9 +235,9 @@ fun NetworkSelectorDialog(
             ) {
                 items(availableNetworks) { network ->
                     val displayName = if (network.isTestnet) {
-                        "${network.displayName} Testnet"
+                        "${network.name} Testnet"
                     } else {
-                        network.displayName
+                        network.name
                     }
                     val isSelected = network == currentNetwork
 
@@ -344,7 +346,7 @@ fun SendBalanceCard(
 
                     if (network != null && network.isTestnet) {
                         Text(
-                            text = "Network: ${network.displayName} Testnet",
+                            text = "Network: ${network.name} Testnet",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -552,12 +554,12 @@ fun SendAddressInput(
 @Composable
 fun SendAmountInput(
     amount: String,
+    coin: Coin,
     onAmountChange: (String) -> Unit,
     onFocusChange: (Boolean) -> Unit = {},
     balance: BigDecimal,
     symbol: String,
     coinColor: Color,
-    coinType: CoinType,
     onMaxClick: () -> Unit,
     errorMessage: String? = null,
     focusRequester: FocusRequester = FocusRequester()
@@ -595,9 +597,17 @@ fun SendAmountInput(
 
                 Spacer(modifier = Modifier.weight(1f))
 
+                val maxDecimals = when (coin) {
+                    is BitcoinCoin -> 8
+                    is SolanaCoin -> 9
+                    is USDCToken, is USDTToken -> 6
+                    is NativeETH -> 6
+                    else -> 8
+                }
+
                 Text(
                     text = "Max: ${
-                        balance.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros()
+                        balance.setScale(maxDecimals, RoundingMode.HALF_UP).stripTrailingZeros()
                             .toPlainString()
                     } $symbol",
                     style = MaterialTheme.typography.bodySmall,
@@ -721,11 +731,12 @@ fun SendAmountInput(
                     BigDecimal.ZERO
                 }
 
-                val usdPrice = when (coinType) {
-                    CoinType.BITCOIN -> 45000.0
-                    CoinType.ETHEREUM -> 3000.0
-                    CoinType.SOLANA -> 30.0
-                    CoinType.USDC -> 1.0
+                val usdPrice = when (coin) {
+                    is BitcoinCoin -> 45000.0
+                    is NativeETH -> 3000.0
+                    is SolanaCoin -> 30.0
+                    is USDCToken, is USDTToken -> 1.0
+                    else -> 0.0
                 }
 
                 val usdAmount = amountValue.toDouble() * usdPrice
@@ -748,7 +759,7 @@ fun SendFeeSelection(
     feeLevel: FeeLevel,
     onFeeLevelChange: (FeeLevel) -> Unit,
     feeEstimate: Any?,
-    coinType: CoinType
+    coin: Coin
 ) {
     Card(
         modifier = Modifier
@@ -779,8 +790,8 @@ fun SendFeeSelection(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            when (coinType) {
-                CoinType.BITCOIN -> {
+            when (coin) {
+                is BitcoinCoin -> {
                     (feeEstimate as? BitcoinFeeEstimate)?.let { fee ->
                         FeeDetailsRow(
                             label = "Network Fee",
@@ -792,7 +803,8 @@ fun SendFeeSelection(
                         )
                     }
                 }
-                CoinType.ETHEREUM, CoinType.USDC -> {
+
+                is NativeETH -> {
                     (feeEstimate as? EVMFeeEstimate)?.let { fee ->
                         FeeDetailsRow(
                             label = "Network Fee",
@@ -808,7 +820,25 @@ fun SendFeeSelection(
                         )
                     }
                 }
-                CoinType.SOLANA -> {
+
+                is USDCToken, is USDTToken -> {
+                    (feeEstimate as? EVMFeeEstimate)?.let { fee ->
+                        FeeDetailsRow(
+                            label = "Network Fee",
+                            value = "${fee.totalFeeEth} ETH"
+                        )
+                        FeeDetailsRow(
+                            label = "Gas Price",
+                            value = "${fee.gasPriceGwei} Gwei"
+                        )
+                        FeeDetailsRow(
+                            label = "Gas Limit",
+                            value = fee.gasLimit.toString()
+                        )
+                    }
+                }
+
+                is SolanaCoin -> {
                     (feeEstimate as? SolanaFeeEstimate)?.let { fee ->
                         FeeDetailsRow(
                             label = "Network Fee",
@@ -999,26 +1029,29 @@ fun MaxAmountDialog(
     balance: BigDecimal,
     feeEstimate: Any?,
     tokenSymbol: String,
-    coinType: CoinType,
-    token: EVMToken? = null,
+    coin: Coin,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
     val fee = when (feeEstimate) {
-        is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull() ?: BigDecimal("0.00001")
+        is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull()
+            ?: BigDecimal("0.00001")
+
         is EVMFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
         is SolanaFeeEstimate -> feeEstimate.feeSol.toBigDecimalOrNull() ?: BigDecimal("0.000005")
-        else -> when (coinType) {
-            CoinType.BITCOIN -> BigDecimal("0.00001")
-            CoinType.ETHEREUM, CoinType.USDC -> BigDecimal("0.001")
-            CoinType.SOLANA -> BigDecimal("0.000005")
+        else -> when (coin) {
+            is BitcoinCoin -> BigDecimal("0.00001")
+            is NativeETH -> BigDecimal("0.001")
+            is USDCToken, is USDTToken -> BigDecimal("0.001")
+            is SolanaCoin -> BigDecimal("0.000005")
+            else -> BigDecimal("0.001")
         }
     }
 
     val decimals = when {
-        token != null && token.decimals == 6 -> 2
-        coinType == CoinType.BITCOIN -> 8
-        coinType == CoinType.SOLANA -> 9
+        coin is USDCToken || coin is USDTToken -> 2
+        coin is BitcoinCoin -> 8
+        coin is SolanaCoin -> 9
         else -> 6
     }
 
@@ -1050,7 +1083,8 @@ fun MaxAmountDialog(
                         )
                         Text(
                             text = "${
-                                balance.setScale(decimals, RoundingMode.HALF_UP).stripTrailingZeros()
+                                balance.setScale(decimals, RoundingMode.HALF_UP)
+                                    .stripTrailingZeros()
                                     .toPlainString()
                             } $tokenSymbol",
                             style = MaterialTheme.typography.bodyMedium,
@@ -1074,7 +1108,15 @@ fun MaxAmountDialog(
                             text = "- ${
                                 fee.setScale(decimals, RoundingMode.HALF_UP).stripTrailingZeros()
                                     .toPlainString()
-                            } $tokenSymbol",
+                            } ${
+                                when {
+                                    coin is BitcoinCoin -> "BTC"
+                                    coin is SolanaCoin -> "SOL"
+                                    coin is NativeETH -> "ETH"
+                                    coin is USDCToken || coin is USDTToken -> "ETH"
+                                    else -> tokenSymbol
+                                }
+                            }",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.error
@@ -1099,7 +1141,8 @@ fun MaxAmountDialog(
                         )
                         Text(
                             text = "${
-                                maxAmount.setScale(decimals, RoundingMode.HALF_UP).stripTrailingZeros()
+                                maxAmount.setScale(decimals, RoundingMode.HALF_UP)
+                                    .stripTrailingZeros()
                                     .toPlainString()
                             } $tokenSymbol",
                             style = MaterialTheme.typography.bodyLarge,
@@ -1212,17 +1255,6 @@ fun ErrorMessage(
     }
 }
 
-// Helper to get USD rate based on coin color
-private fun getUsdRate(coinColor: Color): Double {
-    return when (coinColor) {
-        bitcoinLight -> 45000.0
-        ethereumLight -> 3000.0
-        solanaLight -> 30.0
-        usdcLight -> 1.0
-        else -> 1.0
-    }
-}
-
 @Composable
 fun TokenSelectorCard(
     selectedToken: EVMToken?,
@@ -1231,7 +1263,7 @@ fun TokenSelectorCard(
     val (iconRes, color, displayName) = when (selectedToken) {
         is NativeETH -> Triple(R.drawable.ethereum, ethereumLight, "Ethereum")
         is USDCToken -> Triple(R.drawable.usdc, usdcLight, "USD Coin")
-        is USDTToken -> Triple(R.drawable.usdc, usdtLight, "Tether USD")
+        is USDTToken -> Triple(R.drawable.tether, usdtLight, "Tether USD")
         else -> Triple(null, MaterialTheme.colorScheme.primary, "Select token")
     }
 
@@ -1327,7 +1359,7 @@ fun TokenSelectorDialog(
                     val (iconRes, color, displayName) = when (token) {
                         is NativeETH -> Triple(R.drawable.ethereum, ethereumLight, "Ethereum")
                         is USDCToken -> Triple(R.drawable.usdc, usdcLight, "USD Coin")
-                        is USDTToken -> Triple(R.drawable.usdc, usdtLight, "Tether USD")
+                        is USDTToken -> Triple(R.drawable.tether, usdtLight, "Tether USD")
                         else -> Triple(null, MaterialTheme.colorScheme.primary, token.name)
                     }
 
@@ -1390,9 +1422,11 @@ fun TokenSelectorDialog(
                                 )
                                 if (token.network != EthereumNetwork.Mainnet) {
                                     Text(
-                                        text = token.network.displayName,
+                                        text = token.network.name,
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                            alpha = 0.7f
+                                        )
                                     )
                                 }
                             }
@@ -1431,8 +1465,10 @@ fun rememberSendErrorState(
     amountFocused: Boolean
 ): SendErrorState {
 
-    val showAddressError = !addressFocused && addressTouched && validationResult.addressError != null
-    val showSelfSendError = !addressFocused && addressTouched && validationResult.selfSendError != null
+    val showAddressError =
+        !addressFocused && addressTouched && validationResult.addressError != null
+    val showSelfSendError =
+        !addressFocused && addressTouched && validationResult.selfSendError != null
 
     val showAmountError = !amountFocused && amountTouched && validationResult.amountError != null
     val showBalanceError = !amountFocused && amountTouched && validationResult.balanceError != null
@@ -1449,6 +1485,7 @@ fun rememberSendErrorState(
                 else -> null
             }
         }
+
         else -> null
     }
 
@@ -1471,6 +1508,17 @@ fun rememberSendErrorState(
             else -> null
         }
     )
+}
+
+// Helper to get USD rate based on coin color
+private fun getUsdRate(coinColor: Color): Double {
+    return when (coinColor) {
+        bitcoinLight -> 45000.0
+        ethereumLight -> 3000.0
+        solanaLight -> 30.0
+        usdcLight -> 1.0
+        else -> 1.0
+    }
 }
 
 data class SendErrorState(
