@@ -80,14 +80,12 @@ object WalletDomainModule {
     @Provides
     @Singleton
     fun provideGetTransactionDetailUseCase(
-        walletRepository: WalletRepository,
         bitcoinTransactionRepository: BitcoinTransactionRepository,
         evmTransactionRepository: EVMTransactionRepository,
         solanaTransactionRepository: SolanaTransactionRepository,
         logger: Logger
     ): GetTransactionDetailUseCase {
         return GetTransactionDetailUseCase(
-            walletRepository = walletRepository,
             bitcoinTransactionRepository = bitcoinTransactionRepository,
             evmTransactionRepository = evmTransactionRepository,
             solanaTransactionRepository = solanaTransactionRepository,
