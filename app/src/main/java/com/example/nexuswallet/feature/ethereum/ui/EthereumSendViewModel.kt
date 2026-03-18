@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.ethereum.domain.model.TokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.usecase.GetFeeEstimateUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.SendEVMAssetUseCase
@@ -46,8 +47,9 @@ class EthereumSendViewModel @Inject constructor(
 
     private var wallet: Wallet? = null
     private var evmTokensByNetwork: Map<EthereumNetwork, List<EVMToken>> = emptyMap()
+    private var currentCoin: EVMToken? = null
 
-    fun initialize(walletId: String, network: EthereumNetwork? = null) {
+    fun initialize(walletId: String, coin: EVMToken? = null) {
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
@@ -69,32 +71,35 @@ class EthereumSendViewModel @Inject constructor(
             // Group EVM tokens by network
             evmTokensByNetwork = wallet!!.evmTokens.groupBy { it.network }
             val availableNetworks = evmTokensByNetwork.keys.toList()
+            val allTokens = wallet!!.evmTokens
 
-            if (availableNetworks.isEmpty()) {
+            if (allTokens.isEmpty()) {
                 _uiState.update { it.copy(error = "No EVM tokens found", isLoading = false) }
                 return@launch
             }
 
-            // Determine target network
-            val targetNetwork = network ?: availableNetworks.firstOrNull()
-            if (targetNetwork == null) {
-                _uiState.update { it.copy(error = "No network available", isLoading = false) }
+            // Determine target coin
+            val targetCoin =
+                coin ?: allTokens.firstOrNull { it is NativeETH } ?: allTokens.firstOrNull()
+
+            if (targetCoin == null) {
+                _uiState.update { it.copy(error = "No token available", isLoading = false) }
                 return@launch
             }
 
-            val networkTokens = evmTokensByNetwork[targetNetwork] ?: emptyList()
-            val nativeEth = networkTokens.filterIsInstance<NativeETH>().firstOrNull()
-            val initialToken = nativeEth ?: networkTokens.firstOrNull()
+            currentCoin = targetCoin
+            val networkTokens = evmTokensByNetwork[targetCoin.network] ?: emptyList()
 
             _uiState.update {
                 it.copy(
                     walletId = walletId,
                     walletName = wallet!!.name,
-                    fromAddress = initialToken?.address ?: "",
-                    network = targetNetwork,
+                    fromAddress = targetCoin.address,
+                    network = targetCoin.network,
+                    coin = targetCoin,
                     availableNetworks = availableNetworks,
                     availableTokens = networkTokens,
-                    selectedToken = initialToken,
+                    selectedToken = targetCoin,
                     isInitialized = true
                 )
             }
@@ -107,17 +112,24 @@ class EthereumSendViewModel @Inject constructor(
 
     fun switchNetwork(network: EthereumNetwork) {
         viewModelScope.launch {
-
             val networkTokens = evmTokensByNetwork[network] ?: emptyList()
             val nativeEth = networkTokens.filterIsInstance<NativeETH>().firstOrNull()
             val newToken = nativeEth ?: networkTokens.firstOrNull()
 
+            if (newToken == null) {
+                _uiState.update { it.copy(error = "No tokens available on ${network.name}") }
+                return@launch
+            }
+
+            currentCoin = newToken
+
             _uiState.update {
                 it.copy(
                     network = network,
+                    coin = newToken,
                     availableTokens = networkTokens,
                     selectedToken = newToken,
-                    fromAddress = newToken?.address ?: "",
+                    fromAddress = newToken.address,
                     toAddress = "",
                     amount = "",
                     amountValue = BigDecimal.ZERO,
@@ -136,10 +148,12 @@ class EthereumSendViewModel @Inject constructor(
 
     fun selectToken(token: EVMToken) {
         viewModelScope.launch {
+            currentCoin = token
 
             _uiState.update {
                 it.copy(
                     selectedToken = token,
+                    coin = token,
                     fromAddress = token.address,
                     balancesLoaded = false,
                     tokenBalance = BigDecimal.ZERO,
@@ -153,7 +167,6 @@ class EthereumSendViewModel @Inject constructor(
     private suspend fun loadBalances() {
         val state = _uiState.value
         val token = state.selectedToken ?: return
-        val currentTokenId = token.externalId
 
         // Load ETH balance (for gas)
         val ethBalanceResult = evmBlockchainRepository.getNativeBalance(
@@ -164,7 +177,7 @@ class EthereumSendViewModel @Inject constructor(
         when (ethBalanceResult) {
             is Result.Success -> {
                 _uiState.update { currentState ->
-                    if (currentState.selectedToken?.externalId == currentTokenId) {
+                    if (currentState.selectedToken == token) {
                         currentState.copy(ethBalance = ethBalanceResult.data)
                     } else {
                         currentState
@@ -174,7 +187,7 @@ class EthereumSendViewModel @Inject constructor(
 
             is Result.Error -> {
                 _uiState.update { currentState ->
-                    if (currentState.selectedToken?.externalId == currentTokenId) {
+                    if (currentState.selectedToken == token) {
                         currentState.copy(error = "Failed to load ETH balance: ${ethBalanceResult.message}")
                     } else {
                         currentState
@@ -185,7 +198,7 @@ class EthereumSendViewModel @Inject constructor(
             Result.Loading -> {}
         }
 
-        // Load token balance (for the selected token - could be ETH, USDC, etc.)
+        // Load token balance (for the selected token)
         val tokenBalanceResult = when (token) {
             is NativeETH -> {
                 Result.Success(state.ethBalance)
@@ -205,7 +218,7 @@ class EthereumSendViewModel @Inject constructor(
             is Result.Success -> {
                 val balance = tokenBalanceResult.data
                 _uiState.update { currentState ->
-                    if (currentState.selectedToken?.externalId == currentTokenId) {
+                    if (currentState.selectedToken == token) {
                         currentState.copy(
                             tokenBalance = balance,
                             balanceFormatted = when (token) {
@@ -223,14 +236,14 @@ class EthereumSendViewModel @Inject constructor(
                     }
                 }
 
-                if (_uiState.value.selectedToken?.externalId == currentTokenId) {
+                if (_uiState.value.selectedToken == token) {
                     validateInputs()
                 }
             }
 
             is Result.Error -> {
                 _uiState.update { currentState ->
-                    if (currentState.selectedToken?.externalId == currentTokenId) {
+                    if (currentState.selectedToken == token) {
                         currentState.copy(
                             error = "Failed to load balance: ${tokenBalanceResult.message}",
                             isLoading = false,
@@ -252,7 +265,7 @@ class EthereumSendViewModel @Inject constructor(
 
         // Set fee loading state
         _uiState.update { currentState ->
-            if (currentState.selectedToken?.externalId == currentToken?.externalId) {
+            if (currentState.selectedToken == currentToken) {
                 currentState.copy(isFeeLoading = true)
             } else {
                 currentState
@@ -262,13 +275,13 @@ class EthereumSendViewModel @Inject constructor(
         val feeEstimateResult = getFeeEstimateUseCase(
             feeLevel = state.feeLevel,
             network = state.network,
-            isToken = state.selectedToken !is NativeETH
+            isToken = state.selectedToken?.tokenType != TokenType.NATIVE
         )
 
         when (feeEstimateResult) {
             is Result.Success -> {
                 _uiState.update { currentState ->
-                    if (currentState.selectedToken?.externalId == currentToken?.externalId) {
+                    if (currentState.selectedToken == currentToken) {
                         currentState.copy(
                             feeEstimate = feeEstimateResult.data,
                             isFeeLoading = false
@@ -282,7 +295,7 @@ class EthereumSendViewModel @Inject constructor(
 
             is Result.Error -> {
                 _uiState.update { currentState ->
-                    if (currentState.selectedToken?.externalId == currentToken?.externalId) {
+                    if (currentState.selectedToken == currentToken) {
                         currentState.copy(
                             error = "Failed to load fee: ${feeEstimateResult.message}",
                             isFeeLoading = false
@@ -367,7 +380,7 @@ class EthereumSendViewModel @Inject constructor(
     fun send(onSuccess: (String) -> Unit) {
         viewModelScope.launch {
             val state = _uiState.value
-            val token = state.selectedToken
+            val token = state.selectedToken ?: currentCoin
 
             if (state.walletId.isEmpty() || token == null) {
                 _uiState.update { it.copy(error = "Wallet not loaded") }
