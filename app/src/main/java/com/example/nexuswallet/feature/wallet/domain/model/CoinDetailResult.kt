@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain.model
 
-import java.math.BigDecimal
+import com.example.nexuswallet.feature.core.domain.model.Transaction
 
 // Base result interface
 sealed interface CoinDetailResult {
@@ -11,10 +11,9 @@ sealed interface CoinDetailResult {
     val usdValue: Double
     val network: Network
     val networkDisplayName: String
-    val rawTransactions: List<Any>
+    val rawTransactions: List<Transaction>
 }
 
-// Bitcoin specific result
 data class BitcoinDetailResult(
     override val walletId: String,
     override val address: String,
@@ -23,12 +22,11 @@ data class BitcoinDetailResult(
     override val usdValue: Double,
     override val network: BitcoinNetwork,
     override val networkDisplayName: String,
-    override val rawTransactions: List<Any>,
+    override val rawTransactions: List<Transaction>,
     val bitcoinCoin: BitcoinCoin,
     val availableNetworks: List<BitcoinNetwork>
 ) : CoinDetailResult
 
-// Ethereum specific result
 data class EthereumDetailResult(
     override val walletId: String,
     override val address: String,
@@ -37,15 +35,13 @@ data class EthereumDetailResult(
     override val usdValue: Double,
     override val network: EthereumNetwork,
     override val networkDisplayName: String,
-    override val rawTransactions: List<Any>,
+    override val rawTransactions: List<Transaction>,
     val token: EVMToken,
-    val externalTokenId: String,
-    val ethGasBalance: BigDecimal? = null,
+    val ethGasBalance: String,
     val availableTokens: List<EVMToken> = emptyList(),
     val chainId: String = network.chainId
 ) : CoinDetailResult
 
-// Solana specific result
 data class SolanaDetailResult(
     override val walletId: String,
     override val address: String,
@@ -54,7 +50,7 @@ data class SolanaDetailResult(
     override val usdValue: Double,
     override val network: SolanaNetwork,
     override val networkDisplayName: String,
-    override val rawTransactions: List<Any>,
+    override val rawTransactions: List<Transaction>,
     val solanaCoin: SolanaCoin,
     val splTokens: List<SPLToken>,
     val availableNetworks: List<SolanaNetwork>

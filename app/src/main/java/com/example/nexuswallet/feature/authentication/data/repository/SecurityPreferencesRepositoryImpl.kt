@@ -9,7 +9,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.nexuswallet.feature.authentication.data.util.safeEdit
 import com.example.nexuswallet.feature.authentication.data.util.safeGet
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.toHex
+import com.example.nexuswallet.feature.core.util.decodeHex
+import com.example.nexuswallet.feature.core.util.toHex
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -45,7 +46,7 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             val ivHex = preferences[ivKey]
 
             if (encrypted != null && ivHex != null) {
-                Pair(encrypted,ivHex.hexToByteArray())
+                Pair(encrypted,ivHex.decodeHex())
             } else {
                 null
             }
@@ -82,7 +83,7 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             val ivHex = preferences[ivKey]
 
             if (encrypted != null && ivHex != null) {
-                Pair(encrypted, ivHex.hexToByteArray())
+                Pair(encrypted, ivHex.decodeHex())
             } else {
                 null
             }
@@ -99,7 +100,7 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             val ivHex = preferences[ivKey]
 
             if (encrypted != null && ivHex != null) {
-                Pair(encrypted, ivHex.hexToByteArray())
+                Pair(encrypted, ivHex.decodeHex())
             } else {
                 null
             }

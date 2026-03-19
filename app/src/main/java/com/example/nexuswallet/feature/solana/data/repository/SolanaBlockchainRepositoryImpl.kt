@@ -4,14 +4,19 @@ import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.SafeApiCall
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
-import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionRequest
-import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse
+import com.example.nexuswallet.feature.solana.data.remote.HeliusApi
+import com.example.nexuswallet.feature.solana.data.remote.model.HeliusTransactionRequest
+import com.example.nexuswallet.feature.solana.data.remote.model.HeliusTransactionResponse
 import com.example.nexuswallet.feature.solana.data.toDomain
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
+import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
+import com.example.nexuswallet.feature.solana.domain.model.TransferInfo
+import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.sol4k.Base58
@@ -32,8 +37,10 @@ import javax.inject.Singleton
 class SolanaBlockchainRepositoryImpl @Inject constructor(
     @param:Named("heliusRpcDevnet") private val rpcDevnetConnection: Connection,
     @param:Named("heliusRpcMainnet") private val rpcMainnetConnection: Connection,
-    private val heliusApi: com.example.nexuswallet.feature.solana.data.remote.HeliusApi
-) : com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository {
+    @param:Named("heliusApiDevnet") private val devnetApi: HeliusApi,
+    @param:Named("heliusApiMainnet") private val mainnetApi: HeliusApi,
+    private val ioDispatcher: CoroutineDispatcher
+) : SolanaBlockchainRepository {
 
     private fun getRpcConnection(network: SolanaNetwork): Connection {
         return when (network) {
@@ -42,8 +49,15 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         }
     }
 
+    private fun getHeliusApi(network: SolanaNetwork): HeliusApi {
+        return when (network) {
+            SolanaNetwork.Mainnet -> mainnetApi
+            SolanaNetwork.Devnet -> devnetApi
+        }
+    }
+
     override suspend fun getRecentBlockhash(network: SolanaNetwork): Result<String> =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             SafeApiCall.make {
                 val connection = getRpcConnection(network)
                 val blockhash = connection.getLatestBlockhash()
@@ -54,18 +68,17 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     override suspend fun getBalance(
         address: String,
         network: SolanaNetwork
-    ): Result<BigDecimal> = withContext(Dispatchers.IO) {
+    ): Result<BigDecimal> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val connection = getRpcConnection(network)
             val publicKey = PublicKey(address)
             val balance = connection.getBalance(publicKey)
 
-            val balanceSol = BigDecimal(balance).divide(
+            BigDecimal(balance).divide(
                 BigDecimal(LAMPORTS_PER_SOL),
                 SOL_DECIMALS,
                 RoundingMode.HALF_UP
             )
-            balanceSol
         }
     }
 
@@ -73,7 +86,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         address: String,
         mintAddress: String,
         network: SolanaNetwork
-    ): Result<BigDecimal> = withContext(Dispatchers.IO) {
+    ): Result<BigDecimal> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val connection = getRpcConnection(network)
 
@@ -87,19 +100,18 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
 
             val tokenBalance = connection.getTokenAccountBalance(associatedTokenAccount)
 
-            val balance = BigDecimal(tokenBalance.amount).divide(
+            BigDecimal(tokenBalance.amount).divide(
                 BigDecimal.TEN.pow(tokenBalance.decimals),
                 tokenBalance.decimals,
                 RoundingMode.HALF_UP
             )
-            balance
         }
     }
 
     override suspend fun getFeeEstimate(
         feeLevel: FeeLevel,
         network: SolanaNetwork
-    ): Result<SolanaFeeEstimate> = withContext(Dispatchers.IO) {
+    ): Result<SolanaFeeEstimate> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val baseFeeLamports = SOLANA_FIXED_FEE_LAMPORTS
 
@@ -150,7 +162,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         percentile: Int,
         accounts: List<PublicKey> = emptyList(),
         network: SolanaNetwork
-    ): Result<Int> = withContext(Dispatchers.IO) {
+    ): Result<Int> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val connection = getRpcConnection(network)
 
@@ -180,7 +192,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         toAddress: String,
         lamports: Long,
         network: SolanaNetwork
-    ): Result<SolanaSignedTransaction> = withContext(Dispatchers.IO) {
+    ): Result<SolanaSignedTransaction> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val connection = getRpcConnection(network)
             val blockhash = connection.getLatestBlockhash()
@@ -218,7 +230,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     override suspend fun broadcastTransaction(
         signedTransaction: SolanaSignedTransaction,
         network: SolanaNetwork
-    ): Result<BroadcastResult> = withContext(Dispatchers.IO) {
+    ): Result<BroadcastResult> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val connection = getRpcConnection(network)
             val serializedTx = signedTransaction.serialize()
@@ -236,9 +248,10 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         address: String,
         network: SolanaNetwork,
         limit: Int
-    ): Result<List<SolanaTransaction>> = withContext(Dispatchers.IO) {
+    ): Result<List<SolanaTransaction>> = withContext(ioDispatcher) {
         SafeApiCall.make {
-            val heliusTransactions = heliusApi.getTransactions(
+            val api = getHeliusApi(network)
+            val heliusTransactions = api.getTransactions(
                 address = address,
                 limit = limit
             )
@@ -252,16 +265,13 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     override suspend fun getTransaction(
         signature: String,
         network: SolanaNetwork
-    ): Result<HeliusTransactionResponse> = withContext(Dispatchers.IO) {
-
+    ): Result<HeliusTransactionResponse> = withContext(ioDispatcher) {
         SafeApiCall.make {
-            val request =
-                HeliusTransactionRequest(
-                    transactions = listOf(signature)
-                )
-            val transactions = heliusApi.getTransaction(
-                request = request
+            val api = getHeliusApi(network)
+            val request = HeliusTransactionRequest(
+                transactions = listOf(signature)
             )
+            val transactions = api.getTransaction(request = request)
 
             transactions.firstOrNull() ?: throw Exception("Transaction not found")
         }
@@ -270,8 +280,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     override fun parseTransfer(
         transaction: HeliusTransactionResponse,
         walletAddress: String
-    ): com.example.nexuswallet.feature.solana.domain.model.TransferInfo? {
-
+    ): TransferInfo? {
         return try {
             val nativeTransfer = transaction.nativeTransfers.find {
                 it.fromUserAccount == walletAddress || it.toUserAccount == walletAddress
@@ -281,7 +290,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
                 val isIncoming = nativeTransfer.toUserAccount == walletAddress
                 val amount = nativeTransfer.amount
 
-                return _root_ide_package_.com.example.nexuswallet.feature.solana.domain.model.TransferInfo(
+                TransferInfo(
                     from = nativeTransfer.fromUserAccount,
                     to = nativeTransfer.toUserAccount,
                     amount = amount,
@@ -290,7 +299,6 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
                 )
             }
             null
-
         } catch (e: Exception) {
             null
         }

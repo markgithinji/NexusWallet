@@ -1,10 +1,7 @@
 package com.example.nexuswallet.feature.wallet.domain.model
 
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.ui.SPLBalance
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import kotlinx.serialization.Serializable
-
 
 // ============ MAIN WALLET BALANCE ============
 
@@ -40,12 +37,14 @@ data class SolanaBalance(
 
 @Serializable
 data class EVMBalance(
-    val externalTokenId: String,
+    val evmTokenType: EVMTokenType,
+    val network: EthereumNetwork,
     val address: String,
     val balanceWei: String,
     val balanceDecimal: String,
     val usdValue: Double,
 )
+
 @Serializable
 data class SPLBalance(
     val mintAddress: String,

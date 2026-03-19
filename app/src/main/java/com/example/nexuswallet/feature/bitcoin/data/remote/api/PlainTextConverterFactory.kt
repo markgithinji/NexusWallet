@@ -8,6 +8,13 @@ import retrofit2.Converter
 import retrofit2.Retrofit
 import java.lang.reflect.Type
 
+/**
+ * A custom Retrofit [Converter.Factory] that handles plain text (String) requests and responses.
+ *
+ * This factory is used when the API communicates using raw strings instead of structured
+ * data formats like JSON. It converts [ResponseBody] directly to a [String] and
+ * wraps [String] values into a "text/plain" [RequestBody].
+ */
 class PlainTextConverterFactory : Converter.Factory() {
     override fun responseBodyConverter(
         type: Type,

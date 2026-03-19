@@ -2,7 +2,6 @@ package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.solana.data.toStorageString
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
@@ -26,7 +25,7 @@ class GetSolanaDetailUseCase @Inject constructor(
         network: SolanaNetwork
     ): Result<SolanaDetailResult> {
         logger.d(tag, "=== GetSolanaDetailUseCase started ===")
-        logger.d(tag, "Getting Solana details for wallet: $walletId, network: ${network.displayName}")
+        logger.d(tag, "Getting Solana details for wallet: $walletId, network: ${network.name}")
 
         // 1. Get wallet
         val wallet = walletRepository.getWallet(walletId)
@@ -34,17 +33,19 @@ class GetSolanaDetailUseCase @Inject constructor(
 
         // 2. Find the specific Solana coin
         val solanaCoin = wallet.solanaCoins.find { it.network == network }
-            ?: return Result.Error("Solana ${network.displayName} not enabled for this wallet")
+            ?: return Result.Error("Solana ${network.name} not enabled for this wallet")
 
-        logger.d(tag, "Found Solana coin with address: ${solanaCoin.address.take(8)}... on ${network.displayName}")
+        logger.d(
+            tag,
+            "Found Solana coin with address: ${solanaCoin.address.take(8)}... on ${network.name}"
+        )
 
         // 3. Delete old transactions before fetching new ones
-        val networkStorage = network.toStorageString()
-        logger.d(tag, "Deleting old transactions for wallet $walletId, network ${network.displayName}")
-        solanaTransactionRepository.deleteForWalletAndNetwork(walletId, networkStorage)
+        logger.d(tag, "Deleting old transactions for wallet $walletId, network ${network.name}")
+        solanaTransactionRepository.deleteForWalletAndNetwork(walletId, network)
 
         // 4. Fetch transactions from blockchain repository
-        logger.d(tag, "Fetching transactions from blockchain repository for ${network.displayName}...")
+        logger.d(tag, "Fetching transactions from blockchain repository for ${network.name}...")
         val blockchainResult = solanaBlockchainRepository.getTransactions(
             walletId = walletId,
             address = solanaCoin.address,
@@ -53,12 +54,14 @@ class GetSolanaDetailUseCase @Inject constructor(
         )
 
         var savedCount = 0
-        var tokenTransferCount = 0
 
         when (blockchainResult) {
             is Result.Success -> {
                 val transactions = blockchainResult.data
-                logger.d(tag, " Successfully fetched ${transactions.size} transactions from blockchain")
+                logger.d(
+                    tag,
+                    " Successfully fetched ${transactions.size} transactions from blockchain"
+                )
 
                 // Save all transactions to local DB
                 transactions.forEach { transaction ->
@@ -82,26 +85,16 @@ class GetSolanaDetailUseCase @Inject constructor(
         // 5. Get balance
         val balance = walletRepository.getWalletBalance(walletId)
         val coinBalance = balance?.solanaBalances?.get(network)
-        logger.d(tag, "Balance for ${network.displayName}: ${coinBalance?.sol ?: "0"} SOL")
+        logger.d(tag, "Balance for ${network.name}: ${coinBalance?.sol ?: "0"} SOL")
 
-        // 6. Get transactions from local DB (now includes both old and new)
-        logger.d(tag, "Getting transactions from local DB with network: $networkStorage...")
-        val allTransactions = solanaTransactionRepository.getTransactionsSync(walletId, networkStorage)
+        // 6. Get transactions from local DB
+        logger.d(tag, "Getting transactions from local DB with network: ${network.name}...")
+        val allTransactions = solanaTransactionRepository.getTransactionsSync(walletId, network)
         logger.d(tag, "Retrieved ${allTransactions.size} total transactions from DB")
 
         // Filter for native SOL transactions (tokenSymbol == null)
         val solTransactions = allTransactions.filter { it.tokenSymbol == null }
         logger.d(tag, "Filtered to ${solTransactions.size} native SOL transactions")
-
-        // Log sample for debugging
-        if (solTransactions.isNotEmpty()) {
-            logger.d(tag, "Sample of saved transactions:")
-            solTransactions.take(3).forEachIndexed { index, tx ->
-                logger.d(tag, "  Tx $index: ${tx.id.take(8)}..., amount: ${tx.amountSol} SOL, " +
-                        "from: ${tx.fromAddress.take(8)}..., to: ${tx.toAddress.take(8)}..., " +
-                        "incoming: ${tx.isIncoming}")
-            }
-        }
 
         // 7. Prepare result with network object
         val result = SolanaDetailResult(
@@ -111,14 +104,17 @@ class GetSolanaDetailUseCase @Inject constructor(
             balanceFormatted = "${coinBalance?.sol ?: "0"} SOL",
             usdValue = coinBalance?.usdValue ?: 0.0,
             network = network,
-            networkDisplayName = network.displayName,
+            networkDisplayName = network.name,
             rawTransactions = solTransactions,
             solanaCoin = solanaCoin,
             splTokens = solanaCoin.splTokens,
             availableNetworks = wallet.solanaCoins.map { it.network }
         )
 
-        logger.d(tag, "=== GetSolanaDetailUseCase completed successfully with ${solTransactions.size} raw transactions on ${network.displayName} ===")
+        logger.d(
+            tag,
+            "=== GetSolanaDetailUseCase completed successfully with ${solTransactions.size} raw transactions on ${network.name} ==="
+        )
         return Result.Success(result)
     }
 }

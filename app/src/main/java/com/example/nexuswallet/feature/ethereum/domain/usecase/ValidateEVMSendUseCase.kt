@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.ethereum.domain.usecase
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
@@ -14,7 +15,6 @@ import javax.inject.Singleton
 
 @Singleton
 class ValidateEVMSendUseCase @Inject constructor(
-    private val evmBlockchainRepository: EVMBlockchainRepository,
     private val logger: Logger
 ) {
 
@@ -26,7 +26,7 @@ class ValidateEVMSendUseCase @Inject constructor(
         fromAddress: String,
         tokenBalance: BigDecimal,
         ethBalance: BigDecimal,
-        feeLevel: FeeLevel,
+        feeEstimate: EVMFeeEstimate?,
         token: EVMToken
     ): SendValidationResult {
 
@@ -39,7 +39,7 @@ class ValidateEVMSendUseCase @Inject constructor(
             )
         }
 
-        // Validate address format using web3j
+        // Validate address format
         if (!isValidEthereumAddress(toAddress)) {
             logger.w(tag, "Invalid Ethereum address format: $toAddress")
             return SendValidationResult(
@@ -66,26 +66,11 @@ class ValidateEVMSendUseCase @Inject constructor(
             )
         }
 
-        // Get fee estimate directly from repository
-        val feeResult = evmBlockchainRepository.getFeeEstimate(
-            feeLevel = feeLevel,
-            network = token.network,
-            isToken = token !is NativeETH
-        )
-
-        val feeEstimate = when (feeResult) {
-            is Result.Success -> feeResult.data
-            is Result.Error -> {
-                logger.e(tag, "Failed to get fee estimate: ${feeResult.message}")
-                return SendValidationResult(
-                    isValid = false,
-                    gasError = "Failed to estimate gas fee"
-                )
-            }
-
-            else -> return SendValidationResult(
+        // Check if fee estimate is available
+        if (feeEstimate == null) {
+            return SendValidationResult(
                 isValid = false,
-                gasError = "Failed to estimate gas fee"
+                gasError = "Fee estimate not available"
             )
         }
 
@@ -117,9 +102,7 @@ class ValidateEVMSendUseCase @Inject constructor(
                 return SendValidationResult(
                     isValid = false,
                     balanceError = "Insufficient balance. You have ${ethBalance.setScale(6)} ETH but need ${
-                        totalRequired.setScale(
-                            6
-                        )
+                        totalRequired.setScale(6)
                     } ETH (including fees)"
                 )
             }

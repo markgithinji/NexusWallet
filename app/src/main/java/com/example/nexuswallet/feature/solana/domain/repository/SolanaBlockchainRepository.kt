@@ -2,12 +2,12 @@ package com.example.nexuswallet.feature.solana.domain.repository
 
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
-import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse
+import com.example.nexuswallet.feature.solana.data.remote.model.HeliusTransactionResponse
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import org.sol4k.Keypair
 import java.math.BigDecimal
 

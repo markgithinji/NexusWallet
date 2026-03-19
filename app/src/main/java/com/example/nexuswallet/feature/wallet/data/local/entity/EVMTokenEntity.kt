@@ -4,9 +4,8 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
-import com.example.nexuswallet.feature.wallet.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import java.util.UUID
 
 @Entity(
@@ -21,8 +20,7 @@ import java.util.UUID
     ],
     indices = [
         Index(value = ["walletId"]),
-        Index(value = ["walletId", "contractAddress", "network"], unique = true),
-        Index(value = ["externalId"])
+        Index(value = ["walletId", "evmTokenType", "network"], unique = true)
     ]
 )
 data class EVMTokenEntity(
@@ -33,10 +31,6 @@ data class EVMTokenEntity(
     val derivationPath: String,
     val network: EthereumNetwork,
     val contractAddress: String,
-    val symbol: String,
-    val name: String,
-    val decimals: Int,
-    val tokenType: TokenType,
-    val externalId: String,
+    val evmTokenType: EVMTokenType,
     val updatedAt: Long = System.currentTimeMillis()
 )

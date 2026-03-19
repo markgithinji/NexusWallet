@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.navigation
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
@@ -23,62 +22,44 @@ class NavigationViewModel @Inject constructor(
     private val walletRepository: WalletRepository
 ) : ViewModel() {
 
-    private val _shouldNavigateToAuth = MutableStateFlow<Pair<String, String>?>(null)
-    val shouldNavigateToAuth: StateFlow<Pair<String, String>?> = _shouldNavigateToAuth.asStateFlow()
-
     private val _wallets = MutableStateFlow<List<Wallet>>(emptyList())
     val wallets: StateFlow<List<Wallet>> = _wallets.asStateFlow()
 
     private val _isWalletsLoading = MutableStateFlow(true)
     val isWalletsLoading: StateFlow<Boolean> = _isWalletsLoading.asStateFlow()
 
+    private val _isAuthenticationRequired = MutableStateFlow(false)
+    val isAuthenticationRequired: StateFlow<Boolean> = _isAuthenticationRequired.asStateFlow()
+
     init {
         observeWallets()
+        checkAuthenticationStatus()
     }
 
     private fun observeWallets() {
         viewModelScope.launch {
             walletRepository.observeWallets()
                 .catch { e ->
-                    Log.e("NavigationVM", "Error observing wallets", e)
                     _isWalletsLoading.value = false
                 }
                 .collect { walletsList ->
                     _wallets.value = walletsList
                     _isWalletsLoading.value = false
-                    Log.d("NavigationVM", "Flow emitted ${walletsList.size} wallets - setting loading = false")
                 }
         }
     }
 
-    suspend fun isAuthenticationRequired(): Boolean {
-        val isPinSet = when (val result = isPinSetUseCase()) {
-            is Result.Success -> result.data
-            else -> false
-        }
-        val isBiometricEnabled = when (val result = isBiometricEnabledUseCase()) {
-            is Result.Success -> result.data
-            else -> false
-        }
-        return isPinSet || isBiometricEnabled
-    }
-
-    fun requestAuthentication(screen: String, walletId: String) {
+    private fun checkAuthenticationStatus() {
         viewModelScope.launch {
-            if (isAuthenticationRequired()) {
-                _shouldNavigateToAuth.value = screen to walletId
-            } else {
-                // Navigate directly
-                when (screen) {
-                    "walletDetail" -> {
-                        // This will be handled by the direct navigation callback
-                    }
-                }
+            val isPinSet = when (val result = isPinSetUseCase()) {
+                is Result.Success -> result.data
+                else -> false
             }
+            val isBiometricEnabled = when (val result = isBiometricEnabledUseCase()) {
+                is Result.Success -> result.data
+                else -> false
+            }
+            _isAuthenticationRequired.value = isPinSet || isBiometricEnabled
         }
-    }
-
-    fun clearAuthNavigation() {
-        _shouldNavigateToAuth.value = null
     }
 }

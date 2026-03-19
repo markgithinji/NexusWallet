@@ -59,12 +59,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.market.data.model.NewsArticle
-import com.example.nexuswallet.feature.market.data.remote.ChartData
-import com.example.nexuswallet.feature.market.data.remote.ChartDuration
-import com.example.nexuswallet.feature.market.data.remote.TokenDetail
+import com.example.nexuswallet.feature.market.domain.model.NewsArticle
+import com.example.nexuswallet.feature.market.domain.model.ChartData
+import com.example.nexuswallet.feature.market.domain.model.ChartDuration
+import com.example.nexuswallet.feature.market.domain.model.TokenDetail
+import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
+import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
 import com.example.nexuswallet.ui.theme.success
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -75,10 +78,10 @@ fun TokenDetailScreen(
     tokenId: String,
     viewModel: TokenDetailViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val chartState by viewModel.chartState.collectAsState()
-    val newsState by viewModel.newsState.collectAsState()
-    val selectedDuration by viewModel.selectedDuration.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val chartState by viewModel.chartState.collectAsStateWithLifecycle()
+    val newsState by viewModel.newsState.collectAsStateWithLifecycle()
+    val selectedDuration by viewModel.selectedDuration.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -92,16 +95,7 @@ fun TokenDetailScreen(
     ) { padding ->
         when (val state = uiState) {
             is Result.Loading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+                FullScreenLoading(message = "Loading token details...")
             }
 
             is Result.Error -> {
@@ -354,17 +348,7 @@ fun PriceChart(
             ) {
                 when (chartState) {
                     is Result.Loading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(32.dp),
-                                color = MaterialTheme.colorScheme.primary,
-                                strokeWidth = 2.dp
-                            )
-                        }
+                        InlineLoading(message = "Loading chart...")
                     }
 
                     is Result.Error -> {

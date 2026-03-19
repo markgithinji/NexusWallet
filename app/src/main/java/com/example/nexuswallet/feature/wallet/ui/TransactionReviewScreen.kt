@@ -4,8 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -30,7 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -42,8 +40,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,7 +53,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,29 +69,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewEffect
 import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewViewModel
-import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.core.domain.model.NetworkType
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
-import com.example.nexuswallet.feature.ethereum.ui.EthereumSendEffect
-import com.example.nexuswallet.feature.ethereum.ui.EthereumSendEvent
-import com.example.nexuswallet.feature.ethereum.ui.EthereumSendViewModel
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
+import com.example.nexuswallet.feature.ethereum.ui.EVMSendEffect
+import com.example.nexuswallet.feature.ethereum.ui.EVMSendEvent
+import com.example.nexuswallet.feature.ethereum.ui.EVMSendViewModel
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.ui.SolanaSendEffect
 import com.example.nexuswallet.feature.solana.ui.SolanaSendViewModel
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
-import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import com.example.nexuswallet.feature.wallet.domain.model.Network
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
+import com.example.nexuswallet.feature.wallet.ui.walletdetail.shimmer
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -114,8 +113,8 @@ fun TransactionReviewScreen(
     toAddress: String,
     amount: String,
     feeLevel: String? = null,
-    network: Network,
-    ethereumViewModel: EthereumSendViewModel = hiltViewModel(),
+    coin: Coin,
+    ethereumViewModel: EVMSendViewModel = hiltViewModel(),
     solanaViewModel: SolanaSendViewModel = hiltViewModel(),
     bitcoinReviewViewModel: BitcoinReviewViewModel = hiltViewModel()
 ) {
@@ -123,14 +122,16 @@ fun TransactionReviewScreen(
     var isSending by remember { mutableStateOf(false) }
     var sendError by remember { mutableStateOf<String?>(null) }
     var txHash by remember { mutableStateOf<String?>(null) }
+    var explorerUrl by remember { mutableStateOf<String?>(null) }
     var txStatus by remember { mutableStateOf("") }
     var showSuccessBanner by remember { mutableStateOf(false) }
 
-    val ethereumState = ethereumViewModel.uiState.collectAsState()
-    val solanaState = solanaViewModel.state.collectAsState()
-    val bitcoinState = bitcoinReviewViewModel.state.collectAsState()
+    val ethereumState = ethereumViewModel.uiState.collectAsStateWithLifecycle()
+    val solanaState = solanaViewModel.state.collectAsStateWithLifecycle()
+    val bitcoinState = bitcoinReviewViewModel.state.collectAsStateWithLifecycle()
 
-    val coinType = network.coinType
+    // Get coin config
+    val (coinColor, iconRes) = getCoinDetailConfig(coin)
 
     // Handle Bitcoin effects
     LaunchedEffect(bitcoinReviewViewModel) {
@@ -140,9 +141,11 @@ fun TransactionReviewScreen(
                     sendError = effect.message
                     isSending = false
                 }
+
                 is BitcoinReviewEffect.TransactionPrepared -> {}
                 is BitcoinReviewEffect.TransactionSent -> {
                     txHash = effect.txHash
+                    explorerUrl = effect.explorerUrl
                     txStatus = "Transaction sent!"
                     isSending = false
                     showSuccessBanner = true
@@ -157,12 +160,14 @@ fun TransactionReviewScreen(
     LaunchedEffect(ethereumViewModel) {
         ethereumViewModel.effect.collect { effect ->
             when (effect) {
-                is EthereumSendEffect.ShowError -> {
+                is EVMSendEffect.ShowError -> {
                     sendError = effect.message
                     isSending = false
                 }
-                is EthereumSendEffect.TransactionSent -> {
+
+                is EVMSendEffect.TransactionSent -> {
                     txHash = effect.txHash
+                    explorerUrl = effect.explorerUrl
                     txStatus = "Transaction sent!"
                     isSending = false
                     showSuccessBanner = true
@@ -181,8 +186,10 @@ fun TransactionReviewScreen(
                     sendError = effect.message
                     isSending = false
                 }
+
                 is SolanaSendEffect.TransactionSent -> {
                     txHash = effect.txHash
+                    explorerUrl = effect.explorerUrl
                     txStatus = "Transaction sent!"
                     isSending = false
                     showSuccessBanner = true
@@ -193,101 +200,87 @@ fun TransactionReviewScreen(
         }
     }
 
-    // Get coin config with custom icons
-    val (coinColor, iconRes, displayName) = when (coinType) {
-        CoinType.BITCOIN -> Triple(bitcoinLight, R.drawable.bitcoin, "Bitcoin")
-        CoinType.ETHEREUM -> Triple(ethereumLight, R.drawable.ethereum, "Ethereum")
-        CoinType.SOLANA -> Triple(solanaLight, R.drawable.solana, "Solana")
-        CoinType.USDC -> Triple(usdcLight, R.drawable.usdc, "USDC")
-    }
-
     LaunchedEffect(Unit) {
-        when (network) {
-            is EthereumNetwork -> {
-                ethereumViewModel.initialize(walletId, network)
-                ethereumViewModel.onEvent(EthereumSendEvent.ToAddressChanged(toAddress))
-                ethereumViewModel.onEvent(EthereumSendEvent.AmountChanged(amount))
+        when (coin) {
+            is BitcoinCoin -> {
+                bitcoinReviewViewModel.initialize(
+                    walletId = walletId,
+                    toAddress = toAddress,
+                    amount = amount,
+                    feeLevel = FeeLevel.valueOf(feeLevel ?: "NORMAL"),
+                    network = coin.network
+                )
+                bitcoinReviewViewModel.prepareTransaction()
+            }
+
+            is EVMToken -> {
+                ethereumViewModel.initialize(walletId, coin)
+                ethereumViewModel.onEvent(EVMSendEvent.ToAddressChanged(toAddress))
+                ethereumViewModel.onEvent(EVMSendEvent.AmountChanged(amount))
                 feeLevel?.let {
-                    ethereumViewModel.onEvent(EthereumSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
+                    ethereumViewModel.onEvent(EVMSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
                 }
 
-                // If this is USDC, we need to select the USDC token
-                if (coinType == CoinType.USDC) {
+                // If this is USDC or USDT (non-native), select the appropriate token
+                if (coin.evmTokenType != EVMTokenType.NATIVE) {
                     // Wait for initialization
                     snapshotFlow { ethereumState.value.isInitialized }
                         .filter { it }
                         .firstOrNull()
 
-                    // Find and select USDC token
-                    val usdcToken = ethereumState.value.availableTokens.firstOrNull { it is USDCToken }
-                    usdcToken?.let { ethereumViewModel.selectToken(it) }
+                    // Find and select the token
+                    val token = ethereumState.value.availableTokens.firstOrNull {
+                        it.evmTokenType == coin.evmTokenType
+                    }
+                    token?.let { ethereumViewModel.selectToken(it) }
                 }
             }
-            is SolanaNetwork -> {
-                solanaViewModel.init(walletId, network)
+
+            is SolanaCoin -> {
+                solanaViewModel.init(walletId, coin)
                 solanaViewModel.updateToAddress(toAddress)
                 solanaViewModel.updateAmount(amount)
                 feeLevel?.let {
                     solanaViewModel.updateFeeLevel(FeeLevel.valueOf(it))
                 }
             }
-            is BitcoinNetwork -> {
-                bitcoinReviewViewModel.initialize(
-                    walletId = walletId,
-                    toAddress = toAddress,
-                    amount = amount,
-                    feeLevel = FeeLevel.valueOf(feeLevel ?: "NORMAL"),
-                    network = network
-                )
-                bitcoinReviewViewModel.prepareTransaction()
-            }
         }
     }
 
     // Extract data for display
-    val fromAddress = when (network) {
-        is EthereumNetwork -> ethereumState.value.fromAddress
-        is SolanaNetwork -> solanaState.value.walletAddress
-        is BitcoinNetwork -> bitcoinState.value.fromAddress
+    val fromAddress = when (coin) {
+        is BitcoinCoin -> bitcoinState.value.fromAddress
+        is SolanaCoin -> solanaState.value.walletAddress
+        is EVMToken -> ethereumState.value.fromAddress
     }
 
-    val selectedToken = if (network is EthereumNetwork && (coinType == CoinType.ETHEREUM || coinType == CoinType.USDC)) {
-        ethereumState.value.selectedToken
-    } else null
+    val selectedToken = if (coin is EVMToken) ethereumState.value.selectedToken else null
 
-    val feeEstimate = when (network) {
-        is EthereumNetwork -> ethereumState.value.feeEstimate
-        is SolanaNetwork -> solanaState.value.feeEstimate
-        is BitcoinNetwork -> bitcoinState.value.feeEstimate
+    val feeEstimate = when (coin) {
+        is BitcoinCoin -> bitcoinState.value.feeEstimate
+        is EVMToken -> ethereumState.value.feeEstimate
+        is SolanaCoin -> solanaState.value.feeEstimate
     }
 
-    val isFeeLoading = when (network) {
-        is BitcoinNetwork -> bitcoinState.value.isFeeLoading
-        is EthereumNetwork -> ethereumState.value.isFeeLoading
-        is SolanaNetwork -> solanaState.value.isFeeLoading
+    val isFeeLoading = when (coin) {
+        is BitcoinCoin -> bitcoinState.value.isFeeLoading
+        is EVMToken -> ethereumState.value.isFeeLoading
+        is SolanaCoin -> solanaState.value.isFeeLoading
     }
 
-    LaunchedEffect(isFeeLoading, network) {
-        Log.d("TransactionReview", "Network: $network, isFeeLoading: $isFeeLoading")
-        if (network is SolanaNetwork) {
-            Log.d("TransactionReview", "Solana - isFeeLoading: ${solanaState.value.isFeeLoading}, feeEstimate: ${solanaState.value.feeEstimate}")
-        }
+    val isReady = when (coin) {
+        is BitcoinCoin -> bitcoinState.value.transactionPrepared
+        is EVMToken -> ethereumState.value.validationResult.isValid
+        is SolanaCoin -> solanaState.value.isValid
     }
 
-    val isReady = when (network) {
-        is BitcoinNetwork -> bitcoinState.value.transactionPrepared
-        is EthereumNetwork -> ethereumState.value.validationResult.isValid
-        is SolanaNetwork -> solanaState.value.isValid
+    val isPreparing = when (coin) {
+        is BitcoinCoin -> bitcoinState.value.isLoading && !bitcoinState.value.transactionPrepared
         else -> false
     }
 
-    val isPreparing = when (network) {
-        is BitcoinNetwork -> bitcoinState.value.isLoading && !bitcoinState.value.transactionPrepared
-        else -> false
-    }
-
-    val isTestnet = network.isTestnet
-    val fullNetworkName = if (isTestnet) "${network.displayName} Testnet" else network.displayName
+    val isTestnet = coin.network.isTestnet
+    val fullNetworkName = if (isTestnet) "${coin.network.name} Testnet" else coin.network.name
 
     val tokenIconRes = when (selectedToken) {
         is NativeETH -> R.drawable.ethereum
@@ -319,7 +312,7 @@ fun TransactionReviewScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateUp) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             "Back",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -344,22 +337,24 @@ fun TransactionReviewScreen(
                     isSending = true
                     sendError = null
 
-                    when (network) {
-                        is EthereumNetwork -> {
+                    when (coin) {
+                        is EVMToken -> {
                             ethereumViewModel.send { hash ->
                                 txHash = hash
                                 txStatus = "Transaction sent!"
                                 isSending = false
                             }
                         }
-                        is SolanaNetwork -> {
+
+                        is SolanaCoin -> {
                             solanaViewModel.send { hash ->
                                 txHash = hash
                                 txStatus = "Transaction sent!"
                                 isSending = false
                             }
                         }
-                        is BitcoinNetwork -> {
+
+                        is BitcoinCoin -> {
                             bitcoinReviewViewModel.sendTransaction { hash ->
                                 txHash = hash
                                 txStatus = "Transaction sent!"
@@ -379,27 +374,26 @@ fun TransactionReviewScreen(
                 .padding(padding)
         ) {
             TransactionReviewContent(
-                coinType = coinType,
+                coin = coin,
                 amount = amount,
                 fromAddress = fromAddress,
                 toAddress = toAddress,
                 feeEstimate = feeEstimate,
                 isFeeLoading = isFeeLoading,
                 txHash = txHash,
+                explorerUrl = explorerUrl,
                 coinColor = coinColor,
                 iconRes = iconRes,
                 tokenIconRes = tokenIconRes,
                 selectedToken = selectedToken,
-                network = fullNetworkName,
-                networkObject = network,
+                networkName = fullNetworkName,
                 isValid = true,
                 validationErrors = if (sendError != null) listOf(sendError!!) else emptyList(),
                 onCopyAddress = { address ->
                     copyToClipboard(context, address)
                 },
-                onViewOnExplorer = { hash ->
-                    val url = ExplorerUrlHelper.getExplorerUrl(hash, network)
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                onViewOnExplorer = { _, url ->
+                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                     context.startActivity(intent)
                 },
                 modifier = Modifier.fillMaxSize()
@@ -413,10 +407,9 @@ fun TransactionReviewScreen(
             ) {
                 SuccessBanner(
                     txHash = txHash ?: "",
-                    network = network,
-                    onViewExplorer = { hash ->
-                        val url = ExplorerUrlHelper.getExplorerUrl(hash, network)
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    explorerUrl = explorerUrl,
+                    onViewExplorer = { hash, url ->
+                        val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                         context.startActivity(intent)
                     },
                     onDismiss = { showSuccessBanner = false },
@@ -430,119 +423,25 @@ fun TransactionReviewScreen(
 }
 
 @Composable
-fun SuccessBanner(
-    txHash: String,
-    network: Network,
-    onViewExplorer: (String) -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.successContainer
-        ),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Success icon
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.success.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.CheckCircle,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.success,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Message
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "Transaction Sent!",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "Hash: ${txHash.take(6)}...${txHash.takeLast(4)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // Actions
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                // Explorer button
-                IconButton(
-                    onClick = { onViewExplorer(txHash) },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        Icons.Outlined.OpenInBrowser,
-                        contentDescription = "View on Explorer",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                // Dismiss button
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        Icons.Outlined.Close,
-                        contentDescription = "Dismiss",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun TransactionReviewContent(
-    coinType: CoinType,
+    modifier: Modifier = Modifier,
+    coin: Coin,
     amount: String,
     fromAddress: String?,
     toAddress: String,
     feeEstimate: Any?,
     isFeeLoading: Boolean,
     txHash: String?,
+    explorerUrl: String?,
     coinColor: Color,
     iconRes: Int,
     tokenIconRes: Int? = null,
     selectedToken: EVMToken? = null,
-    network: String? = null,
-    networkObject: Network? = null,
+    networkName: String? = null,
     isValid: Boolean = true,
     validationErrors: List<String> = emptyList(),
     onCopyAddress: (String) -> Unit,
-    onViewOnExplorer: (String) -> Unit,
-    modifier: Modifier = Modifier
+    onViewOnExplorer: (String, String) -> Unit
 ) {
     Column(
         modifier = modifier
@@ -622,7 +521,7 @@ fun TransactionReviewContent(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = getTokenSymbol(coinType, selectedToken),
+                        text = selectedToken?.symbol ?: coin.symbol,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Medium,
                         color = coinColor,
@@ -632,25 +531,14 @@ fun TransactionReviewContent(
 
                 if (selectedToken != null && selectedToken !is NativeETH) {
                     Text(
-                        text = "on ${selectedToken.network.displayName}",
+                        text = "on ${selectedToken.network.name}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
                     )
-                } else if (networkObject != null) {
-                    val networkName = if (networkObject.isTestnet)
-                        "${networkObject.displayName} Testnet"
-                    else
-                        networkObject.displayName
+                } else if (networkName != null) {
                     Text(
                         text = "on $networkName",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                } else if (network != null) {
-                    Text(
-                        text = "on $network",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
@@ -680,7 +568,6 @@ fun TransactionReviewContent(
             address = toAddress,
             coinColor = coinColor,
             iconRes = tokenIconRes ?: iconRes,
-            isToAddress = true,
             onCopy = { onCopyAddress(toAddress) }
         )
 
@@ -691,10 +578,10 @@ fun TransactionReviewContent(
             FeeLoadingShimmer()
         } else {
             feeEstimate?.let {
-                when (coinType) {
-                    CoinType.ETHEREUM, CoinType.USDC -> EVMFeePreviewCard(feeEstimate = it as EVMFeeEstimate)
-                    CoinType.BITCOIN -> BitcoinFeePreviewCard(feeEstimate = it as BitcoinFeeEstimate)
-                    CoinType.SOLANA -> SolanaFeePreviewCard(feeEstimate = it as SolanaFeeEstimate)
+                when (it) {
+                    is EVMFeeEstimate -> EVMFeePreviewCard(feeEstimate = it)
+                    is BitcoinFeeEstimate -> BitcoinFeePreviewCard(feeEstimate = it)
+                    is SolanaFeeEstimate -> SolanaFeePreviewCard(feeEstimate = it)
                 }
             }
         }
@@ -703,13 +590,14 @@ fun TransactionReviewContent(
 
         // Success Message
         txHash?.let { hash ->
-            TransactionSuccessCard(
-                hash = hash,
-                network = networkObject,
-                coinType = coinType,
-                coinColor = coinColor,
-                onViewOnExplorer = { onViewOnExplorer(hash) }
-            )
+            explorerUrl?.let { url ->
+                TransactionSuccessCard(
+                    hash = hash,
+                    coin = coin,
+                    coinColor = coinColor,
+                    onViewOnExplorer = { onViewOnExplorer(hash, url) }
+                )
+            }
         }
     }
 }
@@ -720,7 +608,6 @@ fun AddressCard(
     address: String,
     coinColor: Color,
     iconRes: Int,
-    isToAddress: Boolean = false,
     onCopy: () -> Unit
 ) {
     Card(
@@ -787,6 +674,246 @@ fun AddressCard(
                     tint = coinColor,
                     modifier = Modifier.size(16.dp)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionSuccessCard(
+    hash: String,
+    coin: Coin,
+    coinColor: Color,
+    onViewOnExplorer: () -> Unit
+) {
+    val context = LocalContext.current
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.success.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            // Success header
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.success.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.CheckCircle,
+                        contentDescription = "Success",
+                        tint = MaterialTheme.colorScheme.success,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Column {
+                    Text(
+                        text = "Transaction Sent!",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Your transaction has been broadcast",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Transaction hash with copy option
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Link,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = hash.take(8) + "..." + hash.takeLast(8),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    // Copy hash button
+                    IconButton(
+                        onClick = {
+                            val clipboard =
+                                context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("Transaction Hash", hash)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "Hash copied", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ContentCopy,
+                            contentDescription = "Copy hash",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Explorer button
+            Button(
+                onClick = onViewOnExplorer,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = coinColor,
+                    contentColor = Color.White
+                )
+            ) {
+                Icon(
+                    Icons.Outlined.OpenInBrowser,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "View on ${coin.network.name} Explorer",
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SuccessBanner(
+    txHash: String,
+    explorerUrl: String?,
+    onViewExplorer: (String, String) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.successContainer
+        ),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Success icon
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.success.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.success,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Message
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "Transaction Sent!",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Hash: ${txHash.take(6)}...${txHash.takeLast(4)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            // Actions
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Explorer button
+                if (explorerUrl != null) {
+                    IconButton(
+                        onClick = { onViewExplorer(txHash, explorerUrl) },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.OpenInBrowser,
+                            contentDescription = "View on Explorer",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                // Dismiss button
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.Close,
+                        contentDescription = "Dismiss",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }
@@ -987,8 +1114,9 @@ fun FeePreviewCard(
                 }
 
                 if (estimatedTime != null) {
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.padding(vertical = 4.dp),
+                        thickness = DividerDefaults.Thickness,
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                     )
 
@@ -1032,150 +1160,6 @@ private fun getPriorityColor(priority: FeeLevel): Color {
         FeeLevel.SLOW -> MaterialTheme.colorScheme.success
         FeeLevel.NORMAL -> MaterialTheme.colorScheme.primary
         FeeLevel.FAST -> MaterialTheme.colorScheme.warning
-    }
-}
-
-@Composable
-fun TransactionSuccessCard(
-    hash: String,
-    network: Network? = null,
-    coinType: CoinType,
-    coinColor: Color,
-    onViewOnExplorer: () -> Unit
-) {
-    val context = LocalContext.current
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.success.copy(alpha = 0.5f)),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
-        ) {
-            // Success header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.success.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.CheckCircle,
-                        contentDescription = "Success",
-                        tint = MaterialTheme.colorScheme.success,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                Column {
-                    Text(
-                        text = "Transaction Sent!",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Your transaction has been broadcast",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Transaction hash with copy option
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Link,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = hash.take(8) + "..." + hash.takeLast(8),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    // Copy hash button
-                    IconButton(
-                        onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText("Transaction Hash", hash)
-                            clipboard.setPrimaryClip(clip)
-                            Toast.makeText(context, "Hash copied", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.ContentCopy,
-                            contentDescription = "Copy hash",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Explorer button
-            Button(
-                onClick = onViewOnExplorer,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = coinColor,
-                    contentColor = Color.White
-                )
-            ) {
-                Icon(
-                    Icons.Outlined.OpenInBrowser,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    "View on ${getExplorerName(coinType)}",
-                    style = MaterialTheme.typography.labelLarge
-                )
-            }
-        }
     }
 }
 
@@ -1256,8 +1240,9 @@ fun FeeLoadingShimmer() {
 
             // Estimated time section
             Spacer(modifier = Modifier.height(4.dp))
-            Divider(
+            HorizontalDivider(
                 modifier = Modifier.padding(vertical = 4.dp),
+                thickness = DividerDefaults.Thickness,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
             )
             Spacer(modifier = Modifier.height(4.dp))
@@ -1297,6 +1282,16 @@ fun FeeLoadingShimmer() {
     }
 }
 
+private fun getCoinDetailConfig(coin: Coin): Pair<Color, Int> {
+    return when (coin) {
+        is BitcoinCoin -> Pair(bitcoinLight, R.drawable.bitcoin)
+        is NativeETH -> Pair(ethereumLight, R.drawable.ethereum)
+        is USDCToken -> Pair(usdcLight, R.drawable.usdc)
+        is USDTToken -> Pair(Color(0xFF26A17B), R.drawable.tether)
+        is SolanaCoin -> Pair(solanaLight, R.drawable.solana)
+    }
+}
+
 private fun copyToClipboard(context: Context, address: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clip = ClipData.newPlainText("Address", address)
@@ -1304,22 +1299,3 @@ private fun copyToClipboard(context: Context, address: String) {
     Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
 }
 
-private fun getTokenSymbol(coinType: CoinType, token: EVMToken? = null): String {
-    return when {
-        token != null -> token.symbol
-        coinType == CoinType.BITCOIN -> "BTC"
-        coinType == CoinType.ETHEREUM -> "ETH"
-        coinType == CoinType.SOLANA -> "SOL"
-        coinType == CoinType.USDC -> "USDC"
-        else -> ""
-    }
-}
-
-private fun getExplorerName(coinType: CoinType): String {
-    return when (coinType) {
-        CoinType.BITCOIN -> "Blockstream"
-        CoinType.ETHEREUM -> "Etherscan"
-        CoinType.SOLANA -> "Solscan"
-        CoinType.USDC -> "Etherscan"
-    }
-}

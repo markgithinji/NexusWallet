@@ -50,21 +50,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.feature.authentication.domain.model.AuthType
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.ui.theme.warning
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -79,11 +80,11 @@ fun AuthenticationRequiredScreen(
     val activity = LocalActivity.current as? AppCompatActivity
     val context = LocalContext.current
 
-    val authenticationResult by viewModel.authenticationResult.collectAsState()
-    val showPinDialog by viewModel.showPinDialog.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
-    val isPinAvailable by viewModel.isPinAvailable.collectAsState()
-    val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
+    val authenticationResult by viewModel.authenticationResult.collectAsStateWithLifecycle()
+    val showPinDialog by viewModel.showPinDialog.collectAsStateWithLifecycle()
+    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    val isPinAvailable by viewModel.isPinAvailable.collectAsStateWithLifecycle()
+    val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsStateWithLifecycle()
 
     val biometricPrompt = remember(activity) {
         if (activity == null) return@remember null
@@ -121,8 +122,6 @@ fun AuthenticationRequiredScreen(
             .build()
     }
 
-    val coroutineScope = rememberCoroutineScope()
-
     LaunchedEffect(Unit) {
         viewModel.refreshAuthStatus()
     }
@@ -133,9 +132,7 @@ fun AuthenticationRequiredScreen(
             title = "Enter PIN",
             subtitle = "Enter your PIN to continue",
             onPinEntered = { pin ->
-                coroutineScope.launch {
-                    viewModel.verifyPin(pin)
-                }
+                viewModel.verifyPin(pin)
             },
             onDismiss = {
                 viewModel.cancelPinEntry()
@@ -376,6 +373,8 @@ private fun AuthenticationMethodsCard(
     biometricHardwareAvailable: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -398,7 +397,10 @@ private fun AuthenticationMethodsCard(
             }
 
             Button(
-                onClick = onBiometricClick,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onBiometricClick()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),

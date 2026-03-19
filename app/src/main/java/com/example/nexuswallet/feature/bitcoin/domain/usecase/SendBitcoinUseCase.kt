@@ -1,21 +1,20 @@
 package com.example.nexuswallet.feature.bitcoin.domain.usecase
 
-import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.bitcoin.domain.model.SendBitcoinResult
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.core.domain.model.CoinType
+import com.example.nexuswallet.feature.core.domain.model.BitcoinTransaction
+import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_MAINNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_TESTNET
+import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
-import com.example.nexuswallet.toHex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bitcoinj.core.DumpedPrivateKey
@@ -24,6 +23,8 @@ import org.bitcoinj.core.Transaction
 import org.bitcoinj.core.Utils
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
+import java.math.BigDecimal
+import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -108,7 +109,6 @@ class SendBitcoinUseCase @Inject constructor(
             is Result.Success -> {
                 val signedTx = signResult.data
 
-                // Broadcast and save after successful broadcast
                 broadcastAndSaveTransaction(
                     signedTx = signedTx,
                     preparedTx = preparedTransaction,
@@ -140,27 +140,40 @@ class SendBitcoinUseCase @Inject constructor(
             network = network
         )) {
             is Result.Success -> {
+                // Calculate BTC amounts
+                val btcAmount = BigDecimal(preparedTx.amountSatoshis).divide(
+                    BigDecimal(100_000_000),
+                    8,
+                    RoundingMode.HALF_UP
+                )
+
+                val btcFee = BigDecimal(preparedTx.feeSatoshis).divide(
+                    BigDecimal(100_000_000),
+                    8,
+                    RoundingMode.HALF_UP
+                )
+
                 // Create and save transaction
                 val transaction = BitcoinTransaction(
-                    id = preparedTx.transactionId,
+                    id = txId,
                     walletId = walletId,
-                    coinType = CoinType.BITCOIN,
                     fromAddress = preparedTx.fromAddress,
                     toAddress = preparedTx.toAddress,
-                    amountSatoshis = preparedTx.amountSatoshis,
-                    amountBtc = preparedTx.amountBtc.toPlainString(),
-                    feeSatoshis = preparedTx.feeSatoshis,
-                    feeBtc = preparedTx.feeBtc.toPlainString(),
-                    feePerByte = preparedTx.feePerByte,
-                    estimatedSize = preparedTx.estimatedSize.toLong(),
-                    signedHex = signedHex,
-                    txHash = broadcastResult.data,
                     status = TransactionStatus.SUCCESS,
-                    note = null,
                     timestamp = System.currentTimeMillis(),
+                    note = null,
                     feeLevel = preparedTx.feeLevel,
                     network = network,
-                    isIncoming = false
+                    isIncoming = false,
+                    txHash = broadcastResult.data,
+                    amount = btcAmount.toPlainString(),
+                    fee = btcFee.toPlainString(),
+                    symbol = "BTC",
+                    amountSatoshis = preparedTx.amountSatoshis,
+                    feeSatoshis = preparedTx.feeSatoshis,
+                    feePerByte = preparedTx.feePerByte,
+                    estimatedSize = preparedTx.estimatedSize.toLong(),
+                    signedHex = signedHex
                 )
 
                 bitcoinTransactionRepository.saveTransaction(transaction)

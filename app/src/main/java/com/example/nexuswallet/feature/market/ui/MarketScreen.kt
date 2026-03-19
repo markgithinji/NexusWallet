@@ -49,12 +49,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.market.domain.Token
-import kotlinx.coroutines.delay
+import com.example.nexuswallet.feature.market.domain.model.Token
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ButtonDefaults
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.ui.theme.success
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -64,15 +65,14 @@ fun MarketScreen(
     padding: PaddingValues
 ) {
     val viewModel: MarketViewModel = hiltViewModel()
-    val uiState by viewModel.uiState.collectAsState()
-    val tokens by viewModel.filteredTokens.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val isWebSocketConnected by viewModel.isWebSocketConnected.collectAsState()
-    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val tokens by viewModel.filteredTokens.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val isWebSocketConnected by viewModel.isWebSocketConnected.collectAsStateWithLifecycle()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsStateWithLifecycle()
 
     var isRefreshing by remember { mutableStateOf(false) }
 
-    // Observe loading state to know when refresh is complete
     LaunchedEffect(uiState) {
         if (uiState is Result.Success && isRefreshing) {
             isRefreshing = false
@@ -127,7 +127,7 @@ fun MarketScreen(
                     when (uiState) {
                         Result.Loading -> {
                             if (tokens.isEmpty()) {
-                                LoadingView()
+                                FullScreenLoading(message = "Loading market data...")
                             } else {
                                 MarketList(
                                     tokens = tokens,
@@ -660,39 +660,6 @@ fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
                 )
                 drawRect(brush = brush)
             }
-    )
-}
-
-@Composable
-fun LiveIndicator(isConnected: Boolean) {
-    var pulse by remember { mutableStateOf(0f) }
-
-    LaunchedEffect(isConnected) {
-        if (isConnected) {
-            while (true) {
-                pulse = 1f
-                delay(1000)
-                pulse = 0f
-                delay(1000)
-            }
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .size(8.dp)
-            .clip(CircleShape)
-            .graphicsLayer {
-                alpha = 0.7f + pulse * 0.3f
-                scaleX = 1f + pulse * 0.3f
-                scaleY = 1f + pulse * 0.3f
-            }
-            .background(
-                color = if (isConnected)
-                    MaterialTheme.colorScheme.success
-                else
-                    MaterialTheme.colorScheme.error
-            )
     )
 }
 

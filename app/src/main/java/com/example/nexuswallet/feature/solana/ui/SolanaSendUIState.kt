@@ -3,8 +3,9 @@ package com.example.nexuswallet.feature.solana.ui
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import java.math.BigDecimal
 
 data class SolanaSendUIState(
@@ -12,7 +13,9 @@ data class SolanaSendUIState(
     val walletName: String = "",
     val walletAddress: String = "",
     val network: SolanaNetwork = SolanaNetwork.Devnet,
+    val coin: SolanaCoin? = null,
     val availableNetworks: List<SolanaNetwork> = emptyList(),
+    val availableCoins: List<SolanaCoin> = emptyList(),
     val availableSplTokens: List<SPLToken> = emptyList(),
     val selectedSplToken: SPLToken? = null,
     val isNativeSol: Boolean = true,

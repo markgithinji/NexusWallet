@@ -1,25 +1,22 @@
 package com.example.nexuswallet.feature.ethereum.domain.usecase
 
-import com.example.nexuswallet.feature.authentication.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
-import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
-import com.example.nexuswallet.feature.ethereum.domain.model.SendEthereumResult
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.core.util.toHex
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
+import com.example.nexuswallet.feature.ethereum.domain.model.SendEVMResult
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.domain.model.ERC20Token
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
-import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import com.example.nexuswallet.feature.wallet.domain.model.TokenType
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
-import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
-import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
-import com.example.nexuswallet.toHex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
@@ -46,7 +43,7 @@ class SendEVMAssetUseCase @Inject constructor(
         feeLevel: FeeLevel,
         token: EVMToken,
         note: String?
-    ): Result<SendEthereumResult> = withContext(Dispatchers.IO) {
+    ): Result<SendEVMResult> = withContext(Dispatchers.IO) {
         logger.d(tag, "WalletId: $walletId, To: $toAddress, Amount: $amount ${token.symbol}")
 
         // Validate wallet exists
@@ -59,14 +56,15 @@ class SendEVMAssetUseCase @Inject constructor(
         val hasToken = wallet.evmTokens.any {
             it.address == token.address &&
                     it.contractAddress == token.contractAddress &&
-                    it.network.chainId == token.network.chainId
+                    it.network == token.network &&
+                    it.evmTokenType == token.evmTokenType
         }
         if (!hasToken) {
             logger.e(tag, "Token ${token.symbol} not enabled for wallet: $walletId")
             return@withContext Result.Error("${token.symbol} not enabled for this wallet")
         }
 
-        logger.d(tag, "Network: ${token.network.displayName}")
+        logger.d(tag, "Network: ${token.network.name}")
 
         // 1. Get encrypted private key
         logger.d(tag, "Step 1: Retrieving private key...")
@@ -106,7 +104,7 @@ class SendEVMAssetUseCase @Inject constructor(
         val feeResult = evmBlockchainRepository.getFeeEstimate(
             feeLevel = feeLevel,
             network = token.network,
-            isToken = token !is NativeETH
+            isToken = token.evmTokenType != EVMTokenType.NATIVE
         )
 
         if (feeResult is Result.Error) {
@@ -120,8 +118,8 @@ class SendEVMAssetUseCase @Inject constructor(
         logger.d(tag, "Step 4: Creating and signing transaction...")
         val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
 
-        val createResult = when (token) {
-            is NativeETH -> evmBlockchainRepository.createAndSignNativeTransaction(
+        val createResult = when (token.evmTokenType) {
+            EVMTokenType.NATIVE -> evmBlockchainRepository.createAndSignNativeTransaction(
                 fromAddress = token.address,
                 fromPrivateKey = privateKey,
                 toAddress = toAddress,
@@ -131,26 +129,19 @@ class SendEVMAssetUseCase @Inject constructor(
                 chainId = token.network.chainId.toLong(),
                 network = token.network
             )
-
-            is USDCToken, is USDTToken, is ERC20Token -> {
-                val tokenType = when (token) {
-                    is USDTToken -> TokenType.USDT
-                    else -> TokenType.ERC20
-                }
-                evmBlockchainRepository.createAndSignTokenTransaction(
-                    fromAddress = token.address,
-                    fromPrivateKey = privateKey,
-                    toAddress = toAddress,
-                    amount = amountInWei,
-                    tokenContract = token.contractAddress,
-                    tokenDecimals = token.decimals,
-                    gasPriceWei = gasPriceWei,
-                    nonce = nonce,
-                    chainId = token.network.chainId.toLong(),
-                    network = token.network,
-                    tokenType = tokenType
-                )
-            }
+            EVMTokenType.USDC, EVMTokenType.USDT -> evmBlockchainRepository.createAndSignTokenTransaction(
+                fromAddress = token.address,
+                fromPrivateKey = privateKey,
+                toAddress = toAddress,
+                amount = amountInWei,
+                tokenContract = token.contractAddress,
+                tokenDecimals = token.decimals,
+                gasPriceWei = gasPriceWei,
+                nonce = nonce,
+                chainId = token.network.chainId.toLong(),
+                network = token.network,
+                evmTokenType = token.evmTokenType
+            )
         }
 
         if (createResult is Result.Error) {
@@ -169,6 +160,7 @@ class SendEVMAssetUseCase @Inject constructor(
         when (broadcastResult) {
             is Result.Success -> {
                 val broadcastData = broadcastResult.data
+                val finalTxHash = broadcastData.hash ?: txHash
 
                 // 6. save transaction after successful broadcast
                 if (broadcastData.success) {
@@ -177,12 +169,22 @@ class SendEVMAssetUseCase @Inject constructor(
                         "Step 6: Creating and saving transaction record after successful broadcast..."
                     )
 
-                    val transaction = when (token) {
-                        is NativeETH -> NativeETHTransaction(
-                            id = "tx_${System.currentTimeMillis()}",
+                    val transaction = when (token.evmTokenType) {
+                        EVMTokenType.NATIVE -> NativeETHTransaction(
+                            id = finalTxHash,
                             walletId = walletId,
                             fromAddress = token.address,
                             toAddress = toAddress,
+                            status = TransactionStatus.SUCCESS,
+                            timestamp = System.currentTimeMillis(),
+                            note = note,
+                            feeLevel = feeLevel,
+                            network = token.network,
+                            isIncoming = false,
+                            txHash = finalTxHash,
+                            amount = amount.toPlainString(),
+                            fee = feeEstimate.totalFeeEth,
+                            symbol = token.symbol,
                             amountWei = amountInWei.toString(),
                             amountEth = amount.toPlainString(),
                             gasPriceWei = feeEstimate.gasPriceWei,
@@ -193,24 +195,27 @@ class SendEVMAssetUseCase @Inject constructor(
                             nonce = nonce.toInt(),
                             chainId = token.network.chainId.toLong(),
                             signedHex = signedHex,
-                            txHash = broadcastData.hash ?: txHash,
-                            status = TransactionStatus.SUCCESS,
-                            note = note,
-                            timestamp = System.currentTimeMillis(),
-                            feeLevel = feeLevel,
-                            network = token.network,
-                            isIncoming = false,
-                            data = "",
-                            tokenExternalId = token.externalId
+                            transactionType = EVMTransactionType.NATIVE_ETH,
+                            evmTokenType = token.evmTokenType,
+                            data = ""
                         )
 
-                        else -> TokenTransaction(
-                            id = "tx_${System.currentTimeMillis()}",
+                        EVMTokenType.USDC, EVMTokenType.USDT -> TokenTransaction(
+                            id = finalTxHash,
                             walletId = walletId,
                             fromAddress = token.address,
                             toAddress = toAddress,
+                            status = TransactionStatus.SUCCESS,
+                            timestamp = System.currentTimeMillis(),
+                            note = note,
+                            feeLevel = feeLevel,
+                            network = token.network,
+                            isIncoming = false,
+                            txHash = finalTxHash,
+                            amount = amount.toPlainString(),
+                            fee = feeEstimate.totalFeeEth,
+                            symbol = token.symbol,
                             amountWei = amountInWei.toString(),
-                            amountDecimal = amount.toPlainString(),
                             gasPriceWei = feeEstimate.gasPriceWei,
                             gasPriceGwei = feeEstimate.gasPriceGwei,
                             gasLimit = feeEstimate.gasLimit,
@@ -219,18 +224,10 @@ class SendEVMAssetUseCase @Inject constructor(
                             nonce = nonce.toInt(),
                             chainId = token.network.chainId.toLong(),
                             signedHex = signedHex,
-                            txHash = broadcastData.hash ?: txHash,
-                            status = TransactionStatus.SUCCESS,
-                            note = note,
-                            timestamp = System.currentTimeMillis(),
-                            feeLevel = feeLevel,
-                            network = token.network,
-                            isIncoming = false,
+                            transactionType = EVMTransactionType.TOKEN,
+                            evmTokenType = token.evmTokenType,
                             tokenContract = token.contractAddress,
-                            tokenSymbol = token.symbol,
-                            tokenDecimals = token.decimals,
-                            data = "",
-                            tokenExternalId = token.externalId
+                            data = ""
                         )
                     }
 
@@ -248,9 +245,9 @@ class SendEVMAssetUseCase @Inject constructor(
                     )
                 }
 
-                val sendResult = SendEthereumResult(
-                    transactionId = "tx_${System.currentTimeMillis()}",
-                    txHash = broadcastData.hash ?: txHash,
+                val sendResult = SendEVMResult(
+                    transactionId = finalTxHash,
+                    txHash = finalTxHash,
                     success = broadcastData.success,
                     error = broadcastData.error
                 )

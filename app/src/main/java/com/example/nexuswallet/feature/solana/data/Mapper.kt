@@ -1,12 +1,12 @@
 package com.example.nexuswallet.feature.solana.data
 
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity
-import com.example.nexuswallet.feature.solana.data.remote.HeliusTransactionResponse
-import com.example.nexuswallet.feature.solana.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
+import com.example.nexuswallet.feature.solana.data.remote.model.HeliusTransactionResponse
 import com.example.nexuswallet.feature.solana.domain.model.TransferInfo
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 
 fun SolanaTransactionEntity.toDomain(): SolanaTransaction {
@@ -19,18 +19,21 @@ fun SolanaTransactionEntity.toDomain(): SolanaTransaction {
         timestamp = timestamp,
         note = note,
         feeLevel = FeeLevel.valueOf(feeLevel),
-        amountLamports = amountLamports,
-        amountSol = amountSol,
-        feeLamports = feeLamports,
-        feeSol = feeSol,
-        signature = signature,
-        network = network.toSolanaNetwork(),
+        network = network,
         isIncoming = isIncoming,
-        slot = slot,
-        blockTime = blockTime,
+        txHash = signature,
+        amount = amountSol,
+        fee = feeSol,
+        symbol = tokenSymbol ?: "SOL",
+        amountLamports = amountLamports,
+        feeLamports = feeLamports,
+        signature = signature,
         tokenMint = tokenMint,
         tokenSymbol = tokenSymbol,
-        tokenDecimals = tokenDecimals
+        tokenName = null,
+        tokenDecimals = tokenDecimals,
+        slot = slot,
+        blockTime = blockTime
     )
 }
 
@@ -45,29 +48,18 @@ fun SolanaTransaction.toEntity(): SolanaTransactionEntity {
         note = note,
         feeLevel = feeLevel.name,
         amountLamports = amountLamports,
-        amountSol = amountSol,
+        amountSol = amount,
         feeLamports = feeLamports,
-        feeSol = feeSol,
-        signature = signature,
-        network = network.toStorageString(),
+        feeSol = fee,
+        network = network,
         isIncoming = isIncoming,
         slot = slot,
         blockTime = blockTime,
         tokenMint = tokenMint,
         tokenSymbol = tokenSymbol,
-        tokenDecimals = tokenDecimals
+        tokenDecimals = tokenDecimals,
+        signature = signature
     )
-}
-
-fun SolanaNetwork.toStorageString(): String = when (this) {
-    SolanaNetwork.Mainnet -> SolanaNetwork.Mainnet.name
-    SolanaNetwork.Devnet -> SolanaNetwork.Devnet.name
-}
-
-fun String.toSolanaNetwork(): SolanaNetwork = when (this) {
-    SolanaNetwork.Mainnet.name -> SolanaNetwork.Mainnet
-    SolanaNetwork.Devnet.name-> SolanaNetwork.Devnet
-    else -> SolanaNetwork.Devnet
 }
 
 fun HeliusTransactionResponse.toDomain(
@@ -96,15 +88,18 @@ fun HeliusTransactionResponse.toDomain(
         timestamp = timestamp * 1000, // Convert to milliseconds
         note = description,
         feeLevel = FeeLevel.NORMAL,
-        amountLamports = transferInfo.amount,
-        amountSol = (transferInfo.amount.toDouble() / LAMPORTS_PER_SOL).toString(),
-        feeLamports = fee,
-        feeSol = (fee.toDouble() / LAMPORTS_PER_SOL).toString(),
-        signature = signature,
         network = network,
         isIncoming = transferInfo.isIncoming,
+        txHash = signature,
+        amount = (transferInfo.amount.toDouble() / LAMPORTS_PER_SOL).toString(),
+        fee = (fee.toDouble() / LAMPORTS_PER_SOL).toString(),
+        symbol = "SOL",
+        amountLamports = transferInfo.amount,
+        feeLamports = fee,
+        signature = signature,
         tokenMint = null,
         tokenSymbol = null,
+        tokenName = null,
         tokenDecimals = null,
         slot = slot,
         blockTime = timestamp

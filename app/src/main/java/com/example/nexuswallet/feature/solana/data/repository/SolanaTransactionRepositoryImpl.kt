@@ -1,11 +1,11 @@
 package com.example.nexuswallet.feature.solana.data.repository
 
-import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionDao
 import com.example.nexuswallet.feature.solana.data.toDomain
 import com.example.nexuswallet.feature.solana.data.toEntity
-import com.example.nexuswallet.feature.solana.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -14,43 +14,23 @@ import javax.inject.Singleton
 
 @Singleton
 class SolanaTransactionRepositoryImpl @Inject constructor(
-    private val solanaTransactionDao: SolanaTransactionDao,
-    private val logger: Logger
+    private val solanaTransactionDao: SolanaTransactionDao
 ) : SolanaTransactionRepository {
 
     override suspend fun saveTransaction(transaction: SolanaTransaction) {
-        logger.d("SolanaTxRepo", "Saving transaction: ${transaction.id.take(8)}...")
-        logger.d("SolanaTxRepo", "  walletId: ${transaction.walletId}")
-        logger.d("SolanaTxRepo", "  network: ${transaction.network}")
-        logger.d("SolanaTxRepo", "  tokenSymbol: ${transaction.tokenSymbol}")
 
         val entity = transaction.toEntity()
         solanaTransactionDao.insert(entity)
 
-        // Verify it was saved
         val saved = solanaTransactionDao.getById(transaction.id)
-        logger.d("SolanaTxRepo", "Verification - transaction exists after save: ${saved != null}")
     }
 
     override suspend fun getTransactionsSync(
         walletId: String,
-        network: String
+        network: SolanaNetwork
     ): List<SolanaTransaction> {
-        logger.d(
-            "SolanaTxRepo",
-            "getTransactionsSync called for wallet: $walletId, network: $network"
-        )
         val entities = solanaTransactionDao.getByWalletIdAndNetworkSync(walletId, network)
-        logger.d(
-            "SolanaTxRepo",
-            "Found ${entities.size} transactions for wallet: $walletId, network: $network"
-        )
-        entities.forEachIndexed { index, entity ->
-            logger.d(
-                "SolanaTxRepo",
-                "  Tx $index: ${entity.id.take(8)}..., network: ${entity.network}"
-            )
-        }
+
         return entities.map { it.toDomain() }
     }
 
@@ -63,8 +43,10 @@ class SolanaTransactionRepositoryImpl @Inject constructor(
         return solanaTransactionDao.getById(id)?.toDomain()
     }
 
-
-    override fun getTransactions(walletId: String, network: String): Flow<List<SolanaTransaction>> {
+    override fun getTransactions(
+        walletId: String,
+        network: SolanaNetwork
+    ): Flow<List<SolanaTransaction>> {
         return solanaTransactionDao.getByWalletIdAndNetwork(walletId, network)
             .map { entities -> entities.map { it.toDomain() } }
     }
@@ -72,7 +54,7 @@ class SolanaTransactionRepositoryImpl @Inject constructor(
     override fun getTransactionsByToken(
         walletId: String,
         tokenMint: String?,
-        network: String
+        network: SolanaNetwork
     ): Flow<List<SolanaTransaction>> {
         return solanaTransactionDao.getByWalletIdTokenAndNetwork(walletId, tokenMint, network)
             .map { entities -> entities.map { it.toDomain() } }
@@ -80,7 +62,7 @@ class SolanaTransactionRepositoryImpl @Inject constructor(
 
     override fun getNativeTransactions(
         walletId: String,
-        network: String
+        network: SolanaNetwork
     ): Flow<List<SolanaTransaction>> {
         return solanaTransactionDao.getNativeTransactions(walletId, network)
             .map { entities -> entities.map { it.toDomain() } }
@@ -93,7 +75,7 @@ class SolanaTransactionRepositoryImpl @Inject constructor(
 
     override suspend fun getNativeTransactionsSync(
         walletId: String,
-        network: String
+        network: SolanaNetwork
     ): List<SolanaTransaction> {
         return solanaTransactionDao.getNativeTransactionsSync(walletId, network)
             .map { it.toDomain() }
@@ -112,7 +94,10 @@ class SolanaTransactionRepositoryImpl @Inject constructor(
         solanaTransactionDao.deleteByWalletId(walletId)
     }
 
-    override suspend fun deleteForWalletAndNetwork(walletId: String, network: String) {
+    override suspend fun deleteForWalletAndNetwork(
+        walletId: String,
+        network: SolanaNetwork
+    ) {
         solanaTransactionDao.deleteByWalletIdAndNetwork(walletId, network)
     }
 

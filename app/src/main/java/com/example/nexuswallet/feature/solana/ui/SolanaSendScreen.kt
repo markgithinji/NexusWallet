@@ -14,7 +14,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,31 +24,32 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
-import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
-import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.core.ui.ErrorMessage
+import com.example.nexuswallet.feature.core.ui.MaxAmountDialog
+import com.example.nexuswallet.feature.core.ui.NetworkSelectorCard
+import com.example.nexuswallet.feature.core.ui.NetworkSelectorDialog
+import com.example.nexuswallet.feature.core.ui.SendAddressInput
+import com.example.nexuswallet.feature.core.ui.SendAmountInput
+import com.example.nexuswallet.feature.core.ui.SendBalanceCard
+import com.example.nexuswallet.feature.core.ui.SendBottomBar
+import com.example.nexuswallet.feature.core.ui.SendFeeSelection
+import com.example.nexuswallet.feature.core.ui.SendTopBar
+import com.example.nexuswallet.feature.core.ui.rememberSendErrorState
+import com.example.nexuswallet.feature.wallet.domain.model.Coin
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.ui.ErrorMessage
-import com.example.nexuswallet.feature.wallet.ui.MaxAmountDialog
-import com.example.nexuswallet.feature.wallet.ui.NetworkSelectorCard
-import com.example.nexuswallet.feature.wallet.ui.NetworkSelectorDialog
-import com.example.nexuswallet.feature.wallet.ui.SendAddressInput
-import com.example.nexuswallet.feature.wallet.ui.SendAmountInput
-import com.example.nexuswallet.feature.wallet.ui.SendBalanceCard
-import com.example.nexuswallet.feature.wallet.ui.SendBottomBar
-import com.example.nexuswallet.feature.wallet.ui.SendFeeSelection
-import com.example.nexuswallet.feature.wallet.ui.SendTopBar
-import com.example.nexuswallet.feature.wallet.ui.rememberSendErrorState
 import com.example.nexuswallet.ui.theme.solanaLight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SolanaSendScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToReview: (String, String, String, FeeLevel?, Network) -> Unit,
+    onNavigateToReview: (String, String, String, FeeLevel?, Coin) -> Unit,
     walletId: String,
-    network: Network,
+    coin: Coin,
     viewModel: SolanaSendViewModel = hiltViewModel()
 ) {
     var showMaxDialog by remember { mutableStateOf(false) }
@@ -64,11 +64,11 @@ fun SolanaSendScreen(
     var addressFocused by remember { mutableStateOf(false) }
     var amountFocused by remember { mutableStateOf(false) }
 
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
-    // Initialize ViewModel with the network directly
+    // Initialize ViewModel
     LaunchedEffect(Unit) {
-        viewModel.init(walletId, network as SolanaNetwork)
+        viewModel.init(walletId, coin as SolanaCoin)
     }
 
     val availableNetworks = listOf(
@@ -87,7 +87,7 @@ fun SolanaSendScreen(
     Scaffold(
         topBar = {
             SendTopBar(
-                title = "Send Solana",
+                title = "Send ${coin.symbol}",
                 iconRes = R.drawable.solana,
                 coinColor = solanaLight,
                 isLoading = state.isLoading,
@@ -172,7 +172,7 @@ fun SolanaSendScreen(
                 // Amount Input
                 SendAmountInput(
                     amount = state.amount,
-                    coinType = CoinType.SOLANA,
+                    coin = coin,
                     onAmountChange = {
                         amountTouched = true
                         viewModel.onEvent(SolanaSendEvent.AmountChanged(it))
@@ -184,7 +184,7 @@ fun SolanaSendScreen(
                         }
                     },
                     balance = state.balance,
-                    symbol = "SOL",
+                    symbol = coin.symbol,
                     coinColor = solanaLight,
                     onMaxClick = {
                         amountTouched = true
@@ -199,7 +199,7 @@ fun SolanaSendScreen(
                     feeLevel = state.feeLevel,
                     onFeeLevelChange = { viewModel.onEvent(SolanaSendEvent.FeeLevelChanged(it)) },
                     feeEstimate = state.feeEstimate,
-                    coinType = CoinType.SOLANA
+                    coin = coin
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -217,7 +217,7 @@ fun SolanaSendScreen(
                         state.toAddress,
                         state.amount,
                         state.feeLevel,
-                        state.network
+                        state.coin ?: coin
                     )
                 },
                 modifier = Modifier.align(Alignment.BottomCenter)
@@ -230,8 +230,8 @@ fun SolanaSendScreen(
         MaxAmountDialog(
             balance = state.balance,
             feeEstimate = state.feeEstimate,
-            tokenSymbol = "SOL",
-            coinType = CoinType.SOLANA,
+            tokenSymbol = coin.symbol,
+            coin = coin,
             onDismiss = { showMaxDialog = false },
             onConfirm = { maxAmount ->
                 amountTouched = true

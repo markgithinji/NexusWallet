@@ -1,11 +1,9 @@
 package com.example.nexuswallet.feature.wallet.domain.model
 
-import com.example.nexuswallet.feature.core.domain.model.CoinType
-
 data class TransactionDetail(
     val id: String,
     val walletId: String,
-    val coinType: CoinType,
+    val coin: Coin,
     val network: Network,
     val hash: String,
     val status: TransactionStatus,
@@ -18,16 +16,12 @@ data class TransactionDetail(
     val memo: String? = null,
     val blockHeight: Long? = null,
     val confirmations: Int? = null,
-    val networkDisplayName: String = network.displayName,
-
     // Solana specific
     val slot: Long? = null,
     val computeUnitsConsumed: Long? = null,
-
     // Bitcoin specific
     val feePerByte: Double? = null,
     val estimatedSize: Int? = null,
-
     // EVM specific
     val gasPrice: String? = null,
     val gasUsed: Long? = null,

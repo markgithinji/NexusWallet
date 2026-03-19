@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.market.data.repository
 
-import com.example.nexuswallet.feature.market.data.remote.ConnectionState
-import com.example.nexuswallet.feature.market.data.remote.TokenPriceUpdate
+import com.example.nexuswallet.feature.market.domain.model.ConnectionState
+import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
 import com.example.nexuswallet.feature.market.domain.BinanceWebSocket
 import com.example.nexuswallet.feature.market.domain.WebSocketRepository
 import kotlinx.coroutines.flow.Flow

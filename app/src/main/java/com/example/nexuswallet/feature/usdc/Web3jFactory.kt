@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.usdc
 
 import com.example.nexuswallet.BuildConfig
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import okhttp3.OkHttpClient
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.http.HttpService
@@ -11,7 +11,9 @@ import javax.inject.Singleton
 
 
 @Singleton
-class Web3jFactory @Inject constructor() {
+class Web3jFactory @Inject constructor(
+    private val okHttpClient: OkHttpClient
+) {
 
     fun create(network: EthereumNetwork): Web3j {
         val alchemyApiKey = BuildConfig.ALCHEMY_API_KEY
@@ -24,7 +26,7 @@ class Web3jFactory @Inject constructor() {
         return Web3j.build(
             HttpService(
                 rpcUrl,
-                OkHttpClient.Builder()
+                okHttpClient.newBuilder()
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .writeTimeout(30, TimeUnit.SECONDS)

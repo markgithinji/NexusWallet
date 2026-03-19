@@ -7,5 +7,5 @@ import kotlinx.serialization.Serializable
 data class EtherscanTransactionsResponse(
     @SerialName("status") val status: String,
     @SerialName("message") val message: String,
-    @SerialName("result") val result: List<EtherscanTransactionResponse>
+    @SerialName("result") val result: List<EtherscanTransactionDto>
 )

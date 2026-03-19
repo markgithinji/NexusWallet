@@ -1,6 +1,8 @@
 package com.example.nexuswallet.feature.market.data.remote
 
 import com.example.nexuswallet.feature.market.domain.BinanceWebSocket
+import com.example.nexuswallet.feature.market.domain.model.ConnectionState
+import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -21,6 +23,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import java.util.Collections
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.min
@@ -29,94 +32,38 @@ import kotlin.math.min
 class BinanceWebSocketImpl @Inject constructor(
     private val okHttpClient: OkHttpClient,
     private val json: Json,
-    ioDispatcher: CoroutineDispatcher
+    private val ioDispatcher: CoroutineDispatcher
 ) : BinanceWebSocket {
 
-    // Create scope with injected dispatcher
-    private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
+    // Create scope that can be recreated
+    private var scope = createScope()
     private var connectionMonitorJob: Job? = null
 
-    // Map Binance symbols to token IDs - Top 50+ coins
-    private val symbolMapping = mapOf(
-        // Top 10
-        "BTCUSDT" to "bitcoin",
-        "ETHUSDT" to "ethereum",
-        "BNBUSDT" to "binancecoin",
-        "SOLUSDT" to "solana",
-        "XRPUSDT" to "ripple",
-        "ADAUSDT" to "cardano",
-        "DOGEUSDT" to "dogecoin",
-        "DOTUSDT" to "polkadot",
-        "MATICUSDT" to "matic-network",
-        "SHIBUSDT" to "shiba-inu",
+    // Thread-safe list
+    private val webSockets = Collections.synchronizedList(mutableListOf<WebSocket>())
 
-        // Layer 1s
-        "AVAXUSDT" to "avalanche-2",
-        "TRXUSDT" to "tron",
-        "LINKUSDT" to "chainlink",
-        "WBTCUSDT" to "wrapped-bitcoin",
-        "LEOUSDT" to "leo-token",
-        "TONUSDT" to "the-open-network",
-        "DAIUSDT" to "dai",
-        "XLMUSDT" to "stellar",
-        "ATOMUSDT" to "cosmos",
-        "ICPUSDT" to "internet-computer",
-
-        // DeFi & L2s
-        "ETCUSDT" to "ethereum-classic",
-        "FILUSDT" to "filecoin",
-        "APTUSDT" to "aptos",
-        "IMXUSDT" to "immutable-x",
-        "NEARUSDT" to "near",
-        "OPUSDT" to "optimism",
-        "ARBUSDT" to "arbitrum",
-        "LDOUSDT" to "lido-dao",
-        "AAVEUSDT" to "aave",
-        "MKRUSDT" to "maker",
-
-        // Meme coins
-        "PEPEUSDT" to "pepe",
-        "WIFUSDT" to "dogwifcoin",
-        "FLOKIUSDT" to "floki",
-        "BONKUSDT" to "bonk",
-
-        // Exchange tokens
-        "CROUSDT" to "crypto-com-chain",
-        "OKBUSDT" to "okb",
-        "GTUSDT" to "gatechain-token",
-
-        // More popular coins
-        "VETUSDT" to "vechain",
-        "QNTUSDT" to "quant",
-        "EGLDUSDT" to "elrond",
-        "THETAUSDT" to "theta-token",
-        "FTMUSDT" to "fantom",
-        "SANDUSDT" to "the-sandbox",
-        "MANAUSDT" to "decentraland",
-        "AXSUSDT" to "axie-infinity",
-        "KLAYUSDT" to "klaytn",
-        "HNTUSDT" to "helium",
-        "ZECUSDT" to "zcash",
-        "DASHUSDT" to "dash"
-    )
-
-    // Split into batches
+    // Split symbols into batches to avoid WebSocket limits
     private val symbolBatches = symbolMapping.keys.chunked(SYMBOLS_PER_BATCH)
-    private val webSockets = mutableListOf<WebSocket>()
     private val batchConnectionStates = MutableStateFlow(List(symbolBatches.size) { false })
 
-    // Flow for updates
+    // Flow for price updates
     private val _priceUpdate = MutableSharedFlow<Map<String, TokenPriceUpdate>>(
         replay = 1,
         extraBufferCapacity = 50
     )
     override val fullUpdates: SharedFlow<Map<String, TokenPriceUpdate>> = _priceUpdate
 
-    // Connection state
+    // Connection state flow
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
+    private fun createScope() = CoroutineScope(SupervisorJob() + ioDispatcher)
+
     override fun connect() {
+        // Cancel old scope and create new one for fresh start
+        scope.cancel()
+        scope = createScope()
+
         _connectionState.value = ConnectionState.CONNECTING
         webSockets.clear()
 
@@ -137,7 +84,8 @@ class BinanceWebSocketImpl @Inject constructor(
             val webSocket = okHttpClient.newWebSocket(request, createBatchListener(batchIndex))
             webSockets.add(webSocket)
         } catch (e: Exception) {
-            // Failed to connect batch
+            // Update state to reflect connection failure
+            updateBatchState(batchIndex, false)
         }
     }
 
@@ -173,7 +121,7 @@ class BinanceWebSocketImpl @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                // Error parsing message
+                // Log parsing errors
             }
         }
 
@@ -190,7 +138,11 @@ class BinanceWebSocketImpl @Inject constructor(
                     connectBatch(symbolBatches[batchIndex], batchIndex)
                 }
             } else {
-                _connectionState.value = ConnectionState.ERROR
+                // Check if all batches are disconnected
+                val allDisconnected = batchConnectionStates.value.all { !it }
+                if (allDisconnected) {
+                    _connectionState.value = ConnectionState.ERROR
+                }
             }
         }
 
@@ -205,11 +157,13 @@ class BinanceWebSocketImpl @Inject constructor(
             currentStates[batchIndex] = isConnected
             batchConnectionStates.value = currentStates
 
+            // Update overall connection state
             val anyConnected = currentStates.any { it }
-            _connectionState.value = if (anyConnected)
+            _connectionState.value = if (anyConnected) {
                 ConnectionState.CONNECTED
-            else
+            } else {
                 ConnectionState.DISCONNECTED
+            }
         }
     }
 
@@ -218,8 +172,12 @@ class BinanceWebSocketImpl @Inject constructor(
             batchConnectionStates.collect { states ->
                 val connectedCount = states.count { it }
                 val totalCount = states.size
-                if (connectedCount > 0) {
-                    // Connection status tracking
+
+                // Can add connection quality monitoring here if needed
+                // For example, emit connection stats or trigger reconnection if too many batches are down
+                if (connectedCount < totalCount && connectedCount > 0) {
+                    // Partial connection - some batches are down
+                    // Could trigger reconnection for disconnected batches here
                 }
             }
         }
@@ -230,7 +188,6 @@ class BinanceWebSocketImpl @Inject constructor(
         webSockets.forEach { it.close(1000, "User disconnected") }
         webSockets.clear()
         _connectionState.value = ConnectionState.DISCONNECTED
-        scope.cancel()
     }
 
     private fun getReconnectDelay(attempt: Int): Long {
@@ -247,5 +204,69 @@ class BinanceWebSocketImpl @Inject constructor(
         private const val MAX_RECONNECT_ATTEMPTS = 5
         private const val BASE_RECONNECT_DELAY_MS = 3000L
         private const val MAX_RECONNECT_DELAY_MS = 30000L
+
+        // Map Binance symbols to token IDs - Top 50+ coins
+        private val symbolMapping = mapOf(
+            // Top 10
+            "BTCUSDT" to "bitcoin",
+            "ETHUSDT" to "ethereum",
+            "BNBUSDT" to "binancecoin",
+            "SOLUSDT" to "solana",
+            "XRPUSDT" to "ripple",
+            "ADAUSDT" to "cardano",
+            "DOGEUSDT" to "dogecoin",
+            "DOTUSDT" to "polkadot",
+            "MATICUSDT" to "matic-network",
+            "SHIBUSDT" to "shiba-inu",
+
+            // Layer 1s
+            "AVAXUSDT" to "avalanche-2",
+            "TRXUSDT" to "tron",
+            "LINKUSDT" to "chainlink",
+            "WBTCUSDT" to "wrapped-bitcoin",
+            "LEOUSDT" to "leo-token",
+            "TONUSDT" to "the-open-network",
+            "DAIUSDT" to "dai",
+            "XLMUSDT" to "stellar",
+            "ATOMUSDT" to "cosmos",
+            "ICPUSDT" to "internet-computer",
+
+            // DeFi & L2s
+            "ETCUSDT" to "ethereum-classic",
+            "FILUSDT" to "filecoin",
+            "APTUSDT" to "aptos",
+            "IMXUSDT" to "immutable-x",
+            "NEARUSDT" to "near",
+            "OPUSDT" to "optimism",
+            "ARBUSDT" to "arbitrum",
+            "LDOUSDT" to "lido-dao",
+            "AAVEUSDT" to "aave",
+            "MKRUSDT" to "maker",
+
+            // Meme coins
+            "PEPEUSDT" to "pepe",
+            "WIFUSDT" to "dogwifcoin",
+            "FLOKIUSDT" to "floki",
+            "BONKUSDT" to "bonk",
+
+            // Exchange tokens
+            "CROUSDT" to "crypto-com-chain",
+            "OKBUSDT" to "okb",
+            "GTUSDT" to "gatechain-token",
+
+            // More popular coins
+            "VETUSDT" to "vechain",
+            "QNTUSDT" to "quant",
+            "EGLDUSDT" to "elrond",
+            "THETAUSDT" to "theta-token",
+            "FTMUSDT" to "fantom",
+            "SANDUSDT" to "the-sandbox",
+            "MANAUSDT" to "decentraland",
+            "AXSUSDT" to "axie-infinity",
+            "KLAYUSDT" to "klaytn",
+            "HNTUSDT" to "helium",
+            "ZECUSDT" to "zcash",
+            "DASHUSDT" to "dash"
+        )
     }
 }

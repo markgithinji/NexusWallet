@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain.model
 
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -15,15 +16,24 @@ data class Wallet(
 )
 
 @Serializable
-sealed class EVMToken {
-    abstract val address: String
-    abstract val publicKey: String
-    abstract val network: EthereumNetwork
+sealed interface Coin {
+    val address: String
+    val publicKey: String
+    val network: Network
+    val symbol: String
+    val name: String
+}
+
+@Serializable
+sealed class EVMToken : Coin {
+    abstract override val address: String
+    abstract override val publicKey: String
+    abstract override val network: EthereumNetwork
+    abstract override val symbol: String
+    abstract override val name: String
     abstract val contractAddress: String
-    abstract val symbol: String
-    abstract val name: String
     abstract val decimals: Int
-    abstract val externalId: String
+    abstract val evmTokenType: EVMTokenType
 }
 
 @Serializable
@@ -34,23 +44,9 @@ data class NativeETH(
     override val contractAddress: String = "0x0000000000000000000000000000000000000000",
     override val symbol: String = "ETH",
     override val name: String = "Ethereum",
-    override val decimals: Int = 18
-) : EVMToken() {
-    override val externalId: String = "${network.chainId}_eth"
-}
-
-@Serializable
-data class ERC20Token(
-    override val address: String,
-    override val publicKey: String,
-    override val network: EthereumNetwork,
-    override val contractAddress: String,
-    override val symbol: String,
-    override val name: String,
-    override val decimals: Int
-) : EVMToken() {
-    override val externalId: String = "${network.chainId}_${contractAddress}"
-}
+    override val decimals: Int = 18,
+    override val evmTokenType: EVMTokenType = EVMTokenType.NATIVE
+) : EVMToken()
 
 @Serializable
 data class USDCToken(
@@ -60,10 +56,9 @@ data class USDCToken(
     override val contractAddress: String = network.usdcContractAddress,
     override val symbol: String = "USDC",
     override val name: String = "USD Coin",
-    override val decimals: Int = 6
-) : EVMToken() {
-    override val externalId: String = "${network.chainId}_usdc"
-}
+    override val decimals: Int = 6,
+    override val evmTokenType: EVMTokenType = EVMTokenType.USDC
+) : EVMToken()
 
 @Serializable
 data class USDTToken(
@@ -73,28 +68,31 @@ data class USDTToken(
     override val contractAddress: String,
     override val symbol: String = "USDT",
     override val name: String = "Tether USD",
-    override val decimals: Int = 6
-) : EVMToken() {
-    override val externalId: String = "${network.chainId}_usdt"
-}
+    override val decimals: Int = 6,
+    override val evmTokenType: EVMTokenType = EVMTokenType.USDT
+) : EVMToken()
 
 @Serializable
 data class BitcoinCoin(
-    val address: String,
-    val publicKey: String,
+    override val address: String,
+    override val publicKey: String,
+    override val symbol: String = "BTC",
+    override val name: String = "Bitcoin",
     val derivationPath: String = "m/44'/0'/0'/0/0",
-    val network: BitcoinNetwork,
+    override val network: BitcoinNetwork,
     val xpub: String
-)
+) : Coin
 
 @Serializable
 data class SolanaCoin(
-    val address: String,
-    val publicKey: String,
+    override val address: String,
+    override val publicKey: String,
+    override val symbol: String = "SOL",
+    override val name: String = "Solana",
     val derivationPath: String = "m/44'/501'/0'/0'",
-    val network: SolanaNetwork,
+    override val network: SolanaNetwork,
     val splTokens: List<SPLToken> = emptyList()
-)
+) : Coin
 
 @Serializable
 data class SPLToken(

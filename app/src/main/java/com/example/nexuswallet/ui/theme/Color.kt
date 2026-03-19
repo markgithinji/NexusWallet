@@ -81,6 +81,7 @@ val bitcoinLight = Color(0xFFF7931A)
 val ethereumLight = Color(0xFF627EEA)
 val solanaLight = Color(0xFF009966)
 val usdcLight = Color(0xFF2775CA)
+val usdtLight = Color(0xFF26A17B)
 
 // Text colors
 val textPrimaryLight = Color(0xFF1F2937) // Almost black

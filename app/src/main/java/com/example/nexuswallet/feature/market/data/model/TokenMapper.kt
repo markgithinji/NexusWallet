@@ -1,12 +1,18 @@
 package com.example.nexuswallet.feature.market.data.model
 
-import com.example.nexuswallet.feature.market.data.remote.ChartData
-import com.example.nexuswallet.feature.market.data.remote.MarketCapPoint
-import com.example.nexuswallet.feature.market.data.remote.PricePoint
-import com.example.nexuswallet.feature.market.data.remote.TokenDetail
-import com.example.nexuswallet.feature.market.data.remote.VolumePoint
-import com.example.nexuswallet.feature.market.domain.SparklineData
-import com.example.nexuswallet.feature.market.domain.Token
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.TokenDetailDto
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.CoinGeckoTokenDto
+import com.example.nexuswallet.feature.market.data.remote.model.cryptopanic.CryptoPanicPostDto
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.MarketChartDto
+import com.example.nexuswallet.feature.market.domain.model.NewsArticle
+import com.example.nexuswallet.feature.market.data.remote.model.coingecko.Sparkline7dDto
+import com.example.nexuswallet.feature.market.domain.model.ChartData
+import com.example.nexuswallet.feature.market.domain.model.MarketCapPoint
+import com.example.nexuswallet.feature.market.domain.model.PricePoint
+import com.example.nexuswallet.feature.market.domain.model.TokenDetail
+import com.example.nexuswallet.feature.market.domain.model.VolumePoint
+import com.example.nexuswallet.feature.market.domain.model.SparklineData
+import com.example.nexuswallet.feature.market.domain.model.Token
 
 fun CoinGeckoTokenDto.toToken(): Token {
     return Token(
@@ -23,11 +29,11 @@ fun CoinGeckoTokenDto.toToken(): Token {
     )
 }
 
-fun SparklineDto.toSparklineData(): SparklineData {
+fun Sparkline7dDto.toSparklineData(): SparklineData {
     return SparklineData(price = price)
 }
 
-fun CryptoPanicPost.toNewsArticle(): NewsArticle {
+fun CryptoPanicPostDto.toNewsArticle(): NewsArticle {
     return NewsArticle(
         title = title,
         summary = description,
@@ -36,7 +42,7 @@ fun CryptoPanicPost.toNewsArticle(): NewsArticle {
         url = "" // No URL in free plan
     )
 }
-fun MarketChartResponse.toChartData(): ChartData {
+fun MarketChartDto.toChartData(): ChartData {
     return ChartData(
         prices = prices.map { (timestamp, price) ->
             PricePoint(timestamp = timestamp.toLong(), price = price)
@@ -51,7 +57,7 @@ fun MarketChartResponse.toChartData(): ChartData {
 }
 
 
-fun CoinDetailResponse.toTokenDetail(): TokenDetail {
+fun TokenDetailDto.toTokenDetail(): TokenDetail {
     return TokenDetail(
         id = id,
         symbol = symbol,
@@ -75,7 +81,7 @@ fun CoinDetailResponse.toTokenDetail(): TokenDetail {
         atl = market_data.atl["usd"] ?: 0.0,
         atlChangePercentage = market_data.atlChangePercentage["usd"] ?: 0.0,
         atlDate = market_data.atlDate["usd"] ?: "",
-        sparklineIn7d = market_data.sparkline7DResponse?.price,
+        sparklineIn7d = market_data.sparkline7DDto?.price,
         description = description?.get("en")
     )
 }

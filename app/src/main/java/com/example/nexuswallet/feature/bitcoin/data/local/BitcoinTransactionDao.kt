@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -21,13 +22,13 @@ interface BitcoinTransactionDao {
     @Query("SELECT * FROM BitcoinTransaction WHERE walletId = :walletId AND network = :network ORDER BY timestamp DESC")
     fun getByWalletIdAndNetwork(
         walletId: String,
-        network: String
+        network: BitcoinNetwork
     ): Flow<List<BitcoinTransactionEntity>>
 
     @Query("SELECT * FROM BitcoinTransaction WHERE walletId = :walletId AND network = :network ORDER BY timestamp DESC")
     suspend fun getByWalletIdAndNetworkSync(
         walletId: String,
-        network: String
+        network: BitcoinNetwork
     ): List<BitcoinTransactionEntity>
 
     @Query("SELECT * FROM BitcoinTransaction WHERE status = 'PENDING'")
@@ -40,5 +41,8 @@ interface BitcoinTransactionDao {
     suspend fun deleteByWalletId(walletId: String)
 
     @Query("DELETE FROM BitcoinTransaction WHERE walletId = :walletId AND network = :network")
-    suspend fun deleteByWalletIdAndNetwork(walletId: String, network: String)
+    suspend fun deleteByWalletIdAndNetwork(
+        walletId: String,
+        network: BitcoinNetwork
+    )
 }

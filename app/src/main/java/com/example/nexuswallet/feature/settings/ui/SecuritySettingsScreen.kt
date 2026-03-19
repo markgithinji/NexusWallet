@@ -20,15 +20,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.example.nexuswallet.feature.authentication.ui.PinSetupDialog
-import kotlinx.coroutines.launch
 import com.example.nexuswallet.feature.core.util.Result
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwitchDefaults
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.warning
 
@@ -38,11 +36,11 @@ fun SecuritySettingsScreen(
     onNavigateUp: () -> Unit,
     viewModel: SecuritySettingsViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val operationState by viewModel.operationState.collectAsState()
-    val showPinSetupDialog by viewModel.showPinSetupDialog.collectAsState()
-    val showPinChangeDialog by viewModel.showPinChangeDialog.collectAsState()
-    val pinSetupError by viewModel.pinSetupError.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val operationState by viewModel.operationState.collectAsStateWithLifecycle()
+    val showPinSetupDialog by viewModel.showPinSetupDialog.collectAsStateWithLifecycle()
+    val showPinChangeDialog by viewModel.showPinChangeDialog.collectAsStateWithLifecycle()
+    val pinSetupError by viewModel.pinSetupError.collectAsStateWithLifecycle()
 
     // PIN Setup Dialog
     SecurityPinDialog(

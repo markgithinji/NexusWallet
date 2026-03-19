@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.bitcoin.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 
 @Entity(tableName = "BitcoinTransaction")
 data class BitcoinTransactionEntity(

@@ -3,6 +3,7 @@ package com.example.nexuswallet
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
+import com.example.nexuswallet.BuildConfig
 
 @HiltAndroidApp
 class NexusWalletApplication : Application() {

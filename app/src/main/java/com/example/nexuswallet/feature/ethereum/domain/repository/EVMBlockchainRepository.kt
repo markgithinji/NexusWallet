@@ -2,13 +2,13 @@ package com.example.nexuswallet.feature.ethereum.domain.repository
 
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.data.model.GasPrice
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
-import com.example.nexuswallet.feature.wallet.domain.model.TokenType
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import org.web3j.crypto.RawTransaction
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -30,7 +30,7 @@ interface EVMBlockchainRepository {
         address: String,
         network: EthereumNetwork,
         walletId: String,
-        tokenExternalId: String?
+        evmTokenType: EVMTokenType?  // Changed from tokenExternalId: String?
     ): Result<List<NativeETHTransaction>>
 
     suspend fun getTokenTransactions(
@@ -38,7 +38,7 @@ interface EVMBlockchainRepository {
         tokenContract: String,
         network: EthereumNetwork,
         walletId: String,
-        tokenExternalId: String
+        evmTokenType: EVMTokenType
     ): Result<List<TokenTransaction>>
 
     suspend fun createAndSignNativeTransaction(
@@ -63,7 +63,7 @@ interface EVMBlockchainRepository {
         nonce: BigInteger,
         chainId: Long,
         network: EthereumNetwork,
-        tokenType: TokenType
+        evmTokenType: EVMTokenType
     ): Result<Triple<RawTransaction, String, String>>
 
     suspend fun getCurrentGasPrice(

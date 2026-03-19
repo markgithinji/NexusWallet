@@ -34,7 +34,7 @@ object BitcoinNetworkModule {
     fun provideBitcoinMainnetApi(
         client: OkHttpClient,
         json: Json
-    ): com.example.nexuswallet.feature.bitcoin.data.remote.api.BitcoinApi {
+    ): BitcoinApi {
         return Retrofit.Builder()
             .baseUrl(BLOCKSTREAM_MAINNET_URL)
             .client(client)

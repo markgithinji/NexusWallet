@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.market.data.repository
 
 import com.example.nexuswallet.feature.market.data.model.toToken
 import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
-import com.example.nexuswallet.feature.market.domain.Token
+import com.example.nexuswallet.feature.market.domain.model.Token
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.core.util.Result
@@ -18,23 +18,14 @@ class CoinGeckoRepositoryImpl @Inject constructor(
         perPage: Int,
         page: Int
     ): Result<List<Token>> {
-        val result = SafeApiCall.make {
+        return SafeApiCall.make {
             coinGeckoApi.getMarkets(
                 vsCurrency = "usd",
                 order = "market_cap_desc",
                 perPage = perPage,
                 page = page,
                 sparkline = true
-            )
-        }
-
-        return when (result) {
-            is Result.Success -> {
-                val tokens = result.data.map { it.toToken() }
-                Result.Success(tokens)
-            }
-            is Result.Error -> Result.Error(result.message, result.throwable)
-            Result.Loading -> Result.Loading
+            ).map { it.toToken() }
         }
     }
 }

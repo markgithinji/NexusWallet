@@ -15,7 +15,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,30 +26,31 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
-import com.example.nexuswallet.feature.core.domain.model.CoinType
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.ui.ErrorMessage
+import com.example.nexuswallet.feature.core.ui.MaxAmountDialog
+import com.example.nexuswallet.feature.core.ui.NetworkSelectorCard
+import com.example.nexuswallet.feature.core.ui.NetworkSelectorDialog
+import com.example.nexuswallet.feature.core.ui.SendAddressInput
+import com.example.nexuswallet.feature.core.ui.SendAmountInput
+import com.example.nexuswallet.feature.core.ui.SendBalanceCard
+import com.example.nexuswallet.feature.core.ui.SendBottomBar
+import com.example.nexuswallet.feature.core.ui.SendFeeSelection
+import com.example.nexuswallet.feature.core.ui.SendTopBar
+import com.example.nexuswallet.feature.core.ui.TokenSelectorCard
+import com.example.nexuswallet.feature.core.ui.TokenSelectorDialog
+import com.example.nexuswallet.feature.core.ui.rememberSendErrorState
+import com.example.nexuswallet.feature.wallet.domain.model.Coin
+import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
-import com.example.nexuswallet.feature.wallet.ui.ErrorMessage
-import com.example.nexuswallet.feature.wallet.ui.MaxAmountDialog
-import com.example.nexuswallet.feature.wallet.ui.NetworkSelectorCard
-import com.example.nexuswallet.feature.wallet.ui.NetworkSelectorDialog
-import com.example.nexuswallet.feature.wallet.ui.SendAddressInput
-import com.example.nexuswallet.feature.wallet.ui.SendAmountInput
-import com.example.nexuswallet.feature.wallet.ui.SendBalanceCard
-import com.example.nexuswallet.feature.wallet.ui.SendBottomBar
-import com.example.nexuswallet.feature.wallet.ui.SendFeeSelection
-import com.example.nexuswallet.feature.wallet.ui.SendTopBar
-import com.example.nexuswallet.feature.wallet.ui.TokenSelectorCard
-import com.example.nexuswallet.feature.wallet.ui.TokenSelectorDialog
-import com.example.nexuswallet.feature.wallet.ui.rememberSendErrorState
-import com.example.nexuswallet.feature.wallet.ui.usdtLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.usdcLight
+import com.example.nexuswallet.ui.theme.usdtLight
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import java.math.RoundingMode
@@ -59,10 +59,10 @@ import java.math.RoundingMode
 @Composable
 fun EthereumSendScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToReview: (String, String, String, FeeLevel?, Network) -> Unit,
+    onNavigateToReview: (String, String, String, FeeLevel?, Coin) -> Unit,
     walletId: String,
-    network: Network,
-    viewModel: EthereumSendViewModel = hiltViewModel()
+    coin: Coin,
+    viewModel: EVMSendViewModel = hiltViewModel()
 ) {
     var showMaxDialog by remember { mutableStateOf(false) }
     var showNetworkSelector by remember { mutableStateOf(false) }
@@ -77,46 +77,45 @@ fun EthereumSendScreen(
     var addressFocused by remember { mutableStateOf(false) }
     var amountFocused by remember { mutableStateOf(false) }
 
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Initialize ViewModel with the network directly
+    // Initialize ViewModel
     LaunchedEffect(Unit) {
-        viewModel.initialize(walletId, network as EthereumNetwork)
+        viewModel.initialize(walletId, coin as EVMToken)
 
-        // Auto-select USDC if needed (based on network's coinType)
-        if (network.coinType == CoinType.USDC) {
-            snapshotFlow { state.isInitialized }
-                .filter { it }
-                .firstOrNull()
+        // Auto-select the appropriate token if needed
+        snapshotFlow { state.isInitialized }
+            .filter { it }
+            .firstOrNull()
 
-            val usdcToken = state.availableTokens.firstOrNull { it is USDCToken }
-            usdcToken?.let { viewModel.selectToken(it) }
+        // Select the specific token that matches the passed coin
+        val targetToken = state.availableTokens.firstOrNull {
+            it.network == coin.network &&
+                    it.evmTokenType == coin.evmTokenType &&
+                    it.contractAddress == coin.contractAddress
         }
+        targetToken?.let { viewModel.selectToken(it) }
     }
 
     val selectedToken = state.selectedToken
-    val (iconRes, coinColor, displayName) = when (selectedToken) {
-        is NativeETH -> Triple(R.drawable.ethereum, ethereumLight, "Ethereum")
-        is USDCToken -> Triple(R.drawable.usdc, usdcLight, "USDC")
-        is USDTToken -> Triple(R.drawable.usdc, usdtLight, "USDT")
-        else -> when (network.coinType) {
-            CoinType.ETHEREUM -> Triple(R.drawable.ethereum, ethereumLight, "Ethereum")
-            CoinType.USDC -> Triple(R.drawable.usdc, usdcLight, "USDC")
-            else -> Triple(R.drawable.ethereum, ethereumLight, "Ethereum")
+    val (iconRes, coinColor) = when (selectedToken) {
+        is NativeETH -> Pair(R.drawable.ethereum, ethereumLight)
+        is USDCToken -> Pair(R.drawable.usdc, usdcLight)
+        is USDTToken -> Pair(R.drawable.tether, usdtLight)
+        else -> when (coin) {
+            is NativeETH -> Pair(R.drawable.ethereum, ethereumLight)
+            is USDCToken -> Pair(R.drawable.usdc, usdcLight)
+            is USDTToken -> Pair(R.drawable.tether, usdtLight)
+            else -> Pair(R.drawable.ethereum, ethereumLight)
         }
     }
+
+    val displayName = selectedToken?.name ?: coin.name
 
     val availableNetworks = listOf(
         EthereumNetwork.Mainnet,
         EthereumNetwork.Sepolia
     )
-
-    // Determine the current coin type for the amount input
-    val currentCoinType = when {
-        selectedToken is USDCToken -> CoinType.USDC
-        selectedToken is USDTToken -> CoinType.USDC // Treat USDT as USDC for USD price
-        else -> network.coinType
-    }
 
     val errorState = rememberSendErrorState(
         validationResult = state.validationResult,
@@ -195,22 +194,12 @@ fun EthereumSendScreen(
                 // Balance Card
                 SendBalanceCard(
                     balance = if (selectedToken is NativeETH) state.ethBalance else state.tokenBalance,
-                    balanceFormatted = if (selectedToken is NativeETH)
-                        "${state.ethBalance.setScale(6, RoundingMode.HALF_UP)} ETH"
-                    else if (selectedToken is USDCToken || selectedToken is USDTToken)
-                        "$${
-                            state.tokenBalance.setScale(
-                                2,
-                                RoundingMode.HALF_UP
-                            )
-                        } ${selectedToken?.symbol}"
-                    else
-                        "${
-                            state.tokenBalance.setScale(
-                                6,
-                                RoundingMode.HALF_UP
-                            )
-                        } ${selectedToken?.symbol ?: "ETH"}",
+                    balanceFormatted = when (selectedToken) {
+                        is NativeETH -> "${state.ethBalance.setScale(6, RoundingMode.HALF_UP)} ETH"
+                        is USDCToken -> "$${state.tokenBalance.setScale(2, RoundingMode.HALF_UP)} USDC"
+                        is USDTToken -> "$${state.tokenBalance.setScale(2, RoundingMode.HALF_UP)} USDT"
+                        else -> "${state.tokenBalance.setScale(6, RoundingMode.HALF_UP)} ${selectedToken?.symbol ?: "ETH"}"
+                    },
                     coinColor = coinColor,
                     iconRes = iconRes,
                     address = state.fromAddress,
@@ -243,7 +232,7 @@ fun EthereumSendScreen(
                     toAddress = state.toAddress,
                     onAddressChange = {
                         addressTouched = true
-                        viewModel.onEvent(EthereumSendEvent.ToAddressChanged(it))
+                        viewModel.onEvent(EVMSendEvent.ToAddressChanged(it))
                     },
                     onFocusChange = { isFocused ->
                         addressFocused = isFocused
@@ -256,7 +245,7 @@ fun EthereumSendScreen(
                     errorMessage = errorState.addressErrorMessage,
                     onPaste = { pastedText ->
                         addressTouched = true
-                        viewModel.onEvent(EthereumSendEvent.ToAddressChanged(pastedText))
+                        viewModel.onEvent(EVMSendEvent.ToAddressChanged(pastedText))
                     },
                     focusRequester = addressFocusRequester
                 )
@@ -264,10 +253,10 @@ fun EthereumSendScreen(
                 // Amount Input
                 SendAmountInput(
                     amount = state.amount,
-                    coinType = currentCoinType,
+                    coin = selectedToken ?: coin,
                     onAmountChange = {
                         amountTouched = true
-                        viewModel.onEvent(EthereumSendEvent.AmountChanged(it))
+                        viewModel.onEvent(EVMSendEvent.AmountChanged(it))
                     },
                     onFocusChange = { isFocused ->
                         amountFocused = isFocused
@@ -289,9 +278,9 @@ fun EthereumSendScreen(
                 // Fee Selection
                 SendFeeSelection(
                     feeLevel = state.feeLevel,
-                    onFeeLevelChange = { viewModel.onEvent(EthereumSendEvent.FeeLevelChanged(it)) },
+                    onFeeLevelChange = { viewModel.onEvent(EVMSendEvent.FeeLevelChanged(it)) },
                     feeEstimate = state.feeEstimate,
-                    coinType = CoinType.ETHEREUM
+                    coin = selectedToken ?: coin
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -309,7 +298,7 @@ fun EthereumSendScreen(
                         state.toAddress,
                         state.amount,
                         state.feeLevel,
-                        state.network
+                        state.selectedToken ?: coin
                     )
                 },
                 modifier = Modifier.align(Alignment.BottomCenter)
@@ -323,12 +312,11 @@ fun EthereumSendScreen(
             balance = if (selectedToken is NativeETH) state.ethBalance else state.tokenBalance,
             feeEstimate = state.feeEstimate,
             tokenSymbol = selectedToken?.symbol ?: "ETH",
-            coinType = network.coinType,
-            token = selectedToken,
+            coin = selectedToken ?: coin,
             onDismiss = { showMaxDialog = false },
             onConfirm = { maxAmount ->
                 amountTouched = true
-                viewModel.onEvent(EthereumSendEvent.AmountChanged(maxAmount))
+                viewModel.onEvent(EVMSendEvent.AmountChanged(maxAmount))
                 showMaxDialog = false
             }
         )

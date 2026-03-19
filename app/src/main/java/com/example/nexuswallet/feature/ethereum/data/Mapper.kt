@@ -1,25 +1,32 @@
 package com.example.nexuswallet.feature.ethereum.data
 
+import com.example.nexuswallet.feature.core.domain.model.EVMTransaction
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity
-import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransaction
+import com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionDto
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
-import com.example.nexuswallet.feature.ethereum.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.ethereum.domain.model.NativeETHTransaction
-import com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
+import com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import java.math.BigDecimal
 import java.math.RoundingMode
 
 private const val WEI_PER_ETH = "1000000000000000000"
 private const val WEI_PER_GWEI = 1_000_000_000L
-private const val GAS_LIMIT_STANDARD = 21000L
 
-fun com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionResponse.toNativeETHTransaction(
+/**
+ * Maps native ETH transaction response to domain model
+ */
+fun EtherscanTransactionDto.toNativeETHTransaction(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,
-    tokenExternalId: String? = null
+    evmTokenType: EVMTokenType = EVMTokenType.NATIVE
 ): NativeETHTransaction {
     val weiAmount = value.toBigDecimalOrNull() ?: BigDecimal.ZERO
     val ethAmount = weiAmount.divide(
@@ -44,65 +51,62 @@ fun com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransact
     )
 
     val isIncoming = to.equals(walletAddress, ignoreCase = true)
-    val status = when {
-        isError == "1" -> TransactionStatus.FAILED
-        receiptStatus == "1" -> TransactionStatus.SUCCESS
-        else -> TransactionStatus.PENDING
-    }
 
     return NativeETHTransaction(
-        id = "eth_tx_${System.currentTimeMillis()}_${hash.take(8)}",
+        id = hash,
         walletId = walletId,
         fromAddress = from,
         toAddress = to,
-        status = status,
+        status = TransactionStatus.SUCCESS,
         timestamp = timestamp.toLongOrNull()?.times(1000) ?: System.currentTimeMillis(),
         note = null,
         feeLevel = FeeLevel.NORMAL,
+        network = network,
+        isIncoming = isIncoming,
+        txHash = hash,
+        amount = ethAmount.toPlainString(),  // Human readable ETH amount
+        fee = feeEth.toPlainString(),        // Human readable fee in ETH
+        symbol = evmTokenType.symbol,
         amountWei = value,
         amountEth = ethAmount.toPlainString(),
         gasPriceWei = gasPrice,
         gasPriceGwei = gasPriceGwei.toPlainString(),
-        gasLimit = gas.toLongOrNull()
-            ?: GAS_LIMIT_STANDARD,
+        gasLimit = gas.toLongOrNull() ?: GAS_LIMIT_STANDARD,
         feeWei = feeWei.toPlainString(),
         feeEth = feeEth.toPlainString(),
         nonce = nonce.toIntOrNull() ?: 0,
         chainId = network.chainId.toLong(),
         signedHex = null,
-        txHash = hash,
-        network = network,
-        isIncoming = isIncoming,
-        data = input,
-        tokenExternalId = tokenExternalId
+        transactionType = EVMTransactionType.NATIVE_ETH,
+        evmTokenType = evmTokenType,
+        data = input
     )
 }
 
 /**
  * Maps list of API transactions to domain models (Native ETH)
  */
-fun List<com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionResponse>.toNativeETHTransactionList(
+fun List<EtherscanTransactionDto>.toNativeETHTransactionList(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,
-    tokenExternalId: String? = null
+    evmTokenType: EVMTokenType = EVMTokenType.NATIVE
 ): List<NativeETHTransaction> {
     return this.map { tx ->
-        tx.toNativeETHTransaction(walletId, network, walletAddress, tokenExternalId)
+        tx.toNativeETHTransaction(walletId, network, walletAddress, evmTokenType)
     }
 }
-
 /**
  * Maps token transaction to domain model
  */
-fun com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse.toTokenTransaction(
+fun TokenTransactionResponse.toTokenTransaction(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,
-    tokenExternalId: String
+    evmTokenType: EVMTokenType
 ): TokenTransaction {
     val weiAmount = value.toBigDecimalOrNull() ?: BigDecimal.ZERO
-    val decimals = tokenDecimal.toIntOrNull() ?: 18
+    val decimals = tokenDecimal.toIntOrNull() ?: evmTokenType.decimals
     val divisor = BigDecimal.TEN.pow(decimals)
     val tokenAmount = weiAmount.divide(divisor, decimals, RoundingMode.HALF_UP)
 
@@ -118,111 +122,124 @@ fun com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse.toToken
         RoundingMode.HALF_UP
     )
 
+    val gasLimitValue = gas.toLongOrNull() ?: DEFAULT_TOKEN_GAS_LIMIT
+
     return TokenTransaction(
-        id = "token_tx_${System.currentTimeMillis()}_${hash.take(8)}",
+        id = hash,
         walletId = walletId,
         fromAddress = from,
         toAddress = to,
         status = TransactionStatus.SUCCESS,
         timestamp = timeStamp.toLongOrNull()?.times(1000) ?: System.currentTimeMillis(),
-        note = "$tokenName ($tokenSymbol)",
+        note = "${evmTokenType.displayName} (${evmTokenType.symbol})${if (network.isTestnet) " - Testnet" else ""}",
         feeLevel = FeeLevel.NORMAL,
+        network = network,
+        isIncoming = isIncoming,
+        txHash = hash,
+        amount = tokenAmount.toPlainString(),  // Human readable token amount
+        fee = feeEth.toPlainString(),          // Fee in ETH
+        symbol = evmTokenType.symbol,
         amountWei = value,
-        amountDecimal = tokenAmount.toPlainString(),
         gasPriceWei = gasPrice,
         gasPriceGwei = gasPriceWei.divide(
             BigDecimal(WEI_PER_GWEI),
             6,
             RoundingMode.HALF_UP
         ).toPlainString(),
-        gasLimit = gas.toLongOrNull()
-            ?: GAS_LIMIT_STANDARD,
+        gasLimit = gasLimitValue,
         feeWei = feeWei.toPlainString(),
         feeEth = feeEth.toPlainString(),
         nonce = nonce.toIntOrNull() ?: 0,
         chainId = network.chainId.toLong(),
         signedHex = null,
-        txHash = hash,
-        network = network,
-        isIncoming = isIncoming,
+        transactionType = EVMTransactionType.TOKEN,
+        evmTokenType = evmTokenType,
         tokenContract = contractAddress,
-        tokenSymbol = tokenSymbol,
-        tokenDecimals = decimals,
-        data = input,
-        tokenExternalId = tokenExternalId
+        data = input
     )
 }
 
 /**
  * Maps list of token transactions to domain models
  */
-fun List<com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse>.toTokenTransactionList(
+fun List<TokenTransactionResponse>.toTokenTransactionList(
     walletId: String,
     network: EthereumNetwork,
     walletAddress: String,
-    tokenExternalId: String
-): List<com.example.nexuswallet.feature.ethereum.domain.model.TokenTransaction> {
+    evmTokenType: EVMTokenType
+): List<TokenTransaction> {
     return this.map { tx ->
-        tx.toTokenTransaction(walletId, network, walletAddress, tokenExternalId)
+        tx.toTokenTransaction(walletId, network, walletAddress, evmTokenType)
     }
 }
 
 fun EVMTransactionEntity.toDomain(): EVMTransaction {
     return when (transactionType) {
-        EVMTransactionType.NATIVE_ETH -> NativeETHTransaction(
-            id = id,
-            walletId = walletId,
-            fromAddress = fromAddress,
-            toAddress = toAddress,
-            status = TransactionStatus.valueOf(status),
-            timestamp = timestamp,
-            note = note,
-            feeLevel = FeeLevel.valueOf(feeLevel),
-            amountWei = amountWei,
-            amountEth = amountDecimal,
-            gasPriceWei = gasPriceWei,
-            gasPriceGwei = gasPriceGwei,
-            gasLimit = gasLimit,
-            feeWei = feeWei,
-            feeEth = feeEth,
-            nonce = nonce,
-            chainId = chainId,
-            signedHex = signedHex,
-            txHash = txHash,
-            network = network,
-            isIncoming = isIncoming,
-            data = data,
-            tokenExternalId = tokenExternalId
-        )
+        EVMTransactionType.NATIVE_ETH -> {
+            val EVMTokenTypeValue = evmTokenType ?: EVMTokenType.NATIVE
+            NativeETHTransaction(
+                id = id,
+                walletId = walletId,
+                fromAddress = fromAddress,
+                toAddress = toAddress,
+                status = TransactionStatus.valueOf(status),
+                timestamp = timestamp,
+                note = note,
+                feeLevel = FeeLevel.valueOf(feeLevel),
+                network = network,
+                isIncoming = isIncoming,
+                txHash = txHash,
+                amount = amountDecimal,  // ETH amount
+                fee = feeEth,            // Fee in ETH
+                symbol = EVMTokenTypeValue.symbol,
+                amountWei = amountWei,
+                amountEth = amountDecimal,
+                gasPriceWei = gasPriceWei,
+                gasPriceGwei = gasPriceGwei,
+                gasLimit = gasLimit,
+                feeWei = feeWei,
+                feeEth = feeEth,
+                nonce = nonce,
+                chainId = chainId,
+                signedHex = signedHex,
+                transactionType = EVMTransactionType.NATIVE_ETH,
+                evmTokenType = EVMTokenTypeValue,
+                data = data ?: ""
+            )
+        }
 
-        EVMTransactionType.TOKEN -> TokenTransaction(
-            id = id,
-            walletId = walletId,
-            fromAddress = fromAddress,
-            toAddress = toAddress,
-            status = TransactionStatus.valueOf(status),
-            timestamp = timestamp,
-            note = note,
-            feeLevel = FeeLevel.valueOf(feeLevel),
-            amountWei = amountWei,
-            amountDecimal = amountDecimal,
-            gasPriceWei = gasPriceWei,
-            gasPriceGwei = gasPriceGwei,
-            gasLimit = gasLimit,
-            feeWei = feeWei,
-            feeEth = feeEth,
-            nonce = nonce,
-            chainId = chainId,
-            signedHex = signedHex,
-            txHash = txHash,
-            network = network,
-            isIncoming = isIncoming,
-            tokenContract = tokenContract!!,
-            tokenSymbol = tokenSymbol!!,
-            tokenDecimals = tokenDecimals!!,
-            data = data,
-            tokenExternalId = tokenExternalId!!
-        )
+        EVMTransactionType.TOKEN -> {
+            val EVMTokenTypeValue = evmTokenType ?: EVMTokenType.USDC
+            TokenTransaction(
+                id = id,
+                walletId = walletId,
+                fromAddress = fromAddress,
+                toAddress = toAddress,
+                status = TransactionStatus.valueOf(status),
+                timestamp = timestamp,
+                note = note,
+                feeLevel = FeeLevel.valueOf(feeLevel),
+                network = network,
+                isIncoming = isIncoming,
+                txHash = txHash,
+                amount = amountDecimal,  // Token amount
+                fee = feeEth,            // Fee in ETH
+                symbol = EVMTokenTypeValue.symbol,
+                amountWei = amountWei,
+                gasPriceWei = gasPriceWei,
+                gasPriceGwei = gasPriceGwei,
+                gasLimit = gasLimit,
+                feeWei = feeWei,
+                feeEth = feeEth,
+                nonce = nonce,
+                chainId = chainId,
+                signedHex = signedHex,
+                transactionType = EVMTransactionType.TOKEN,
+                evmTokenType = EVMTokenTypeValue,
+                tokenContract = tokenContract ?: "",
+                data = data ?: ""
+            )
+        }
     }
 }
 
@@ -251,9 +268,7 @@ fun EVMTransaction.toEntity(): EVMTransactionEntity {
             isIncoming = isIncoming,
             note = note,
             feeLevel = feeLevel.name,
-            tokenExternalId = tokenExternalId,
-            tokenSymbol = null,
-            tokenDecimals = null,
+            evmTokenType = EVMTokenType.NATIVE,
             tokenContract = null,
             transactionType = EVMTransactionType.NATIVE_ETH
         )
@@ -264,7 +279,7 @@ fun EVMTransaction.toEntity(): EVMTransactionEntity {
             fromAddress = fromAddress,
             toAddress = toAddress,
             amountWei = amountWei,
-            amountDecimal = amountDecimal,
+            amountDecimal = amount,
             timestamp = timestamp,
             status = status.name,
             gasPriceWei = gasPriceWei,
@@ -281,9 +296,7 @@ fun EVMTransaction.toEntity(): EVMTransactionEntity {
             isIncoming = isIncoming,
             note = note,
             feeLevel = feeLevel.name,
-            tokenExternalId = tokenExternalId,
-            tokenSymbol = tokenSymbol,
-            tokenDecimals = tokenDecimals,
+            evmTokenType = evmTokenType,
             tokenContract = tokenContract,
             transactionType = EVMTransactionType.TOKEN
         )

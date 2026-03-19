@@ -3,8 +3,9 @@ package com.example.nexuswallet.feature.bitcoin.data.repository
 import com.example.nexuswallet.feature.bitcoin.data.local.BitcoinTransactionDao
 import com.example.nexuswallet.feature.bitcoin.data.toDomain
 import com.example.nexuswallet.feature.bitcoin.data.toEntity
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinTransaction
+import com.example.nexuswallet.feature.core.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -32,12 +33,18 @@ class BitcoinTransactionRepositoryImpl @Inject constructor(
         return bitcoinTransactionDao.getById(id)?.toDomain()
     }
 
-    override fun getTransactions(walletId: String, network: String): Flow<List<BitcoinTransaction>> {
+    override fun getTransactions(
+        walletId: String,
+        network: BitcoinNetwork
+    ): Flow<List<BitcoinTransaction>> {
         return bitcoinTransactionDao.getByWalletIdAndNetwork(walletId, network)
             .map { entities -> entities.map { it.toDomain() } }
     }
 
-    override suspend fun getTransactionsSync(walletId: String, network: String): List<BitcoinTransaction> {
+    override suspend fun getTransactionsSync(
+        walletId: String,
+        network: BitcoinNetwork
+    ): List<BitcoinTransaction> {
         return bitcoinTransactionDao.getByWalletIdAndNetworkSync(walletId, network)
             .map { it.toDomain() }
     }
@@ -55,7 +62,10 @@ class BitcoinTransactionRepositoryImpl @Inject constructor(
         bitcoinTransactionDao.deleteByWalletId(walletId)
     }
 
-    override suspend fun deleteForWalletAndNetwork(walletId: String, network: String) {
+    override suspend fun deleteForWalletAndNetwork(
+        walletId: String,
+        network: BitcoinNetwork
+    ) {
         bitcoinTransactionDao.deleteByWalletIdAndNetwork(walletId, network)
     }
 }

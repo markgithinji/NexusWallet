@@ -1,0 +1,123 @@
+package com.example.nexuswallet.feature.core.data.repository
+
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import com.example.nexuswallet.feature.authentication.data.util.safeKeyStoreCall
+import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.util.decodeHex
+import com.example.nexuswallet.feature.core.util.toHex
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
+import java.security.KeyStore
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * Handles encryption/decryption using Android KeyStore
+ * Provides hardware-backed security when available
+ */
+@Singleton
+class KeyStoreRepositoryImpl @Inject constructor(
+    private val keyStore: KeyStore,
+    private val ioDispatcher: CoroutineDispatcher
+) : KeyStoreRepository {
+
+    override suspend fun encrypt(plaintext: ByteArray): Pair<ByteArray, ByteArray> =
+        withContext(ioDispatcher) {
+            safeKeyStoreCall {
+                val cipher = Cipher.getInstance(TRANSFORMATION)
+                cipher.init(Cipher.ENCRYPT_MODE, getSecretKey())
+
+                val iv = cipher.iv
+                val encrypted = cipher.doFinal(plaintext)
+
+                Pair(encrypted, iv)
+            }
+        }
+
+    override suspend fun decrypt(encryptedData: ByteArray, iv: ByteArray): ByteArray =
+        withContext(ioDispatcher) {
+            safeKeyStoreCall {
+                val cipher = Cipher.getInstance(TRANSFORMATION)
+                val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
+                cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
+
+                cipher.doFinal(encryptedData)
+            }
+        }
+
+    override suspend fun encryptString(plaintext: String): Pair<String, String> =
+        withContext(ioDispatcher) {
+            safeKeyStoreCall {
+                val (encryptedBytes, iv) = encrypt(plaintext.toByteArray(Charsets.UTF_8))
+                Pair(encryptedBytes.toHex(), iv.toHex())
+            }
+        }
+
+    override suspend fun decryptString(encryptedHex: String, ivHex: String): String =
+        withContext(ioDispatcher) {
+            safeKeyStoreCall {
+                val encryptedBytes = encryptedHex.decodeHex()
+                val iv = ivHex.decodeHex()
+                val decryptedBytes = decrypt(encryptedBytes, iv)
+                String(decryptedBytes, Charsets.UTF_8)
+            }
+        }
+
+    override fun isKeyStoreAvailable(): Boolean {
+        return try {
+            keyStore.containsAlias(KEY_ALIAS) &&
+                    keyStore.getKey(KEY_ALIAS, null) != null
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override fun clearKey() {
+        try {
+            keyStore.deleteEntry(KEY_ALIAS)
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
+
+    /**
+     * Get or create the secret key from Android KeyStore
+     */
+    private fun getSecretKey(): SecretKey {
+        val existingKey = keyStore.getKey(KEY_ALIAS, null) as? SecretKey
+        if (existingKey != null) {
+            return existingKey
+        }
+
+        val keyGenerator = KeyGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_AES,
+            ANDROID_KEYSTORE
+        )
+
+        val keyGenParameterSpec = KeyGenParameterSpec.Builder(
+            KEY_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(KEY_SIZE)
+            .setUserAuthenticationRequired(false)
+            .build()
+
+        keyGenerator.init(keyGenParameterSpec)
+        return keyGenerator.generateKey()
+    }
+
+    companion object {
+        private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+        private const val KEY_ALIAS = "nexus_wallet_master_key"
+        private const val TRANSFORMATION = "AES/GCM/NoPadding"
+        private const val KEY_SIZE = 256
+        private const val GCM_TAG_LENGTH = 128
+    }
+}
