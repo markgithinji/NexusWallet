@@ -1,7 +1,9 @@
 [versions]
 agp = "9.0.0"
+appcompat = "1.7.1"
 biometricKtx = "1.2.0-alpha05"
 coilCompose = "2.5.0"
+core = "3.5.4"
 datastorePreferences = "1.0.0"
 kotlin = "2.3.0"
 coreKtx = "1.17.0"
@@ -34,8 +36,10 @@ ksp = "2.2.10-2.0.2"
 hilt = "2.59"
 hiltNavigationCompose = "1.3.0"
 material3 = "1.4.0"
+zxingAndroidEmbedded = "4.3.0"
 
 [libraries]
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 androidx-biometric-ktx = { module = "androidx.biometric:biometric-ktx", version.ref = "biometricKtx" }
 androidx-compose-material = { module = "androidx.compose.material:material", version.ref = "material" }
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
@@ -45,6 +49,7 @@ androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-p
 androidx-navigation-compose-v275 = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 androidx-security-crypto-v110alpha06 = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
+core = { module = "com.google.zxing:core", version.ref = "core" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -81,6 +86,7 @@ hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+zxing-android-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxingAndroidEmbedded" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
