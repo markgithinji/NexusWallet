@@ -1,28 +1,51 @@
 package com.example.nexuswallet.feature.wallet.ui.walletcreation
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.nexuswallet.R
 
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +62,7 @@ fun WelcomeScreen(
             .padding(horizontal = 24.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Logo Card
+        // App Icon
         Card(
             modifier = Modifier
                 .size(120.dp),
@@ -53,11 +76,12 @@ fun WelcomeScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = "Wallet",
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                Image(
+                    painter = painterResource(id = R.drawable.nexux_icon),
+                    contentDescription = "Nexus Wallet",
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentScale = ContentScale.Fit
                 )
             }
         }
@@ -79,15 +103,26 @@ fun WelcomeScreen(
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Nexus Wallet title
                 Text(
-                    text = "Secure Crypto Wallet",
+                    text = "Nexus Wallet",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Secure Crypto Wallet",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
                     text = "Store, manage, and exchange cryptocurrencies securely with industry-standard encryption",
@@ -129,9 +164,10 @@ fun WelcomeScreen(
                     iconColor = MaterialTheme.colorScheme.primary
                 )
 
-                Divider(
-                    color = MaterialTheme.colorScheme.outline,
-                    thickness = 1.dp
+                HorizontalDivider(
+                    Modifier,
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outline
                 )
 
                 FeatureRow(
@@ -140,7 +176,7 @@ fun WelcomeScreen(
                     iconColor = MaterialTheme.colorScheme.primary
                 )
 
-                Divider(
+                HorizontalDivider(
                     color = MaterialTheme.colorScheme.outline,
                     thickness = 1.dp
                 )
@@ -151,7 +187,7 @@ fun WelcomeScreen(
                     iconColor = MaterialTheme.colorScheme.primary
                 )
 
-                Divider(
+                HorizontalDivider(
                     color = MaterialTheme.colorScheme.outline,
                     thickness = 1.dp
                 )
