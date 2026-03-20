@@ -269,8 +269,8 @@ private fun CoinDetailContent(
             )
         }
 
-        // Show ETH gas balance for EVM tokens (including USDC) - FIXED: changed to ethGasBalance
-        if (coin is EVMToken && state.ethGasBalance != "0") {
+        // Show ETH gas balance for EVM tokens
+        if (coin is EVMToken && coin !is NativeETH) {
             item {
                 CoinDetailEthGasBalanceCard(
                     formattedEthBalance = state.ethGasBalance
