@@ -30,14 +30,16 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Secure transaction signing** without exposing private keys to the UI layer
 - **Authentication middleware** for protected routes requiring biometric verification
 
-### 🌐 **Multi-Blockchain Integration**
-- **Bitcoin** - Blockstream API integration for mainnet and testnet
-- **Ethereum** - Etherscan API + Web3j RPC for mainnet and Sepolia testnet
+### 🌐 **Multi-Blockchain Integration & Real-time Data**
+- **Bitcoin** - Blockstream API integration for mainnet and testnet with RPC fallback
+- **Ethereum** - Etherscan API + Web3j JSON-RPC for mainnet and Sepolia testnet
 - **Solana** - Helius RPC API + Sol4k library for mainnet and devnet transactions
-- **ERC-20 Token Support** - USDC and USDT with proper decimal handling
-- **SPL Token Support** - Solana token program integration
-- **Real-time price feeds** from CoinGecko API
-- **Crypto news aggregation** from CryptoPanic API
+- **ERC-20 Token Support** - USDC and USDT with proper decimal handling (6 decimals for USDC/USDT)
+- **SPL Token Support** - Solana token program integration for SPL tokens
+- **Real-time price updates** - WebSocket connection to Binance WebSocket API for live cryptocurrency prices
+- **Market data aggregation** - CoinGecko REST API for historical data and market trends
+- **Crypto news aggregation** - CryptoPanic API for latest cryptocurrency news
+- **JSON-RPC client** - Direct blockchain node communication via Web3j for Ethereum and custom RPC for Bitcoin/Solana
 
 ### 🔌 **Real-time Data & WebSocket Integration**
 - **WebSocket connection** to Binance WebSocket API for live price streaming
@@ -108,7 +110,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 | **UI** | Jetpack Compose, Material Design 3 | Modern declarative UI with animations |
 | **Architecture** | MVI, MVVM, Repository Pattern | Clean separation of concerns |
 | **DI** | Hilt | Dependency injection |
-| **Networking** | Retrofit, OkHttp, WebSocket | API communication and real-time data |
+| **Networking** | Retrofit, OkHttp, WebSocket (Binance), JSON-RPC | API communication, real-time price streaming, and blockchain RPC calls |
 | **Persistence** | Room Database, DataStore | Local data caching |
 | **Security** | Android KeyStore, Biometric API, Security Crypto | Encryption & authentication |
 | **Serialization** | Kotlinx Serialization | Type-safe JSON parsing |
