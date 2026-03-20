@@ -647,16 +647,6 @@ fun SendAmountInput(
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         isError = errorMessage != null,
-                        supportingText = if (errorMessage != null) {
-                            {
-                                Text(
-                                    errorMessage,
-                                    color = MaterialTheme.colorScheme.error,
-                                    maxLines = 1,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        } else null,
                         trailingIcon = {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
@@ -722,6 +712,23 @@ fun SendAmountInput(
                 }
             }
 
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(20.dp)
+                    .padding(start = 12.dp, top = 4.dp)
+            ) {
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
             if (amount.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -736,7 +743,6 @@ fun SendAmountInput(
                     is NativeETH -> 3000.0
                     is SolanaCoin -> 30.0
                     is USDCToken, is USDTToken -> 1.0
-                    else -> 0.0
                 }
 
                 val usdAmount = amountValue.toDouble() * usdPrice
@@ -1036,7 +1042,6 @@ fun MaxAmountDialog(
     val fee = when (feeEstimate) {
         is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull()
             ?: BigDecimal("0.00001")
-
         is EVMFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
         is SolanaFeeEstimate -> feeEstimate.feeSol.toBigDecimalOrNull() ?: BigDecimal("0.000005")
         else -> when (coin) {
@@ -1046,13 +1051,6 @@ fun MaxAmountDialog(
             is SolanaCoin -> BigDecimal("0.000005")
             else -> BigDecimal("0.001")
         }
-    }
-
-    val decimals = when {
-        coin is USDCToken || coin is USDTToken -> 2
-        coin is BitcoinCoin -> 8
-        coin is SolanaCoin -> 9
-        else -> 6
     }
 
     val maxAmount = balance - fee
@@ -1082,11 +1080,7 @@ fun MaxAmountDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "${
-                                balance.setScale(decimals, RoundingMode.HALF_UP)
-                                    .stripTrailingZeros()
-                                    .toPlainString()
-                            } $tokenSymbol",
+                            text = "${balance.stripTrailingZeros().toPlainString()} $tokenSymbol",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
@@ -1105,10 +1099,7 @@ fun MaxAmountDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "- ${
-                                fee.setScale(decimals, RoundingMode.HALF_UP).stripTrailingZeros()
-                                    .toPlainString()
-                            } ${
+                            text = "- ${fee.stripTrailingZeros().toPlainString()} ${
                                 when {
                                     coin is BitcoinCoin -> "BTC"
                                     coin is SolanaCoin -> "SOL"
@@ -1140,11 +1131,7 @@ fun MaxAmountDialog(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "${
-                                maxAmount.setScale(decimals, RoundingMode.HALF_UP)
-                                    .stripTrailingZeros()
-                                    .toPlainString()
-                            } $tokenSymbol",
+                            text = "${maxAmount.stripTrailingZeros().toPlainString()} $tokenSymbol",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -1170,7 +1157,12 @@ fun MaxAmountDialog(
         confirmButton = {
             if (maxAmount > BigDecimal.ZERO) {
                 Button(
-                    onClick = { onConfirm(maxAmount.toPlainString()) },
+                    onClick = {
+                        val formattedAmount = maxAmount
+                            .stripTrailingZeros()
+                            .toPlainString()
+                        onConfirm(formattedAmount)
+                    },
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
