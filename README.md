@@ -9,6 +9,20 @@ A cryptocurrency wallet for Android showcasing advanced technical skills in secu
 ![Jetpack Compose](https://img.shields.io/badge/Jetpack_Compose-4285F4?style=for-the-badge&logo=jetpack-compose&logoColor=white)
 ![Retrofit](https://img.shields.io/badge/Retrofit-6DB33F?style=for-the-badge&logo=square&logoColor=white)
 
+## 📸 Screenshot
+
+<div align="center">
+  
+![Fintrack KMP App Preview](assets/test.png)
+*Main dashboard showing account balances, trends, budgets, stats&summaries and recent transactions*
+
+## 📸 Screenshot
+
+<div align="center">
+  
+![Fintrack KMP App Preview](assets/Group 2.png)
+*Main dashboard showing account balances, trends, budgets, stats&summaries and recent transactions*
+
 ## 🎯 Project Showcase
 
 ### 🔐 **Android Security Expertise**
