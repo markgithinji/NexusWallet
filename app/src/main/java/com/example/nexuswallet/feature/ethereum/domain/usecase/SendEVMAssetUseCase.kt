@@ -13,6 +13,11 @@ import com.example.nexuswallet.feature.ethereum.domain.model.SendEVMResult
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GWEI_TO_WEI
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.USDT_GAS_LIMIT
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.WEI_PER_ETH
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
@@ -21,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -99,23 +105,47 @@ class SendEVMAssetUseCase @Inject constructor(
         }
         val nonce = (nonceResult as Result.Success).data
 
-        // 3. Get fee estimate
-        logger.d(tag, "Step 3: Getting fee estimate...")
-        val feeResult = evmBlockchainRepository.getFeeEstimate(
-            feeLevel = feeLevel,
-            network = token.network,
-            isToken = token.evmTokenType != EVMTokenType.NATIVE
-        )
+        // 3. Get current gas price directly
+        logger.d(tag, "Step 3: Getting current gas price...")
+        val gasPriceResult = evmBlockchainRepository.getCurrentGasPrice(token.network)
 
-        if (feeResult is Result.Error) {
-            logger.e(tag, "Failed to get fee estimate: ${feeResult.message}")
-            return@withContext Result.Error(feeResult.message)
+        if (gasPriceResult is Result.Error) {
+            logger.e(tag, "Failed to get gas price: ${gasPriceResult.message}")
+            return@withContext Result.Error(gasPriceResult.message)
         }
-        val feeEstimate = (feeResult as Result.Success).data
-        val gasPriceWei = BigInteger(feeEstimate.gasPriceWei)
+        val gasPrice = (gasPriceResult as Result.Success).data
 
-        // 4. Create and sign transaction
-        logger.d(tag, "Step 4: Creating and signing transaction...")
+        // 4. Calculate gas price based on fee level
+        val gasPriceGwei = when (feeLevel) {
+            FeeLevel.SLOW -> gasPrice.safe
+            FeeLevel.NORMAL -> gasPrice.propose
+            FeeLevel.FAST -> gasPrice.fast
+        }
+
+        // Convert Gwei to Wei
+        val gasPriceWei = (BigDecimal(gasPriceGwei) * BigDecimal(GWEI_TO_WEI)).toBigInteger()
+
+        // Gas limit based on token type
+        val gasLimit = if (token.evmTokenType != EVMTokenType.NATIVE) {
+            when (token.evmTokenType) {
+                EVMTokenType.USDT -> USDT_GAS_LIMIT
+                else -> DEFAULT_TOKEN_GAS_LIMIT
+            }
+        } else {
+            GAS_LIMIT_STANDARD
+        }
+
+        val totalFeeWei = gasPriceWei.multiply(BigInteger.valueOf(gasLimit))
+        val totalFeeEth = BigDecimal(totalFeeWei).divide(
+            BigDecimal(WEI_PER_ETH),
+            18,
+            RoundingMode.HALF_UP
+        ).toPlainString()
+
+        logger.d(tag, "Gas price: $gasPriceGwei Gwei, Fee: $totalFeeEth ETH")
+
+        // 5. Create and sign transaction
+        logger.d(tag, "Step 5: Creating and signing transaction...")
         val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
 
         val createResult = when (token.evmTokenType) {
@@ -150,8 +180,8 @@ class SendEVMAssetUseCase @Inject constructor(
         }
         val (_, signedHex, txHash) = (createResult as Result.Success).data
 
-        // 5. Broadcast transaction
-        logger.d(tag, "Step 5: Broadcasting transaction...")
+        // 6. Broadcast transaction
+        logger.d(tag, "Step 6: Broadcasting transaction...")
         val broadcastResult = evmBlockchainRepository.broadcastTransaction(
             signedHex,
             token.network
@@ -162,11 +192,11 @@ class SendEVMAssetUseCase @Inject constructor(
                 val broadcastData = broadcastResult.data
                 val finalTxHash = broadcastData.hash ?: txHash
 
-                // 6. save transaction after successful broadcast
+                // 7. Save transaction after successful broadcast
                 if (broadcastData.success) {
                     logger.d(
                         tag,
-                        "Step 6: Creating and saving transaction record after successful broadcast..."
+                        "Step 7: Creating and saving transaction record after successful broadcast..."
                     )
 
                     val transaction = when (token.evmTokenType) {
@@ -183,15 +213,15 @@ class SendEVMAssetUseCase @Inject constructor(
                             isIncoming = false,
                             txHash = finalTxHash,
                             amount = amount.toPlainString(),
-                            fee = feeEstimate.totalFeeEth,
+                            fee = totalFeeEth,
                             symbol = token.symbol,
                             amountWei = amountInWei.toString(),
                             amountEth = amount.toPlainString(),
-                            gasPriceWei = feeEstimate.gasPriceWei,
-                            gasPriceGwei = feeEstimate.gasPriceGwei,
-                            gasLimit = feeEstimate.gasLimit,
-                            feeWei = feeEstimate.totalFeeWei,
-                            feeEth = feeEstimate.totalFeeEth,
+                            gasPriceWei = gasPriceWei.toString(),
+                            gasPriceGwei = gasPriceGwei,
+                            gasLimit = gasLimit,
+                            feeWei = totalFeeWei.toString(),
+                            feeEth = totalFeeEth,
                             nonce = nonce.toInt(),
                             chainId = token.network.chainId.toLong(),
                             signedHex = signedHex,
@@ -213,14 +243,14 @@ class SendEVMAssetUseCase @Inject constructor(
                             isIncoming = false,
                             txHash = finalTxHash,
                             amount = amount.toPlainString(),
-                            fee = feeEstimate.totalFeeEth,
+                            fee = totalFeeEth,
                             symbol = token.symbol,
                             amountWei = amountInWei.toString(),
-                            gasPriceWei = feeEstimate.gasPriceWei,
-                            gasPriceGwei = feeEstimate.gasPriceGwei,
-                            gasLimit = feeEstimate.gasLimit,
-                            feeWei = feeEstimate.totalFeeWei,
-                            feeEth = feeEstimate.totalFeeEth,
+                            gasPriceWei = gasPriceWei.toString(),
+                            gasPriceGwei = gasPriceGwei,
+                            gasLimit = gasLimit,
+                            feeWei = totalFeeWei.toString(),
+                            feeEth = totalFeeEth,
                             nonce = nonce.toInt(),
                             chainId = token.network.chainId.toLong(),
                             signedHex = signedHex,

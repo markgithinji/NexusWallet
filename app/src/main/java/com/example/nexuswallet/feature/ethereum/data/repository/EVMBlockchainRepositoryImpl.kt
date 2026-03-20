@@ -301,61 +301,6 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         result
     }
 
-    override suspend fun getFeeEstimate(
-        feeLevel: FeeLevel,
-        network: EthereumNetwork,
-        isToken: Boolean
-    ): Result<EVMFeeEstimate> = withContext(ioDispatcher) {
-        val gasPriceResult = getCurrentGasPrice(network)
-
-        when (gasPriceResult) {
-            is Result.Success -> {
-                val gasPrice = gasPriceResult.data
-
-                val gasPriceGwei = when (feeLevel) {
-                    FeeLevel.SLOW -> gasPrice.safe
-                    FeeLevel.NORMAL -> gasPrice.propose
-                    FeeLevel.FAST -> gasPrice.fast
-                }
-
-                val gasPriceWei =
-                    (BigDecimal(gasPriceGwei) * BigDecimal(GWEI_TO_WEI)).toBigInteger()
-                val gasLimit = if (isToken) DEFAULT_TOKEN_GAS_LIMIT else GAS_LIMIT_STANDARD
-                val totalFeeWei = gasPriceWei.multiply(BigInteger.valueOf(gasLimit))
-
-                val totalFeeEth = BigDecimal(totalFeeWei).divide(
-                    BigDecimal(WEI_PER_ETH),
-                    ETH_DECIMALS,
-                    RoundingMode.HALF_UP
-                ).toPlainString()
-
-                val estimatedTime = when (feeLevel) {
-                    FeeLevel.SLOW -> ESTIMATED_TIME_SLOW
-                    FeeLevel.NORMAL -> ESTIMATED_TIME_NORMAL
-                    FeeLevel.FAST -> ESTIMATED_TIME_FAST
-                }
-
-                Result.Success(
-                    EVMFeeEstimate(
-                        gasPriceGwei = gasPriceGwei,
-                        gasPriceWei = gasPriceWei.toString(),
-                        gasLimit = gasLimit,
-                        totalFeeWei = totalFeeWei.toString(),
-                        totalFeeEth = totalFeeEth,
-                        estimatedTime = estimatedTime,
-                        priority = feeLevel
-                    )
-                )
-            }
-
-            is Result.Error -> {
-                Result.Error(gasPriceResult.message, gasPriceResult.throwable)
-            }
-
-            Result.Loading -> Result.Error("Gas price request timed out")
-        }
-    }
-
     // ============ NONCE METHODS ============
 
     override suspend fun getNonce(
@@ -428,10 +373,6 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         private const val WEI_PER_ETH = "1000000000000000000"
         private const val ETH_DECIMALS = 18
         private const val GWEI_TO_WEI = 1_000_000_000L
-
-        private const val ESTIMATED_TIME_SLOW = 120
-        private const val ESTIMATED_TIME_NORMAL = 60
-        private const val ESTIMATED_TIME_FAST = 30
 
         // Price multipliers
         private val SLOW_PRICE_MULTIPLIER = BigDecimal("0.9")
