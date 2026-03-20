@@ -1,15 +1,13 @@
 package com.example.nexuswallet.feature.ethereum.domain.usecase
 
-import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
-import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
-import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import org.web3j.abi.datatypes.Address
 import java.math.BigDecimal
+import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,7 +18,7 @@ class ValidateEVMSendUseCase @Inject constructor(
 
     private val tag = "ValidateEVMSendUC"
 
-    suspend operator fun invoke(
+    operator fun invoke(
         toAddress: String,
         amountValue: BigDecimal,
         fromAddress: String,
@@ -89,9 +87,10 @@ class ValidateEVMSendUseCase @Inject constructor(
 
             if (ethBalance < feeEth) {
                 logger.w(tag, "Insufficient ETH for gas")
+                val formattedFee = feeEth.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
                 return SendValidationResult(
                     isValid = false,
-                    gasError = "Insufficient ETH for gas fees. You need at least ${feeEth.setScale(6)} ETH"
+                    gasError = "Insufficient ETH for gas fees. You need at least $formattedFee ETH"
                 )
             }
         } else {
@@ -99,11 +98,11 @@ class ValidateEVMSendUseCase @Inject constructor(
             val totalRequired = amountValue + feeEth
             if (totalRequired > ethBalance) {
                 logger.w(tag, "Insufficient ETH balance")
+                val formattedBalance = ethBalance.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+                val formattedRequired = totalRequired.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
                 return SendValidationResult(
                     isValid = false,
-                    balanceError = "Insufficient balance. You have ${ethBalance.setScale(6)} ETH but need ${
-                        totalRequired.setScale(6)
-                    } ETH (including fees)"
+                    balanceError = "Insufficient balance. You have $formattedBalance ETH but need $formattedRequired ETH (including fees)"
                 )
             }
         }

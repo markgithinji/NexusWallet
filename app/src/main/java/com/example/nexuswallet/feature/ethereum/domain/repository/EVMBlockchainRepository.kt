@@ -30,7 +30,7 @@ interface EVMBlockchainRepository {
         address: String,
         network: EthereumNetwork,
         walletId: String,
-        evmTokenType: EVMTokenType?  // Changed from tokenExternalId: String?
+        evmTokenType: EVMTokenType?
     ): Result<List<NativeETHTransaction>>
 
     suspend fun getTokenTransactions(
@@ -69,12 +69,6 @@ interface EVMBlockchainRepository {
     suspend fun getCurrentGasPrice(
         network: EthereumNetwork
     ): Result<GasPrice>
-
-    suspend fun getFeeEstimate(
-        feeLevel: FeeLevel,
-        network: EthereumNetwork,
-        isToken: Boolean
-    ): Result<EVMFeeEstimate>
 
     suspend fun getNonce(
         address: String,

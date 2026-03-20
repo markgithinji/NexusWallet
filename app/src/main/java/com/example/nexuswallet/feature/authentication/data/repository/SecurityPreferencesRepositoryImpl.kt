@@ -11,7 +11,9 @@ import com.example.nexuswallet.feature.authentication.data.util.safeGet
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -167,6 +169,16 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             preferences[LAST_AUTH_TIME_KEY]
         }
     }
+
+    override fun observePinHash(): Flow<String?> =
+        dataStore.data.map { preferences ->
+            preferences[PIN_HASH_KEY]
+        }
+
+    override fun observeBiometricEnabled(): Flow<Boolean> =
+        dataStore.data.map { preferences ->
+            preferences[BIOMETRIC_ENABLED_KEY] ?: false
+        }
 
     companion object {
         private val ENCRYPTED_MNEMONIC_KEY = stringPreferencesKey("encrypted_mnemonic")

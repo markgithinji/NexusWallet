@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -33,7 +34,7 @@ class NavigationViewModel @Inject constructor(
 
     init {
         observeWallets()
-        checkAuthenticationStatus()
+        observeAuthenticationStatus()
     }
 
     private fun observeWallets() {
@@ -49,17 +50,16 @@ class NavigationViewModel @Inject constructor(
         }
     }
 
-    private fun checkAuthenticationStatus() {
+    private fun observeAuthenticationStatus() {
         viewModelScope.launch {
-            val isPinSet = when (val result = isPinSetUseCase()) {
-                is Result.Success -> result.data
-                else -> false
+            combine(
+                isPinSetUseCase(),
+                isBiometricEnabledUseCase()
+            ) { isPinSet, isBiometricEnabled ->
+                isPinSet || isBiometricEnabled
+            }.collect { isRequired ->
+                _isAuthenticationRequired.value = isRequired
             }
-            val isBiometricEnabled = when (val result = isBiometricEnabledUseCase()) {
-                is Result.Success -> result.data
-                else -> false
-            }
-            _isAuthenticationRequired.value = isPinSet || isBiometricEnabled
         }
     }
 }

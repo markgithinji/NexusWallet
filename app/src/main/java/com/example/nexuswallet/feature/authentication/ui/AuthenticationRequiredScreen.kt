@@ -122,10 +122,6 @@ fun AuthenticationRequiredScreen(
             .build()
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.refreshAuthStatus()
-    }
-
     if (showPinDialog) {
         PinEntryDialog(
             showDialog = showPinDialog,

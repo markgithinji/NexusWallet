@@ -32,7 +32,6 @@ android {
 
         // API Keys - will be empty strings if not found in local.properties
         val etherscanKey = localProperties.getProperty("ETHERSCAN_API_KEY") ?: ""
-        val covalentKey = localProperties.getProperty("COVALENT_API_KEY") ?: ""
         val alchemyKey = localProperties.getProperty("ALCHEMY_API_KEY") ?: ""
         val coingeckoKey = localProperties.getProperty("COINGECKO_API_KEY") ?: ""
         val cryptoPanicApiKey = localProperties.getProperty("CRYPTOPANIC_API_KEY") ?: ""
@@ -40,7 +39,6 @@ android {
 
 
         buildConfigField("String", "ETHERSCAN_API_KEY", "\"$etherscanKey\"")
-        buildConfigField("String", "COVALENT_API_KEY", "\"$covalentKey\"")
         buildConfigField("String", "ALCHEMY_API_KEY", "\"$alchemyKey\"")
         buildConfigField("String", "COINGECKO_API_KEY", "\"$coingeckoKey\"")
         buildConfigField("String", "CRYPTOPANIC_API_KEY", "\"$cryptoPanicApiKey\"")
@@ -131,10 +129,10 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
 
     // QR Code
-    implementation("com.google.zxing:core:3.5.2")
-    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation(libs.core)
+    implementation(libs.zxing.android.embedded)
 
-    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation(libs.androidx.appcompat)
 
     implementation(libs.timber)
 

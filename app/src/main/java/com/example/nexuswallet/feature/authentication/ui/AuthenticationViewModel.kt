@@ -12,6 +12,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -39,33 +42,31 @@ class AuthenticationViewModel @Inject constructor(
     val isBiometricEnabled: StateFlow<Boolean> = _isBiometricEnabled.asStateFlow()
 
     init {
-        checkAuthStatus()
+        observeAuthStatus()
     }
 
-    private fun checkAuthStatus() {
+    private fun observeAuthStatus() {
         viewModelScope.launch {
-            // Check PIN status
-            when (val pinResult = isPinSetUseCase()) {
-                is Result.Success -> {
-                    _isPinAvailable.value = pinResult.data
+            isPinSetUseCase()
+                .onEach { isPinSet ->
+                    _isPinAvailable.value = isPinSet
                 }
-                is Result.Error -> {
+                .catch { e ->
                     _isPinAvailable.value = false
-                    _errorMessage.value = "Failed to check PIN status"
+                    _errorMessage.value = "Failed to check PIN status: ${e.message}"
                 }
-                Result.Loading -> {}
-            }
+                .launchIn(viewModelScope)
+        }
 
-            // Check biometric enabled status
-            when (val bioResult = isBiometricEnabledUseCase()) {
-                is Result.Success -> {
-                    _isBiometricEnabled.value = bioResult.data
+        viewModelScope.launch {
+            isBiometricEnabledUseCase()
+                .onEach { isEnabled ->
+                    _isBiometricEnabled.value = isEnabled
                 }
-                is Result.Error -> {
+                .catch { e ->
                     _isBiometricEnabled.value = false
                 }
-                Result.Loading -> {}
-            }
+                .launchIn(viewModelScope)
         }
     }
 
@@ -113,9 +114,5 @@ class AuthenticationViewModel @Inject constructor(
     fun clearState() {
         _authenticationResult.value = null
         _errorMessage.value = null
-    }
-
-    fun refreshAuthStatus() {
-        checkAuthStatus()
     }
 }
