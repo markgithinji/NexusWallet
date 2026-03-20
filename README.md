@@ -13,6 +13,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 <div align="center">
 
 <img src="assets/nexus_screenshot_group.png" width="800" alt="Nexus Wallet App Preview">
+
 *Wallet dashboard showing portfolio balance, multi-chain assets, and recent transactions*
 
 </div>
