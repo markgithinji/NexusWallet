@@ -1,5 +1,7 @@
 package com.example.nexuswallet.feature.authentication.domain.repository
 
+import kotlinx.coroutines.flow.Flow
+
 interface SecurityPreferencesRepository {
     suspend fun storeEncryptedMnemonic(walletId: String, encryptedMnemonic: String, iv: ByteArray)
     suspend fun getEncryptedMnemonic(walletId: String): Pair<String, ByteArray>?
@@ -20,4 +22,7 @@ interface SecurityPreferencesRepository {
 
     suspend fun saveLastAuthenticationTime(timestamp: Long)
     suspend fun getLastAuthenticationTime(): Long?
+
+    fun observePinHash(): Flow<String?>
+    fun observeBiometricEnabled(): Flow<Boolean>
 }
