@@ -1,6 +1,6 @@
 # Nexus Wallet 🔐 — Cryptocurrency Wallet for Android
 
-**Nexus Wallet** is a modern cryptocurrency wallet built with **Kotlin and Jetpack Compose**, showcasing advanced Android development skills in security, real-time data handling, and modern architecture. It connects to multiple blockchain APIs (Etherscan, Blockstream, Solana RPC) for secure balance checking and transaction management.
+**Nexus Wallet** is a self-hosted cryptocurrency wallet built with **Kotlin and Jetpack Compose**, showcasing advanced Android development skills in security, real-time data handling, and modern architecture. It connects to multiple blockchain APIs (Etherscan, Blockstream, Solana RPC) for secure balance checking and transaction management.
 
 It allows users to **create wallets, manage multiple cryptocurrencies, send and receive transactions**, and monitor **real-time market data**.
 
@@ -28,6 +28,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Android KeyStore encryption** for secure seed phrase and private key storage
 - **Biometric authentication** (fingerprint/face ID) with PIN fallback
 - **Encrypted local storage** using AndroidX Security Crypto for sensitive data
+- **Self-hosted architecture** with local-only key storage, no backend server
 - **Secure transaction signing** without exposing private keys to the UI layer
 - **Authentication middleware** for protected routes requiring biometric verification
 
