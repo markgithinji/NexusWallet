@@ -97,6 +97,10 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Market data** - Live crypto prices and market trends
 
 ### User Experience
+- **Seed phrase security checklist** - Guided backup process with verification steps
+- **Transaction status tracking** - Real-time status updates with explorer links after sending
+- **Pre-transaction confirmation** - Dedicated review screen showing amount, recipient, and fees before signing
+- **Destructive action confirmation** - Confirmation dialogs for dangerous actions
 - **Pull-to-refresh** - Manual refresh of balances and transactions
 - **Skeleton loading states** - Smooth loading experience
 - **Error handling** - User-friendly error messages with retry options
