@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -61,6 +63,7 @@ fun PinEntryDialog(
     var pin by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
+    val haptic = LocalHapticFeedback.current
 
     // Auto-request focus when dialog appears
     LaunchedEffect(showDialog) {
@@ -140,6 +143,11 @@ fun PinEntryDialog(
                     value = pin,
                     onValueChange = { newValue ->
                         if (newValue.length <= maxLength && newValue.all { it.isDigit() }) {
+                            // Provide haptic feedback for each digit entered
+                            if (newValue.length > pin.length) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+
                             pin = newValue
                             error = false
 

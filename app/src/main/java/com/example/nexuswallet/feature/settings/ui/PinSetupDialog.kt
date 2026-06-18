@@ -38,6 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -64,6 +66,7 @@ fun PinSetupDialog(
     var confirmPin by remember { mutableStateOf("") }
     var isConfirmStep by remember { mutableStateOf(false) }
     var localError by remember { mutableStateOf<String?>(null) }
+    val haptic = LocalHapticFeedback.current
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -132,6 +135,13 @@ fun PinSetupDialog(
                         value = if (!isConfirmStep) pin else confirmPin,
                         onValueChange = { newValue ->
                             if (newValue.length <= PIN_LENGTH && newValue.all { it.isDigit() }) {
+                                val currentPinValue = if (!isConfirmStep) pin else confirmPin
+                                
+                                // Provide haptic feedback for each digit entered
+                                if (newValue.length > currentPinValue.length) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+
                                 if (!isConfirmStep) {
                                     pin = newValue
                                 } else {
@@ -240,6 +250,7 @@ fun PinSetupDialog(
 
                     Button(
                         onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             if (!isConfirmStep) {
                                 if (pin.length == PIN_LENGTH) {
                                     isConfirmStep = true

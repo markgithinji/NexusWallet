@@ -66,8 +66,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -906,6 +908,7 @@ fun FeeLevelButton(
     color: Color,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
     val (text, icon) = when (level) {
         FeeLevel.SLOW -> Pair("Slow", Icons.Outlined.Schedule)
         FeeLevel.NORMAL -> Pair("Normal", Icons.Outlined.Speed)
@@ -914,7 +917,10 @@ fun FeeLevelButton(
 
     Card(
         modifier = modifier
-            .clickable { onClick() },
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) color.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant
@@ -974,6 +980,7 @@ fun SendBottomBar(
     onSend: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
@@ -995,7 +1002,10 @@ fun SendBottomBar(
             }
 
             Button(
-                onClick = onSend,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onSend()
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 enabled = isValid && !isLoading,
@@ -1039,6 +1049,7 @@ fun MaxAmountDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     val fee = when (feeEstimate) {
         is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull()
             ?: BigDecimal("0.00001")
@@ -1158,6 +1169,7 @@ fun MaxAmountDialog(
             if (maxAmount > BigDecimal.ZERO) {
                 Button(
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         val formattedAmount = maxAmount
                             .stripTrailingZeros()
                             .toPlainString()

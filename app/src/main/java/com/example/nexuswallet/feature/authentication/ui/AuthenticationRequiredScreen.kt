@@ -478,7 +478,10 @@ private fun AuthenticationMethodsCard(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedButton(
-                    onClick = onPinClick,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onPinClick()
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),

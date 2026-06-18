@@ -72,6 +72,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -628,7 +630,10 @@ fun NetworkSelectionStep(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = onNext,
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onNext()
+            },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             enabled = hasSelections,
@@ -893,6 +898,7 @@ fun SecurityWarningDialog(
     onAccept: () -> Unit,
     onCancel: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     Dialog(
         onDismissRequest = onCancel,
     ) {
@@ -1018,7 +1024,10 @@ fun SecurityWarningDialog(
 
                     // Accept button
                     Button(
-                        onClick = onAccept,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onAccept()
+                        },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -1352,7 +1361,10 @@ fun MnemonicDisplayStep(
                 }
 
                 Button(
-                    onClick = onNext,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onNext()
+                    },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
                     enabled = hasWrittenDown && hasStoredSafely,
@@ -1601,8 +1613,10 @@ fun MnemonicVerificationStep(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
+        val haptic = LocalHapticFeedback.current
         Button(
             onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 if (enteredWords.size == mnemonic.size && enteredWords == mnemonic) {
                     verificationError = false
                     onVerify()
@@ -1631,8 +1645,12 @@ fun SimpleSelectedChip(
     index: Int,
     onRemove: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     Card(
-        onClick = onRemove,
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onRemove()
+        },
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -1674,8 +1692,12 @@ fun SimpleWordChip(
     word: String,
     onClick: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     Card(
-        onClick = onClick,
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -1699,6 +1721,7 @@ fun WalletNameStep(
     onNameChange: (String) -> Unit,
     onCreate: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -1740,7 +1763,10 @@ fun WalletNameStep(
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
-            onClick = onCreate,
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onCreate()
+            },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             enabled = walletName.isNotBlank(),
