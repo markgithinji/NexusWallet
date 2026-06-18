@@ -10,7 +10,7 @@ import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_MAINNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_TESTNET
-import com.example.nexuswallet.feature.core.util.toHex
+import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
@@ -80,19 +80,27 @@ class SendBitcoinUseCase @Inject constructor(
             return@withContext Result.Error("No private key found")
         }
 
-        val privateKeyWIF = keyStoreRepository.decryptString(
-            encryptedData.first,
-            encryptedData.second.toHex()
+        val privateKeyBytes = keyStoreRepository.decrypt(
+            encryptedData.first.decodeHex(),
+            encryptedData.second
         )
 
+        val ecKey = try {
+            val privateKeyWIF = String(privateKeyBytes, Charsets.UTF_8)
+            val networkParams = when (bitcoinCoin.network) {
+                BitcoinNetwork.Mainnet -> MainNetParams.get()
+                BitcoinNetwork.Testnet -> TestNet3Params.get()
+            }
+            DumpedPrivateKey.fromBase58(networkParams, privateKeyWIF).key
+        } finally {
+            privateKeyBytes.fill(0)
+        }
+
+        // Verify key matches address
         val networkParams = when (bitcoinCoin.network) {
             BitcoinNetwork.Mainnet -> MainNetParams.get()
             BitcoinNetwork.Testnet -> TestNet3Params.get()
         }
-
-        val ecKey = DumpedPrivateKey.fromBase58(networkParams, privateKeyWIF).key
-
-        // Verify key matches address
         if (LegacyAddress.fromKey(networkParams, ecKey).toString() != bitcoinCoin.address) {
             logger.e(tag, "Private key does not match wallet address")
             return@withContext Result.Error("Private key does not match wallet address")

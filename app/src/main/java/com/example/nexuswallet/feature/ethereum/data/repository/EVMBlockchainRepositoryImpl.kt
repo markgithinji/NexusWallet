@@ -29,6 +29,7 @@ import org.web3j.abi.datatypes.Bool
 import org.web3j.abi.datatypes.Function
 import org.web3j.abi.datatypes.generated.Uint256
 import org.web3j.crypto.Credentials
+import org.web3j.crypto.ECKeyPair
 import org.web3j.crypto.Hash
 import org.web3j.crypto.RawTransaction
 import org.web3j.crypto.TransactionEncoder
@@ -176,7 +177,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
 
     override suspend fun createAndSignNativeTransaction(
         fromAddress: String,
-        fromPrivateKey: String,
+        fromPrivateKey: ByteArray,
         toAddress: String,
         amountWei: BigInteger,
         gasPriceWei: BigInteger,
@@ -193,7 +194,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
                 amountWei
             )
 
-            val credentials = Credentials.create(fromPrivateKey)
+            val credentials = Credentials.create(ECKeyPair.create(fromPrivateKey))
             val signedMessage = TransactionEncoder.signMessage(rawTransaction, chainId, credentials)
             val signedHex = Numeric.toHexString(signedMessage)
             val txHash = Numeric.toHexString(Hash.sha3(Numeric.hexStringToByteArray(signedHex)))
@@ -204,7 +205,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
 
     override suspend fun createAndSignTokenTransaction(
         fromAddress: String,
-        fromPrivateKey: String,
+        fromPrivateKey: ByteArray,
         toAddress: String,
         amount: BigInteger,
         tokenContract: String,
@@ -238,7 +239,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
                 encodedFunction
             )
 
-            val credentials = Credentials.create(fromPrivateKey)
+            val credentials = Credentials.create(ECKeyPair.create(fromPrivateKey))
             val signedMessage = TransactionEncoder.signMessage(rawTransaction, chainId, credentials)
             val signedHex = Numeric.toHexString(signedMessage)
             val txHash = Numeric.toHexString(Hash.sha3(Numeric.hexStringToByteArray(signedHex)))

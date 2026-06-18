@@ -43,7 +43,7 @@ interface EVMBlockchainRepository {
 
     suspend fun createAndSignNativeTransaction(
         fromAddress: String,
-        fromPrivateKey: String,
+        fromPrivateKey: ByteArray,
         toAddress: String,
         amountWei: BigInteger,
         gasPriceWei: BigInteger,
@@ -54,7 +54,7 @@ interface EVMBlockchainRepository {
 
     suspend fun createAndSignTokenTransaction(
         fromAddress: String,
-        fromPrivateKey: String,
+        fromPrivateKey: ByteArray,
         toAddress: String,
         amount: BigInteger,
         tokenContract: String,
