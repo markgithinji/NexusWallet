@@ -81,6 +81,7 @@ import com.example.nexuswallet.ui.theme.usdtLight
 import com.example.nexuswallet.ui.theme.warning
 import java.text.NumberFormat
 import java.util.Locale
+import com.example.nexuswallet.feature.core.util.formatCurrency
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -410,7 +411,7 @@ private fun CoinDetailBalanceCard(
 
             if (usdValue != null && usdValue > 0) {
                 Text(
-                    text = NumberFormat.getCurrencyInstance(Locale.US).format(usdValue),
+                    text = usdValue.formatCurrency(),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface

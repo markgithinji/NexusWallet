@@ -48,6 +48,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import com.example.nexuswallet.feature.core.util.formatLargeNumber
+import com.example.nexuswallet.feature.core.util.formatPrice
+import com.example.nexuswallet.feature.core.util.formatSupply
+import com.example.nexuswallet.feature.core.util.formatTwoDecimals
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -1281,33 +1285,5 @@ fun formatRelativeTime(dateString: String): String {
         }
     } catch (e: Exception) {
         dateString.take(10) // Fallback to date part
-    }
-}
-
-fun Double.formatPrice(): String {
-    return when {
-        this >= 1000 -> String.format("%,.2f", this)
-        this >= 1 -> String.format("%,.4f", this)
-        else -> String.format("%,.6f", this)
-    }
-}
-
-
-fun formatLargeNumber(number: Double): String {
-    return when {
-        number >= 1_000_000_000_000 -> "${(number / 1_000_000_000_000.0).formatTwoDecimals()}T"
-        number >= 1_000_000_000 -> "${(number / 1_000_000_000.0).formatTwoDecimals()}B"
-        number >= 1_000_000 -> "${(number / 1_000_000.0).formatTwoDecimals()}M"
-        number >= 1_000 -> "${(number / 1_000.0).formatTwoDecimals()}K"
-        else -> number.formatTwoDecimals()
-    }
-}
-
-fun formatSupply(supply: Double): String {
-    return when {
-        supply >= 1_000_000_000 -> "${(supply / 1_000_000_000.0).formatTwoDecimals()}B"
-        supply >= 1_000_000 -> "${(supply / 1_000_000.0).formatTwoDecimals()}M"
-        supply >= 1_000 -> "${(supply / 1_000.0).formatTwoDecimals()}K"
-        else -> supply.formatTwoDecimals()
     }
 }

@@ -94,6 +94,7 @@ import com.example.nexuswallet.ui.theme.usdcLight
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
+import com.example.nexuswallet.feature.core.util.formatCurrency
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -387,7 +388,7 @@ fun WalletCard(
                         )
 
                         Text(
-                            text = totalUsdValue.formatAsCurrency(),
+                            text = totalUsdValue.formatCurrency(),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -683,7 +684,7 @@ fun SimpleBalanceRow(
         }
 
         Text(
-            text = usdValue.formatAsCurrency(),
+            text = usdValue.formatCurrency(),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (usdValue > 0) FontWeight.SemiBold else FontWeight.Normal,
             color = if (usdValue > 0)
@@ -761,7 +762,7 @@ fun AnimatedPortfolioHeader(
 
             // Animated Value
             Text(
-                text = animatedValue.value.toDouble().formatAsCurrency(),
+                text = animatedValue.value.toDouble().formatCurrency(),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onPrimary,
@@ -972,6 +973,3 @@ fun DeleteWalletDialog(
         }
     )
 }
-
-fun Double.formatAsCurrency(): String =
-    NumberFormat.getCurrencyInstance(Locale.US).format(this)

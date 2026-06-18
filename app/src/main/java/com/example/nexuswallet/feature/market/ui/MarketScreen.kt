@@ -48,6 +48,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.nexuswallet.feature.core.util.formatPrice
+import com.example.nexuswallet.feature.core.util.formatTwoDecimals
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -607,7 +609,7 @@ fun TokenItem(
                 horizontalAlignment = Alignment.End
             ) {
                 Text(
-                    text = "$${animatedPrice.formatTwoDecimals()}",
+                    text = "$${animatedPrice.formatPrice()}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -922,6 +924,3 @@ fun ErrorView(message: String, onRetry: () -> Unit) {
         }
     }
 }
-
-fun Float.formatTwoDecimals(): String = String.format("%.2f", this)
-fun Double.formatTwoDecimals(): String = String.format("%.2f", this)

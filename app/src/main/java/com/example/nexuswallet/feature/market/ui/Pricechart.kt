@@ -19,6 +19,7 @@ import com.example.nexuswallet.feature.market.domain.model.PricePoint
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.example.nexuswallet.feature.core.util.formatLargeNumber
 
 @Composable
 fun PriceLineChart(

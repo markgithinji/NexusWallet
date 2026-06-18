@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+import com.example.nexuswallet.feature.core.util.formatCurrency
 import javax.inject.Inject
 
 @HiltViewModel
@@ -54,7 +55,7 @@ class TransactionDetailViewModel @Inject constructor(
                     val displayInfo = formatTransactionDetailDisplayUseCase(transaction)
 
                     val usdValue = calculateUSDValue(transaction)
-                    val formattedUsd = NumberFormat.getCurrencyInstance(Locale.US).format(usdValue)
+                    val formattedUsd = usdValue.formatCurrency()
 
                     _state.update {
                         it.copy(

@@ -94,6 +94,7 @@ import com.example.nexuswallet.ui.theme.usdtLight
 import com.example.nexuswallet.ui.theme.warning
 import java.text.NumberFormat
 import java.util.Locale
+import com.example.nexuswallet.feature.core.util.formatCurrency
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -510,7 +511,7 @@ fun WalletHeaderCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = NumberFormat.getCurrencyInstance(Locale.US).format(animatedValue.value),
+                    text = animatedValue.value.toDouble().formatCurrency(),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
