@@ -46,7 +46,7 @@ fun SecuritySettingsScreen(
     SecurityPinDialog(
         showDialog = showPinSetupDialog || showPinChangeDialog,
         title = if (showPinSetupDialog) "Setup PIN" else "Change PIN",
-        subtitle = "Enter a 4-6 digit PIN",
+        subtitle = "Enter a 6-digit PIN",
         errorMessage = pinSetupError,
         onPinSet = viewModel::setNewPin,
         onDismiss = viewModel::cancelPinSetup

@@ -46,8 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
-private const val PIN_MAX_LENGTH = 6
-private const val PIN_MIN_LENGTH = 4
+private const val PIN_LENGTH = 6
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -132,7 +131,7 @@ fun PinSetupDialog(
                     OutlinedTextField(
                         value = if (!isConfirmStep) pin else confirmPin,
                         onValueChange = { newValue ->
-                            if (newValue.length <= PIN_MAX_LENGTH && newValue.all { it.isDigit() }) {
+                            if (newValue.length <= PIN_LENGTH && newValue.all { it.isDigit() }) {
                                 if (!isConfirmStep) {
                                     pin = newValue
                                 } else {
@@ -151,7 +150,7 @@ fun PinSetupDialog(
                         },
                         placeholder = {
                             Text(
-                                text = "Enter $PIN_MIN_LENGTH-$PIN_MAX_LENGTH digits",
+                                text = "Enter $PIN_LENGTH digits",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                             )
@@ -173,7 +172,7 @@ fun PinSetupDialog(
                     )
 
                     // Show PIN requirements hint
-                    if (!isConfirmStep && pin.isNotEmpty() && pin.length < PIN_MIN_LENGTH) {
+                    if (!isConfirmStep && pin.isNotEmpty() && pin.length < PIN_LENGTH) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -186,7 +185,7 @@ fun PinSetupDialog(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "PIN must be $PIN_MIN_LENGTH-$PIN_MAX_LENGTH digits",
+                                text = "PIN must be $PIN_LENGTH digits",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelSmall
                             )
@@ -242,10 +241,10 @@ fun PinSetupDialog(
                     Button(
                         onClick = {
                             if (!isConfirmStep) {
-                                if (pin.length in PIN_MIN_LENGTH..PIN_MAX_LENGTH) {
+                                if (pin.length == PIN_LENGTH) {
                                     isConfirmStep = true
                                 } else {
-                                    localError = "PIN must be $PIN_MIN_LENGTH-$PIN_MAX_LENGTH digits"
+                                    localError = "PIN must be $PIN_LENGTH digits"
                                 }
                             } else {
                                 if (pin == confirmPin) {
@@ -257,9 +256,9 @@ fun PinSetupDialog(
                         },
                         modifier = Modifier.weight(1f),
                         enabled = if (!isConfirmStep)
-                            pin.length in PIN_MIN_LENGTH..PIN_MAX_LENGTH
+                            pin.length == PIN_LENGTH
                         else
-                            confirmPin.length in PIN_MIN_LENGTH..PIN_MAX_LENGTH,
+                            confirmPin.length == PIN_LENGTH,
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
