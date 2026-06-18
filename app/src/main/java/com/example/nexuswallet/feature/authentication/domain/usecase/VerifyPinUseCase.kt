@@ -1,16 +1,16 @@
 package com.example.nexuswallet.feature.authentication.domain.usecase
 
+import com.example.nexuswallet.feature.authentication.data.util.PinHasher
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.core.util.toHex
-import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class VerifyPinUseCase @Inject constructor(
     private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val pinHasher: PinHasher,
     private val logger: Logger
 ) {
     private val tag = "VerifyPin"
@@ -24,7 +24,7 @@ class VerifyPinUseCase @Inject constructor(
             return Result.Success(false)
         }
 
-        val isValid = verifyPinHash(pin, storedHash)
+        val isValid = pinHasher.verifyPin(pin, storedHash)
         val duration = System.currentTimeMillis() - startTime
 
         if (isValid) {
@@ -34,17 +34,5 @@ class VerifyPinUseCase @Inject constructor(
             logger.w(tag, "PIN verification failed | duration=${duration}ms")
             return Result.Success(false)
         }
-    }
-
-    private fun verifyPinHash(inputPin: String, storedHash: String): Boolean {
-        val parts = storedHash.split(":")
-        if (parts.size != 2) return false
-
-        val (storedHashPart, saltHex) = parts
-        val inputHash = MessageDigest.getInstance("SHA-256")
-            .digest("$inputPin$saltHex".toByteArray())
-            .toHex()
-
-        return inputHash == storedHashPart
     }
 }

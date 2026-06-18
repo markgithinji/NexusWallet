@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.settings.domain.di
 
 
+import com.example.nexuswallet.feature.authentication.data.util.PinHasher
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.logging.Logger
@@ -25,10 +26,12 @@ object SettingsDomainModule {
     @Singleton
     fun provideSetPinUseCase(
         securityPreferencesRepository: SecurityPreferencesRepository,
+        pinHasher: PinHasher,
         logger: Logger
     ): SetPinUseCase {
         return SetPinUseCase(
             securityPreferencesRepository = securityPreferencesRepository,
+            pinHasher = pinHasher,
             logger = logger
         )
     }
