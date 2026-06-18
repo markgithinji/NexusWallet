@@ -1,7 +1,5 @@
 package com.example.nexuswallet.feature.market.ui
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,7 +32,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -70,7 +68,6 @@ import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
 import com.example.nexuswallet.ui.theme.success
 
-@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TokenDetailScreen(
@@ -198,7 +195,7 @@ private fun TokenDetailTopBar(
                         // Fallback icon while loading
                         Icon(
                             imageVector = Icons.Outlined.AccountBalanceWallet,
-                            contentDescription = null,
+                            contentDescription = "Token icon",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
@@ -443,7 +440,7 @@ fun PriceChart(
                                                     Icons.Outlined.TrendingUp
                                                 else
                                                     Icons.Outlined.TrendingDown,
-                                                contentDescription = null,
+                                                contentDescription = "Price trend",
                                                 modifier = Modifier.size(12.dp),
                                                 tint = if (priceChange >= 0)
                                                     MaterialTheme.colorScheme.success
@@ -504,7 +501,6 @@ fun PriceChart(
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun NewsSection(
     newsState: Result<List<NewsArticle>>,
@@ -530,7 +526,7 @@ private fun NewsSection(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Article,
-                    contentDescription = null,
+                    contentDescription = "News icon",
                     modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -596,7 +592,7 @@ private fun NewsSection(
                             NewsItem(article = article)
 
                             if (index < articles.size - 1 && index < 2) {
-                                Divider(
+                                HorizontalDivider(
                                     modifier = Modifier.padding(vertical = 8.dp),
                                     color = MaterialTheme.colorScheme.outline,
                                     thickness = 1.dp
@@ -732,7 +728,7 @@ fun PriceCard(token: TokenDetail) {
                             Icons.Outlined.TrendingUp
                         else
                             Icons.Outlined.TrendingDown,
-                        contentDescription = null,
+                        contentDescription = "24h trend",
                         modifier = Modifier.size(16.dp),
                         tint = if (token.priceChangePercentage24h >= 0)
                             MaterialTheme.colorScheme.success
@@ -1103,7 +1099,6 @@ fun StatRowWithChange(
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun NewsCard(
     articles: List<NewsArticle>,
@@ -1130,7 +1125,7 @@ fun NewsCard(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Article,
-                    contentDescription = null,
+                    contentDescription = "News icon",
                     modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -1176,7 +1171,7 @@ fun NewsCard(
                     NewsItem(article = article)
 
                     if (index < articles.size - 1 && index < 2) {
-                        Divider(
+                        HorizontalDivider(
                             modifier = Modifier.padding(vertical = 8.dp),
                             color = MaterialTheme.colorScheme.outline,
                             thickness = 1.dp
@@ -1197,7 +1192,6 @@ fun NewsCard(
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun NewsItem(
     article: NewsArticle
@@ -1270,7 +1264,7 @@ fun NewsItem(
 }
 
 // Helper to format relative time
-@RequiresApi(Build.VERSION_CODES.O)
+@Composable
 fun formatRelativeTime(dateString: String): String {
     return try {
         val published = java.time.Instant.parse(dateString)

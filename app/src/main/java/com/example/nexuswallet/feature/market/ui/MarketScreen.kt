@@ -1,14 +1,27 @@
 package com.example.nexuswallet.feature.market.ui
 
-import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -46,27 +59,26 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.domain.model.Token
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ButtonDefaults
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.ui.theme.success
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun MarketScreen(
     onNavigateToTokenDetail: (String) -> Unit,
-    padding: PaddingValues
+    padding: PaddingValues,
+    viewModel: MarketViewModel = hiltViewModel()
 ) {
-    val viewModel: MarketViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val tokens by viewModel.filteredTokens.collectAsStateWithLifecycle()
+    val tokens by viewModel.filteredTokens.collectAsStateWithLifecycle(initialValue = emptyList())
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val isWebSocketConnected by viewModel.isWebSocketConnected.collectAsStateWithLifecycle()
     val isLoadingMore by viewModel.isLoadingMore.collectAsStateWithLifecycle()
@@ -212,7 +224,7 @@ fun DisconnectedBanner(
         ) {
             Icon(
                 Icons.Outlined.WifiOff,
-                contentDescription = null,
+                contentDescription = "Disconnected icon",
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(16.dp)
             )
@@ -255,7 +267,7 @@ fun MarketTopBar(
                 // Market icon in title
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ShowChart,
-                    contentDescription = null,
+                    contentDescription = "Market icon",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
@@ -466,7 +478,7 @@ fun MarketList(
 
         // Trigger load more when reaching the end
         item {
-            LaunchedEffect(Unit) {
+            LaunchedEffect(Unit) { // TODO: Improve to use paging
                 onLoadMore()
             }
         }
@@ -561,7 +573,7 @@ fun TokenItem(
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.AccountBalanceWallet,
-                            contentDescription = null,
+                            contentDescription = "Token icon",
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -616,7 +628,7 @@ fun TokenItem(
                             Icons.Outlined.TrendingUp
                         else
                             Icons.Outlined.TrendingDown,
-                        contentDescription = null,
+                        contentDescription = "Price trend",
                         modifier = Modifier.size(12.dp),
                         tint = changeColor
                     )
@@ -753,7 +765,7 @@ fun EmptySearchResult() {
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.CurrencyBitcoin,
-                                contentDescription = null,
+                                contentDescription = "Bitcoin icon",
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -773,7 +785,7 @@ fun EmptySearchResult() {
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Sell,
-                                contentDescription = null,
+                                contentDescription = "Sell icon",
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -793,7 +805,7 @@ fun EmptySearchResult() {
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Refresh,
-                                contentDescription = null,
+                                contentDescription = "Refresh icon",
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )

@@ -40,7 +40,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -114,7 +114,7 @@ fun SendTopBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     painter = painterResource(id = iconRes),
-                    contentDescription = null,
+                    contentDescription = "Coin icon",
                     modifier = Modifier.size(24.dp),
                     tint = Color.Unspecified
                 )
@@ -182,7 +182,7 @@ fun NetworkSelectorCard(
         ) {
             Icon(
                 imageVector = Icons.Outlined.Lan,
-                contentDescription = null,
+                contentDescription = "Network icon",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
@@ -362,7 +362,7 @@ fun SendBalanceCard(
                 ) {
                     Icon(
                         painter = painterResource(id = iconRes),
-                        contentDescription = null,
+                        contentDescription = "Coin icon",
                         tint = Color.Unspecified,
                         modifier = Modifier.size(28.dp)
                     )
@@ -377,7 +377,7 @@ fun SendBalanceCard(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = null,
+                    contentDescription = "Wallet icon",
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1114,7 +1114,7 @@ fun MaxAmountDialog(
                         )
                     }
 
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
                         color = MaterialTheme.colorScheme.outline,
                         thickness = 1.dp
@@ -1286,14 +1286,14 @@ fun TokenSelectorCard(
                 if (iconRes != null) {
                     Icon(
                         painter = painterResource(id = iconRes),
-                        contentDescription = null,
+                        contentDescription = "Token icon",
                         tint = Color.Unspecified,
                         modifier = Modifier.size(20.dp)
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Outlined.Token,
-                        contentDescription = null,
+                        contentDescription = "Token icon",
                         tint = color,
                         modifier = Modifier.size(16.dp)
                     )
@@ -1383,14 +1383,14 @@ fun TokenSelectorDialog(
                                 if (iconRes != null) {
                                     Icon(
                                         painter = painterResource(id = iconRes),
-                                        contentDescription = null,
+                                        contentDescription = "Token icon",
                                         tint = Color.Unspecified,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 } else {
                                     Icon(
                                         imageVector = Icons.Outlined.Token,
-                                        contentDescription = null,
+                                        contentDescription = "Token icon",
                                         tint = color,
                                         modifier = Modifier.size(16.dp)
                                     )

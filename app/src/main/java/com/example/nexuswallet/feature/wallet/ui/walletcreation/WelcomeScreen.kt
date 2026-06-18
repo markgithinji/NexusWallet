@@ -77,7 +77,7 @@ fun WelcomeScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.nexux_icon),
+                    painter = painterResource(id = R.drawable.nexus_icon),
                     contentDescription = "Nexus Wallet",
                     modifier = Modifier
                         .fillMaxSize(),
@@ -285,7 +285,7 @@ fun FeatureRow(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = text,
                 tint = iconColor,
                 modifier = Modifier.size(20.dp)
             )

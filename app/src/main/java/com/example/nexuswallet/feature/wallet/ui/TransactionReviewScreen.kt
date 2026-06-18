@@ -296,7 +296,7 @@ fun TransactionReviewScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = painterResource(id = iconRes),
-                            contentDescription = null,
+                            contentDescription = "Coin icon",
                             modifier = Modifier.size(24.dp),
                             tint = Color.Unspecified
                         )
@@ -636,7 +636,7 @@ fun AddressCard(
             ) {
                 Icon(
                     painter = painterResource(id = iconRes),
-                    contentDescription = null,
+                    contentDescription = "Coin icon",
                     tint = Color.Unspecified,
                     modifier = Modifier.size(24.dp)
                 )
@@ -760,7 +760,7 @@ fun TransactionSuccessCard(
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Link,
-                            contentDescription = null,
+                            contentDescription = "Link icon",
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1058,7 +1058,7 @@ fun FeePreviewCard(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.LocalGasStation,
-                    contentDescription = null,
+                    contentDescription = "Gas station icon",
                     modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -1131,7 +1131,7 @@ fun FeePreviewCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Schedule,
-                                contentDescription = null,
+                                contentDescription = "Schedule icon",
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )

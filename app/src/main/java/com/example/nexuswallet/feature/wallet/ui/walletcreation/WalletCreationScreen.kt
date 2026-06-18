@@ -1418,7 +1418,7 @@ fun SafetyChecklistItem(text: String, checked: Boolean) {
     ) {
         Icon(
             imageVector = if (checked) Icons.Default.CheckCircle else Icons.Default.Circle,
-            contentDescription = null,
+            contentDescription = if (checked) "Checked" else "Unchecked",
             tint = if (checked) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp)
@@ -2056,7 +2056,7 @@ fun WalletSuccessStep(
         ) {
             Icon(
                 imageVector = Icons.Outlined.Dashboard,
-                contentDescription = null,
+                contentDescription = "Dashboard icon",
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
