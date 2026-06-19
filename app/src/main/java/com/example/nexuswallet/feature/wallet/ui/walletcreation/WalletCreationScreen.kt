@@ -358,6 +358,8 @@ fun NetworkSelectionStep(
     onNext: () -> Unit,
     hasSelections: Boolean
 ) {
+    val haptic = LocalHapticFeedback.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1053,6 +1055,7 @@ fun MnemonicDisplayStep(
     onNext: () -> Unit,
     onBack: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     var hasWrittenDown by remember { mutableStateOf(false) }
     var hasStoredSafely by remember { mutableStateOf(false) }
 
