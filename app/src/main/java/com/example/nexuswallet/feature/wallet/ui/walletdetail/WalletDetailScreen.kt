@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -112,6 +114,9 @@ fun WalletDetailScreen(
     walletViewModel: WalletDetailViewModel = hiltViewModel(),
 ) {
     val uiState by walletViewModel.uiState.collectAsStateWithLifecycle()
+
+    var showAssetSelector by remember { mutableStateOf(false) }
+    var selectorPurpose by remember { mutableStateOf(AssetSelectorPurpose.SEND) }
 
     LaunchedEffect(walletId) {
         walletViewModel.loadWallet(walletId)
@@ -225,6 +230,10 @@ fun WalletDetailScreen(
                 onAssetClick = { coin -> onAssetClick(walletId, coin) },
                 onReceiveClick = { coin -> onReceiveClick(walletId, coin) },
                 onSendClick = { coin -> onSendClick(walletId, coin) },
+                onShowAssetSelector = { purpose ->
+                    selectorPurpose = purpose
+                    showAssetSelector = true
+                },
                 onSwapClick = onSwapClick,
                 onMoreClick = onMoreClick,
                 onViewAllTransactionsClick = { onNavigateToAllTransactions(walletId) },
@@ -237,6 +246,22 @@ fun WalletDetailScreen(
                 },
                 padding = padding
             )
+
+            if (showAssetSelector) {
+                AssetSelectionDialog(
+                    assets = uiState.assets,
+                    purpose = selectorPurpose,
+                    onAssetSelected = { coin ->
+                        showAssetSelector = false
+                        if (selectorPurpose == AssetSelectorPurpose.SEND) {
+                            onSendClick(walletId, coin)
+                        } else {
+                            onReceiveClick(walletId, coin)
+                        }
+                    },
+                    onDismiss = { showAssetSelector = false }
+                )
+            }
         } ?: run {
             EmptyWalletView(
                 onBack = onNavigateUp
@@ -246,7 +271,7 @@ fun WalletDetailScreen(
 }
 
 @Composable
-fun WalletDetailContent(
+private fun WalletDetailContent(
     wallet: Wallet,
     assets: List<AssetDisplayInfo>,
     transactions: List<TransactionDisplayInfo>,
@@ -261,6 +286,7 @@ fun WalletDetailContent(
     onAssetClick: (Coin) -> Unit,
     onReceiveClick: (Coin) -> Unit,
     onSendClick: (Coin) -> Unit,
+    onShowAssetSelector: (AssetSelectorPurpose) -> Unit,
     onSwapClick: () -> Unit,
     onMoreClick: () -> Unit,
     onViewAllTransactionsClick: () -> Unit,
@@ -283,12 +309,20 @@ fun WalletDetailContent(
                 isLoadingBalance = isLoadingBalance || isRefreshingBalance,
                 balanceLoadingMessage = balanceLoadingMessage,
                 onReceive = {
-                    val defaultCoin = getDefaultCoin(wallet)
-                    defaultCoin?.let { onReceiveClick(it) }
+                    if (assets.size > 1) {
+                        onShowAssetSelector(AssetSelectorPurpose.RECEIVE)
+                    } else {
+                        assets.firstOrNull()?.let { onReceiveClick(it.coin) }
+                            ?: getDefaultCoin(wallet)?.let { onReceiveClick(it) }
+                    }
                 },
                 onSend = {
-                    val defaultCoin = getDefaultCoin(wallet)
-                    defaultCoin?.let { onSendClick(it) }
+                    if (assets.size > 1) {
+                        onShowAssetSelector(AssetSelectorPurpose.SEND)
+                    } else {
+                        assets.firstOrNull()?.let { onSendClick(it.coin) }
+                            ?: getDefaultCoin(wallet)?.let { onSendClick(it) }
+                    }
                 },
                 onSwap = onSwapClick,
                 onMore = onMoreClick
@@ -945,6 +979,132 @@ fun EmptyWalletView(onBack: () -> Unit) {
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
+            }
+        }
+    }
+}
+
+private enum class AssetSelectorPurpose {
+    SEND, RECEIVE
+}
+
+@Composable
+private fun AssetSelectionDialog(
+    assets: List<AssetDisplayInfo>,
+    purpose: AssetSelectorPurpose,
+    onAssetSelected: (Coin) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (purpose == AssetSelectorPurpose.SEND)
+                    stringResource(R.string.select_asset_to_send)
+                else
+                    stringResource(R.string.select_asset_to_receive),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(assets) { asset ->
+                        AssetSelectionRow(
+                            asset = asset,
+                            onClick = { onAssetSelected(asset.coin) }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text(text = stringResource(R.string.cancel))
+                }
+            }
+        },
+        confirmButton = {},
+        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+
+@Composable
+private fun AssetSelectionRow(
+    asset: AssetDisplayInfo,
+    onClick: () -> Unit
+) {
+    val (iconRes, _, iconSize) = when (asset.coin) {
+        is BitcoinCoin -> Triple(R.drawable.bitcoin, bitcoinLight, 20.dp)
+        is SolanaCoin -> Triple(R.drawable.solana, solanaLight, 20.dp)
+        is NativeETH -> Triple(R.drawable.ethereum, ethereumLight, 24.dp)
+        is USDCToken -> Triple(R.drawable.usdc, usdcLight, 20.dp)
+        is USDTToken -> Triple(R.drawable.tether, usdtLight, 20.dp)
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    modifier = Modifier.size(iconSize),
+                    tint = Color.Unspecified
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = asset.coin.symbol,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = asset.coin.network.name,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = asset.balanceFormatted,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = asset.usdValueFormatted,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

@@ -118,6 +118,8 @@
     <string name="back_to_wallets">Back to Wallets</string>
     <string name="asset_count_plural">%1$d assets</string>
     <string name="plus_x_tokens">+%1$d tokens</string>
+    <string name="select_asset_to_send">Select asset to send</string>
+    <string name="select_asset_to_receive">Select asset to receive</string>
 
     <!-- Welcome Screen -->
     <string name="welcome_secure_crypto_wallet">Secure Crypto Wallet</string>
