@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.bitcoin.domain.usecase
 
+import com.example.nexuswallet.feature.bitcoin.data.model.UTXO
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
@@ -55,11 +56,46 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
             return@withContext Result.Error("Bitcoin not enabled for $network")
         }
 
-        // Get fee estimate
-        val feeResult = bitcoinBlockchainRepository.getFeeEstimate(
+        // 1. Fetch actual UTXOs to determine input count
+        val utxosResult = bitcoinBlockchainRepository.getUnspentOutputs(bitcoinCoin.address, network)
+        val allUtxos = when (utxosResult) {
+            is Result.Success -> utxosResult.data
+            is Result.Error -> {
+                logger.e(tag, "Failed to fetch UTXOs: ${utxosResult.message}")
+                return@withContext Result.Error("Failed to fetch UTXOs: ${utxosResult.message}")
+            }
+            else -> return@withContext Result.Error("Unknown error fetching UTXOs")
+        }
+
+        if (allUtxos.isEmpty()) {
+            logger.e(tag, "No UTXOs found for address: ${bitcoinCoin.address}")
+            return@withContext Result.Error("No UTXOs found. Your balance might be zero.")
+        }
+
+        // 2. Initial fee estimate to get a ballpark for UTXO selection
+        val initialFeeResult = bitcoinBlockchainRepository.getFeeEstimate(
             feeLevel,
             DEFAULT_INPUT_COUNT,
             DEFAULT_OUTPUT_COUNT
+        )
+
+        val initialFeeSatoshis = when (initialFeeResult) {
+            is Result.Success -> initialFeeResult.data.totalFeeSatoshis
+            else -> 1000L // Small fallback if initial estimate fails
+        }
+
+        // 3. Select UTXOs to cover amount + estimated fee
+        val targetSatoshis = amount.toSatoshis() + initialFeeSatoshis
+        val selectedUtxos = bitcoinBlockchainRepository.selectUtxos(allUtxos, targetSatoshis)
+
+        val inputCount = if (selectedUtxos.isNotEmpty()) selectedUtxos.size else DEFAULT_INPUT_COUNT
+        val outputCount = DEFAULT_OUTPUT_COUNT // Recipient + Change
+
+        // 4. Get accurate fee estimate based on actual required inputs
+        val feeResult = bitcoinBlockchainRepository.getFeeEstimate(
+            feeLevel,
+            inputCount,
+            outputCount
         )
 
         // Process based on fee result
@@ -71,7 +107,8 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
                     toAddress = toAddress,
                     amount = amount,
                     feeEstimate = feeEstimate,
-                    feeLevel = feeLevel
+                    feeLevel = feeLevel,
+                    inputCount = inputCount
                 )
             }
 
@@ -93,14 +130,15 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
         toAddress: String,
         amount: BigDecimal,
         feeEstimate: BitcoinFeeEstimate,
-        feeLevel: FeeLevel
+        feeLevel: FeeLevel,
+        inputCount: Int
     ): Result<PreparedBitcoinTransaction> {
         val satoshis = amount.toSatoshis()
 
         // Generate a transaction ID
         val transactionId = "btc_tx_${System.currentTimeMillis()}"
 
-        logger.d(tag, "Transaction prepared: $transactionId")
+        logger.d(tag, "Transaction prepared with $inputCount inputs: $transactionId")
 
         // Return prepared transaction info with data needed for later signing
         return Result.Success(
@@ -117,7 +155,7 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
                 network = bitcoinCoin.network,
                 hasPrivateKey = true,
                 estimatedSize = feeEstimate.estimatedSize.toInt(),
-                utxoCount = DEFAULT_INPUT_COUNT
+                utxoCount = inputCount
             )
         )
     }

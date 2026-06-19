@@ -239,7 +239,11 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
             tx.addOutput(outputValue, outputAddress)
 
             val fromAddress = LegacyAddress.fromKey(networkParams, fromKey).toString()
-            val allUtxos = getUnspentOutputs(fromAddress, network)
+            val allUtxosResult = getUnspentOutputs(fromAddress, network)
+            val allUtxos = when (allUtxosResult) {
+                is Result.Success -> allUtxosResult.data
+                else -> return@withContext Result.Error("Failed to fetch UTXOs")
+            }
 
             if (allUtxos.isEmpty()) {
                 return@withContext Result.Error("No UTXOs found for address: $fromAddress")
@@ -303,13 +307,16 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
     /**
      * Get UTXOs for an address
      */
-    private suspend fun getUnspentOutputs(address: String, network: BitcoinNetwork): List<UTXO> =
-        withContext(ioDispatcher) {
+    override suspend fun getUnspentOutputs(
+        address: String,
+        network: BitcoinNetwork
+    ): Result<List<UTXO>> = withContext(ioDispatcher) {
+        SafeApiCall.make {
             val api = getApiForNetwork(network)
             val utxos = api.getUtxos(address)
 
             if (utxos.isEmpty()) {
-                return@withContext emptyList()
+                return@make emptyList<UTXO>()
             }
 
             val networkParams = when (network) {
@@ -335,8 +342,9 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
                 }
             }
 
-            return@withContext result
+            result
         }
+    }
 
     private suspend fun getScriptPubKeyFromTransaction(
         txid: String,
@@ -356,7 +364,7 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
     /**
      * Select UTXOs for a transaction using a simple "smallest first" strategy
      */
-    private fun selectUtxos(utxos: List<UTXO>, targetSatoshis: Long): List<UTXO> {
+    override fun selectUtxos(utxos: List<UTXO>, targetSatoshis: Long): List<UTXO> {
         if (utxos.isEmpty()) return emptyList()
 
         val sortedUtxos = utxos.sortedBy { it.value.value }

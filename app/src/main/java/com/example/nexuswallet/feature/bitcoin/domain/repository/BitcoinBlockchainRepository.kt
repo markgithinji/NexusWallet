@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.bitcoin.domain.repository
 
+import com.example.nexuswallet.feature.bitcoin.data.model.UTXO
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.core.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
@@ -21,6 +22,16 @@ interface BitcoinBlockchainRepository {
         inputCount: Int,
         outputCount: Int
     ): Result<BitcoinFeeEstimate>
+
+    suspend fun getUnspentOutputs(
+        address: String,
+        network: BitcoinNetwork
+    ): Result<List<UTXO>>
+
+    fun selectUtxos(
+        utxos: List<UTXO>,
+        targetSatoshis: Long
+    ): List<UTXO>
 
     suspend fun broadcastTransaction(
         signedHex: String,
