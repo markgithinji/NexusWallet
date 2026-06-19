@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import kotlinx.coroutines.flow.Flow
@@ -12,6 +13,19 @@ import kotlinx.coroutines.flow.Flow
 interface SolanaTransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(transaction: SolanaTransactionEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(transactions: List<SolanaTransactionEntity>)
+
+    @Transaction
+    suspend fun replaceTransactions(
+        walletId: String,
+        network: SolanaNetwork,
+        transactions: List<SolanaTransactionEntity>
+    ) {
+        deleteByWalletIdAndNetwork(walletId, network)
+        insertAll(transactions)
+    }
 
     @Update
     suspend fun update(transaction: SolanaTransactionEntity)

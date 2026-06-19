@@ -68,4 +68,16 @@ class BitcoinTransactionRepositoryImpl @Inject constructor(
     ) {
         bitcoinTransactionDao.deleteByWalletIdAndNetwork(walletId, network)
     }
+
+    override suspend fun replaceTransactions(
+        walletId: String,
+        network: BitcoinNetwork,
+        transactions: List<BitcoinTransaction>
+    ) {
+        bitcoinTransactionDao.replaceTransactions(
+            walletId,
+            network,
+            transactions.map { it.toEntity() }
+        )
+    }
 }

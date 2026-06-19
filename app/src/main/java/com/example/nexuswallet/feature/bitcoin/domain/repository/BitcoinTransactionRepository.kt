@@ -27,4 +27,10 @@ interface BitcoinTransactionRepository {
         walletId: String,
         network: BitcoinNetwork
     )
+
+    suspend fun replaceTransactions(
+        walletId: String,
+        network: BitcoinNetwork,
+        transactions: List<BitcoinTransaction>
+    )
 }

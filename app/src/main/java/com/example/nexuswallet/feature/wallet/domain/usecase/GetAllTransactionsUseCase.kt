@@ -103,7 +103,11 @@ class GetAllTransactionsUseCase @Inject constructor(
                 network = coin.network
             )
             if (result is Result.Success && result.data.isNotEmpty()) {
-                result.data.forEach { bitcoinTransactionRepository.saveTransaction(it) }
+                bitcoinTransactionRepository.replaceTransactions(
+                    walletId = walletId,
+                    network = coin.network,
+                    transactions = result.data
+                )
             }
         } catch (e: Exception) {
             logger.e(tag, "Error syncing Bitcoin for ${coin.network}", e)
@@ -154,9 +158,11 @@ class GetAllTransactionsUseCase @Inject constructor(
                 limit = 50
             )
             if (result is Result.Success && result.data.isNotEmpty()) {
-                // REMOVED delete call that caused flickering
-//                solanaTransactionRepository.deleteForWalletAndNetwork(walletId, coin.network)
-                result.data.forEach { solanaTransactionRepository.saveTransaction(it) }
+                solanaTransactionRepository.replaceTransactions(
+                    walletId = walletId,
+                    network = coin.network,
+                    transactions = result.data
+                )
             }
         } catch (e: Exception) {
             logger.e(tag, "Error syncing Solana for ${coin.network}", e)

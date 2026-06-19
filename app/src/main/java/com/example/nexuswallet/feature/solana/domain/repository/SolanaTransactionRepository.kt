@@ -47,6 +47,12 @@ interface SolanaTransactionRepository {
         network: SolanaNetwork
     )
 
+    suspend fun replaceTransactions(
+        walletId: String,
+        network: SolanaNetwork,
+        transactions: List<SolanaTransaction>
+    )
+
     suspend fun updateTransactionStatus(transactionId: String, status: TransactionStatus)
     suspend fun updateTransactionSignature(transactionId: String, signature: String)
     suspend fun confirmTransaction(transactionId: String, signature: String, slot: Long, blockTime: Long)

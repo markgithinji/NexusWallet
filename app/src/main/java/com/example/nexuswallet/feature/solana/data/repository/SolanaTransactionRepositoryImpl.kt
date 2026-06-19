@@ -101,6 +101,18 @@ class SolanaTransactionRepositoryImpl @Inject constructor(
         solanaTransactionDao.deleteByWalletIdAndNetwork(walletId, network)
     }
 
+    override suspend fun replaceTransactions(
+        walletId: String,
+        network: SolanaNetwork,
+        transactions: List<SolanaTransaction>
+    ) {
+        solanaTransactionDao.replaceTransactions(
+            walletId,
+            network,
+            transactions.map { it.toEntity() }
+        )
+    }
+
     override suspend fun updateTransactionStatus(
         transactionId: String,
         status: TransactionStatus
