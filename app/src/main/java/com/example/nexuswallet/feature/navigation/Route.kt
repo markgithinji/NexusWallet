@@ -46,6 +46,12 @@ data class ReviewRoute(
 ) : Route
 
 @Serializable
+data class AllTransactionsRoute(val walletId: String) : Route
+
+@Serializable
+data class CoinTransactionsRoute(val walletId: String, val coin: Coin) : Route
+
+@Serializable
 data class TokenDetailRoute(val tokenId: String) : Route
 
 @Serializable

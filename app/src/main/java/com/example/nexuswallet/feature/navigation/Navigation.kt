@@ -34,6 +34,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
 import com.example.nexuswallet.feature.wallet.ui.coindetail.CoinDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
+import com.example.nexuswallet.feature.wallet.ui.history.TransactionHistoryScreen
 import com.example.nexuswallet.feature.wallet.ui.recive.ReceiveScreen
 import com.example.nexuswallet.feature.wallet.ui.transactiondetail.TransactionDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationScreen
@@ -173,7 +174,7 @@ fun Navigation(
                     navController.navigate(SendRoute(walletId, coin))
                 },
                 onNavigateToAllTransactions = { walletId ->
-                    // TODO: Navigate to all transactions screen
+                    navController.navigate(AllTransactionsRoute(walletId))
                 },
                 onNavigateToTransactionDetail = { walletId, txId, coin ->
                     navController.navigate(TransactionDetailRoute(walletId, txId,coin))
@@ -198,7 +199,7 @@ fun Navigation(
                     navController.navigate(SendRoute(walletId, coin))
                 },
                 onNavigateToAllTransactions = { walletId, coin ->
-                    // TODO: Navigate to all transactions screen
+                    navController.navigate(CoinTransactionsRoute(walletId, coin))
                 },
                 onNavigateToTransactionDetail = { walletId, txId, coin ->
                     navController.navigate(TransactionDetailRoute(walletId, txId,coin))
@@ -216,6 +217,29 @@ fun Navigation(
                 transactionId = args.transactionId,
                 coin = args.coin,
                 onNavigateUp = { navController.navigateUp() }
+            )
+        }
+
+        composable<AllTransactionsRoute> { backStackEntry ->
+            val args = backStackEntry.toRoute<AllTransactionsRoute>()
+            TransactionHistoryScreen(
+                walletId = args.walletId,
+                onNavigateUp = { navController.navigateUp() },
+                onTransactionClick = { txId, coin ->
+                    navController.navigate(TransactionDetailRoute(args.walletId, txId, coin))
+                }
+            )
+        }
+
+        composable<CoinTransactionsRoute>(typeMap = typeMap) { backStackEntry ->
+            val args = backStackEntry.toRoute<CoinTransactionsRoute>()
+            TransactionHistoryScreen(
+                walletId = args.walletId,
+                coin = args.coin,
+                onNavigateUp = { navController.navigateUp() },
+                onTransactionClick = { txId, coin ->
+                    navController.navigate(TransactionDetailRoute(args.walletId, txId, coin))
+                }
             )
         }
 

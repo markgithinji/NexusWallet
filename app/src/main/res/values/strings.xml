@@ -232,4 +232,9 @@
     <string name="test_suffix">(Test)</string>
     <string name="dev_suffix">(Dev)</string>
     <string name="wallet_icon">Wallet</string>
+
+    <!-- Transaction History -->
+    <string name="all_transactions">All Transactions</string>
+    <string name="transaction_history_for">History: %1$s</string>
+    <string name="no_transactions">No transactions found</string>
 </resources>
