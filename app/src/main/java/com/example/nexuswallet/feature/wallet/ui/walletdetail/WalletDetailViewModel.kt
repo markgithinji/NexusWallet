@@ -19,8 +19,9 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.FormatBalanceUseCas
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetAllTransactionsUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncWalletBalancesUseCase
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,7 +40,8 @@ class WalletDetailViewModel @Inject constructor(
     private val getAllTransactionsUseCase: GetAllTransactionsUseCase,
     private val marketRepository: MarketRepository,
     private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
-    private val formatBalanceUseCase: FormatBalanceUseCase
+    private val formatBalanceUseCase: FormatBalanceUseCase,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WalletDetailUiState(isLoading = true))
@@ -206,7 +208,7 @@ class WalletDetailViewModel @Inject constructor(
             }
 
             getAllTransactionsUseCase(walletId, forceRefresh)
-                .flowOn(Dispatchers.IO)
+                .flowOn(ioDispatcher)
                 .catch { e ->
                     _uiState.update {
                         it.copy(

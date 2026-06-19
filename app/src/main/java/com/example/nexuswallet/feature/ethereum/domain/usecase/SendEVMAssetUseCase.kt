@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.ethereum.domain.usecase
 
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
@@ -22,7 +23,7 @@ import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -37,7 +38,8 @@ class SendEVMAssetUseCase @Inject constructor(
     private val evmTransactionRepository: EVMTransactionRepository,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val keyStoreRepository: KeyStoreRepository,
-    private val logger: Logger
+    private val logger: Logger,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     private val tag = "SendEVMAssetUC"
@@ -49,7 +51,7 @@ class SendEVMAssetUseCase @Inject constructor(
         feeLevel: FeeLevel,
         token: EVMToken,
         note: String?
-    ): Result<SendEVMResult> = withContext(Dispatchers.IO) {
+    ): Result<SendEVMResult> = withContext(ioDispatcher) {
         logger.d(tag, "WalletId: $walletId, To: $toAddress, Amount: $amount ${token.symbol}")
 
         // Validate wallet exists

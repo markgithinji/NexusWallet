@@ -23,6 +23,8 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.GetSolanaDetailUseC
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetTransactionDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncWalletBalancesUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.ValidateMnemonicUseCase
+import com.example.nexuswallet.feature.core.domain.di.DefaultDispatcher
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -37,7 +39,7 @@ object WalletDomainModule {
     @Provides
     @Singleton
     fun provideGenerateMnemonicUseCase(
-        logger: Logger
+        logger: Logger,
     ): GenerateMnemonicUseCase {
         return GenerateMnemonicUseCase(
             logger = logger
@@ -64,7 +66,7 @@ object WalletDomainModule {
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
         evmBlockchainRepository: EVMBlockchainRepository,
         solanaBlockchainRepository: SolanaBlockchainRepository,
-        ioDispatcher: CoroutineDispatcher,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetAllTransactionsUseCase {
         return GetAllTransactionsUseCase(
@@ -75,8 +77,8 @@ object WalletDomainModule {
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
             evmBlockchainRepository = evmBlockchainRepository,
             solanaBlockchainRepository = solanaBlockchainRepository,
-            ioDispatcher = ioDispatcher,
-            logger = logger
+            logger = logger,
+            ioDispatcher = ioDispatcher
         )
     }
 
@@ -86,13 +88,15 @@ object WalletDomainModule {
         bitcoinTransactionRepository: BitcoinTransactionRepository,
         evmTransactionRepository: EVMTransactionRepository,
         solanaTransactionRepository: SolanaTransactionRepository,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetTransactionDetailUseCase {
         return GetTransactionDetailUseCase(
             bitcoinTransactionRepository = bitcoinTransactionRepository,
             evmTransactionRepository = evmTransactionRepository,
             solanaTransactionRepository = solanaTransactionRepository,
-            logger = logger
+            logger = logger,
+            ioDispatcher = ioDispatcher
         )
     }
 
@@ -102,13 +106,17 @@ object WalletDomainModule {
         walletDataSource: WalletDataSource,
         keyStoreRepository: KeyStoreRepository,
         securityPreferencesRepository: SecurityPreferencesRepository,
+        @DefaultDispatcher defaultDispatcher: CoroutineDispatcher,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): CreateWalletUseCase {
         return CreateWalletUseCase(
             walletDataSource = walletDataSource,
             keyStoreRepository = keyStoreRepository,
             securityPreferencesRepository = securityPreferencesRepository,
-            logger = logger
+            logger = logger,
+            defaultDispatcher = defaultDispatcher,
+            ioDispatcher = ioDispatcher
         )
     }
 
@@ -124,13 +132,15 @@ object WalletDomainModule {
         walletRepository: WalletRepository,
         bitcoinTransactionRepository: BitcoinTransactionRepository,
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetBitcoinDetailUseCase {
         return GetBitcoinDetailUseCase(
             walletRepository = walletRepository,
             bitcoinTransactionRepository = bitcoinTransactionRepository,
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
-            logger = logger
+            logger = logger,
+            ioDispatcher = ioDispatcher
         )
     }
 
@@ -140,13 +150,15 @@ object WalletDomainModule {
         walletRepository: WalletRepository,
         evmTransactionRepository: EVMTransactionRepository,
         evmBlockchainRepository: EVMBlockchainRepository,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetEthereumDetailUseCase {
         return GetEthereumDetailUseCase(
             walletRepository = walletRepository,
             evmTransactionRepository = evmTransactionRepository,
             evmBlockchainRepository = evmBlockchainRepository,
-            logger = logger
+            logger = logger,
+            ioDispatcher = ioDispatcher
         )
     }
 
@@ -156,13 +168,15 @@ object WalletDomainModule {
         walletRepository: WalletRepository,
         solanaTransactionRepository: SolanaTransactionRepository,
         solanaBlockchainRepository: SolanaBlockchainRepository,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetSolanaDetailUseCase {
         return GetSolanaDetailUseCase(
             walletRepository = walletRepository,
             solanaTransactionRepository = solanaTransactionRepository,
             solanaBlockchainRepository = solanaBlockchainRepository,
-            logger = logger
+            logger = logger,
+            ioDispatcher = ioDispatcher
         )
     }
 
@@ -173,6 +187,7 @@ object WalletDomainModule {
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
         evmBlockchainRepository: EVMBlockchainRepository,
         solanaBlockchainRepository: SolanaBlockchainRepository,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): SyncWalletBalancesUseCase {
         return SyncWalletBalancesUseCase(
@@ -180,7 +195,8 @@ object WalletDomainModule {
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
             evmBlockchainRepository = evmBlockchainRepository,
             solanaBlockchainRepository = solanaBlockchainRepository,
-            logger = logger
+            logger = logger,
+            ioDispatcher = ioDispatcher
         )
     }
 

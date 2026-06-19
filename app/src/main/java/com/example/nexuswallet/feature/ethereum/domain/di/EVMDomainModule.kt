@@ -13,6 +13,8 @@ import com.example.nexuswallet.feature.ethereum.domain.usecase.SendEVMAssetUseCa
 import com.example.nexuswallet.feature.ethereum.domain.usecase.ValidateEVMSendUseCase
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,7 +29,7 @@ object EVMDomainModule {
     @Singleton
     fun provideGetTransactionUseCase(
         evmTransactionRepository: EVMTransactionRepository,
-        logger: Logger
+        logger: Logger,
     ): GetTransactionUseCase {
         return GetTransactionUseCase(
             evmTransactionRepository = evmTransactionRepository,
@@ -62,7 +64,6 @@ object EVMDomainModule {
     @Provides
     @Singleton
     fun provideValidateEVMSendUseCase(
-        evmBlockchainRepository: EVMBlockchainRepository,
         logger: Logger
     ): ValidateEVMSendUseCase {
         return ValidateEVMSendUseCase(
@@ -90,6 +91,7 @@ object EVMDomainModule {
         evmTransactionRepository: EVMTransactionRepository,
         securityPreferencesRepository: SecurityPreferencesRepository,
         keyStoreRepository: KeyStoreRepository,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): SendEVMAssetUseCase {
         return SendEVMAssetUseCase(
@@ -98,7 +100,8 @@ object EVMDomainModule {
             evmTransactionRepository = evmTransactionRepository,
             securityPreferencesRepository = securityPreferencesRepository,
             keyStoreRepository = keyStoreRepository,
-            logger = logger
+            logger = logger,
+            ioDispatcher = ioDispatcher
         )
     }
 

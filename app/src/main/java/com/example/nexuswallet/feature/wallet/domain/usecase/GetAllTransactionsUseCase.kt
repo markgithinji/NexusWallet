@@ -19,6 +19,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -42,7 +43,7 @@ class GetAllTransactionsUseCase @Inject constructor(
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
     private val logger: Logger,
-    private val ioDispatcher: CoroutineDispatcher
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     private val tag = "GetAllTransactionsUC"

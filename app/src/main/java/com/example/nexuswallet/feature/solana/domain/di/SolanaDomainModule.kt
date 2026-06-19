@@ -12,6 +12,8 @@ import com.example.nexuswallet.feature.solana.domain.usecase.SendSolanaUseCase
 import com.example.nexuswallet.feature.solana.domain.usecase.ValidateSolanaAddressUseCase
 import com.example.nexuswallet.feature.solana.domain.usecase.ValidateSolanaSendUseCase
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -26,7 +28,7 @@ object SolanaUseDomainModule {
     @Singleton
     fun provideGetSolanaWalletUseCase(
         walletRepository: WalletRepository,
-        logger: Logger
+        logger: Logger,
     ): GetSolanaWalletUseCase {
         return GetSolanaWalletUseCase(
             walletRepository = walletRepository,
@@ -42,6 +44,7 @@ object SolanaUseDomainModule {
         solanaTransactionRepository: SolanaTransactionRepository,
         securityPreferencesRepository: SecurityPreferencesRepository,
         keyStoreRepository: KeyStoreRepository,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): SendSolanaUseCase {
         return SendSolanaUseCase(
@@ -50,7 +53,8 @@ object SolanaUseDomainModule {
             solanaTransactionRepository = solanaTransactionRepository,
             securityPreferencesRepository = securityPreferencesRepository,
             keyStoreRepository = keyStoreRepository,
-            logger = logger
+            logger = logger,
+            ioDispatcher = ioDispatcher
         )
     }
 
@@ -93,7 +97,6 @@ object SolanaUseDomainModule {
     @Provides
     @Singleton
     fun provideValidateSolanaSendUseCase(
-        solanaBlockchainRepository: SolanaBlockchainRepository,
         logger: Logger
     ): ValidateSolanaSendUseCase {
         return ValidateSolanaSendUseCase(

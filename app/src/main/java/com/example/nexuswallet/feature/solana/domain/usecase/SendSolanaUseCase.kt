@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.solana.domain.usecase
 
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
@@ -18,7 +19,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.sol4k.Keypair
 import java.math.BigDecimal
@@ -32,7 +33,8 @@ class SendSolanaUseCase @Inject constructor(
     private val solanaTransactionRepository: com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val keyStoreRepository: KeyStoreRepository,
-    private val logger: Logger
+    private val logger: Logger,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     private val tag = "SendSolanaUC"
@@ -44,7 +46,7 @@ class SendSolanaUseCase @Inject constructor(
         feeLevel: FeeLevel,
         coin: SolanaCoin,
         note: String?
-    ): Result<SendSolanaResult> = withContext(Dispatchers.IO) {
+    ): Result<SendSolanaResult> = withContext(ioDispatcher) {
         logger.d(tag, "Sending $amount SOL to $toAddress on ${coin.network.name}")
 
         val wallet = walletRepository.getWallet(walletId) ?: run {

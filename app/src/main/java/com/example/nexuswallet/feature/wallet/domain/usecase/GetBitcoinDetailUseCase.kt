@@ -7,6 +7,9 @@ import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.collections.forEachIndexed
@@ -16,7 +19,8 @@ class GetBitcoinDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-    private val logger: Logger
+    private val logger: Logger,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     private val tag = "GetBitcoinDetailUC"
@@ -24,17 +28,17 @@ class GetBitcoinDetailUseCase @Inject constructor(
     suspend operator fun invoke(
         walletId: String,
         network: BitcoinNetwork
-    ): Result<BitcoinDetailResult> {
+    ): Result<BitcoinDetailResult> = withContext(ioDispatcher) {
         logger.d(tag, "Getting Bitcoin details for wallet: $walletId, network: ${network.name}")
 
         // 1. Get wallet
         val wallet = walletRepository.getWallet(walletId)
-            ?: return Result.Error("Wallet not found")
+            ?: return@withContext Result.Error("Wallet not found")
 
         // 2. Find the specific Bitcoin coin
         val bitcoinCoin = wallet.bitcoinCoins.find { it.network == network }
             ?: wallet.bitcoinCoins.firstOrNull()
-            ?: return Result.Error("Bitcoin ${network.name} not enabled for this wallet")
+            ?: return@withContext Result.Error("Bitcoin ${network.name} not enabled for this wallet")
 
         logger.d(tag, "Found Bitcoin coin with address: ${bitcoinCoin.address.take(8)}... on ${network.name}")
 
@@ -93,6 +97,6 @@ class GetBitcoinDetailUseCase @Inject constructor(
         )
 
         logger.d(tag, "=== GetBitcoinDetailUseCase completed successfully with ${rawTransactions.size} raw transactions on ${network.name} ===")
-        return Result.Success(result)
+        Result.Success(result)
     }
 }

@@ -16,6 +16,9 @@ import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,7 +27,8 @@ class GetTransactionDetailUseCase @Inject constructor(
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
     private val solanaTransactionRepository: SolanaTransactionRepository,
-    private val logger: Logger
+    private val logger: Logger,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     private val tag = "GetTransactionDetailUC"
@@ -33,13 +37,13 @@ class GetTransactionDetailUseCase @Inject constructor(
         walletId: String,
         transactionId: String,
         coin: Coin
-    ): Result<TransactionDetail> {
+    ): Result<TransactionDetail> = withContext(ioDispatcher) {
         logger.d(
             tag,
             "Getting ${coin.symbol} transaction detail: $transactionId for wallet: $walletId"
         )
 
-        return try {
+        try {
 
             // Use the coin to determine which repository to query
             val transaction = when (coin) {
@@ -49,7 +53,7 @@ class GetTransactionDetailUseCase @Inject constructor(
             }
 
             if (transaction == null) {
-                return Result.Error("Transaction not found for ${coin.symbol}")
+                return@withContext Result.Error("Transaction not found for ${coin.symbol}")
             }
 
             // Verify the transaction matches the expected coin/network
@@ -66,7 +70,7 @@ class GetTransactionDetailUseCase @Inject constructor(
 
             if (!isValidTransaction) {
                 logger.e(tag, "Transaction type mismatch for coin ${coin.symbol}")
-                return Result.Error("Transaction does not match the selected coin")
+                return@withContext Result.Error("Transaction does not match the selected coin")
             }
 
             val detail = when (transaction) {

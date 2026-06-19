@@ -12,6 +12,8 @@ import com.example.nexuswallet.feature.bitcoin.domain.usecase.SendBitcoinUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.ValidateBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,12 +29,14 @@ object BitcoinDomainModule {
     fun providePrepareBitcoinTransactionUseCase(
         walletRepository: WalletRepository,
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-        logger: Logger
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        logger: Logger,
     ): PrepareBitcoinTransactionUseCase {
         return PrepareBitcoinTransactionUseCase(
             walletRepository = walletRepository,
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
-            logger = logger
+            logger = logger,
+            ioDispatcher = ioDispatcher
         )
     }
 
@@ -56,7 +60,8 @@ object BitcoinDomainModule {
         bitcoinTransactionRepository: BitcoinTransactionRepository,
         keyStoreRepository: KeyStoreRepository,
         securityPreferencesRepository: SecurityPreferencesRepository,
-        logger: Logger
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        logger: Logger,
     ): SendBitcoinUseCase {
         return SendBitcoinUseCase(
             walletRepository = walletRepository,
@@ -64,7 +69,8 @@ object BitcoinDomainModule {
             bitcoinTransactionRepository = bitcoinTransactionRepository,
             keyStoreRepository = keyStoreRepository,
             securityPreferencesRepository = securityPreferencesRepository,
-            logger = logger
+            logger = logger,
+            ioDispatcher = ioDispatcher
         )
     }
 

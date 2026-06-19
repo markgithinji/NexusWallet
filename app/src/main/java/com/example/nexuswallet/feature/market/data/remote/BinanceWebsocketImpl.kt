@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.market.data.remote
 
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.market.domain.BinanceWebSocket
 import com.example.nexuswallet.feature.market.domain.model.ConnectionState
 import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
@@ -32,7 +33,7 @@ import kotlin.math.min
 class BinanceWebSocketImpl @Inject constructor(
     private val okHttpClient: OkHttpClient,
     private val json: Json,
-    private val ioDispatcher: CoroutineDispatcher
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : BinanceWebSocket {
 
     // Create scope that can be recreated

@@ -13,6 +13,7 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.SafeApiCall
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.bitcoinj.core.Address
@@ -39,7 +40,7 @@ import javax.inject.Singleton
 class BitcoinBlockchainRepositoryImpl @Inject constructor(
     @param:Named("bitcoinMainnet") private val mainnetApi: BitcoinApi,
     @param:Named("bitcoinTestnet") private val testnetApi: BitcoinApi,
-    private val ioDispatcher: CoroutineDispatcher
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : BitcoinBlockchainRepository {
 
     private fun getApiForNetwork(network: BitcoinNetwork): BitcoinApi {

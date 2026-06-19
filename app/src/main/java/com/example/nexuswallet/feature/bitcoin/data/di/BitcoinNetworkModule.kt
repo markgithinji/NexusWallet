@@ -8,6 +8,7 @@ import com.example.nexuswallet.feature.bitcoin.data.repository.BitcoinTransactio
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -81,7 +82,7 @@ object BitcoinNetworkModule {
     fun provideBitcoinBlockchainRepository(
         @Named("bitcoinMainnet") mainnetApi: BitcoinApi,
         @Named("bitcoinTestnet") testnetApi: BitcoinApi,
-        ioDispatcher: CoroutineDispatcher,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
     ): BitcoinBlockchainRepository {
         return BitcoinBlockchainRepositoryImpl(
             mainnetApi = mainnetApi,

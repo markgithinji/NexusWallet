@@ -12,6 +12,8 @@ import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.core.domain.di.DefaultDispatcher
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
@@ -24,6 +26,8 @@ import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 import org.bitcoinj.core.Context
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
@@ -42,7 +46,9 @@ class CreateWalletUseCase @Inject constructor(
     private val walletDataSource: WalletDataSource,
     private val keyStoreRepository: KeyStoreRepository,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
-    private val logger: Logger
+    private val logger: Logger,
+    @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     private val tag = "CreateWalletUC"
@@ -52,7 +58,7 @@ class CreateWalletUseCase @Inject constructor(
         name: String,
         selectedNetworks: Set<Network>,
         selectedTokens: Map<EthereumNetwork, Set<EVMTokenType>>
-    ): Result<Wallet> {
+    ): Result<Wallet> = withContext(defaultDispatcher) {
         val networkLog = selectedNetworks.joinToString { network ->
             when (network) {
                 is BitcoinNetwork -> "Bitcoin - ${network.name}"
@@ -80,7 +86,7 @@ class CreateWalletUseCase @Inject constructor(
             createBitcoinCoin(mnemonic, network)?.let { coin ->
                 bitcoinCoins.add(coin)
                 logger.d(tag, "Bitcoin ${network.name} coin created")
-            } ?: return Result.Error("Failed to create Bitcoin ${network.name} coin").also {
+            } ?: return@withContext Result.Error("Failed to create Bitcoin ${network.name} coin").also {
                 logger.e(tag, "Failed to create Bitcoin ${network.name} coin")
             }
         }
@@ -112,7 +118,7 @@ class CreateWalletUseCase @Inject constructor(
                         }
                     }
                 }
-            } ?: return Result.Error("Failed to create Ethereum ${network.name} coin").also {
+            } ?: return@withContext Result.Error("Failed to create Ethereum ${network.name} coin").also {
                 logger.e(tag, "Failed to create Ethereum ${network.name} coin")
             }
         }
@@ -123,14 +129,14 @@ class CreateWalletUseCase @Inject constructor(
             createSolanaCoin(mnemonic, network)?.let { coin ->
                 solanaCoins.add(coin)
                 logger.d(tag, "Solana ${network.name} coin created")
-            } ?: return Result.Error("Failed to create Solana ${network.name} coin").also {
+            } ?: return@withContext Result.Error("Failed to create Solana ${network.name} coin").also {
                 logger.e(tag, "Failed to create Solana ${network.name} coin")
             }
         }
 
         // Validate at least one asset was created
         if (bitcoinCoins.isEmpty() && solanaCoins.isEmpty() && evmTokens.isEmpty()) {
-            return Result.Error("No assets selected for wallet creation").also {
+            return@withContext Result.Error("No assets selected for wallet creation").also {
                 logger.e(tag, "No assets selected for wallet creation")
             }
         }
@@ -165,7 +171,7 @@ class CreateWalletUseCase @Inject constructor(
                 BitcoinNetwork.Testnet -> KEY_BITCOIN_TESTNET
             }
             val privateKeyWIF = deriveBitcoinPrivateKey(mnemonic, coin.network)
-                ?: return Result.Error("Failed to derive Bitcoin private key for ${coin.network.name}")
+                ?: return@withContext Result.Error("Failed to derive Bitcoin private key for ${coin.network.name}")
 
             val (encryptedKeyHex, keyIvHex) = keyStoreRepository.encryptString(privateKeyWIF)
             securityPreferencesRepository.storeEncryptedPrivateKey(
@@ -180,7 +186,7 @@ class CreateWalletUseCase @Inject constructor(
         // Store Ethereum private key (same for all EVM networks)
         if (evmTokens.isNotEmpty()) {
             val privateKeyBytes = deriveEthereumPrivateKey(mnemonic)
-                ?: return Result.Error("Failed to derive Ethereum private key")
+                ?: return@withContext Result.Error("Failed to derive Ethereum private key")
 
             val (encryptedKey, keyIv) = keyStoreRepository.encrypt(privateKeyBytes)
             privateKeyBytes.fill(0) // Clear private key
@@ -201,7 +207,7 @@ class CreateWalletUseCase @Inject constructor(
                 SolanaNetwork.Devnet -> KEY_SOLANA_DEVNET
             }
             val privateKeyBytes = deriveSolanaPrivateKey(mnemonic, coin.derivationPath)
-                ?: return Result.Error("Failed to derive Solana private key for ${coin.network.name}")
+                ?: return@withContext Result.Error("Failed to derive Solana private key for ${coin.network.name}")
 
             val (encryptedKey, keyIv) = keyStoreRepository.encrypt(privateKeyBytes)
             privateKeyBytes.fill(0) // Clear private key
@@ -221,11 +227,11 @@ class CreateWalletUseCase @Inject constructor(
             logger.d(tag, "Wallet saved to database successfully: $walletId")
         } catch (e: Exception) {
             logger.e(tag, "Failed to save wallet to database", e)
-            return Result.Error("Failed to save wallet: ${e.message}", e)
+            return@withContext Result.Error("Failed to save wallet: ${e.message}", e)
         }
 
         logger.d(tag, "Wallet created successfully: $walletId with ${bitcoinCoins.size} Bitcoin, ${solanaCoins.size} Solana, and ${evmTokens.size} EVM assets")
-        return Result.Success(wallet)
+        Result.Success(wallet)
     }
 
     private fun createBitcoinCoin(

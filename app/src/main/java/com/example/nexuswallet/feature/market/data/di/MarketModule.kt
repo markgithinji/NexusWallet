@@ -12,6 +12,7 @@ import com.example.nexuswallet.feature.market.domain.BinanceWebSocket
 import com.example.nexuswallet.feature.market.domain.CoinGeckoRepository
 import com.example.nexuswallet.feature.market.domain.MarketRepository
 import com.example.nexuswallet.feature.market.domain.WebSocketRepository
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -37,7 +38,7 @@ object MarketModule {
     fun provideBinanceWebSocket(
         okHttpClient: OkHttpClient,
         json: Json,
-        ioDispatcher: CoroutineDispatcher
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): BinanceWebSocket {
         return BinanceWebSocketImpl(
             okHttpClient,

@@ -5,6 +5,7 @@ import com.example.nexuswallet.feature.bitcoin.domain.model.PreparedBitcoinTrans
 import com.example.nexuswallet.feature.bitcoin.domain.model.SendBitcoinResult
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.core.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.util.Result
@@ -15,11 +16,11 @@ import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.bitcoinj.core.DumpedPrivateKey
 import org.bitcoinj.core.LegacyAddress
-import org.bitcoinj.core.Transaction
+import org.bitcoinj.core.Transaction as BitcoinJTransaction
 import org.bitcoinj.core.Utils
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
@@ -35,7 +36,8 @@ class SendBitcoinUseCase @Inject constructor(
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val keyStoreRepository: KeyStoreRepository,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
-    private val logger: Logger
+    private val logger: Logger,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
 
     private val tag = "SendBitcoinUC"
@@ -44,7 +46,7 @@ class SendBitcoinUseCase @Inject constructor(
         preparedTransaction: PreparedBitcoinTransaction,
         walletId: String,
         network: BitcoinNetwork
-    ): Result<SendBitcoinResult> = withContext(Dispatchers.IO) {
+    ): Result<SendBitcoinResult> = withContext(ioDispatcher) {
         logger.d(
             tag,
             "Sending prepared transaction: ${preparedTransaction.transactionId} | walletId=$walletId | network=$network"
@@ -135,7 +137,7 @@ class SendBitcoinUseCase @Inject constructor(
     }
 
     private suspend fun broadcastAndSaveTransaction(
-        signedTx: Transaction,
+        signedTx: BitcoinJTransaction,
         preparedTx: PreparedBitcoinTransaction,
         walletId: String,
         network: BitcoinNetwork

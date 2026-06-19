@@ -9,6 +9,7 @@ import com.example.nexuswallet.feature.core.data.repository.KeyStoreRepositoryIm
 import com.example.nexuswallet.feature.authentication.data.repository.SecurityPreferencesRepositoryImpl
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,7 +26,7 @@ object AuthenticationDataModule {
     @Singleton
     fun provideKeyStoreRepository(
         keyStore: KeyStore,
-        ioDispatcher: CoroutineDispatcher
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): KeyStoreRepository {
         return KeyStoreRepositoryImpl(
             keyStore = keyStore,

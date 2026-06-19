@@ -16,6 +16,7 @@ import com.example.nexuswallet.feature.solana.domain.model.TransferInfo
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -39,7 +40,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     @param:Named("heliusRpcMainnet") private val rpcMainnetConnection: Connection,
     @param:Named("heliusApiDevnet") private val devnetApi: HeliusApi,
     @param:Named("heliusApiMainnet") private val mainnetApi: HeliusApi,
-    private val ioDispatcher: CoroutineDispatcher
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : SolanaBlockchainRepository {
 
     private fun getRpcConnection(network: SolanaNetwork): Connection {

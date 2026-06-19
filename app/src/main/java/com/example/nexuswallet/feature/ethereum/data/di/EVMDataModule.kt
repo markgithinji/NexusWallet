@@ -9,6 +9,7 @@ import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainR
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.usdc.Web3jFactory
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -78,7 +79,7 @@ object EVMDataModule {
     fun provideEVMBlockchainRepository(
         etherscanApiService: EtherscanApiService,
         web3jFactory: Web3jFactory,
-        coroutineDispatcher: CoroutineDispatcher
+        @IoDispatcher coroutineDispatcher: CoroutineDispatcher
     ): EVMBlockchainRepository {
         return EVMBlockchainRepositoryImpl(
             etherscanApi = etherscanApiService,

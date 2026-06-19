@@ -13,6 +13,9 @@ import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,7 +25,8 @@ class GetEthereumDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
-    private val logger: Logger
+    private val logger: Logger,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     private val tag = "GetEthereumDetailUC"
@@ -30,21 +34,21 @@ class GetEthereumDetailUseCase @Inject constructor(
     suspend operator fun invoke(
         walletId: String,
         token: EVMToken
-    ): Result<EthereumDetailResult> {
+    ): Result<EthereumDetailResult> = withContext(ioDispatcher) {
         val network = token.network
 
         logger.d(tag, "Getting ${token.symbol} details for wallet: $walletId, network: ${network.name}")
 
         // 1. Get wallet
         val wallet = walletRepository.getWallet(walletId)
-            ?: return Result.Error("Wallet not found")
+            ?: return@withContext Result.Error("Wallet not found")
 
         // 2. Verify the token belongs to this wallet
         val verifiedToken = wallet.evmTokens.find {
             it.address == token.address &&
                     it.network == network &&
                     it.evmTokenType == token.evmTokenType
-        } ?: return Result.Error("${token.symbol} not enabled for ${network.name}")
+        } ?: return@withContext Result.Error("${token.symbol} not enabled for ${network.name}")
 
         val isEth = verifiedToken is NativeETH
 
@@ -171,6 +175,6 @@ class GetEthereumDetailUseCase @Inject constructor(
         )
 
         logger.d(tag, "=== GetEthereumDetailUseCase completed successfully with ${filteredTxs.size} raw transactions on ${network.name} ===")
-        return Result.Success(result)
+        Result.Success(result)
     }
 }

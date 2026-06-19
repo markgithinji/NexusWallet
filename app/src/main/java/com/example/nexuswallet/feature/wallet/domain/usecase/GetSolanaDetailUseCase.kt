@@ -7,6 +7,9 @@ import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactio
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -15,7 +18,8 @@ class GetSolanaDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val solanaTransactionRepository: SolanaTransactionRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
-    private val logger: Logger
+    private val logger: Logger,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     private val tag = "GetSolanaDetailUC"
@@ -23,17 +27,17 @@ class GetSolanaDetailUseCase @Inject constructor(
     suspend operator fun invoke(
         walletId: String,
         network: SolanaNetwork
-    ): Result<SolanaDetailResult> {
+    ): Result<SolanaDetailResult> = withContext(ioDispatcher) {
         logger.d(tag, "=== GetSolanaDetailUseCase started ===")
         logger.d(tag, "Getting Solana details for wallet: $walletId, network: ${network.name}")
 
         // 1. Get wallet
         val wallet = walletRepository.getWallet(walletId)
-            ?: return Result.Error("Wallet not found")
+            ?: return@withContext Result.Error("Wallet not found")
 
         // 2. Find the specific Solana coin
         val solanaCoin = wallet.solanaCoins.find { it.network == network }
-            ?: return Result.Error("Solana ${network.name} not enabled for this wallet")
+            ?: return@withContext Result.Error("Solana ${network.name} not enabled for this wallet")
 
         logger.d(
             tag,
@@ -115,6 +119,6 @@ class GetSolanaDetailUseCase @Inject constructor(
             tag,
             "=== GetSolanaDetailUseCase completed successfully with ${solTransactions.size} raw transactions on ${network.name} ==="
         )
-        return Result.Success(result)
+        Result.Success(result)
     }
 }

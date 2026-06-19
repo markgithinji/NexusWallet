@@ -19,6 +19,9 @@ import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
@@ -30,12 +33,13 @@ class SyncWalletBalancesUseCase @Inject constructor(
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
-    private val logger: Logger
+    private val logger: Logger,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
     private val tag = "SyncBalancesUC"
 
-    suspend operator fun invoke(wallet: Wallet): Result<Unit> {
+    suspend operator fun invoke(wallet: Wallet): Result<Unit> = withContext(ioDispatcher) {
         logger.d(tag, "Syncing balances for wallet: ${wallet.name}")
 
         val errors = mutableListOf<String>()
@@ -64,7 +68,7 @@ class SyncWalletBalancesUseCase @Inject constructor(
             }
         }
 
-        return if (errors.isEmpty()) {
+        if (errors.isEmpty()) {
             logger.d(tag, "Successfully synced all balances for wallet: ${wallet.name}")
             Result.Success(Unit)
         } else {
