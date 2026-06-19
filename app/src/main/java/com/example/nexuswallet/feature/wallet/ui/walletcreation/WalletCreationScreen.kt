@@ -75,6 +75,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -132,7 +133,7 @@ fun WalletCreationScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Create Wallet",
+                        stringResource(R.string.create_wallet),
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 },
@@ -149,7 +150,7 @@ fun WalletCreationScreen(
                         ) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                "Back",
+                                stringResource(R.string.back),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -162,7 +163,7 @@ fun WalletCreationScreen(
         }
     ) { padding ->
         if (currentStep < 4 && uiState is WalletCreationUiState.Loading) {
-            FullScreenLoading(message = "Creating wallet...")
+            FullScreenLoading(message = stringResource(R.string.creating_wallet))
             return@Scaffold
         }
 
@@ -213,7 +214,7 @@ fun WalletCreationScreen(
                                     onBack = { viewModel.previousStep() }
                                 )
                             } else {
-                                FullScreenLoading(message = "Generating secure recovery phrase...")
+                                FullScreenLoading(message = stringResource(R.string.generating_recovery_phrase))
                             }
                         }
                     }
@@ -248,14 +249,14 @@ fun WalletCreationScreen(
                             }
 
                             is WalletCreationUiState.Loading -> {
-                                FullScreenLoading(message = "Creating wallet...")
+                                FullScreenLoading(message = stringResource(R.string.creating_wallet))
                             }
 
                             else -> {
                                 LaunchedEffect(Unit) {
                                     viewModel.previousStep()
                                 }
-                                FullScreenLoading(message = "Loading...")
+                                FullScreenLoading(message = stringResource(R.string.loading))
                             }
                         }
                     }
@@ -271,16 +272,20 @@ fun WalletCreationStepper(
     padding: PaddingValues,
     content: @Composable () -> Unit
 ) {
-    val steps = listOf("Networks", "Backup", "Verify", "Name", "Complete")
-    val stepDescriptions = remember(currentStep) {
-        when (currentStep) {
-            0 -> "Select which networks and tokens to include"
-            1 -> "Backup your recovery phrase"
-            2 -> "Verify your backup"
-            3 -> "Personalize your wallet"
-            4 -> "Wallet created successfully"
-            else -> ""
-        }
+    val steps = listOf(
+        stringResource(R.string.step_networks),
+        stringResource(R.string.step_backup),
+        stringResource(R.string.step_verify),
+        stringResource(R.string.step_name),
+        stringResource(R.string.step_complete)
+    )
+    val stepDescriptions = when (currentStep) {
+        0 -> stringResource(R.string.step_networks_desc)
+        1 -> stringResource(R.string.step_backup_desc)
+        2 -> stringResource(R.string.step_verify_desc)
+        3 -> stringResource(R.string.step_name_desc)
+        4 -> stringResource(R.string.step_complete_desc)
+        else -> ""
     }
 
     Column(
@@ -295,7 +300,7 @@ fun WalletCreationStepper(
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             Text(
-                text = "Step ${currentStep + 1} of ${steps.size}",
+                text = stringResource(R.string.step_x_of_y, currentStep + 1, steps.size),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Medium
@@ -367,7 +372,7 @@ fun NetworkSelectionStep(
     ) {
         // ============ BITCOIN SECTION ============
         Text(
-            text = "Bitcoin",
+            text = stringResource(R.string.bitcoin),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = bitcoinLight,
@@ -379,8 +384,8 @@ fun NetworkSelectionStep(
             iconRes = R.drawable.bitcoin,
             color = bitcoinLight,
             network = BitcoinNetwork.Mainnet,
-            coinName = "Bitcoin",
-            coinSymbol = "BTC",
+            coinName = stringResource(R.string.bitcoin_name),
+            coinSymbol = stringResource(R.string.bitcoin_symbol),
             isSelected = selectedNetworks.contains(BitcoinNetwork.Mainnet),
             onSelectedChange = { isSelected ->
                 onNetworkToggle(BitcoinNetwork.Mainnet, isSelected)
@@ -394,8 +399,8 @@ fun NetworkSelectionStep(
             iconRes = R.drawable.bitcoin,
             color = bitcoinLight.copy(alpha = 0.7f),
             network = BitcoinNetwork.Testnet,
-            coinName = "Bitcoin",
-            coinSymbol = "BTC",
+            coinName = stringResource(R.string.bitcoin_name),
+            coinSymbol = stringResource(R.string.bitcoin_symbol),
             isSelected = selectedNetworks.contains(BitcoinNetwork.Testnet),
             onSelectedChange = { isSelected ->
                 onNetworkToggle(BitcoinNetwork.Testnet, isSelected)
@@ -406,7 +411,7 @@ fun NetworkSelectionStep(
 
         // ============ ETHEREUM SECTION ============
         Text(
-            text = "Ethereum",
+            text = stringResource(R.string.ethereum),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = ethereumLight,
@@ -418,8 +423,8 @@ fun NetworkSelectionStep(
             iconRes = R.drawable.ethereum,
             color = ethereumLight,
             network = EthereumNetwork.Mainnet,
-            coinName = "Ethereum",
-            coinSymbol = "ETH",
+            coinName = stringResource(R.string.ethereum_name),
+            coinSymbol = stringResource(R.string.ethereum_symbol),
             isSelected = selectedNetworks.contains(EthereumNetwork.Mainnet),
             onSelectedChange = { isSelected ->
                 onNetworkToggle(EthereumNetwork.Mainnet, isSelected)
@@ -433,8 +438,8 @@ fun NetworkSelectionStep(
             iconRes = R.drawable.ethereum,
             color = ethereumLight.copy(alpha = 0.7f),
             network = EthereumNetwork.Sepolia,
-            coinName = "Ethereum",
-            coinSymbol = "ETH",
+            coinName = stringResource(R.string.ethereum_name),
+            coinSymbol = stringResource(R.string.ethereum_symbol),
             isSelected = selectedNetworks.contains(EthereumNetwork.Sepolia),
             onSelectedChange = { isSelected ->
                 onNetworkToggle(EthereumNetwork.Sepolia, isSelected)
@@ -445,7 +450,7 @@ fun NetworkSelectionStep(
 
         // ============ SOLANA SECTION ============
         Text(
-            text = "Solana",
+            text = stringResource(R.string.solana),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = solanaLight,
@@ -457,8 +462,8 @@ fun NetworkSelectionStep(
             iconRes = R.drawable.solana,
             color = solanaLight,
             network = SolanaNetwork.Mainnet,
-            coinName = "Solana",
-            coinSymbol = "SOL",
+            coinName = stringResource(R.string.solana_name),
+            coinSymbol = stringResource(R.string.solana_symbol),
             isSelected = selectedNetworks.contains(SolanaNetwork.Mainnet),
             onSelectedChange = { isSelected ->
                 onNetworkToggle(SolanaNetwork.Mainnet, isSelected)
@@ -472,8 +477,8 @@ fun NetworkSelectionStep(
             iconRes = R.drawable.solana,
             color = solanaLight.copy(alpha = 0.7f),
             network = SolanaNetwork.Devnet,
-            coinName = "Solana",
-            coinSymbol = "SOL",
+            coinName = stringResource(R.string.solana_name),
+            coinSymbol = stringResource(R.string.solana_symbol),
             isSelected = selectedNetworks.contains(SolanaNetwork.Devnet),
             onSelectedChange = { isSelected ->
                 onNetworkToggle(SolanaNetwork.Devnet, isSelected)
@@ -486,7 +491,7 @@ fun NetworkSelectionStep(
         // Only show tokens if Ethereum network is selected
         if (selectedNetworks.any { it is EthereumNetwork }) {
             Text(
-                text = "Tokens",
+                text = stringResource(R.string.tokens),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
@@ -499,8 +504,8 @@ fun NetworkSelectionStep(
                 color = usdcLight,
                 network = EthereumNetwork.Mainnet,
                 evmTokenType = EVMTokenType.USDC,
-                tokenName = "USD Coin",
-                tokenSymbol = "USDC",
+                tokenName = stringResource(R.string.usdc_name),
+                tokenSymbol = stringResource(R.string.usdc_symbol),
                 isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(EVMTokenType.USDC) == true,
                 networkEnabled = selectedNetworks.contains(EthereumNetwork.Mainnet),
                 onSelectedChange = { isSelected ->
@@ -516,8 +521,8 @@ fun NetworkSelectionStep(
                 color = usdcLight.copy(alpha = 0.7f),
                 network = EthereumNetwork.Sepolia,
                 evmTokenType = EVMTokenType.USDC,
-                tokenName = "USD Coin",
-                tokenSymbol = "USDC",
+                tokenName = stringResource(R.string.usdc_name),
+                tokenSymbol = stringResource(R.string.usdc_symbol),
                 isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(EVMTokenType.USDC) == true,
                 networkEnabled = selectedNetworks.contains(EthereumNetwork.Sepolia),
                 onSelectedChange = { isSelected ->
@@ -533,8 +538,8 @@ fun NetworkSelectionStep(
                 color = usdtLight,
                 network = EthereumNetwork.Mainnet,
                 evmTokenType = EVMTokenType.USDT,
-                tokenName = "Tether USD",
-                tokenSymbol = "USDT",
+                tokenName = stringResource(R.string.usdt_name),
+                tokenSymbol = stringResource(R.string.usdt_symbol),
                 isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(EVMTokenType.USDT) == true,
                 networkEnabled = selectedNetworks.contains(EthereumNetwork.Mainnet),
                 onSelectedChange = { isSelected ->
@@ -550,8 +555,8 @@ fun NetworkSelectionStep(
                 color = usdtLight.copy(alpha = 0.7f),
                 network = EthereumNetwork.Sepolia,
                 evmTokenType = EVMTokenType.USDT,
-                tokenName = "Tether USD",
-                tokenSymbol = "USDT",
+                tokenName = stringResource(R.string.usdt_name),
+                tokenSymbol = stringResource(R.string.usdt_symbol),
                 isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(EVMTokenType.USDT) == true,
                 networkEnabled = selectedNetworks.contains(EthereumNetwork.Sepolia),
                 onSelectedChange = { isSelected ->
@@ -575,7 +580,7 @@ fun NetworkSelectionStep(
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = "Selected Assets",
+                    text = stringResource(R.string.selected_assets),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -585,7 +590,7 @@ fun NetworkSelectionStep(
 
                 if (!hasSelections) {
                     Text(
-                        text = "No assets selected",
+                        text = stringResource(R.string.no_assets_selected),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -593,11 +598,11 @@ fun NetworkSelectionStep(
                     // Show selected networks
                     selectedNetworks.forEach { network ->
                         val (coinName, coinSymbol) = when (network) {
-                            is BitcoinNetwork -> "Bitcoin" to "BTC"
-                            is EthereumNetwork -> "Ethereum" to "ETH"
-                            is SolanaNetwork -> "Solana" to "SOL"
+                            is BitcoinNetwork -> stringResource(R.string.bitcoin_name) to stringResource(R.string.bitcoin_symbol)
+                            is EthereumNetwork -> stringResource(R.string.ethereum_name) to stringResource(R.string.ethereum_symbol)
+                            is SolanaNetwork -> stringResource(R.string.solana_name) to stringResource(R.string.solana_symbol)
                         }
-                        val networkType = if (network.isTestnet) " (Testnet)" else ""
+                        val networkType = if (network.isTestnet) " ${stringResource(R.string.testnet_suffix)}" else ""
                         Text(
                             text = "• $coinName$networkType - $coinSymbol",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -612,11 +617,11 @@ fun NetworkSelectionStep(
                             .filter { it != EVMTokenType.NATIVE } // Filter out NATIVE tokens
                             .forEach { tokenType ->
                                 val (tokenName, tokenSymbol) = when (tokenType) {
-                                    EVMTokenType.USDC -> "USD Coin" to "USDC"
-                                    EVMTokenType.USDT -> "Tether USD" to "USDT"
-                                    EVMTokenType.NATIVE -> "Ethereum" to "ETH" // Won't be shown due to filter
+                                    EVMTokenType.USDC -> stringResource(R.string.usdc_name) to stringResource(R.string.usdc_symbol)
+                                    EVMTokenType.USDT -> stringResource(R.string.usdt_name) to stringResource(R.string.usdt_symbol)
+                                    EVMTokenType.NATIVE -> stringResource(R.string.ethereum_name) to stringResource(R.string.ethereum_symbol) // Won't be shown due to filter
                                 }
-                                val networkType = if (network.isTestnet) " (Testnet)" else ""
+                                val networkType = if (network.isTestnet) " ${stringResource(R.string.testnet_suffix)}" else ""
                                 Text(
                                     text = "• $tokenName ($tokenSymbol) on Ethereum$networkType",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -644,7 +649,7 @@ fun NetworkSelectionStep(
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
-            Text("Continue")
+            Text(stringResource(R.string.continue_button))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -938,7 +943,7 @@ fun SecurityWarningDialog(
 
                 // Title
                 Text(
-                    text = "Critical Security Warning",
+                    text = stringResource(R.string.security_warning_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.error,
@@ -960,7 +965,7 @@ fun SecurityWarningDialog(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = "Your recovery phrase is the ONLY way to restore your wallet. If you lose it, you lose access to your funds FOREVER.",
+                            text = stringResource(R.string.recovery_phrase_warning),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.Medium
@@ -974,9 +979,9 @@ fun SecurityWarningDialog(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             listOf(
-                                "✕ Never share it",
-                                "✕ Never store digitally",
-                                "✓ Write on paper only"
+                                stringResource(R.string.never_share),
+                                stringResource(R.string.never_store_digitally),
+                                stringResource(R.string.write_on_paper)
                             ).forEach { point ->
                                 Card(
                                     shape = RoundedCornerShape(8.dp),
@@ -1018,7 +1023,7 @@ fun SecurityWarningDialog(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         Text(
-                            "Cancel",
+                            stringResource(R.string.cancel),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Medium
                         )
@@ -1038,7 +1043,7 @@ fun SecurityWarningDialog(
                         )
                     ) {
                         Text(
-                            "I Understand",
+                            stringResource(R.string.i_understand),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -1091,7 +1096,7 @@ fun MnemonicDisplayStep(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Critical Security Step:",
+                                text = stringResource(R.string.critical_security_step),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                                 fontWeight = FontWeight.Bold
@@ -1101,8 +1106,7 @@ fun MnemonicDisplayStep(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "Write down these 12 words IN ORDER on paper. " +
-                                    "Never store digitally. This is the ONLY way to restore your wallet.",
+                            text = stringResource(R.string.mnemonic_warning_desc),
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -1145,8 +1149,8 @@ fun MnemonicDisplayStep(
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    Text(
-                        text = "Safety Checklist:",
+                Text(
+                        text = stringResource(R.string.safety_checklist_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -1155,19 +1159,19 @@ fun MnemonicDisplayStep(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     SafetyChecklistItem(
-                        text = "Write on paper (not digital)",
+                        text = stringResource(R.string.write_on_paper_not_digital),
                         checked = true
                     )
                     SafetyChecklistItem(
-                        text = "Store in secure location",
+                        text = stringResource(R.string.store_in_secure_location),
                         checked = true
                     )
                     SafetyChecklistItem(
-                        text = "Never share with anyone",
+                        text = stringResource(R.string.never_share_with_anyone),
                         checked = true
                     )
                     SafetyChecklistItem(
-                        text = "Keep away from moisture/fire",
+                        text = stringResource(R.string.keep_away_from_elements),
                         checked = true
                     )
                 }
@@ -1238,7 +1242,7 @@ fun MnemonicDisplayStep(
                         Spacer(modifier = Modifier.width(12.dp))
 
                         Text(
-                            text = "I have written down all 12 words on paper",
+                            text = stringResource(R.string.written_down_confirmation),
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (hasWrittenDown)
                                 MaterialTheme.colorScheme.primary
@@ -1308,7 +1312,7 @@ fun MnemonicDisplayStep(
                         Spacer(modifier = Modifier.width(12.dp))
 
                         Text(
-                            text = "I have stored them in a secure location",
+                            text = stringResource(R.string.stored_safely_confirmation),
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (hasStoredSafely)
                                 MaterialTheme.colorScheme.primary
@@ -1360,7 +1364,7 @@ fun MnemonicDisplayStep(
                     ),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
-                    Text("Back")
+                    Text(stringResource(R.string.back))
                 }
 
                 Button(
@@ -1377,7 +1381,7 @@ fun MnemonicDisplayStep(
                     ),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
-                    Text("I've Backed It Up")
+                    Text(stringResource(R.string.backed_it_up))
                 }
             }
         }
@@ -1467,7 +1471,7 @@ fun MnemonicVerificationStep(
             .background(MaterialTheme.colorScheme.background)
     ) {
         Text(
-            text = "Tap words in the correct order",
+            text = stringResource(R.string.mnemonic_verification_title),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1487,7 +1491,7 @@ fun MnemonicVerificationStep(
                     .padding(12.dp)
             ) {
                 Text(
-                    text = "Selected Words (${enteredWords.size}/${mnemonic.size})",
+                    text = stringResource(R.string.selected_words, enteredWords.size, mnemonic.size),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1497,7 +1501,7 @@ fun MnemonicVerificationStep(
                 if (enteredWords.isEmpty()) {
                     // Compact empty state
                     Text(
-                        text = "No words selected yet",
+                        text = stringResource(R.string.no_words_selected),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.padding(vertical = 8.dp)
@@ -1525,7 +1529,7 @@ fun MnemonicVerificationStep(
 
         // Available words section
         Text(
-            text = "Available Words",
+            text = stringResource(R.string.available_words),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1562,7 +1566,7 @@ fun MnemonicVerificationStep(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "All words selected",
+                            text = stringResource(R.string.all_words_selected),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -1607,7 +1611,7 @@ fun MnemonicVerificationStep(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Wrong order. Please try again.",
+                        text = stringResource(R.string.wrong_order_error),
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -1635,7 +1639,7 @@ fun MnemonicVerificationStep(
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
-            Text("Verify & Continue")
+            Text(stringResource(R.string.verify_continue))
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -1734,13 +1738,13 @@ fun WalletNameStep(
             modifier = Modifier.fillMaxWidth(),
             label = {
                 Text(
-                    "Wallet Name",
+                    stringResource(R.string.wallet_name_label),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             placeholder = {
                 Text(
-                    "e.g., My Savings Wallet",
+                    stringResource(R.string.wallet_name_placeholder),
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             },
@@ -1758,7 +1762,7 @@ fun WalletNameStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Tip: Use a descriptive name like 'Savings' or 'Trading'",
+            text = stringResource(R.string.wallet_name_tip),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1778,7 +1782,7 @@ fun WalletNameStep(
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
-            Text("Create Wallet")
+            Text(stringResource(R.string.create_wallet))
         }
     }
 }
@@ -1820,7 +1824,7 @@ fun WalletSuccessStep(
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "Wallet Created Successfully!",
+            text = stringResource(R.string.wallet_created_success),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -1842,7 +1846,7 @@ fun WalletSuccessStep(
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = "Wallet Details",
+                    text = stringResource(R.string.wallet_details),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -1854,7 +1858,7 @@ fun WalletSuccessStep(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Name: ",
+                        stringResource(R.string.name_label),
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1868,7 +1872,7 @@ fun WalletSuccessStep(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    "Enabled Assets:",
+                    stringResource(R.string.enabled_assets),
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1884,7 +1888,7 @@ fun WalletSuccessStep(
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.bitcoin),
-                            contentDescription = "Bitcoin",
+                            contentDescription = stringResource(R.string.bitcoin_name),
                             modifier = Modifier.size(20.dp),
                             tint = Color.Unspecified
                         )
@@ -1906,7 +1910,7 @@ fun WalletSuccessStep(
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.solana),
-                            contentDescription = "Solana",
+                            contentDescription = stringResource(R.string.solana_name),
                             modifier = Modifier.size(20.dp),
                             tint = Color.Unspecified
                         )
@@ -2010,13 +2014,13 @@ fun WalletSuccessStep(
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.AccountBalanceWallet,
-                            contentDescription = "Address",
+                            contentDescription = stringResource(R.string.address_label),
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "Primary Address: ",
+                            stringResource(R.string.primary_address),
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -2048,13 +2052,13 @@ fun WalletSuccessStep(
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.AccountBalanceWallet,
-                            contentDescription = "Total Assets",
+                            contentDescription = stringResource(R.string.total_assets),
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Total Assets:",
+                            text = stringResource(R.string.total_assets),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -2089,7 +2093,7 @@ fun WalletSuccessStep(
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Go to Dashboard")
+            Text(stringResource(R.string.go_to_dashboard))
         }
     }
 }

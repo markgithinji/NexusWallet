@@ -48,6 +48,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.util.formatPrice
 import com.example.nexuswallet.feature.core.util.formatTwoDecimals
 import androidx.compose.ui.draw.clip
@@ -141,7 +143,7 @@ fun MarketScreen(
                     when (uiState) {
                         Result.Loading -> {
                             if (tokens.isEmpty()) {
-                                FullScreenLoading(message = "Loading market data...")
+                                FullScreenLoading(message = stringResource(R.string.loading_market_data))
                             } else {
                                 MarketList(
                                     tokens = tokens,
@@ -226,13 +228,13 @@ fun DisconnectedBanner(
         ) {
             Icon(
                 Icons.Outlined.WifiOff,
-                contentDescription = "Disconnected icon",
+                contentDescription = stringResource(R.string.live_updates_disconnected),
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(16.dp)
             )
 
             Text(
-                text = "Live updates disconnected",
+                text = stringResource(R.string.live_updates_disconnected),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.weight(1f)
@@ -245,7 +247,7 @@ fun DisconnectedBanner(
                 )
             ) {
                 Text(
-                    "Reconnect",
+                    stringResource(R.string.reconnect),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -274,7 +276,7 @@ fun MarketTopBar(
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
-                    text = "Market",
+                    text = stringResource(R.string.market_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -335,7 +337,7 @@ fun ConnectionStatus(
         )
 
         Text(
-            text = if (isConnected) "LIVE" else "OFFLINE",
+            text = if (isConnected) stringResource(R.string.status_live) else stringResource(R.string.status_offline),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Medium,
             color = if (isConnected)
@@ -362,7 +364,7 @@ fun CoinCountBadge(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
         ) {
             Text(
-                text = "$count coins",
+                text = stringResource(R.string.coin_count, count),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Medium
             )
@@ -393,7 +395,7 @@ fun MarketSearchBar(
         ) {
             Icon(
                 imageVector = Icons.Outlined.Search,
-                contentDescription = "Search",
+                contentDescription = stringResource(R.string.search),
                 modifier = Modifier
                     .padding(start = 12.dp)
                     .size(20.dp),
@@ -415,7 +417,7 @@ fun MarketSearchBar(
                     ) {
                         if (query.isEmpty()) {
                             Text(
-                                text = "Search by name or symbol...",
+                                text = stringResource(R.string.search_placeholder),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                             )
@@ -432,7 +434,7 @@ fun MarketSearchBar(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Close,
-                        contentDescription = "Clear search",
+                        contentDescription = stringResource(R.string.clear_search),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp)
                     )
@@ -722,7 +724,7 @@ fun EmptySearchResult() {
 
                 // Main message
                 Text(
-                    text = "No matching coins",
+                    text = stringResource(R.string.no_matching_coins),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -733,7 +735,7 @@ fun EmptySearchResult() {
 
                 // Secondary message
                 Text(
-                    text = "We couldn't find any coins matching your search.",
+                    text = stringResource(R.string.no_matching_coins_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -752,7 +754,7 @@ fun EmptySearchResult() {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "💡 Search Tips",
+                            text = stringResource(R.string.search_tips_title),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
@@ -767,13 +769,13 @@ fun EmptySearchResult() {
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.CurrencyBitcoin,
-                                contentDescription = "Bitcoin icon",
+                                contentDescription = stringResource(R.string.bitcoin_icon),
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Try using the coin name (e.g., 'Bitcoin')",
+                                text = stringResource(R.string.search_tip_name),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -787,13 +789,13 @@ fun EmptySearchResult() {
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Sell,
-                                contentDescription = "Sell icon",
+                                contentDescription = stringResource(R.string.sell_icon),
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Or use the symbol (e.g., 'BTC')",
+                                text = stringResource(R.string.search_tip_symbol),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -807,13 +809,13 @@ fun EmptySearchResult() {
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Refresh,
-                                contentDescription = "Refresh icon",
+                                contentDescription = stringResource(R.string.refresh_icon),
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Clear search to see all coins",
+                                text = stringResource(R.string.search_tip_clear),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -851,7 +853,7 @@ fun LoadingView() {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Loading market data...",
+                    text = stringResource(R.string.loading_market_data),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -890,7 +892,7 @@ fun ErrorView(message: String, onRetry: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Connection Error",
+                    text = stringResource(R.string.connection_error),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -915,7 +917,7 @@ fun ErrorView(message: String, onRetry: () -> Unit) {
                     )
                 ) {
                     Text(
-                        "Try Again",
+                        stringResource(R.string.try_again),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelLarge
                     )

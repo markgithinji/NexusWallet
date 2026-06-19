@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -99,7 +100,7 @@ fun ReceiveScreen(
     LaunchedEffect(uiState.copiedToClipboard) {
         if (uiState.copiedToClipboard) {
             snackbarHostState.showSnackbar(
-                message = "Address copied to clipboard",
+                message = context.getString(R.string.address_copied),
                 duration = SnackbarDuration.Short
             )
         }
@@ -121,7 +122,7 @@ fun ReceiveScreen(
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         if (uiState.isLoading) {
-            FullScreenLoading(message = "Loading receive address...")
+            FullScreenLoading(message = stringResource(R.string.loading_receive_address))
         } else if (uiState.error != null) {
             ErrorView(
                 error = uiState.error,
@@ -138,7 +139,7 @@ fun ReceiveScreen(
                 onCopy = {
                     val clipboard =
                         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clip = ClipData.newPlainText("Wallet Address", uiState.address)
+                    val clip = ClipData.newPlainText(context.getString(R.string.wallet_address), uiState.address)
                     clipboard.setPrimaryClip(clip)
                     viewModel.onCopyClicked()
                 },
@@ -171,7 +172,7 @@ private fun ReceiveScreenTopBar(
                     tint = Color.Unspecified
                 )
                 Text(
-                    text = "Receive $coinName ($networkDisplayName)",
+                    text = stringResource(R.string.receive_coin, coinName, networkDisplayName),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -184,7 +185,7 @@ private fun ReceiveScreenTopBar(
             IconButton(onClick = onNavigateUp) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    "Back",
+                    stringResource(R.string.back),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -276,7 +277,7 @@ private fun ReceiveQrCodeSection(
                 if (qrCodeBitmap != null) {
                     Image(
                         bitmap = qrCodeBitmap.asImageBitmap(),
-                        contentDescription = "QR Code for $address",
+                        contentDescription = stringResource(R.string.qr_code_for, address),
                         modifier = Modifier.size(220.dp)
                     )
                 } else {
@@ -285,12 +286,12 @@ private fun ReceiveQrCodeSection(
                     ) {
                         Icon(
                             Icons.Outlined.QrCodeScanner,
-                            contentDescription = "QR Code Error",
+                            contentDescription = stringResource(R.string.qr_code_error),
                             modifier = Modifier.size(80.dp),
                             tint = coinColor
                         )
                         Text(
-                            text = "Unable to generate QR code",
+                            text = stringResource(R.string.unable_to_generate_qr),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -301,7 +302,7 @@ private fun ReceiveQrCodeSection(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Scan QR Code",
+                text = stringResource(R.string.scan_qr_code),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -344,7 +345,7 @@ private fun ReceiveAddressCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Your ${coin.symbol} Address",
+                    text = stringResource(R.string.your_coin_address, coin.symbol),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -392,7 +393,7 @@ private fun ReceiveAddressCard(
                             Icons.Outlined.CheckCircle
                         else
                             Icons.Outlined.ContentCopy,
-                        contentDescription = "Copy Address",
+                        contentDescription = stringResource(R.string.copy_address),
                         tint = if (copiedToClipboard) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -417,7 +418,7 @@ private fun ReceiveSecurityTips(coin: Coin, networkDisplayName: String) {
                 .padding(16.dp)
         ) {
             Text(
-                text = "Security Tips",
+                text = stringResource(R.string.security_tips),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -425,19 +426,19 @@ private fun ReceiveSecurityTips(coin: Coin, networkDisplayName: String) {
             )
 
             SecurityTip(
-                text = "Only send ${coin.symbol} on $networkDisplayName to this address",
+                text = stringResource(R.string.security_tip_only_send, coin.symbol, networkDisplayName),
                 icon = Icons.Outlined.Info
             )
             SecurityTip(
-                text = "Double-check the address and network before sending",
+                text = stringResource(R.string.security_tip_double_check),
                 icon = Icons.Outlined.Visibility
             )
             SecurityTip(
-                text = "Test with a small amount first",
+                text = stringResource(R.string.security_tip_test_small),
                 icon = Icons.Outlined.Science
             )
             SecurityTip(
-                text = "Never share your private key or seed phrase",
+                text = stringResource(R.string.security_tip_never_share),
                 icon = Icons.Outlined.Shield
             )
         }
@@ -498,7 +499,7 @@ private fun ErrorView(
             ) {
                 Icon(
                     Icons.Outlined.Error,
-                    contentDescription = "Error",
+                    contentDescription = stringResource(R.string.error),
                     modifier = Modifier.size(48.dp),
                     tint = MaterialTheme.colorScheme.error
                 )
@@ -506,7 +507,7 @@ private fun ErrorView(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Something went wrong",
+                    text = stringResource(R.string.something_went_wrong),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -515,7 +516,7 @@ private fun ErrorView(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = error ?: "Unknown error occurred",
+                    text = error ?: stringResource(R.string.unknown_error),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -531,7 +532,7 @@ private fun ErrorView(
                     )
                 ) {
                     Text(
-                        "Try Again",
+                        stringResource(R.string.try_again),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onPrimary
                     )

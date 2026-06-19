@@ -1,3 +1,233 @@
 <resources>
     <string name="app_name">Nexus Wallet</string>
+
+    <!-- General -->
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="try_again">Try Again</string>
+    <string name="continue_button">Continue</string>
+    <string name="loading">Loading&#8230;</string>
+    <string name="processing">Processing&#8230;</string>
+    <string name="error">Error</string>
+    <string name="something_went_wrong">Something went wrong</string>
+    <string name="connection_error">Connection Error</string>
+
+    <!-- Wallet Creation Steps -->
+    <string name="step_networks">Networks</string>
+    <string name="step_backup">Backup</string>
+    <string name="step_verify">Verify</string>
+    <string name="step_name">Name</string>
+    <string name="step_complete">Complete</string>
+
+    <!-- Wallet Dashboard -->
+    <string name="wallets_title">Wallets</string>
+    <string name="create_wallet">Create Wallet</string>
+    <string name="your_wallets">Your Wallets</string>
+    <string name="delete_wallet">Delete Wallet</string>
+    <string name="no_wallets_yet">No Wallets Yet</string>
+    <string name="failed_to_load_wallets">Failed to load wallets</string>
+    <string name="create_first_wallet_subtitle">Create your first wallet to get started</string>
+    <string name="delete_wallet_confirmation">Are you sure you want to delete \"%1$s\"? This action cannot be undone.</string>
+    <string name="loading_wallets">Loading wallets...</string>
+    <string name="total_portfolio">Total Portfolio</string>
+    <string name="secure">Secure</string>
+    <string name="collapse">Collapse</string>
+    <string name="expand">Expand</string>
+
+    <!-- Wallet Creation -->
+    <string name="creating_wallet">Creating wallet...</string>
+    <string name="generating_recovery_phrase">Generating secure recovery phrase...</string>
+    <string name="step_x_of_y">Step %1$d of %2$d</string>
+    <string name="step_networks_desc">Select which networks and tokens to include</string>
+    <string name="step_backup_desc">Backup your recovery phrase</string>
+    <string name="step_verify_desc">Verify your backup</string>
+    <string name="step_name_desc">Personalize your wallet</string>
+    <string name="step_complete_desc">Wallet created successfully</string>
+    <string name="bitcoin">Bitcoin</string>
+    <string name="ethereum">Ethereum</string>
+    <string name="solana">Solana</string>
+    <string name="tokens">Tokens</string>
+    <string name="selected_assets">Selected Assets</string>
+    <string name="no_assets_selected">No assets selected</string>
+    <string name="network_not_enabled">Network not enabled</string>
+    <string name="security_warning_title">Critical Security Warning</string>
+    <string name="recovery_phrase_warning">Your recovery phrase is the ONLY way to restore your wallet. If you lose it, you lose access to your funds FOREVER.</string>
+    <string name="never_share">✕ Never share it</string>
+    <string name="never_store_digitally">✕ Never store digitally</string>
+    <string name="write_on_paper">✓ Write on paper only</string>
+    <string name="i_understand">I Understand</string>
+    <string name="critical_security_step">Critical Security Step:</string>
+    <string name="mnemonic_warning_desc">Write down these 12 words IN ORDER on paper. Never store digitally. This is the ONLY way to restore your wallet.</string>
+    <string name="safety_checklist_title">Safety Checklist:</string>
+    <string name="write_on_paper_not_digital">Write on paper (not digital)</string>
+    <string name="store_in_secure_location">Store in secure location</string>
+    <string name="never_share_with_anyone">Never share with anyone</string>
+    <string name="keep_away_from_elements">Keep away from moisture/fire</string>
+    <string name="written_down_confirmation">I have written down all 12 words on paper</string>
+    <string name="stored_safely_confirmation">I have stored them in a secure location</string>
+    <string name="backed_it_up">I\'ve Backed It Up</string>
+    <string name="mnemonic_verification_title">Tap words in the correct order</string>
+    <string name="selected_words">Selected Words (%1$d/%2$d)</string>
+    <string name="no_words_selected">No words selected yet</string>
+    <string name="available_words">Available Words</string>
+    <string name="all_words_selected">All words selected</string>
+    <string name="wrong_order_error">Wrong order. Please try again.</string>
+    <string name="verify_continue">Verify &amp; Continue</string>
+    <string name="wallet_name_label">Wallet Name</string>
+    <string name="wallet_name_placeholder">e.g., My Savings Wallet</string>
+    <string name="wallet_name_tip">Tip: Use a descriptive name like \'Savings\' or \'Trading\'</string>
+    <string name="wallet_created_success">Wallet Created Successfully!</string>
+    <string name="wallet_details">Wallet Details</string>
+    <string name="name_label">Name: </string>
+    <string name="enabled_assets">Enabled Assets:</string>
+    <string name="primary_address">Primary Address: </string>
+    <string name="total_assets">Total Assets:</string>
+    <string name="go_to_dashboard">Go to Dashboard</string>
+
+    <!-- Market -->
+    <string name="market_title">Market</string>
+    <string name="loading_market_data">Loading market data&#8230;</string>
+    <string name="live_updates_disconnected">Live updates disconnected</string>
+    <string name="reconnect">Reconnect</string>
+    <string name="search_placeholder">Search by name or symbol&#8230;</string>
+    <string name="no_matching_coins">No matching coins</string>
+    <string name="no_matching_coins_subtitle">We couldn\'t find any coins matching your search.</string>
+    <string name="search_tips_title">💡 Search Tips</string>
+    <string name="search_tip_name">Try using the coin name (e.g., \'Bitcoin\')</string>
+    <string name="search_tip_symbol">Or use the symbol (e.g., \'BTC\')</string>
+    <string name="search_tip_clear">Clear search to see all coins</string>
+
+    <!-- Wallet Detail -->
+    <string name="loading_wallet">Loading wallet&#8230;</string>
+    <string name="total_balance">Total Balance</string>
+    <string name="updating_balances">Updating balances&#8230;</string>
+    <string name="loading_balances">Loading balances&#8230;</string>
+    <string name="updating_transactions">Updating transactions&#8230;</string>
+    <string name="loading_transactions">Loading transactions&#8230;</string>
+    <string name="receive">Receive</string>
+    <string name="send">Send</string>
+    <string name="swap">Swap</string>
+    <string name="more">More</string>
+    <string name="recent_transactions">Recent Transactions</string>
+    <string name="see_all">See All</string>
+    <string name="no_transactions_yet">No Transactions Yet</string>
+    <string name="transactions_appear_here">Your transactions will appear here</string>
+    <string name="wallet_not_found">Wallet Not Found</string>
+    <string name="wallet_not_found_desc">The wallet you\'re looking for doesn\'t exist or has been deleted</string>
+    <string name="back_to_wallets">Back to Wallets</string>
+    <string name="asset_count_plural">%1$d assets</string>
+    <string name="plus_x_tokens">+%1$d tokens</string>
+
+    <!-- Welcome Screen -->
+    <string name="welcome_secure_crypto_wallet">Secure Crypto Wallet</string>
+    <string name="welcome_desc">Store, manage, and exchange cryptocurrencies securely with industry-standard encryption</string>
+    <string name="features">Features</string>
+    <string name="feature_bip39">BIP39 Secure Recovery Phrase</string>
+    <string name="feature_biometric">Biometric Authentication</string>
+    <string name="feature_keystore">Android KeyStore Encryption</string>
+    <string name="feature_multichain">Multi-Chain Support</string>
+    <string name="create_new_wallet">Create New Wallet</string>
+    <string name="import_existing_wallet">Import Existing Wallet</string>
+    <string name="skip_for_now">Skip for Now</string>
+
+    <!-- Token Detail -->
+    <string name="loading_token_details">Loading token details&#8230;</string>
+    <string name="token_icon">Token icon</string>
+    <string name="refresh">Refresh</string>
+    <string name="price_chart">Price Chart</string>
+    <string name="loading_chart">Loading chart&#8230;</string>
+    <string name="failed_to_load_chart">Failed to load chart</string>
+    <string name="no_chart_data">No chart data available</string>
+    <string name="open">Open</string>
+    <string name="change">Change</string>
+    <string name="price_trend">Price trend</string>
+    <string name="close">Close</string>
+    <string name="latest_news_delay">Latest News (24h delay)</string>
+    <string name="failed_to_load_news">Failed to load news</string>
+    <string name="no_news_available">No news available</string>
+    <string name="free_plan_warning">⚠️ Free plan: 24h delay, no links</string>
+    <string name="rank_label">Rank #%1$d</string>
+    <string name="current_price">Current Price</string>
+    <string name="trend_24h">24h trend</string>
+    <string name="label_24h">• 24h</string>
+    <string name="low_short">L: </string>
+    <string name="high_short">H: </string>
+    <string name="market_stats">Market Stats</string>
+    <string name="market_cap">Market Cap</string>
+    <string name="of_supply"> of supply</string>
+    <string name="fdv">Fully Diluted Valuation</string>
+    <string name="volume_24h">24h Trading Volume</string>
+    <string name="of_market_cap"> of market cap</string>
+    <string name="volume_market_cap_ratio">Volume / Market Cap</string>
+    <string name="supply_info">Supply Information</string>
+    <string name="circulating_supply">Circulating Supply</string>
+    <string name="total_supply">Total Supply</string>
+    <string name="max_supply">Max Supply</string>
+    <string name="circulating_total">Circulating / Total</string>
+    <string name="ath_atl">All Time High / Low</string>
+    <string name="ath">All Time High</string>
+    <string name="atl">All Time Low</string>
+    <string name="ath_label">ATH: %1$s</string>
+    <string name="atl_label">ATL: %1$s</string>
+    <string name="about_token">About %1$s</string>
+    <string name="no_description">No description available.</string>
+    <string name="news_icon">News icon</string>
+    <string name="just_now">just now</string>
+    <string name="hours_ago">%1$dh ago</string>
+    <string name="days_ago">%1$dd ago</string>
+
+    <!-- Market Screen -->
+    <string name="status_live">LIVE</string>
+    <string name="status_offline">OFFLINE</string>
+    <string name="coin_count">%1$d coins</string>
+    <string name="search">Search</string>
+    <string name="clear_search">Clear search</string>
+    <string name="bitcoin_icon">Bitcoin icon</string>
+    <string name="sell_icon">Sell icon</string>
+    <string name="refresh_icon">Refresh icon</string>
+
+    <!-- Receive Screen -->
+    <string name="address_copied">Address copied to clipboard</string>
+    <string name="loading_receive_address">Loading receive address&#8230;</string>
+    <string name="receive_coin">Receive %1$s (%2$s)</string>
+    <string name="qr_code_for">QR Code for %1$s</string>
+    <string name="qr_code_error">QR Code Error</string>
+    <string name="unable_to_generate_qr">Unable to generate QR code</string>
+    <string name="scan_qr_code">Scan QR Code</string>
+    <string name="your_coin_address">Your %1$s Address</string>
+    <string name="copy_address">Copy Address</string>
+    <string name="security_tips">Security Tips</string>
+    <string name="security_tip_only_send">Only send %1$s on %2$s to this address</string>
+    <string name="security_tip_double_check">Double-check the address and network before sending</string>
+    <string name="security_tip_test_small">Test with a small amount first</string>
+    <string name="security_tip_never_share">Never share your private key or seed phrase</string>
+    <string name="unknown_error">Unknown error occurred</string>
+    <string name="wallet_address">Wallet Address</string>
+
+    <!-- Coin Detail Screen -->
+    <string name="loading_coin_details">Loading coin details&#8230;</string>
+    <string name="coin_wallet">%1$s Wallet</string>
+    <string name="address_label">Address</string>
+    <string name="address_copied_toast">Address copied</string>
+    <string name="balance">Balance</string>
+    <string name="eth_for_gas">ETH for Gas</string>
+    <string name="gas">Gas</string>
+    <string name="spl_tokens">SPL Tokens</string>
+    <string name="view_all">View All</string>
+    <string name="bitcoin_name">Bitcoin</string>
+    <string name="bitcoin_symbol">BTC</string>
+    <string name="ethereum_name">Ethereum</string>
+    <string name="ethereum_symbol">ETH</string>
+    <string name="solana_name">Solana</string>
+    <string name="solana_symbol">SOL</string>
+    <string name="usdc_name">USD Coin</string>
+    <string name="usdc_symbol">USDC</string>
+    <string name="usdt_name">Tether USD</string>
+    <string name="usdt_symbol">USDT</string>
+    <string name="testnet_suffix">(Testnet)</string>
+    <string name="devnet_suffix">(Devnet)</string>
+    <string name="test_suffix">(Test)</string>
+    <string name="dev_suffix">(Dev)</string>
+    <string name="wallet_icon">Wallet</string>
 </resources>

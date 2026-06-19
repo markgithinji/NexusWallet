@@ -65,6 +65,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -118,7 +119,7 @@ fun WalletDetailScreen(
 
     // Show full screen loading only on initial load with no wallet
     if (uiState.isLoading && uiState.wallet == null) {
-        FullScreenLoading(message = "Loading wallet...")
+        FullScreenLoading(message = stringResource(R.string.loading_wallet))
         return
     }
 
@@ -150,7 +151,7 @@ fun WalletDetailScreen(
                     IconButton(onClick = onNavigateUp) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.back),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -212,13 +213,13 @@ fun WalletDetailScreen(
                 isRefreshingBalance = uiState.isRefreshingBalance,
                 isRefreshingTransactions = uiState.isRefreshingTransactions,
                 balanceLoadingMessage = when {
-                    uiState.isRefreshingBalance -> "Updating balances..."
-                    uiState.isLoadingBalance -> "Loading balances..."
+                    uiState.isRefreshingBalance -> stringResource(R.string.updating_balances)
+                    uiState.isLoadingBalance -> stringResource(R.string.loading_balances)
                     else -> ""
                 },
                 transactionsLoadingMessage = when {
-                    uiState.isRefreshingTransactions -> "Updating transactions..."
-                    uiState.isLoadingTransactions -> "Loading transactions..."
+                    uiState.isRefreshingTransactions -> stringResource(R.string.updating_transactions)
+                    uiState.isLoadingTransactions -> stringResource(R.string.loading_transactions)
                     else -> ""
                 },
                 onAssetClick = { coin -> onAssetClick(walletId, coin) },
@@ -420,7 +421,7 @@ fun AssetCard(
 
                 if (asset.tokenCount > 0) {
                     Text(
-                        text = "+${asset.tokenCount} tokens",
+                        text = stringResource(R.string.plus_x_tokens, asset.tokenCount),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -498,7 +499,7 @@ fun WalletHeaderCard(
         ) {
             // Total Balance Label
             Text(
-                text = "Total Balance",
+                text = stringResource(R.string.total_balance),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -553,7 +554,7 @@ fun WalletHeaderCard(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "$assetCount assets",
+                    text = stringResource(R.string.asset_count_plural, assetCount),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
@@ -570,7 +571,7 @@ fun WalletHeaderCard(
                 // Receive button
                 QuickActionItem(
                     icon = Icons.Outlined.ArrowDownward,
-                    label = "Receive",
+                    label = stringResource(R.string.receive),
                     onClick = onReceive,
                     color = MaterialTheme.colorScheme.success,
                     modifier = Modifier.weight(1f)
@@ -579,7 +580,7 @@ fun WalletHeaderCard(
                 // Send button
                 QuickActionItem(
                     icon = Icons.Outlined.ArrowUpward,
-                    label = "Send",
+                    label = stringResource(R.string.send),
                     onClick = onSend,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
@@ -589,7 +590,7 @@ fun WalletHeaderCard(
                 if (onSwap != null) {
                     QuickActionItem(
                         icon = Icons.Outlined.SwapHoriz,
-                        label = "Swap",
+                        label = stringResource(R.string.swap),
                         onClick = onSwap,
                         color = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.weight(1f)
@@ -600,7 +601,7 @@ fun WalletHeaderCard(
                 if (onMore != null) {
                     QuickActionItem(
                         icon = Icons.Outlined.MoreHoriz,
-                        label = "More",
+                        label = stringResource(R.string.more),
                         onClick = onMore,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f)
@@ -615,7 +616,7 @@ fun WalletHeaderCard(
 fun TransactionsContainer(
     transactions: List<TransactionDisplayInfo>,
     isLoading: Boolean = false,
-    loadingMessage: String = "Loading transactions...",
+    loadingMessage: String = stringResource(R.string.loading_transactions),
     onViewAll: () -> Unit,
     onTransactionClick: (TransactionDisplayInfo) -> Unit
 ) {
@@ -641,7 +642,7 @@ fun TransactionsContainer(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Recent Transactions",
+                    text = stringResource(R.string.recent_transactions),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -653,7 +654,7 @@ fun TransactionsContainer(
                     enabled = !isLoading
                 ) {
                     Text(
-                        text = "See All",
+                        text = stringResource(R.string.see_all),
                         style = MaterialTheme.typography.labelMedium,
                         color = if (isLoading)
                             MaterialTheme.colorScheme.onSurfaceVariant
@@ -869,14 +870,14 @@ fun EmptyTransactionsView() {
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "No Transactions Yet",
+            text = stringResource(R.string.no_transactions_yet),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface
         )
 
         Text(
-            text = "Your transactions will appear here",
+            text = stringResource(R.string.transactions_appear_here),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -914,7 +915,7 @@ fun EmptyWalletView(onBack: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Wallet Not Found",
+                    text = stringResource(R.string.wallet_not_found),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -923,7 +924,7 @@ fun EmptyWalletView(onBack: () -> Unit) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "The wallet you're looking for doesn't exist or has been deleted",
+                    text = stringResource(R.string.wallet_not_found_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -939,7 +940,7 @@ fun EmptyWalletView(onBack: () -> Unit) {
                     )
                 ) {
                     Text(
-                        "Back to Wallets",
+                        stringResource(R.string.back_to_wallets),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onPrimary
                     )

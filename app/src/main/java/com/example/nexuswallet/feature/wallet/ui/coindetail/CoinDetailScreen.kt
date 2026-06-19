@@ -51,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -104,7 +105,7 @@ fun CoinDetailScreen(
 
     // Show loading only on initial load
     if (state.isLoading && state.address.isEmpty()) {
-        FullScreenLoading(message = "Loading coin details...")
+        FullScreenLoading(message = stringResource(R.string.loading_coin_details))
         return
     }
 
@@ -147,9 +148,9 @@ fun CoinDetailScreen(
             onCopyAddress = { address ->
                 val clipboard =
                     context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("Address", address)
+                val clip = ClipData.newPlainText(context.getString(R.string.address_label), address)
                 clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.address_copied_toast), Toast.LENGTH_SHORT).show()
             },
             onReceive = { onNavigateToReceive(walletId, currentCoin) },
             onSend = { onNavigateToSend(walletId, currentCoin) },
@@ -183,7 +184,7 @@ private fun CoinDetailTopBar(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "$displayName Wallet",
+                    text = stringResource(R.string.coin_wallet, displayName),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -194,7 +195,7 @@ private fun CoinDetailTopBar(
             IconButton(onClick = onNavigateUp) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    "Back",
+                    stringResource(R.string.back),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -213,7 +214,7 @@ private fun CoinDetailTopBar(
                 } else {
                     Icon(
                         Icons.Outlined.Refresh,
-                        "Refresh",
+                        stringResource(R.string.refresh),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -388,7 +389,7 @@ private fun CoinDetailBalanceCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.ContentCopy,
-                                contentDescription = "Copy Address",
+                                contentDescription = stringResource(R.string.copy_address),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -404,7 +405,7 @@ private fun CoinDetailBalanceCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Balance",
+                text = stringResource(R.string.balance),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -450,14 +451,14 @@ private fun CoinDetailActionsCard(
         ) {
             QuickActionItem(
                 icon = Icons.Outlined.ArrowDownward,
-                label = "Receive",
+                label = stringResource(R.string.receive),
                 onClick = onReceive,
                 color = MaterialTheme.colorScheme.success
             )
 
             QuickActionItem(
                 icon = Icons.Outlined.ArrowUpward,
-                label = "Send",
+                label = stringResource(R.string.send),
                 onClick = onSend,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -492,7 +493,7 @@ private fun CoinDetailEthGasBalanceCard(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.LocalGasStation,
-                    contentDescription = "Gas",
+                    contentDescription = stringResource(R.string.gas),
                     tint = ethereumLight,
                     modifier = Modifier.size(20.dp)
                 )
@@ -500,7 +501,7 @@ private fun CoinDetailEthGasBalanceCard(
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(
-                    text = "ETH for Gas",
+                    text = stringResource(R.string.eth_for_gas),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
@@ -535,7 +536,7 @@ private fun CoinDetailSPLTokensCard(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "SPL Tokens",
+                text = stringResource(R.string.spl_tokens),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -655,7 +656,7 @@ private fun CoinDetailTransactionsContainer(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Recent Transactions",
+                    text = stringResource(R.string.recent_transactions),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -666,7 +667,7 @@ private fun CoinDetailTransactionsContainer(
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = "View All",
+                        text = stringResource(R.string.view_all),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary
                     )

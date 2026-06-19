@@ -70,6 +70,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -139,7 +140,7 @@ fun WalletDashboardScreen(
         ) {
             when (val state = uiState) {
                 is Result.Loading -> {
-                    FullScreenLoading(message = "Loading wallets...")
+                    FullScreenLoading(message = stringResource(R.string.loading_wallets))
                 }
 
                 is Result.Error -> {
@@ -183,7 +184,7 @@ fun WalletDashboardScreen(
                         .clickable(enabled = false) {},
                     contentAlignment = Alignment.Center
                 ) {
-                    InlineLoading(message = "Processing...")
+                    InlineLoading(message = stringResource(R.string.processing))
                 }
             }
         }
@@ -207,7 +208,7 @@ fun DashboardTopBar(
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Wallets",
+                    text = stringResource(R.string.wallets_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -220,7 +221,7 @@ fun DashboardTopBar(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Add,
-                    contentDescription = "Create Wallet",
+                    contentDescription = stringResource(R.string.create_wallet),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -260,7 +261,7 @@ fun DashboardContent(
 
         item {
             Text(
-                text = "Your Wallets",
+                text = stringResource(R.string.your_wallets),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -361,7 +362,7 @@ fun WalletCard(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.AccountBalanceWallet,
-                        contentDescription = "Wallet",
+                        contentDescription = stringResource(R.string.wallet_icon),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -404,14 +405,14 @@ fun WalletCard(
                     ) {
                         wallet.bitcoinCoins.forEach { coin ->
                             CoinBadge(
-                                text = if (coin.network.isTestnet) "${coin.symbol} (Test)" else coin.symbol,
+                                text = if (coin.network.isTestnet) "${coin.symbol} ${stringResource(R.string.test_suffix)}" else coin.symbol,
                                 color = bitcoinLight,
                             )
                         }
 
                         wallet.solanaCoins.forEach { coin ->
                             CoinBadge(
-                                text = if (coin.network.isTestnet) "${coin.symbol} (Dev)" else coin.symbol,
+                                text = if (coin.network.isTestnet) "${coin.symbol} ${stringResource(R.string.dev_suffix)}" else coin.symbol,
                                 color = solanaLight,
                             )
                         }
@@ -446,7 +447,7 @@ fun WalletCard(
                 ) {
                     Icon(
                         imageVector = if (isExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                        contentDescription = if (isExpanded) "Collapse" else "Expand",
+                        contentDescription = if (isExpanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -491,7 +492,7 @@ fun WalletExpandedContent(
 
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.bitcoin),
-                symbol = "${coin.name}${if (coin.network.isTestnet) " (Testnet)" else ""}",
+                symbol = "${coin.name}${if (coin.network.isTestnet) " ${stringResource(R.string.testnet_suffix)}" else ""}",
                 amount = if (btcBalance != null)
                     "${
                         NumberFormat.getNumberInstance(Locale.US)
@@ -510,7 +511,7 @@ fun WalletExpandedContent(
 
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.solana),
-                symbol = "${coin.name}${if (coin.network.isTestnet) " (Devnet)" else ""}",
+                symbol = "${coin.name}${if (coin.network.isTestnet) " ${stringResource(R.string.devnet_suffix)}" else ""}",
                 amount = if (solBalance != null)
                     "${
                         NumberFormat.getNumberInstance(Locale.US)
@@ -603,12 +604,12 @@ fun WalletExpandedContent(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = stringResource(R.string.delete),
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    "Delete Wallet",
+                    stringResource(R.string.delete_wallet),
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -751,9 +752,8 @@ fun AnimatedPortfolioHeader(
                 .padding(16.dp)
         ) {
 
-            // Title
             Text(
-                text = "Total Portfolio",
+                text = stringResource(R.string.total_portfolio),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
             )
@@ -826,7 +826,7 @@ fun AnimatedPortfolioHeader(
                         tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
                     )
                     Text(
-                        text = "Secure",
+                        text = stringResource(R.string.secure),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimary
@@ -869,7 +869,7 @@ fun EmptyWalletsContent(
             ) {
                 Icon(
                     imageVector = if (isError) Icons.Outlined.Error else Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = if (isError) "Error" else "No Wallets",
+                    contentDescription = if (isError) stringResource(R.string.error) else stringResource(R.string.no_wallets_yet),
                     modifier = Modifier.size(56.dp),
                     tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -877,7 +877,7 @@ fun EmptyWalletsContent(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = if (isError) "Something went wrong" else "No Wallets Yet",
+                    text = if (isError) stringResource(R.string.something_went_wrong) else stringResource(R.string.no_wallets_yet),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -891,9 +891,9 @@ fun EmptyWalletsContent(
                     text = if (isError && errorMessage != null)
                         errorMessage
                     else if (isError)
-                        "Failed to load wallets"
+                        stringResource(R.string.failed_to_load_wallets)
                     else
-                        "Create your first wallet to get started",
+                        stringResource(R.string.create_first_wallet_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -910,7 +910,7 @@ fun EmptyWalletsContent(
                     )
                 ) {
                     Text(
-                        if (isError) "Try Again" else "Create Wallet",
+                        if (isError) stringResource(R.string.try_again) else stringResource(R.string.create_wallet),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
@@ -932,7 +932,7 @@ fun DeleteWalletDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Text(
-                text = "Delete Wallet",
+                text = stringResource(R.string.delete_wallet),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -940,7 +940,7 @@ fun DeleteWalletDialog(
         },
         text = {
             Text(
-                text = "Are you sure you want to delete \"$walletName\"? This action cannot be undone.",
+                text = stringResource(R.string.delete_wallet_confirmation, walletName),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -953,7 +953,7 @@ fun DeleteWalletDialog(
                 )
             ) {
                 Text(
-                    "Delete",
+                    stringResource(R.string.delete),
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -966,7 +966,7 @@ fun DeleteWalletDialog(
                 )
             ) {
                 Text(
-                    "Cancel",
+                    stringResource(R.string.cancel),
                     style = MaterialTheme.typography.labelLarge
                 )
             }

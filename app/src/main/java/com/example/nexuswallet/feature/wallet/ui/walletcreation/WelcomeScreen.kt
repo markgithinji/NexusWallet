@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -78,7 +79,7 @@ fun WelcomeScreen(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.nexus_icon),
-                    contentDescription = "Nexus Wallet",
+                    contentDescription = stringResource(R.string.app_name),
                     modifier = Modifier
                         .fillMaxSize(),
                     contentScale = ContentScale.Fit
@@ -105,7 +106,7 @@ fun WelcomeScreen(
             ) {
                 // Nexus Wallet title
                 Text(
-                    text = "Nexus Wallet",
+                    text = stringResource(R.string.app_name),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -115,7 +116,7 @@ fun WelcomeScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Secure Crypto Wallet",
+                    text = stringResource(R.string.welcome_secure_crypto_wallet),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -125,7 +126,7 @@ fun WelcomeScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Store, manage, and exchange cryptocurrencies securely with industry-standard encryption",
+                    text = stringResource(R.string.welcome_desc),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -151,7 +152,7 @@ fun WelcomeScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "Features",
+                    text = stringResource(R.string.features),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -160,7 +161,7 @@ fun WelcomeScreen(
 
                 FeatureRow(
                     icon = Icons.Outlined.Shield,
-                    text = "BIP39 Secure Recovery Phrase",
+                    text = stringResource(R.string.feature_bip39),
                     iconColor = MaterialTheme.colorScheme.primary
                 )
 
@@ -172,7 +173,7 @@ fun WelcomeScreen(
 
                 FeatureRow(
                     icon = Icons.Outlined.Fingerprint,
-                    text = "Biometric Authentication",
+                    text = stringResource(R.string.feature_biometric),
                     iconColor = MaterialTheme.colorScheme.primary
                 )
 
@@ -183,7 +184,7 @@ fun WelcomeScreen(
 
                 FeatureRow(
                     icon = Icons.Outlined.Lock,
-                    text = "Android KeyStore Encryption",
+                    text = stringResource(R.string.feature_keystore),
                     iconColor = MaterialTheme.colorScheme.primary
                 )
 
@@ -194,7 +195,7 @@ fun WelcomeScreen(
 
                 FeatureRow(
                     icon = Icons.Outlined.AccountBalance,
-                    text = "Multi-Chain Support",
+                    text = stringResource(R.string.feature_multichain),
                     iconColor = MaterialTheme.colorScheme.primary
                 )
             }
@@ -226,7 +227,7 @@ fun WelcomeScreen(
                     )
                 ) {
                     Text(
-                        text = "Create New Wallet",
+                        text = stringResource(R.string.create_new_wallet),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onPrimary
@@ -243,7 +244,7 @@ fun WelcomeScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Text(
-                        text = "Import Existing Wallet",
+                        text = stringResource(R.string.import_existing_wallet),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.primary
@@ -255,7 +256,7 @@ fun WelcomeScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Skip for Now",
+                        text = stringResource(R.string.skip_for_now),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

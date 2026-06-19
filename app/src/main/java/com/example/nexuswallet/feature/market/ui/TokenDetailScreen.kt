@@ -48,6 +48,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import com.example.nexuswallet.feature.core.util.formatLargeNumber
 import com.example.nexuswallet.feature.core.util.formatPrice
 import com.example.nexuswallet.feature.core.util.formatSupply
@@ -55,7 +56,9 @@ import com.example.nexuswallet.feature.core.util.formatTwoDecimals
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.example.nexuswallet.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -96,7 +99,7 @@ fun TokenDetailScreen(
     ) { padding ->
         when (val state = uiState) {
             is Result.Loading -> {
-                FullScreenLoading(message = "Loading token details...")
+                FullScreenLoading(message = stringResource(R.string.loading_token_details))
             }
 
             is Result.Error -> {
@@ -199,7 +202,7 @@ private fun TokenDetailTopBar(
                         // Fallback icon while loading
                         Icon(
                             imageVector = Icons.Outlined.AccountBalanceWallet,
-                            contentDescription = "Token icon",
+                            contentDescription = stringResource(R.string.token_icon),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
@@ -220,7 +223,7 @@ private fun TokenDetailTopBar(
             IconButton(onClick = onNavigateUp) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.back),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -229,7 +232,7 @@ private fun TokenDetailTopBar(
             IconButton(onClick = onRefresh) {
                 Icon(
                     imageVector = Icons.Outlined.Refresh,
-                    contentDescription = "Refresh",
+                    contentDescription = stringResource(R.string.refresh),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -256,7 +259,7 @@ private fun ErrorScreen(
     ) {
         Icon(
             imageVector = Icons.Outlined.Error,
-            contentDescription = "Error",
+            contentDescription = stringResource(R.string.error),
             modifier = Modifier.size(48.dp),
             tint = MaterialTheme.colorScheme.error
         )
@@ -276,7 +279,7 @@ private fun ErrorScreen(
             )
         ) {
             Text(
-                "Try Again",
+                stringResource(R.string.try_again),
                 color = MaterialTheme.colorScheme.onPrimary,
                 style = MaterialTheme.typography.labelLarge
             )
@@ -306,7 +309,7 @@ fun PriceChart(
         ) {
             // Header with title
             Text(
-                text = "Price Chart",
+                text = stringResource(R.string.price_chart),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -349,7 +352,7 @@ fun PriceChart(
             ) {
                 when (chartState) {
                     is Result.Loading -> {
-                        InlineLoading(message = "Loading chart...")
+                        InlineLoading(message = stringResource(R.string.loading_chart))
                     }
 
                     is Result.Error -> {
@@ -367,13 +370,13 @@ fun PriceChart(
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Error,
-                                    contentDescription = "Error",
+                                    contentDescription = stringResource(R.string.error),
                                     tint = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "Failed to load chart",
+                                    text = stringResource(R.string.failed_to_load_chart),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -409,7 +412,7 @@ fun PriceChart(
                                     // Open price
                                     Column {
                                         Text(
-                                            text = "Open",
+                                            text = stringResource(R.string.open),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -426,7 +429,7 @@ fun PriceChart(
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
                                         Text(
-                                            text = "Change",
+                                            text = stringResource(R.string.change),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -444,7 +447,7 @@ fun PriceChart(
                                                     Icons.Outlined.TrendingUp
                                                 else
                                                     Icons.Outlined.TrendingDown,
-                                                contentDescription = "Price trend",
+                                                contentDescription = stringResource(R.string.price_trend),
                                                 modifier = Modifier.size(12.dp),
                                                 tint = if (priceChange >= 0)
                                                     MaterialTheme.colorScheme.success
@@ -468,7 +471,7 @@ fun PriceChart(
                                         horizontalAlignment = Alignment.End
                                     ) {
                                         Text(
-                                            text = "Close",
+                                            text = stringResource(R.string.close),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -492,7 +495,7 @@ fun PriceChart(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "No chart data available",
+                                    text = stringResource(R.string.no_chart_data),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -530,13 +533,13 @@ private fun NewsSection(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Article,
-                    contentDescription = "News icon",
+                    contentDescription = stringResource(R.string.news_icon),
                     modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Latest News (24h delay)",
+                    text = stringResource(R.string.latest_news_delay),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -564,13 +567,13 @@ private fun NewsSection(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "Failed to load news",
+                                text = stringResource(R.string.failed_to_load_news),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             TextButton(onClick = onRetry) {
-                                Text("Try Again")
+                                Text(stringResource(R.string.try_again))
                             }
                         }
                     }
@@ -586,7 +589,7 @@ private fun NewsSection(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No news available",
+                                text = stringResource(R.string.no_news_available),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -607,7 +610,7 @@ private fun NewsSection(
                         // Note about free plan limitations
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "⚠️ Free plan: 24h delay, no links",
+                            text = stringResource(R.string.free_plan_warning),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 4.dp)
@@ -680,7 +683,7 @@ fun TokenHeaderCard(token: TokenDetail) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "${token.symbol.uppercase()} • Rank #${token.marketCapRank}",
+                    text = "${token.symbol.uppercase()} • ${stringResource(R.string.rank_label, token.marketCapRank)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -703,7 +706,7 @@ fun PriceCard(token: TokenDetail) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Current Price",
+                text = stringResource(R.string.current_price),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -732,7 +735,7 @@ fun PriceCard(token: TokenDetail) {
                             Icons.Outlined.TrendingUp
                         else
                             Icons.Outlined.TrendingDown,
-                        contentDescription = "24h trend",
+                        contentDescription = stringResource(R.string.trend_24h),
                         modifier = Modifier.size(16.dp),
                         tint = if (token.priceChangePercentage24h >= 0)
                             MaterialTheme.colorScheme.success
@@ -750,7 +753,7 @@ fun PriceCard(token: TokenDetail) {
                 }
 
                 Text(
-                    text = "• 24h",
+                    text = stringResource(R.string.label_24h),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -759,7 +762,7 @@ fun PriceCard(token: TokenDetail) {
 
                 // 24h range
                 Text(
-                    text = "L: $${token.low24h.formatPrice()} H: $${token.high24h.formatPrice()}",
+                    text = "${stringResource(R.string.low_short)}$${token.low24h.formatPrice()} ${stringResource(R.string.high_short)}$${token.high24h.formatPrice()}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -782,7 +785,7 @@ fun MarketStatsCard(token: TokenDetail) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Market Stats",
+                text = stringResource(R.string.market_stats),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -792,16 +795,16 @@ fun MarketStatsCard(token: TokenDetail) {
 
             // Market Cap
             StatRowWithChange(
-                label = "Market Cap",
+                label = stringResource(R.string.market_cap),
                 value = "$${formatLargeNumber(token.marketCap)}",
-                change = "${((token.marketCap / token.currentPrice) * 100).toInt()}% of supply",
+                change = "${((token.marketCap / token.currentPrice) * 100).toInt()}%${stringResource(R.string.of_supply)}",
                 changeUp = true
             )
 
             // Fully Diluted Valuation
             token.fullyDilutedValuation?.let { fdv ->
                 StatRowWithChange(
-                    label = "Fully Diluted Valuation",
+                    label = stringResource(R.string.fdv),
                     value = "$${formatLargeNumber(fdv)}",
                     change = "",
                     changeUp = true
@@ -810,9 +813,9 @@ fun MarketStatsCard(token: TokenDetail) {
 
             // 24h Trading Volume
             StatRowWithChange(
-                label = "24h Trading Volume",
+                label = stringResource(R.string.volume_24h),
                 value = "$${formatLargeNumber(token.totalVolume)}",
-                change = "${((token.totalVolume / token.marketCap) * 100).toInt()}% of market cap",
+                change = "${((token.totalVolume / token.marketCap) * 100).toInt()}%${stringResource(R.string.of_market_cap)}",
                 changeUp = true
             )
 
@@ -821,7 +824,7 @@ fun MarketStatsCard(token: TokenDetail) {
                 (token.totalVolume / token.marketCap * 100).toInt()
             } else 0
             StatRowWithChange(
-                label = "Volume / Market Cap",
+                label = stringResource(R.string.volume_market_cap_ratio),
                 value = "${volumeRatio}%",
                 change = "",
                 changeUp = true
@@ -844,7 +847,7 @@ fun SupplyCard(token: TokenDetail) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Supply Information",
+                text = stringResource(R.string.supply_info),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -854,7 +857,7 @@ fun SupplyCard(token: TokenDetail) {
 
             // Circulating Supply
             StatRowWithChange(
-                label = "Circulating Supply",
+                label = stringResource(R.string.circulating_supply),
                 value = formatSupply(token.circulatingSupply),
                 change = "${token.symbol.uppercase()}",
                 changeUp = true
@@ -863,7 +866,7 @@ fun SupplyCard(token: TokenDetail) {
             // Total Supply
             token.totalSupply?.let {
                 StatRowWithChange(
-                    label = "Total Supply",
+                    label = stringResource(R.string.total_supply),
                     value = formatSupply(it),
                     change = "${token.symbol.uppercase()}",
                     changeUp = true
@@ -873,7 +876,7 @@ fun SupplyCard(token: TokenDetail) {
             // Max Supply
             token.maxSupply?.let {
                 StatRowWithChange(
-                    label = "Max Supply",
+                    label = stringResource(R.string.max_supply),
                     value = formatSupply(it),
                     change = "${token.symbol.uppercase()}",
                     changeUp = true
@@ -886,7 +889,7 @@ fun SupplyCard(token: TokenDetail) {
                     (token.circulatingSupply / token.totalSupply * 100).toFloat()
                 SupplyProgressBar(
                     percentage = circulatingPercentage,
-                    label = "Circulating / Total"
+                    label = stringResource(R.string.circulating_total)
                 )
             }
         }
@@ -951,7 +954,7 @@ fun AllTimeCard(token: TokenDetail) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "All Time High / Low",
+                text = stringResource(R.string.ath_atl),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -965,7 +968,7 @@ fun AllTimeCard(token: TokenDetail) {
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "All Time High",
+                        text = stringResource(R.string.ath),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -987,7 +990,7 @@ fun AllTimeCard(token: TokenDetail) {
 
                 Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "All Time Low",
+                        text = stringResource(R.string.atl),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1015,13 +1018,13 @@ fun AllTimeCard(token: TokenDetail) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "ATH: ${token.athDate}",
+                    text = stringResource(R.string.ath_label, token.athDate),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "ATL: ${token.atlDate}",
+                    text = stringResource(R.string.atl_label, token.atlDate),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
@@ -1046,7 +1049,7 @@ fun AboutCard(token: TokenDetail) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "About ${token.name}",
+                text = stringResource(R.string.about_token, token.name),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -1055,7 +1058,7 @@ fun AboutCard(token: TokenDetail) {
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = token.description ?: "No description available.",
+                text = token.description ?: stringResource(R.string.no_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -1129,13 +1132,13 @@ fun NewsCard(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Article,
-                    contentDescription = "News icon",
+                    contentDescription = stringResource(R.string.news_icon),
                     modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Latest News (24h delay)",
+                    text = stringResource(R.string.latest_news_delay),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -1165,7 +1168,7 @@ fun NewsCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No news available",
+                        text = stringResource(R.string.no_news_available),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1186,7 +1189,7 @@ fun NewsCard(
                 // Note about free plan limitations
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "⚠️ Free plan: 24h delay, no links",
+                    text = stringResource(R.string.free_plan_warning),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp)
@@ -1270,20 +1273,28 @@ fun NewsItem(
 // Helper to format relative time
 @Composable
 fun formatRelativeTime(dateString: String): String {
-    return try {
-        val published = java.time.Instant.parse(dateString)
-        val now = java.time.Instant.now()
-        val hours = java.time.Duration.between(published, now).toHours()
-
-        when {
-            hours < 1 -> "just now"
-            hours < 24 -> "${hours}h ago"
-            hours < 168 -> "${hours / 24}d ago"
-            else -> java.time.format.DateTimeFormatter
-                .ofPattern("MMM d")
-                .format(published.atZone(java.time.ZoneId.systemDefault()))
+    val result = remember(dateString) {
+        try {
+            val published = java.time.Instant.parse(dateString)
+            val now = java.time.Instant.now()
+            val hours = java.time.Duration.between(published, now).toHours()
+            Triple(true, hours, published)
+        } catch (e: Exception) {
+            Triple(false, 0L, null)
         }
-    } catch (e: Exception) {
-        dateString.take(10) // Fallback to date part
+    }
+
+    if (!result.first) return dateString.take(10)
+
+    val hours = result.second
+    val published = result.third as java.time.Instant
+
+    return when {
+        hours < 1 -> stringResource(R.string.just_now)
+        hours < 24 -> stringResource(R.string.hours_ago, hours)
+        hours < 168 -> stringResource(R.string.days_ago, hours / 24)
+        else -> java.time.format.DateTimeFormatter
+            .ofPattern("MMM d")
+            .format(published.atZone(java.time.ZoneId.systemDefault()))
     }
 }
