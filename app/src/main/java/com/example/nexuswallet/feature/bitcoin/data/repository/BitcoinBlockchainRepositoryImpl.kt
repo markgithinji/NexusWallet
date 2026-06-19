@@ -363,14 +363,23 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Select UTXOs for a transaction using a simple "smallest first" strategy
+     * Select UTXOs for a transaction.
+     *
+     * 1. Attempts Branch and Bound to find a combination that matches the target closely,
+     *    potentially avoiding a change output and reducing transaction size/fees.
+     * 2. Falls back to "Largest First" to minimize the number of inputs and current fees.
      */
     override fun selectUtxos(utxos: List<UTXO>, targetSatoshis: Long): List<UTXO> {
         if (utxos.isEmpty()) return emptyList()
 
-        val sortedUtxos = utxos.sortedBy { it.value.value }
+        // 1. Try Branch and Bound to find an exact (or near-exact) match to avoid change
+        val bnbResult = branchAndBound(utxos, targetSatoshis)
+        if (bnbResult.isNotEmpty()) return bnbResult
+
+        // 2. Fallback to Largest First (minimizes input count and thus current fee)
         val selected = mutableListOf<UTXO>()
         var totalSelected = 0L
+        val sortedUtxos = utxos.sortedByDescending { it.value.value }
 
         for (utxo in sortedUtxos) {
             selected.add(utxo)
@@ -378,18 +387,48 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
             if (totalSelected >= targetSatoshis) break
         }
 
-        if (totalSelected < targetSatoshis) {
-            val largestFirst = utxos.sortedByDescending { it.value.value }
-            selected.clear()
-            totalSelected = 0L
-            for (utxo in largestFirst) {
-                selected.add(utxo)
-                totalSelected += utxo.value.value
-                if (totalSelected >= targetSatoshis) break
+        return if (totalSelected >= targetSatoshis) selected else emptyList()
+    }
+
+    /**
+     * Simplified Branch and Bound implementation for coin selection.
+     * Searches for a combination of UTXOs that avoids change.
+     */
+    private fun branchAndBound(utxos: List<UTXO>, target: Long): List<UTXO> {
+        // Sort descending to optimize search
+        val sorted = utxos.sortedByDescending { it.value.value }
+        var bestSelection = emptyList<UTXO>()
+        val currentSelection = mutableListOf<UTXO>()
+
+        // Limit iterations to prevent UI hang or excessive CPU usage
+        var iterations = 0
+        val maxIterations = 50_000
+
+        fun search(index: Int, currentSum: Long) {
+            if (iterations++ > maxIterations || bestSelection.isNotEmpty()) return
+
+            if (currentSum >= target) {
+                // If we found a match that doesn't require change (sum is target or slightly over but below dust)
+                // we treat it as an exact match to save on change output size.
+                if (currentSum == target || (currentSum - target) < DUST_LIMIT) {
+                    bestSelection = ArrayList(currentSelection)
+                }
+                return
             }
+
+            if (index >= sorted.size) return
+
+            // Including this UTXO
+            currentSelection.add(sorted[index])
+            search(index + 1, currentSum + sorted[index].value.value)
+
+            // Excluding this UTXO
+            currentSelection.removeAt(currentSelection.size - 1)
+            search(index + 1, currentSum)
         }
 
-        return selected
+        search(0, 0L)
+        return bestSelection
     }
 
     /**
