@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.ui.common.TransactionItem
@@ -26,7 +27,7 @@ fun TransactionHistoryScreen(
     onTransactionClick: (String, Coin) -> Unit,
     viewModel: TransactionHistoryViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(walletId, coin) {
         viewModel.loadTransactions(walletId, coin)
@@ -52,28 +53,41 @@ fun TransactionHistoryScreen(
             )
         }
     ) { padding ->
-        if (uiState.isLoading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (uiState.transactions.isEmpty()) {
-             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text(stringResource(R.string.no_transactions))
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(uiState.transactions) { transaction ->
-                    TransactionItem(
-                        transaction = transaction,
-                        modifier = Modifier.clickable {
-                            onTransactionClick(transaction.id, transaction.coin)
-                        }
-                    )
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (uiState.isLoading && uiState.transactions.isEmpty()) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (!uiState.isLoading && uiState.transactions.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.no_transactions),
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(
+                        items = uiState.transactions,
+                        key = { it.id }
+                    ) { transaction ->
+                        TransactionItem(
+                            transaction = transaction,
+                            modifier = Modifier.clickable {
+                                onTransactionClick(transaction.id, transaction.coin)
+                            }
+                        )
+                    }
                 }
+            }
+
+            if (uiState.isLoading && uiState.transactions.isNotEmpty()) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp)
+                        .align(Alignment.TopCenter)
+                )
             }
         }
     }

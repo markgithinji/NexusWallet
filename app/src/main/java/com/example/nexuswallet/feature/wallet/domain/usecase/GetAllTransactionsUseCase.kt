@@ -2,9 +2,6 @@ package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
-import com.example.nexuswallet.feature.core.domain.model.BitcoinTransaction
-import com.example.nexuswallet.feature.core.domain.model.EVMTransaction
-import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.core.domain.model.Transaction
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
@@ -64,12 +61,10 @@ class GetAllTransactionsUseCase @Inject constructor(
         ) { flows ->
             flows.flatMap { it }
                 .sortedByDescending { it.timestamp }
-                .also { logSummary(it) }
         }
             .onStart {
                 // Only trigger the background sync if forceRefresh is requested
                 if (forceRefresh) {
-                    logger.d(tag, "Force refresh requested for wallet: $walletId")
                     launchSyncTransactions(walletId)
                 }
             }
@@ -108,9 +103,7 @@ class GetAllTransactionsUseCase @Inject constructor(
                 network = coin.network
             )
             if (result is Result.Success && result.data.isNotEmpty()) {
-                bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, coin.network)
                 result.data.forEach { bitcoinTransactionRepository.saveTransaction(it) }
-                logger.d(tag, "Saved ${result.data.size} Bitcoin transactions for ${coin.network}")
             }
         } catch (e: Exception) {
             logger.e(tag, "Error syncing Bitcoin for ${coin.network}", e)
@@ -131,10 +124,6 @@ class GetAllTransactionsUseCase @Inject constructor(
                 )
                 if (nativeRes is Result.Success && nativeRes.data.isNotEmpty()) {
                     nativeRes.data.forEach { evmTransactionRepository.saveTransaction(it) }
-                    logger.d(
-                        tag,
-                        "Saved ${nativeRes.data.size} Native ETH transactions for ${token.network}"
-                    )
                 }
             } else {
                 // Sync Token Transactions (USDC, USDT)
@@ -147,10 +136,6 @@ class GetAllTransactionsUseCase @Inject constructor(
                 )
                 if (tokenRes is Result.Success && tokenRes.data.isNotEmpty()) {
                     tokenRes.data.forEach { evmTransactionRepository.saveTransaction(it) }
-                    logger.d(
-                        tag,
-                        "Saved ${tokenRes.data.size} ${token.evmTokenType} transactions for ${token.network}"
-                    )
                 }
             }
         } catch (e: Exception) {
@@ -169,22 +154,13 @@ class GetAllTransactionsUseCase @Inject constructor(
                 limit = 50
             )
             if (result is Result.Success && result.data.isNotEmpty()) {
-                solanaTransactionRepository.deleteForWalletAndNetwork(walletId, coin.network)
+                // REMOVED delete call that caused flickering
+//                solanaTransactionRepository.deleteForWalletAndNetwork(walletId, coin.network)
                 result.data.forEach { solanaTransactionRepository.saveTransaction(it) }
-                logger.d(tag, "Saved ${result.data.size} Solana transactions for ${coin.network}")
             }
         } catch (e: Exception) {
             logger.e(tag, "Error syncing Solana for ${coin.network}", e)
         }
     }
 
-    private fun logSummary(list: List<Transaction>) {
-        val btcCount = list.count { it is BitcoinTransaction }
-        val evmCount = list.count { it is EVMTransaction }
-        val solCount = list.count { it is SolanaTransaction }
-        logger.d(
-            tag,
-            "Emitting - BTC: $btcCount, EVM: $evmCount, SOL: $solCount, Total: ${list.size}"
-        )
-    }
 }
