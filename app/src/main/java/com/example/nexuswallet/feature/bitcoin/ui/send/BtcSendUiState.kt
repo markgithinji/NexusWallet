@@ -19,6 +19,7 @@ data class BtcSendUiState(
     val amountValue: BigDecimal = BigDecimal.ZERO,
     val balance: BigDecimal = BigDecimal.ZERO,
     val balanceFormatted: String = "",
+    val fiatRate: Double = 0.0,
     val feeLevel: FeeLevel = FeeLevel.NORMAL,
     val feeEstimate: BitcoinFeeEstimate? = null,
     val validationResult: SendValidationResult = SendValidationResult(isValid = false),

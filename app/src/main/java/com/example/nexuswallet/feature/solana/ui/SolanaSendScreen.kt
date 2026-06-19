@@ -132,6 +132,7 @@ fun SolanaSendScreen(
                 SendBalanceCard(
                     balance = state.balance,
                     balanceFormatted = state.balanceFormatted,
+                    fiatRate = state.fiatRate,
                     coinColor = solanaLight,
                     iconRes = R.drawable.solana,
                     address = state.walletAddress,
@@ -173,6 +174,7 @@ fun SolanaSendScreen(
                 SendAmountInput(
                     amount = state.amount,
                     coin = coin,
+                    fiatRate = state.fiatRate,
                     onAmountChange = {
                         amountTouched = true
                         viewModel.onEvent(SolanaSendEvent.AmountChanged(it))
@@ -230,6 +232,7 @@ fun SolanaSendScreen(
         MaxAmountDialog(
             balance = state.balance,
             feeEstimate = state.feeEstimate,
+            fiatRate = state.fiatRate,
             tokenSymbol = coin.symbol,
             coin = coin,
             onDismiss = { showMaxDialog = false },

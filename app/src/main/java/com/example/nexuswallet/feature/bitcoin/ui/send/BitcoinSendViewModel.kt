@@ -12,6 +12,7 @@ import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_OUT
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.toSatoshis
+import com.example.nexuswallet.feature.market.domain.MarketRepository
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
@@ -34,6 +35,7 @@ class BitcoinSendViewModel @Inject constructor(
     private val validateBitcoinTransactionUseCase: ValidateBitcoinTransactionUseCase,
     private val walletRepository: WalletRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+    private val marketRepository: MarketRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BtcSendUiState())
@@ -108,9 +110,10 @@ class BitcoinSendViewModel @Inject constructor(
                     )
                 }
 
-                // Load balance and fee estimate after initialization
+                // Load balance, fee estimate, and fiat rate after initialization
                 loadBalance(walletInfo.walletAddress, walletInfo.network)
                 loadFeeEstimate(FeeLevel.NORMAL)
+                loadFiatRate()
             }
 
             is Result.Error -> handleError(result.message)
@@ -210,6 +213,15 @@ class BitcoinSendViewModel @Inject constructor(
         }
         loadBalance(bitcoinCoin.address, network)
         loadFeeEstimate(FeeLevel.NORMAL)
+    }
+
+    private suspend fun loadFiatRate() {
+        when (val result = marketRepository.getTokenDetails("bitcoin")) {
+            is Result.Success -> {
+                _state.update { it.copy(fiatRate = result.data.currentPrice) }
+            }
+            else -> {}
+        }
     }
 
     private fun validateInputs() {

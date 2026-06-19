@@ -21,6 +21,7 @@ data class SolanaSendUIState(
     val isNativeSol: Boolean = true,
     val balance: BigDecimal = BigDecimal.ZERO,
     val balanceFormatted: String = "0 SOL",
+    val fiatRate: Double = 0.0,
     val toAddress: String = "",
     val amount: String = "",
     val amountValue: BigDecimal = BigDecimal.ZERO,

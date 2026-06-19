@@ -36,7 +36,8 @@ class EVMSendViewModel @Inject constructor(
     private val getFeeEstimateUseCase: GetFeeEstimateUseCase,
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val validateEVMSendUseCase: ValidateEVMSendUseCase,
-    private val walletRepository: WalletRepository
+    private val walletRepository: WalletRepository,
+    private val marketRepository: com.example.nexuswallet.feature.market.domain.MarketRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EVMSendUiState())
@@ -107,6 +108,7 @@ class EVMSendViewModel @Inject constructor(
             // Load balance and fee estimate for the initial token
             loadBalances()
             loadFeeEstimate()
+            loadFiatRate(targetCoin)
         }
     }
 
@@ -143,6 +145,7 @@ class EVMSendViewModel @Inject constructor(
 
             loadBalances()
             loadFeeEstimate()
+            loadFiatRate(newToken)
         }
     }
 
@@ -161,6 +164,24 @@ class EVMSendViewModel @Inject constructor(
                 )
             }
             loadBalances()
+            loadFiatRate(token)
+        }
+    }
+
+    private suspend fun loadFiatRate(token: EVMToken?) {
+        val tokenId = when (token) {
+            is NativeETH -> "ethereum"
+            is USDCToken -> "usd-coin"
+            is USDTToken -> "tether"
+            else -> "ethereum"
+        }
+
+        when (val result = marketRepository.getTokenDetails(tokenId)) {
+            is Result.Success -> {
+                _uiState.update { it.copy(fiatRate = result.data.currentPrice) }
+            }
+
+            else -> {}
         }
     }
 

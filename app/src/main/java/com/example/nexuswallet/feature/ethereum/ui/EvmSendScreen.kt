@@ -200,6 +200,7 @@ fun EthereumSendScreen(
                         is USDTToken -> "$${state.tokenBalance.setScale(2, RoundingMode.HALF_UP)} USDT"
                         else -> "${state.tokenBalance.setScale(6, RoundingMode.HALF_UP)} ${selectedToken?.symbol ?: "ETH"}"
                     },
+                    fiatRate = state.fiatRate,
                     coinColor = coinColor,
                     iconRes = iconRes,
                     address = state.fromAddress,
@@ -254,6 +255,7 @@ fun EthereumSendScreen(
                 SendAmountInput(
                     amount = state.amount,
                     coin = selectedToken ?: coin,
+                    fiatRate = state.fiatRate,
                     onAmountChange = {
                         amountTouched = true
                         viewModel.onEvent(EVMSendEvent.AmountChanged(it))
@@ -311,6 +313,7 @@ fun EthereumSendScreen(
         MaxAmountDialog(
             balance = if (selectedToken is NativeETH) state.ethBalance else state.tokenBalance,
             feeEstimate = state.feeEstimate,
+            fiatRate = state.fiatRate,
             tokenSymbol = selectedToken?.symbol ?: "ETH",
             coin = selectedToken ?: coin,
             onDismiss = { showMaxDialog = false },

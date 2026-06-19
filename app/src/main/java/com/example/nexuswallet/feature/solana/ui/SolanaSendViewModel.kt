@@ -34,7 +34,8 @@ class SolanaSendViewModel @Inject constructor(
     private val getSolanaBalanceUseCase: GetSolanaBalanceUseCase,
     private val getSolanaFeeEstimateUseCase: GetSolanaFeeEstimateUseCase,
     private val validateSolanaSendUseCase: ValidateSolanaSendUseCase,
-    private val walletRepository: WalletRepository
+    private val walletRepository: WalletRepository,
+    private val marketRepository: com.example.nexuswallet.feature.market.domain.MarketRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SolanaSendUIState())
@@ -111,6 +112,7 @@ class SolanaSendViewModel @Inject constructor(
                     }
                     loadBalance(targetCoin.address, targetCoin.network)
                     loadFeeEstimate(targetCoin.network)
+                    loadFiatRate()
                 }
 
                 is Result.Error -> {
@@ -157,6 +159,17 @@ class SolanaSendViewModel @Inject constructor(
         viewModelScope.launch {
             loadBalance(solanaCoin.address, network)
             loadFeeEstimate(network)
+            loadFiatRate()
+        }
+    }
+
+    private suspend fun loadFiatRate() {
+        when (val result = marketRepository.getTokenDetails("solana")) {
+            is com.example.nexuswallet.feature.core.util.Result.Success -> {
+                _state.update { it.copy(fiatRate = result.data.currentPrice) }
+            }
+
+            else -> {}
         }
     }
 

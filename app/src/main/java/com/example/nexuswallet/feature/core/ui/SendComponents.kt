@@ -301,6 +301,7 @@ fun NetworkSelectorDialog(
 fun SendBalanceCard(
     balance: BigDecimal,
     balanceFormatted: String,
+    fiatRate: Double,
     coinColor: Color,
     iconRes: Int,
     address: String,
@@ -331,7 +332,7 @@ fun SendBalanceCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    val usdValue = String.format("%.2f", balance.toDouble() * getUsdRate(coinColor))
+                    val usdValue = String.format("%.2f", balance.toDouble() * fiatRate)
 
                     Text(
                         text = "$$usdValue",
@@ -557,6 +558,7 @@ fun SendAddressInput(
 fun SendAmountInput(
     amount: String,
     coin: Coin,
+    fiatRate: Double,
     onAmountChange: (String) -> Unit,
     onFocusChange: (Boolean) -> Unit = {},
     balance: BigDecimal,
@@ -740,14 +742,7 @@ fun SendAmountInput(
                     BigDecimal.ZERO
                 }
 
-                val usdPrice = when (coin) {
-                    is BitcoinCoin -> 45000.0
-                    is NativeETH -> 3000.0
-                    is SolanaCoin -> 30.0
-                    is USDCToken, is USDTToken -> 1.0
-                }
-
-                val usdAmount = amountValue.toDouble() * usdPrice
+                val usdAmount = amountValue.toDouble() * fiatRate
 
                 Text(
                     text = "≈ $${String.format("%.2f", usdAmount)} USD",
@@ -1044,6 +1039,7 @@ fun SendBottomBar(
 fun MaxAmountDialog(
     balance: BigDecimal,
     feeEstimate: Any?,
+    fiatRate: Double,
     tokenSymbol: String,
     coin: Coin,
     onDismiss: () -> Unit,
@@ -1141,12 +1137,20 @@ fun MaxAmountDialog(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        Text(
-                            text = "${maxAmount.stripTrailingZeros().toPlainString()} $tokenSymbol",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        val maxAmountUsd = maxAmount.toDouble() * fiatRate
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = "${maxAmount.stripTrailingZeros().toPlainString()} $tokenSymbol",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "≈ $${String.format("%.2f", maxAmountUsd)} USD",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -1512,17 +1516,6 @@ fun rememberSendErrorState(
             else -> null
         }
     )
-}
-
-// Helper to get USD rate based on coin color
-private fun getUsdRate(coinColor: Color): Double {
-    return when (coinColor) {
-        bitcoinLight -> 45000.0
-        ethereumLight -> 3000.0
-        solanaLight -> 30.0
-        usdcLight -> 1.0
-        else -> 1.0
-    }
 }
 
 data class SendErrorState(

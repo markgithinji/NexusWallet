@@ -19,6 +19,7 @@ data class EVMSendUiState(
     val ethBalance: BigDecimal = BigDecimal.ZERO,
     val tokenBalance: BigDecimal = BigDecimal.ZERO,
     val balanceFormatted: String = "",
+    val fiatRate: Double = 0.0,
     val toAddress: String = "",
     val amount: String = "",
     val amountValue: BigDecimal = BigDecimal.ZERO,
