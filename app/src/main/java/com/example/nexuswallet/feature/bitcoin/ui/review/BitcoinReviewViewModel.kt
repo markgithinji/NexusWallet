@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.bitcoin.ui.review
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinWalletUseCase
@@ -11,6 +12,7 @@ import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_INP
 import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_OUTPUT_COUNT
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.toSatoshis
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.util.ExplorerUrlHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,7 +34,8 @@ class BitcoinReviewViewModel @Inject constructor(
     private val sendBitcoinUseCase: SendBitcoinUseCase,
     private val getBitcoinWalletUseCase: GetBitcoinWalletUseCase,
     private val getBitcoinBalanceUseCase: GetBitcoinBalanceUseCase,
-    private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase
+    private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase,
+    private val bitcoinBlockchainRepository: BitcoinBlockchainRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BitcoinReviewUiState())
@@ -119,9 +122,21 @@ class BitcoinReviewViewModel @Inject constructor(
 
         _state.update { it.copy(isFeeLoading = true) }
 
+        // Fetch UTXOs to determine input count dynamically
+        val utxosResult = bitcoinBlockchainRepository.getUnspentOutputs(state.fromAddress, state.network)
+        val inputCount = if (utxosResult is Result.Success) {
+            val selected = bitcoinBlockchainRepository.selectUtxos(
+                utxosResult.data,
+                state.amountValue.toSatoshis()
+            )
+            if (selected.isNotEmpty()) selected.size else DEFAULT_INPUT_COUNT
+        } else {
+            DEFAULT_INPUT_COUNT
+        }
+
         when (val result = getBitcoinFeeEstimateUseCase(
             feeLevel = state.feeLevel,
-            inputCount = DEFAULT_INPUT_COUNT,     // TODO: Calculate this dynamically based on UTXOs
+            inputCount = inputCount,
             outputCount = DEFAULT_OUTPUT_COUNT,
             network = state.network
         )) {

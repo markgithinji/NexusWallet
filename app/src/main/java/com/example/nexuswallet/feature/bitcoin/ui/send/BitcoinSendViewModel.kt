@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.bitcoin.ui.send
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinWalletUseCase
@@ -10,6 +11,7 @@ import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_INP
 import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_OUTPUT_COUNT
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.toSatoshis
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
@@ -31,6 +33,7 @@ class BitcoinSendViewModel @Inject constructor(
     private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase,
     private val validateBitcoinTransactionUseCase: ValidateBitcoinTransactionUseCase,
     private val walletRepository: WalletRepository,
+    private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BtcSendUiState())
@@ -134,11 +137,25 @@ class BitcoinSendViewModel @Inject constructor(
     }
 
     private suspend fun loadFeeEstimate(feeLevel: FeeLevel) {
+        val state = _state.value
+
+        // Fetch UTXOs to determine input count dynamically
+        val utxosResult = bitcoinBlockchainRepository.getUnspentOutputs(state.walletAddress, state.network)
+        val inputCount = if (utxosResult is Result.Success) {
+            val selected = bitcoinBlockchainRepository.selectUtxos(
+                utxosResult.data,
+                state.amountValue.toSatoshis()
+            )
+            if (selected.isNotEmpty()) selected.size else DEFAULT_INPUT_COUNT
+        } else {
+            DEFAULT_INPUT_COUNT
+        }
+
         when (val result = getBitcoinFeeEstimateUseCase(
             feeLevel = feeLevel,
-            inputCount = DEFAULT_INPUT_COUNT,
+            inputCount = inputCount,
             outputCount = DEFAULT_OUTPUT_COUNT,
-            network = _state.value.network
+            network = state.network
         )) {
             is Result.Success -> {
                 _state.update { it.copy(feeEstimate = result.data) }
