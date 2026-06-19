@@ -20,7 +20,8 @@ interface BitcoinBlockchainRepository {
     suspend fun getFeeEstimate(
         feeLevel: FeeLevel,
         inputCount: Int,
-        outputCount: Int
+        outputCount: Int,
+        network: BitcoinNetwork
     ): Result<BitcoinFeeEstimate>
 
     suspend fun getUnspentOutputs(

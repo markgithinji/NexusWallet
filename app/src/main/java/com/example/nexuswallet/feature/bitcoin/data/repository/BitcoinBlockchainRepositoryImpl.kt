@@ -81,10 +81,11 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
     override suspend fun getFeeEstimate(
         feeLevel: FeeLevel,
         inputCount: Int,
-        outputCount: Int
+        outputCount: Int,
+        network: BitcoinNetwork
     ): Result<BitcoinFeeEstimate> = withContext(ioDispatcher) {
         SafeApiCall.make {
-            val api = getApiForNetwork(BitcoinNetwork.Mainnet)
+            val api = getApiForNetwork(network)
             val estimates = api.getFeeEstimates()
 
             // Get fee rate based on confirmation target
@@ -249,7 +250,7 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
                 return@withContext Result.Error("No UTXOs found for address: $fromAddress")
             }
 
-            val feeSatoshis = when (val feeResult = getFeeEstimate(feeLevel, allUtxos.size, 2)) {
+            val feeSatoshis = when (val feeResult = getFeeEstimate(feeLevel, allUtxos.size, 2, network)) {
                 is Result.Success -> feeResult.data.totalFeeSatoshis
                 else -> DEFAULT_FEE_SATOSHIS
             }

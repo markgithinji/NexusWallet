@@ -76,7 +76,8 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
         val initialFeeResult = bitcoinBlockchainRepository.getFeeEstimate(
             feeLevel,
             DEFAULT_INPUT_COUNT,
-            DEFAULT_OUTPUT_COUNT
+            DEFAULT_OUTPUT_COUNT,
+            network
         )
 
         val initialFeeSatoshis = when (initialFeeResult) {
@@ -95,7 +96,8 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
         val feeResult = bitcoinBlockchainRepository.getFeeEstimate(
             feeLevel,
             inputCount,
-            outputCount
+            outputCount,
+            network
         )
 
         // Process based on fee result

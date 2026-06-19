@@ -5,6 +5,7 @@ import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockcha
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,12 +20,13 @@ class GetBitcoinFeeEstimateUseCase @Inject constructor(
     suspend operator fun invoke(
         feeLevel: FeeLevel,
         inputCount: Int,
-        outputCount: Int
+        outputCount: Int,
+        network: BitcoinNetwork
     ): Result<BitcoinFeeEstimate> {
         logger.d(
             tag,
-            "Getting fee estimate for $feeLevel with $inputCount inputs, $outputCount outputs"
+            "Getting fee estimate for $feeLevel ($network) with $inputCount inputs, $outputCount outputs"
         )
-        return bitcoinBlockchainRepository.getFeeEstimate(feeLevel, inputCount, outputCount)
+        return bitcoinBlockchainRepository.getFeeEstimate(feeLevel, inputCount, outputCount, network)
     }
 }

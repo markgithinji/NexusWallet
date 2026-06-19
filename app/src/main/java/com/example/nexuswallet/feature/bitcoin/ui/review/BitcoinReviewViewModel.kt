@@ -122,7 +122,8 @@ class BitcoinReviewViewModel @Inject constructor(
         when (val result = getBitcoinFeeEstimateUseCase(
             feeLevel = state.feeLevel,
             inputCount = DEFAULT_INPUT_COUNT,     // TODO: Calculate this dynamically based on UTXOs
-            outputCount = DEFAULT_OUTPUT_COUNT
+            outputCount = DEFAULT_OUTPUT_COUNT,
+            network = state.network
         )) {
             is Result.Success -> {
                 _state.update {

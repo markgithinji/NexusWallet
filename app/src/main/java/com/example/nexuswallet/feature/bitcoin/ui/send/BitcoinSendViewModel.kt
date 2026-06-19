@@ -137,7 +137,8 @@ class BitcoinSendViewModel @Inject constructor(
         when (val result = getBitcoinFeeEstimateUseCase(
             feeLevel = feeLevel,
             inputCount = DEFAULT_INPUT_COUNT,
-            outputCount = DEFAULT_OUTPUT_COUNT
+            outputCount = DEFAULT_OUTPUT_COUNT,
+            network = _state.value.network
         )) {
             is Result.Success -> {
                 _state.update { it.copy(feeEstimate = result.data) }
