@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.solana.data.di
 
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionDao
 import com.example.nexuswallet.feature.solana.data.remote.HeliusApi
 import com.example.nexuswallet.feature.solana.data.remote.HeliusInterceptor

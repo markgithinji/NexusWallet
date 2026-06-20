@@ -38,10 +38,10 @@ import javax.inject.Singleton
 
 @Singleton
 class SolanaBlockchainRepositoryImpl @Inject constructor(
-    @param:Named("heliusRpcDevnet") private val rpcDevnetConnection: Connection,
-    @param:Named("heliusRpcMainnet") private val rpcMainnetConnection: Connection,
-    @param:Named("heliusApiDevnet") private val devnetApi: HeliusApi,
-    @param:Named("heliusApiMainnet") private val mainnetApi: HeliusApi,
+    @param:Named("helius_rpc_devnet") private val rpcDevnetConnection: Connection,
+    @param:Named("helius_rpc_mainnet") private val rpcMainnetConnection: Connection,
+    @param:Named("helius_api_devnet") private val devnetApi: HeliusApi,
+    @param:Named("helius_api_mainnet") private val mainnetApi: HeliusApi,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : SolanaBlockchainRepository {
 
@@ -77,11 +77,13 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
             val publicKey = PublicKey(address)
             val balance = connection.getBalance(publicKey)
 
-            BigDecimal(balance).divide(
+            val result = BigDecimal(balance).divide(
                 BigDecimal(LAMPORTS_PER_SOL),
                 SOL_DECIMALS,
                 RoundingMode.HALF_UP
             )
+            
+            result
         }
     }
 

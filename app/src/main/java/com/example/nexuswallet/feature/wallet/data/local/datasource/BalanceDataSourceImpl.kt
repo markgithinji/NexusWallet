@@ -28,7 +28,7 @@ class BalanceDataSourceImpl @Inject constructor(
     override suspend fun saveWalletBalance(balance: WalletBalance) {
         // Save Bitcoin balances
         balance.bitcoinBalances.forEach { (network, bitcoinBalance) ->
-            val bitcoinCoin = bitcoinCoinDao.getByAddress(bitcoinBalance.address)
+            val bitcoinCoin = bitcoinCoinDao.getByAddressAndNetwork(bitcoinBalance.address, network)
             if (bitcoinCoin != null) {
                 bitcoinBalanceDao.insert(bitcoinBalance.toEntity(bitcoinCoin.id))
             }
@@ -36,7 +36,7 @@ class BalanceDataSourceImpl @Inject constructor(
 
         // Save Solana balances
         balance.solanaBalances.forEach { (network, solanaBalance) ->
-            val solanaCoin = solanaCoinDao.getByAddress(solanaBalance.address)
+            val solanaCoin = solanaCoinDao.getByAddressAndNetwork(solanaBalance.address, network)
             if (solanaCoin != null) {
                 solanaBalanceDao.insert(solanaBalance.toEntity(solanaCoin.id))
             }
