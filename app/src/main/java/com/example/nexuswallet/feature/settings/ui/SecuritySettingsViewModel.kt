@@ -16,6 +16,8 @@ import com.example.nexuswallet.feature.settings.domain.usecase.SetPinUseCase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 @HiltViewModel
 class SecuritySettingsViewModel @Inject constructor(
@@ -29,6 +31,10 @@ class SecuritySettingsViewModel @Inject constructor(
     // UI State
     private val _uiState = MutableStateFlow<Result<SecurityUiState>>(Result.Loading)
     val uiState: StateFlow<Result<SecurityUiState>> = _uiState.asStateFlow()
+
+    // UI Effects
+    private val _uiEffect = MutableSharedFlow<SecurityUiEffect>()
+    val uiEffect = _uiEffect.asSharedFlow()
 
     // Dialog states
     private val _showPinSetupDialog = MutableStateFlow(false)
@@ -81,7 +87,7 @@ class SecuritySettingsViewModel @Inject constructor(
                     refreshAuthStatus()
                 }
                 is Result.Error -> {
-                    _uiState.value = Result.Error(result.message)
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
                 }
                 Result.Loading -> { /* Ignore */ }
             }
@@ -105,12 +111,22 @@ class SecuritySettingsViewModel @Inject constructor(
                             )
                             Result.Success(updatedState)
                         }
-                        else -> currentState
+                        else -> {
+                            // If we weren't in success state, transition to it
+                            Result.Success(
+                                SecurityUiState(
+                                    isBiometricEnabled = status.isBiometricEnabled,
+                                    isPinSet = status.isPinSet,
+                                    availableAuthMethods = status.availableMethods,
+                                    isAnyAuthEnabled = status.isAnyAuthEnabled
+                                )
+                            )
+                        }
                     }
                 }
             }
             is Result.Error -> {
-                _uiState.value = Result.Error(result.message)
+                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
             }
             Result.Loading -> { /* Ignore */ }
         }
@@ -150,9 +166,10 @@ class SecuritySettingsViewModel @Inject constructor(
             when (val result = clearAllSecurityDataUseCase()) {
                 is Result.Success -> {
                     refreshAuthStatus()
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar("All security data cleared"))
                 }
                 is Result.Error -> {
-                    _uiState.value = Result.Error(result.message)
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
                 }
                 Result.Loading -> { /* Ignore */ }
             }
@@ -175,6 +192,8 @@ class SecuritySettingsViewModel @Inject constructor(
                     if (result.data) {
                         refreshAuthStatus()
                         _showPinSetupDialog.value = false
+                        _showPinChangeDialog.value = false
+                        _uiEffect.emit(SecurityUiEffect.ShowSnackbar("PIN set successfully"))
                     } else {
                         _pinSetupError.value = "Failed to set PIN"
                     }
@@ -203,9 +222,10 @@ class SecuritySettingsViewModel @Inject constructor(
             when (val result = clearPinUseCase()) {
                 is Result.Success -> {
                     refreshAuthStatus()
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar("PIN removed"))
                 }
                 is Result.Error -> {
-                    _uiState.value = Result.Error(result.message)
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
                 }
                 Result.Loading -> { /* Ignore */ }
             }

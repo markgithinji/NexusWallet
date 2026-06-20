@@ -48,6 +48,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
+import androidx.compose.ui.res.stringResource
+import com.example.nexuswallet.R
+
 private const val PIN_LENGTH = 6
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,7 +111,7 @@ fun PinSetupDialog(
 
                 // Title
                 Text(
-                    text = if (!isConfirmStep) title else "Confirm Your PIN",
+                    text = if (!isConfirmStep) title else stringResource(R.string.confirm_pin_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -119,7 +122,7 @@ fun PinSetupDialog(
 
                 // Subtitle
                 Text(
-                    text = if (!isConfirmStep) subtitle else "Re-enter your PIN to confirm",
+                    text = if (!isConfirmStep) subtitle else stringResource(R.string.confirm_pin_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -131,6 +134,9 @@ fun PinSetupDialog(
                 Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    val label = if (!isConfirmStep) stringResource(R.string.create_pin_label) else stringResource(R.string.confirm_pin_label)
+                    val placeholder = stringResource(R.string.pin_digits_hint, PIN_LENGTH)
+
                     OutlinedTextField(
                         value = if (!isConfirmStep) pin else confirmPin,
                         onValueChange = { newValue ->
@@ -153,14 +159,14 @@ fun PinSetupDialog(
                         modifier = Modifier.fillMaxWidth(),
                         label = {
                             Text(
-                                text = if (!isConfirmStep) "Create PIN" else "Confirm PIN",
+                                text = label,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
                         placeholder = {
                             Text(
-                                text = "Enter $PIN_LENGTH digits",
+                                text = placeholder,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                             )
@@ -195,7 +201,7 @@ fun PinSetupDialog(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "PIN must be $PIN_LENGTH digits",
+                                text = stringResource(R.string.pin_length_error, PIN_LENGTH),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelSmall
                             )
@@ -241,12 +247,15 @@ fun PinSetupDialog(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         Text(
-                            text = "Cancel",
+                            text = stringResource(R.string.cancel),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+
+                    val pinMismatchError = stringResource(R.string.pin_mismatch_error)
+                    val pinLengthError = stringResource(R.string.pin_length_error, PIN_LENGTH)
 
                     Button(
                         onClick = {
@@ -255,13 +264,13 @@ fun PinSetupDialog(
                                 if (pin.length == PIN_LENGTH) {
                                     isConfirmStep = true
                                 } else {
-                                    localError = "PIN must be $PIN_LENGTH digits"
+                                    localError = pinLengthError
                                 }
                             } else {
                                 if (pin == confirmPin) {
                                     onPinSet(pin)
                                 } else {
-                                    localError = "PINs don't match"
+                                    localError = pinMismatchError
                                 }
                             }
                         },
@@ -279,7 +288,7 @@ fun PinSetupDialog(
                         )
                     ) {
                         Text(
-                            text = if (!isConfirmStep) "Continue" else "Confirm",
+                            text = if (!isConfirmStep) stringResource(R.string.continue_button) else stringResource(R.string.confirm),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )

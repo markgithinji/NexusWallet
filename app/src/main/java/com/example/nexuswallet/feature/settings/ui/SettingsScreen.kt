@@ -34,6 +34,9 @@ import androidx.navigation.NavController
 
 import androidx.compose.material3.MaterialTheme
 
+import androidx.compose.ui.res.stringResource
+import com.example.nexuswallet.R
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -53,7 +56,7 @@ fun SettingsScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Settings",
+                            text = stringResource(R.string.settings_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
@@ -78,8 +81,8 @@ fun SettingsScreen(
         ) {
             // Security Settings Option
             SettingsItem(
-                title = "Security",
-                description = "PIN, Biometric, Encryption",
+                title = stringResource(R.string.security_settings),
+                description = stringResource(R.string.security_description),
                 icon = Icons.Outlined.Security,
                 onClick = onNavigateToSecurity
             )
@@ -88,8 +91,8 @@ fun SettingsScreen(
 
             // Currency Settings
             SettingsItem(
-                title = "Currency",
-                description = "Display currency preferences",
+                title = stringResource(R.string.currency_settings),
+                description = stringResource(R.string.currency_description),
                 icon = Icons.Outlined.CurrencyExchange,
                 onClick = { /* Navigate to currency settings */ }
             )
@@ -98,8 +101,8 @@ fun SettingsScreen(
 
             // Network Settings
             SettingsItem(
-                title = "Networks",
-                description = "Configure blockchain networks",
+                title = stringResource(R.string.network_settings),
+                description = stringResource(R.string.network_description),
                 icon = Icons.Outlined.NetworkCheck,
                 onClick = { /* Navigate to network settings */ }
             )
@@ -108,8 +111,8 @@ fun SettingsScreen(
 
             // About
             SettingsItem(
-                title = "About",
-                description = "App version and information",
+                title = stringResource(R.string.about_settings),
+                description = stringResource(R.string.about_description),
                 icon = Icons.Outlined.Info,
                 onClick = { /* Navigate to about screen */ }
             )

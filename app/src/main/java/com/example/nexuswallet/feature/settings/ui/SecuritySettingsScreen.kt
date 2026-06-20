@@ -32,6 +32,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.warning
 
+import androidx.compose.ui.res.stringResource
+import com.example.nexuswallet.R
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SecuritySettingsScreen(
@@ -43,12 +46,24 @@ fun SecuritySettingsScreen(
     val showPinSetupDialog by viewModel.showPinSetupDialog.collectAsStateWithLifecycle()
     val showPinChangeDialog by viewModel.showPinChangeDialog.collectAsStateWithLifecycle()
     val pinSetupError by viewModel.pinSetupError.collectAsStateWithLifecycle()
+    
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is SecurityUiEffect.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(effect.message)
+                }
+            }
+        }
+    }
 
     // PIN Setup Dialog
     SecurityPinDialog(
         showDialog = showPinSetupDialog || showPinChangeDialog,
-        title = if (showPinSetupDialog) "Setup PIN" else "Change PIN",
-        subtitle = "Enter a 6-digit PIN",
+        title = if (showPinSetupDialog) stringResource(R.string.setup_pin) else stringResource(R.string.change_pin),
+        subtitle = stringResource(R.string.pin_digits_hint, 6),
         errorMessage = pinSetupError,
         onPinSet = viewModel::setNewPin,
         onDismiss = viewModel::cancelPinSetup
@@ -56,6 +71,7 @@ fun SecuritySettingsScreen(
 
     Scaffold(
         topBar = { SecurityTopBar(onNavigateUp = onNavigateUp) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
@@ -94,7 +110,7 @@ private fun SecurityTopBar(onNavigateUp: () -> Unit) {
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Security Settings",
+                    text = stringResource(R.string.security_settings),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -164,7 +180,7 @@ private fun SecurityErrorContent(
             )
         ) {
             Text(
-                "Retry",
+                stringResource(R.string.try_again),
                 color = MaterialTheme.colorScheme.onPrimary,
                 style = MaterialTheme.typography.labelLarge
             )
@@ -238,7 +254,7 @@ private fun SecurityStatusCard(
 
     SecurityCard {
         Text(
-            text = "Security Status",
+            text = stringResource(R.string.security_status),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
@@ -267,7 +283,7 @@ private fun SecurityScoreRow(score: Int) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = "Security Score",
+            text = stringResource(R.string.security_score),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -317,15 +333,15 @@ private fun SecurityFeaturesList(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SecurityFeatureItem(
-            feature = "Biometric Authentication",
+            feature = stringResource(R.string.biometric_authentication),
             enabled = isBiometricEnabled
         )
         SecurityFeatureItem(
-            feature = "PIN Protection",
+            feature = stringResource(R.string.pin_protection),
             enabled = isPinSet
         )
         SecurityFeatureItem(
-            feature = "Encrypted Backup",
+            feature = stringResource(R.string.encrypted_backup),
             enabled = isBackupAvailable
         )
     }
@@ -351,7 +367,7 @@ private fun SecurityFeatureItem(feature: String, enabled: Boolean) {
             modifier = Modifier.weight(1f)
         )
         Text(
-            text = if (enabled) "Active" else "Inactive",
+            text = if (enabled) stringResource(R.string.active) else stringResource(R.string.inactive),
             style = MaterialTheme.typography.labelSmall,
             color = if (enabled) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -366,8 +382,8 @@ private fun PinSection(
     onSetupPin: () -> Unit
 ) {
     SecuritySection(
-        title = "PIN Protection",
-        description = "Add an extra layer of security with a PIN"
+        title = stringResource(R.string.pin_protection),
+        description = stringResource(R.string.pin_description)
     ) {
         if (isPinSet) {
             PinManagementButtons(
@@ -387,11 +403,11 @@ private fun PinManagementButtons(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         PrimaryButton(
-            text = "Change PIN",
+            text = stringResource(R.string.change_pin),
             onClick = onChangePin
         )
         DangerButton(
-            text = "Remove PIN",
+            text = stringResource(R.string.remove_pin),
             onClick = onRemovePin
         )
     }
@@ -400,7 +416,7 @@ private fun PinManagementButtons(
 @Composable
 private fun PinSetupButton(onSetupPin: () -> Unit) {
     PrimaryButton(
-        text = "Setup PIN",
+        text = stringResource(R.string.setup_pin),
         onClick = onSetupPin
     )
 }
@@ -411,8 +427,8 @@ private fun BiometricSection(
     onToggle: (Boolean) -> Unit
 ) {
     SecuritySection(
-        title = "Biometric Authentication",
-        description = "Use fingerprint or face recognition"
+        title = stringResource(R.string.biometric_authentication),
+        description = stringResource(R.string.biometric_description)
     ) {
         BiometricToggle(
             isEnabled = isBiometricEnabled,
@@ -431,7 +447,7 @@ private fun BiometricToggle(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = if (isEnabled) "Enabled" else "Disabled",
+            text = if (isEnabled) stringResource(R.string.enabled) else stringResource(R.string.disabled),
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
             color = if (isEnabled) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -457,20 +473,20 @@ private fun BackupSection(
     onDeleteBackup: () -> Unit
 ) {
     SecuritySection(
-        title = "Encrypted Backup",
-        description = "Create and restore encrypted backups"
+        title = stringResource(R.string.encrypted_backup),
+        description = stringResource(R.string.backup_description)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PrimaryButton(
-                text = "Create Encrypted Backup",
+                text = stringResource(R.string.create_backup),
                 onClick = onCreateBackup
             )
             PrimaryButton(
-                text = "Restore from Backup",
+                text = stringResource(R.string.restore_backup),
                 onClick = onRestoreBackup
             )
             DangerButton(
-                text = "Delete Backup",
+                text = stringResource(R.string.delete_backup),
                 onClick = onDeleteBackup
             )
         }
@@ -480,11 +496,11 @@ private fun BackupSection(
 @Composable
 private fun AdvancedSecuritySection(onClearAllData: () -> Unit) {
     SecuritySection(
-        title = "Advanced Security",
-        description = "Advanced security options"
+        title = stringResource(R.string.advanced_security),
+        description = stringResource(R.string.advanced_security_description)
     ) {
         DangerButton(
-            text = "Clear All Secure Data",
+            text = stringResource(R.string.clear_all_data),
             onClick = onClearAllData
         )
     }
@@ -611,10 +627,10 @@ private fun SecurityOperationOverlay(operationState: SecurityOperation) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = when (operationState) {
-                            SecurityOperation.BACKING_UP -> "Creating backup..."
-                            SecurityOperation.RESTORING -> "Restoring..."
-                            SecurityOperation.UPDATING -> "Updating..."
-                            else -> "Processing..."
+                            SecurityOperation.BACKING_UP -> stringResource(R.string.creating_backup)
+                            SecurityOperation.RESTORING -> stringResource(R.string.restoring)
+                            SecurityOperation.UPDATING -> stringResource(R.string.updating)
+                            else -> stringResource(R.string.processing)
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
