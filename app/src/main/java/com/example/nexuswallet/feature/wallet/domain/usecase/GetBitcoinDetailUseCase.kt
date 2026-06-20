@@ -20,7 +20,6 @@ class GetBitcoinDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-    private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -75,8 +74,7 @@ class GetBitcoinDetailUseCase @Inject constructor(
             Result.Loading -> {}
         }
 
-        // 4. Sync and Get balance
-        syncWalletBalancesUseCase(wallet)
+        // 4. Get balance (Already synced by ViewModel)
         val balance = walletRepository.getWalletBalance(walletId)
         val coinBalance = balance?.bitcoinBalances?.get(bitcoinCoin.network)
         logger.d(tag, "Balance for ${network.name}: ${coinBalance?.btc ?: "0"} BTC")

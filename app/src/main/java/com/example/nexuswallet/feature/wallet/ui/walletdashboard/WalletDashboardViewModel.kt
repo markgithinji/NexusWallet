@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.wallet.ui.walletdashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
@@ -22,7 +23,8 @@ import javax.inject.Inject
 @HiltViewModel
 class WalletDashboardViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
-    private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase
+    private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
+    private val getSimplePricesUseCase: GetSimplePricesUseCase
 ) : ViewModel() {
 
     // State
@@ -115,8 +117,22 @@ class WalletDashboardViewModel @Inject constructor(
             if (currentWallets.isNotEmpty()) {
                 val allErrors = mutableListOf<ChainSyncError>()
 
+                // Fetch prices once for all wallets
+                val allSymbols = currentWallets.flatMap { wallet ->
+                    wallet.bitcoinCoins.map { it.symbol } +
+                            wallet.solanaCoins.map { it.symbol } +
+                            wallet.evmTokens.map { it.symbol }
+                }.distinct()
+
+                val pricesResult = getSimplePricesUseCase(allSymbols)
+                val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
+
+                if (pricesResult is Result.Error) {
+                    _operationError.update { "Price fetch failed: ${pricesResult.message}. Using last known balances." }
+                }
+
                 currentWallets.forEach { wallet ->
-                    val result = syncWalletBalancesUseCase(wallet)
+                    val result = syncWalletBalancesUseCase(wallet, prices)
                     if (result is Result.Success && result.data.hasErrors) {
                         allErrors.addAll(result.data.errors)
                     }
@@ -128,7 +144,9 @@ class WalletDashboardViewModel @Inject constructor(
                             val assetPrefix = error.assetSymbol?.let { "$it on " } ?: ""
                             "• $assetPrefix${error.network.name}: ${error.message}"
                         }
-                    _operationError.update { "Partial sync failure:\n$errorString" }
+                    val existingError = _operationError.value
+                    val newError = "Partial sync failure:\n$errorString"
+                    _operationError.update { if (existingError != null) "$existingError\n\n$newError" else newError }
                 }
 
                 loadBalances(currentWallets)

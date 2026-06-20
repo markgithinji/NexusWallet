@@ -26,7 +26,6 @@ class GetEthereumDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
-    private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -103,8 +102,7 @@ class GetEthereumDetailUseCase @Inject constructor(
             }
         }
 
-        // 5. Sync and Get balance
-        syncWalletBalancesUseCase(wallet)
+        // 5. Get balance (Already synced by ViewModel)
         val balance = walletRepository.getWalletBalance(walletId)
         val tokenBalance = balance?.evmBalances?.find {
             it.network == verifiedToken.network && it.evmTokenType == verifiedToken.evmTokenType

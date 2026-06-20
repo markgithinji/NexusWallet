@@ -9,6 +9,7 @@ import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.core.domain.model.Transaction
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.domain.MarketRepository
+import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
@@ -40,6 +41,7 @@ class WalletDetailViewModel @Inject constructor(
     private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
     private val getAllTransactionsUseCase: GetAllTransactionsUseCase,
     private val marketRepository: MarketRepository,
+    private val getSimplePricesUseCase: GetSimplePricesUseCase,
     private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
     private val formatBalanceUseCase: FormatBalanceUseCase,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
@@ -160,7 +162,16 @@ class WalletDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshingBalance = true) }
 
-            when (val syncResult = syncWalletBalancesUseCase(wallet)) {
+            // 1. Fetch prices
+            val symbols = (wallet.bitcoinCoins.map { it.symbol } +
+                    wallet.solanaCoins.map { it.symbol } +
+                    wallet.evmTokens.map { it.symbol }).distinct()
+
+            val pricesResult = getSimplePricesUseCase(symbols)
+            val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
+
+            // 2. Sync balances with prices
+            when (val syncResult = syncWalletBalancesUseCase(wallet, prices)) {
                 is Result.Success -> {
                     val updatedBalance = walletRepository.getWalletBalance(walletId)
                     if (updatedBalance != null) {

@@ -19,7 +19,6 @@ class GetSolanaDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val solanaTransactionRepository: SolanaTransactionRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
-    private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -88,8 +87,7 @@ class GetSolanaDetailUseCase @Inject constructor(
             }
         }
 
-        // 5. Sync and Get balance
-        syncWalletBalancesUseCase(wallet)
+        // 5. Get balance (Already synced by ViewModel)
         val balance = walletRepository.getWalletBalance(walletId)
         val coinBalance = balance?.solanaBalances?.get(network)
         logger.d(tag, "Balance for ${network.name}: ${coinBalance?.sol ?: "0"} SOL")

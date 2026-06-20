@@ -132,7 +132,6 @@ object WalletDomainModule {
         walletRepository: WalletRepository,
         bitcoinTransactionRepository: BitcoinTransactionRepository,
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-        syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetBitcoinDetailUseCase {
@@ -140,7 +139,6 @@ object WalletDomainModule {
             walletRepository = walletRepository,
             bitcoinTransactionRepository = bitcoinTransactionRepository,
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
-            syncWalletBalancesUseCase = syncWalletBalancesUseCase,
             logger = logger,
             ioDispatcher = ioDispatcher
         )
@@ -152,7 +150,6 @@ object WalletDomainModule {
         walletRepository: WalletRepository,
         evmTransactionRepository: EVMTransactionRepository,
         evmBlockchainRepository: EVMBlockchainRepository,
-        syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetEthereumDetailUseCase {
@@ -160,7 +157,6 @@ object WalletDomainModule {
             walletRepository = walletRepository,
             evmTransactionRepository = evmTransactionRepository,
             evmBlockchainRepository = evmBlockchainRepository,
-            syncWalletBalancesUseCase = syncWalletBalancesUseCase,
             logger = logger,
             ioDispatcher = ioDispatcher
         )
@@ -172,7 +168,6 @@ object WalletDomainModule {
         walletRepository: WalletRepository,
         solanaTransactionRepository: SolanaTransactionRepository,
         solanaBlockchainRepository: SolanaBlockchainRepository,
-        syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetSolanaDetailUseCase {
@@ -180,7 +175,6 @@ object WalletDomainModule {
             walletRepository = walletRepository,
             solanaTransactionRepository = solanaTransactionRepository,
             solanaBlockchainRepository = solanaBlockchainRepository,
-            syncWalletBalancesUseCase = syncWalletBalancesUseCase,
             logger = logger,
             ioDispatcher = ioDispatcher
         )

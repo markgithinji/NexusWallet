@@ -41,24 +41,27 @@ class SyncWalletBalancesUseCase @Inject constructor(
 
     private val tag = "SyncBalancesUC"
 
-    suspend operator fun invoke(wallet: Wallet): Result<SyncReport> = withContext(ioDispatcher) {
+    suspend operator fun invoke(
+        wallet: Wallet,
+        prices: Map<String, Double> = emptyMap()
+    ): Result<SyncReport> = withContext(ioDispatcher) {
         logger.d(tag, "Syncing balances for wallet: ${wallet.name}")
 
         val errors = mutableListOf<ChainSyncError>()
 
         // Sync Bitcoin balances
         wallet.bitcoinCoins.forEach { coin ->
-            errors.addAll(syncBitcoinBalance(wallet.id, coin))
+            errors.addAll(syncBitcoinBalance(wallet.id, coin, prices[coin.symbol] ?: 0.0))
         }
 
         // Sync Solana balances (including SPL tokens)
         wallet.solanaCoins.forEach { coin ->
-            errors.addAll(syncSolanaBalance(wallet.id, coin))
+            errors.addAll(syncSolanaBalance(wallet.id, coin, prices[coin.symbol] ?: 0.0))
         }
 
         // Sync EVM balances (Native ETH + all tokens)
         if (wallet.evmTokens.isNotEmpty()) {
-            errors.addAll(syncEVMBalances(wallet.id, wallet.evmTokens))
+            errors.addAll(syncEVMBalances(wallet.id, wallet.evmTokens, prices))
         }
 
         val report = SyncReport(walletId = wallet.id, errors = errors)
@@ -72,7 +75,11 @@ class SyncWalletBalancesUseCase @Inject constructor(
         Result.Success(report)
     }
 
-    private suspend fun syncBitcoinBalance(walletId: String, coin: BitcoinCoin): List<ChainSyncError> {
+    private suspend fun syncBitcoinBalance(
+        walletId: String,
+        coin: BitcoinCoin,
+        price: Double
+    ): List<ChainSyncError> {
         val balanceResult = bitcoinBlockchainRepository.getBalance(
             address = coin.address,
             network = coin.network
@@ -83,7 +90,7 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 val btcBalance = balanceResult.data
                 val satoshiBalance =
                     (btcBalance * BigDecimal("100000000")).toBigInteger().toString()
-                val usdValue = calculateUsdValue(btcBalance, coin)
+                val usdValue = btcBalance.toDouble() * price
 
                 val currentBalance = balanceDataSource.loadWalletBalance(walletId)
                     ?: WalletBalance(
@@ -127,7 +134,11 @@ class SyncWalletBalancesUseCase @Inject constructor(
         }
     }
 
-    private suspend fun syncSolanaBalance(walletId: String, coin: SolanaCoin): List<ChainSyncError> {
+    private suspend fun syncSolanaBalance(
+        walletId: String,
+        coin: SolanaCoin,
+        price: Double
+    ): List<ChainSyncError> {
         val solBalanceResult = solanaBlockchainRepository.getBalance(
             address = coin.address,
             network = coin.network
@@ -138,7 +149,7 @@ class SyncWalletBalancesUseCase @Inject constructor(
                 val solBalance = solBalanceResult.data
                 val lamportsBalance =
                     (solBalance * BigDecimal("1000000000")).toBigInteger().toString()
-                val usdValue = calculateUsdValue(solBalance, coin)
+                val usdValue = solBalance.toDouble() * price
 
                 val currentBalance = balanceDataSource.loadWalletBalance(walletId)
                     ?: WalletBalance(
@@ -184,7 +195,8 @@ class SyncWalletBalancesUseCase @Inject constructor(
 
     private suspend fun syncEVMBalances(
         walletId: String,
-        tokens: List<EVMToken>
+        tokens: List<EVMToken>,
+        prices: Map<String, Double>
     ): List<ChainSyncError> {
         val evmBalances = mutableListOf<EVMBalance>()
         val chainErrors = mutableListOf<ChainSyncError>()
@@ -215,7 +227,8 @@ class SyncWalletBalancesUseCase @Inject constructor(
                             .toString()
                     }
 
-                    val usdValue = calculateTokenUsdValue(balance, token)
+                    val price = prices[token.symbol] ?: 0.0
+                    val usdValue = balance.toDouble() * price
 
                     evmBalances.add(
                         EVMBalance(
@@ -275,24 +288,5 @@ class SyncWalletBalancesUseCase @Inject constructor(
         }
 
         return chainErrors
-    }
-
-    // TODO: fetch from price API
-    private fun calculateUsdValue(amount: BigDecimal, coin: Coin): Double {
-        val price = when (coin) {
-            is BitcoinCoin -> 45000.0
-            is NativeETH -> 3000.0
-            is SolanaCoin -> 30.0
-            is USDCToken, is USDTToken -> 1.0
-        }
-        return amount.toDouble() * price
-    }
-
-    // TODO: fetch from price API
-    private fun calculateTokenUsdValue(amount: BigDecimal, token: EVMToken): Double {
-        return when (token.evmTokenType) {
-            EVMTokenType.USDC, EVMTokenType.USDT -> amount.toDouble()
-            EVMTokenType.NATIVE -> amount.toDouble() * 3000.0
-        }
     }
 }
