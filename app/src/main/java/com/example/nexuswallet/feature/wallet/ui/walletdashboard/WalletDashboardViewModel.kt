@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.wallet.ui.walletdashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
@@ -112,11 +113,24 @@ class WalletDashboardViewModel @Inject constructor(
 
             val currentWallets = (_uiState.value as? Result.Success)?.data ?: emptyList()
             if (currentWallets.isNotEmpty()) {
+                val allErrors = mutableListOf<ChainSyncError>()
+
                 currentWallets.forEach { wallet ->
-                    runCatching {
-                        syncWalletBalancesUseCase(wallet)
+                    val result = syncWalletBalancesUseCase(wallet)
+                    if (result is Result.Success && result.data.hasErrors) {
+                        allErrors.addAll(result.data.errors)
                     }
                 }
+
+                if (allErrors.isNotEmpty()) {
+                    val errorString = allErrors.distinctBy { "${it.network.name}-${it.assetSymbol}" }
+                        .joinToString("\n") { error ->
+                            val assetPrefix = error.assetSymbol?.let { "$it on " } ?: ""
+                            "• $assetPrefix${error.network.name}: ${error.message}"
+                        }
+                    _operationError.update { "Partial sync failure:\n$errorString" }
+                }
+
                 loadBalances(currentWallets)
             }
 

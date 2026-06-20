@@ -9,12 +9,14 @@ import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchain
 import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
+import com.example.nexuswallet.feature.wallet.domain.model.SyncReport
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
@@ -39,46 +41,38 @@ class SyncWalletBalancesUseCase @Inject constructor(
 
     private val tag = "SyncBalancesUC"
 
-    suspend operator fun invoke(wallet: Wallet): Result<Unit> = withContext(ioDispatcher) {
+    suspend operator fun invoke(wallet: Wallet): Result<SyncReport> = withContext(ioDispatcher) {
         logger.d(tag, "Syncing balances for wallet: ${wallet.name}")
 
-        val errors = mutableListOf<String>()
+        val errors = mutableListOf<ChainSyncError>()
 
         // Sync Bitcoin balances
         wallet.bitcoinCoins.forEach { coin ->
-            val result = syncBitcoinBalance(wallet.id, coin)
-            if (result is Result.Error) {
-                errors.add(result.message)
-            }
+            errors.addAll(syncBitcoinBalance(wallet.id, coin))
         }
 
         // Sync Solana balances (including SPL tokens)
         wallet.solanaCoins.forEach { coin ->
-            val result = syncSolanaBalance(wallet.id, coin)
-            if (result is Result.Error) {
-                errors.add(result.message)
-            }
+            errors.addAll(syncSolanaBalance(wallet.id, coin))
         }
 
         // Sync EVM balances (Native ETH + all tokens)
         if (wallet.evmTokens.isNotEmpty()) {
-            val result = syncEVMBalances(wallet.id, wallet.evmTokens)
-            if (result is Result.Error) {
-                errors.add(result.message)
-            }
+            errors.addAll(syncEVMBalances(wallet.id, wallet.evmTokens))
         }
 
-        if (errors.isEmpty()) {
+        val report = SyncReport(walletId = wallet.id, errors = errors)
+
+        if (report.isSuccessful) {
             logger.d(tag, "Successfully synced all balances for wallet: ${wallet.name}")
-            Result.Success(Unit)
         } else {
-            val errorMessage = "Sync completed with errors: ${errors.joinToString(", ")}"
-            logger.e(tag, errorMessage)
-            Result.Error(errorMessage)
+            logger.e(tag, "Sync completed with ${errors.size} errors for wallet: ${wallet.name}")
         }
+
+        Result.Success(report)
     }
 
-    private suspend fun syncBitcoinBalance(walletId: String, coin: BitcoinCoin): Result<Unit> {
+    private suspend fun syncBitcoinBalance(walletId: String, coin: BitcoinCoin): List<ChainSyncError> {
         val balanceResult = bitcoinBlockchainRepository.getBalance(
             address = coin.address,
             network = coin.network
@@ -115,19 +109,25 @@ class SyncWalletBalancesUseCase @Inject constructor(
                     tag,
                     "Bitcoin ${coin.network.name} balance updated: $btcBalance BTC"
                 )
-                Result.Success(Unit)
+                emptyList()
             }
 
             is Result.Error -> {
                 logger.e(tag, "Failed to sync Bitcoin: ${balanceResult.message}")
-                Result.Error("Bitcoin (${coin.network.name}): ${balanceResult.message}")
+                listOf(ChainSyncError(coin.network, balanceResult.message, coin.symbol))
             }
 
-            else -> Result.Error("Unknown error syncing Bitcoin")
+            else -> listOf(
+                ChainSyncError(
+                    coin.network,
+                    "Unknown error syncing Bitcoin",
+                    coin.symbol
+                )
+            )
         }
     }
 
-    private suspend fun syncSolanaBalance(walletId: String, coin: SolanaCoin): Result<Unit> {
+    private suspend fun syncSolanaBalance(walletId: String, coin: SolanaCoin): List<ChainSyncError> {
         val solBalanceResult = solanaBlockchainRepository.getBalance(
             address = coin.address,
             network = coin.network
@@ -164,21 +164,30 @@ class SyncWalletBalancesUseCase @Inject constructor(
 
                 balanceDataSource.saveWalletBalance(updatedBalance)
                 logger.d(tag, "Solana ${coin.network.name} balance updated: $solBalance SOL")
-                Result.Success(Unit)
+                emptyList()
             }
 
             is Result.Error -> {
                 logger.e(tag, "Failed to sync Solana: ${solBalanceResult.message}")
-                Result.Error("Solana (${coin.network.name}): ${solBalanceResult.message}")
+                listOf(ChainSyncError(coin.network, solBalanceResult.message, coin.symbol))
             }
 
-            else -> Result.Error("Unknown error syncing Solana")
+            else -> listOf(
+                ChainSyncError(
+                    coin.network,
+                    "Unknown error syncing Solana",
+                    coin.symbol
+                )
+            )
         }
     }
 
-    private suspend fun syncEVMBalances(walletId: String, tokens: List<EVMToken>): Result<Unit> {
+    private suspend fun syncEVMBalances(
+        walletId: String,
+        tokens: List<EVMToken>
+    ): List<ChainSyncError> {
         val evmBalances = mutableListOf<EVMBalance>()
-        val errors = mutableListOf<String>()
+        val chainErrors = mutableListOf<ChainSyncError>()
 
         tokens.forEach { token ->
             val balanceResult = when (token.evmTokenType) {
@@ -230,11 +239,23 @@ class SyncWalletBalancesUseCase @Inject constructor(
                         tag,
                         "Failed to sync ${token.symbol} on ${token.network.name}: ${balanceResult.message}"
                     )
-                    errors.add("${token.symbol}: ${balanceResult.message}")
+                    chainErrors.add(
+                        ChainSyncError(
+                            token.network,
+                            balanceResult.message,
+                            token.symbol
+                        )
+                    )
                 }
 
                 else -> {
-                    errors.add("${token.symbol}: Unknown error")
+                    chainErrors.add(
+                        ChainSyncError(
+                            token.network,
+                            "Unknown error",
+                            token.symbol
+                        )
+                    )
                 }
             }
         }
@@ -253,11 +274,7 @@ class SyncWalletBalancesUseCase @Inject constructor(
             logger.d(tag, "Saved ${evmBalances.size} EVM balances for wallet $walletId")
         }
 
-        return if (errors.isEmpty()) {
-            Result.Success(Unit)
-        } else {
-            Result.Error("EVM sync errors: ${errors.joinToString(", ")}")
-        }
+        return chainErrors
     }
 
     // TODO: fetch from price API
