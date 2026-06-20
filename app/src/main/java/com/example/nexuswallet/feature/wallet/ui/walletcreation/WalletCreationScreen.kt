@@ -162,7 +162,7 @@ fun WalletCreationScreen(
             )
         }
     ) { padding ->
-        if (currentStep < 4 && uiState is WalletCreationUiState.Loading) {
+        if (currentStep < 4 && (uiState is WalletCreationUiState.Loading || uiState is WalletCreationUiState.WalletCreated)) {
             FullScreenLoading(message = stringResource(R.string.creating_wallet))
             return@Scaffold
         }

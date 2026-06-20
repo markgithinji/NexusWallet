@@ -138,7 +138,9 @@ fun Navigation(
                 onNavigateUp = { navController.navigateUp() },
                 onNavigateToMain = {
                     navController.navigate(MainRoute) {
-                        popUpTo(MainRoute) { inclusive = false }
+                        popUpTo(navController.graph.id) {
+                            inclusive = true
+                        }
                     }
                 }
             )
