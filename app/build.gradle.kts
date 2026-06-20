@@ -34,15 +34,15 @@ android {
         val etherscanKey = localProperties.getProperty("ETHERSCAN_API_KEY") ?: ""
         val alchemyKey = localProperties.getProperty("ALCHEMY_API_KEY") ?: ""
         val coingeckoKey = localProperties.getProperty("COINGECKO_API_KEY") ?: ""
-        val cryptoPanicApiKey = localProperties.getProperty("CRYPTOPANIC_API_KEY") ?: ""
         val heliusApiKey = localProperties.getProperty("HELIUS_API_KEY") ?: ""
+        val coinstatsApiKey = localProperties.getProperty("COINSTATS_API_KEY") ?: ""
 
 
         buildConfigField("String", "ETHERSCAN_API_KEY", "\"$etherscanKey\"")
         buildConfigField("String", "ALCHEMY_API_KEY", "\"$alchemyKey\"")
         buildConfigField("String", "COINGECKO_API_KEY", "\"$coingeckoKey\"")
-        buildConfigField("String", "CRYPTOPANIC_API_KEY", "\"$cryptoPanicApiKey\"")
         buildConfigField("String", "HELIUS_API_KEY", "\"$heliusApiKey\"")
+        buildConfigField("String", "COINSTATS_API_KEY", "\"$coinstatsApiKey\"")
     }
 
     buildTypes {

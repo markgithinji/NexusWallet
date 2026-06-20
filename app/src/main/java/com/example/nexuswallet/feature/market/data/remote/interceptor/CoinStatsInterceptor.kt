@@ -5,17 +5,14 @@ import okhttp3.Response
 import javax.inject.Inject
 import com.example.nexuswallet.BuildConfig
 
-class CryptoPanicInterceptor @Inject constructor() : Interceptor {
+class CoinStatsInterceptor @Inject constructor() : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
-        val originalUrl = originalRequest.url
-
-        val newUrl = originalUrl.newBuilder()
-            .addQueryParameter("auth_token", BuildConfig.CRYPTOPANIC_API_KEY)
-            .build()
-
+        
+        // Add X-API-KEY header
         val newRequest = originalRequest.newBuilder()
-            .url(newUrl)
+            .addHeader("X-API-KEY", BuildConfig.COINSTATS_API_KEY)
+            .addHeader("accept", "application/json")
             .build()
 
         return chain.proceed(newRequest)
