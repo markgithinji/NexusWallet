@@ -438,37 +438,17 @@ fun SendAddressInput(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            OutlinedTextField(
+            NexusTextField(
                 value = toAddress,
                 onValueChange = onAddressChange,
                 modifier = Modifier
-                    .fillMaxWidth()
                     .focusRequester(focusRequester)
                     .onFocusChanged { focusState ->
                         focused = focusState.isFocused
                     },
-                placeholder = {
-                    Text(
-                        text = placeholder,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true,
+                placeholder = placeholder,
                 isError = toAddress.isNotEmpty() && !isValid,
-                supportingText = if (errorMessage != null) {
-                    {
-                        Text(
-                            errorMessage,
-                            color = MaterialTheme.colorScheme.error,
-                            maxLines = 1,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                } else null,
+                supportingText = errorMessage,
                 trailingIcon = {
                     if (toAddress.isNotEmpty()) {
                         IconButton(
@@ -484,11 +464,6 @@ fun SendAddressInput(
                         }
                     }
                 },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = if (isValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                ),
                 keyboardOptions = KeyboardOptions.Default.copy(
                     imeAction = ImeAction.Next
                 ),

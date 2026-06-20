@@ -27,9 +27,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import com.example.nexuswallet.feature.core.ui.NexusTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -137,7 +136,7 @@ fun PinSetupDialog(
                     val label = if (!isConfirmStep) stringResource(R.string.create_pin_label) else stringResource(R.string.confirm_pin_label)
                     val placeholder = stringResource(R.string.pin_digits_hint, PIN_LENGTH)
 
-                    OutlinedTextField(
+                    NexusTextField(
                         value = if (!isConfirmStep) pin else confirmPin,
                         onValueChange = { newValue ->
                             if (newValue.length <= PIN_LENGTH && newValue.all { it.isDigit() }) {
@@ -156,35 +155,14 @@ fun PinSetupDialog(
                                 localError = null
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = {
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        placeholder = {
-                            Text(
-                                text = placeholder,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                        },
+                        label = label,
+                        placeholder = placeholder,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.NumberPassword,
                             imeAction = if (!isConfirmStep) ImeAction.Next else ImeAction.Done
                         ),
                         visualTransformation = PasswordVisualTransformation(),
-                        singleLine = true,
-                        isError = (localError != null || errorMessage != null),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                            errorBorderColor = MaterialTheme.colorScheme.error,
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            cursorColor = MaterialTheme.colorScheme.primary
-                        )
+                        isError = (localError != null || errorMessage != null)
                     )
 
                     // Show PIN requirements hint

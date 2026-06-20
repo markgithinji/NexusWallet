@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.NexusTextField
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
@@ -267,13 +268,12 @@ fun ImportMnemonicStep(
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
-        OutlinedTextField(
+        NexusTextField(
             value = walletName,
             onValueChange = onNameChange,
-            label = { Text(stringResource(R.string.wallet_name_label)) },
-            placeholder = { Text(stringResource(R.string.wallet_name_placeholder)) },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-            singleLine = true
+            label = stringResource(R.string.wallet_name_label),
+            placeholder = stringResource(R.string.wallet_name_placeholder),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
         )
 
         Text(
@@ -295,12 +295,11 @@ fun ImportMnemonicStep(
                 ) {
                     for (col in 0 until 2) {
                         val index = row * 2 + col
-                        OutlinedTextField(
+                        NexusTextField(
                             value = words[index],
                             onValueChange = { onWordChange(index, it) },
-                            label = { Text("${index + 1}") },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true
+                            label = "${index + 1}",
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
