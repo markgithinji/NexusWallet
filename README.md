@@ -83,17 +83,21 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Transaction details** - View transaction hash, fees, and explorer links
 
 ### Security Features
-- **Biometric authentication** - Required for sensitive operations
-- **Session timeout** - Automatic lock after inactivity
-- **Secure key storage** - Private keys never stored in plain text
-- **Transaction validation** - Balance checks, address validation, self-send protection
+- **Biometric authentication** - Fingerprint or Face ID for app access and sensitive operations
+- **PIN Protection** - Secure 6-digit PIN with haptic feedback and encrypted storage
+- **Privacy Mode** - Toggle to hide sensitive balances on the main dashboard
+- **Transaction Security** - Optional setting to require re-authentication for every outgoing transaction
+- **Secure Key Storage** - Private keys are encrypted using Android KeyStore and never stored in plain text
+- **Transaction Validation** - Real-time address validation, balance checks, and self-send protection
+- **Secure Data Management** - Option to wipe all sensitive data and keys from the device
 
-### Portfolio Management
-- **Real-time portfolio tracking** - Total value across all wallets
-- **Price change indicators** - 24h price changes for all assets
-- **USD value display** - Convert crypto to fiat using real-time rates
-- **Asset breakdown** - View balances per cryptocurrency
-- **Market data** - Live crypto prices and market trends
+### Portfolio & Settings
+- **Real-time portfolio tracking** - Total value across all wallets with animated updates
+- **Price change indicators** - Visual 24h price trends for all assets
+- **Multi-currency support** - Display balances in USD, EUR, GBP, JPY, AUD, CAD, or KES
+- **Asset breakdown** - Detailed view per cryptocurrency including transaction history and tokens
+- **Market data** - Live crypto prices, rank, market cap, and historical charts
+- **Crypto News** - Latest blockchain news aggregated from multiple sources
 
 ### User Experience
 - **Pull-to-refresh** - Manual refresh of balances and transactions
@@ -142,8 +146,10 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 | ✅ Transaction Review | Complete | Confirm details before sending |
 | ✅ Wallet Import | Complete | Restore any BIP39-compliant wallet with full asset selection |
 | ✅ Price Charts | Complete | Historical price graphs |
+| ✅ Privacy Mode | Complete | Hide balances from the main screen |
+| ✅ Multi-Currency | Complete | Support for USD, EUR, GBP, KES, etc. |
+| 🔄 Cloud Backup | Planned | Encrypted backup to Google Drive |
 | 🔄 Push Notifications | Planned | Transaction confirmations |
-| 🔄 Multiple Languages | Planned | i18n support |
 
 ---
 
@@ -220,11 +226,15 @@ HELIUS_API_KEY=your_helius_api_key
 - View transaction details and explorer links
 - Delete wallets and verify data removal
 
-### Testnet Faucets
-For testing transactions, use these testnet faucets:
-- **Bitcoin Testnet**: [Bitcoin Faucet](https://coinfaucet.eu/en/btc-testnet/)
-- **Ethereum Sepolia**: [Sepolia Faucet](https://sepolia-faucet.pk910.de/#/)
-- **Solana Devnet**: [Solana Faucet](https://faucet.solana.com/)
+### 🚰 Testnet Faucets
+For testing transactions without real value, use these official faucets:
+
+| Asset | Network | Faucet Link |
+|-------|---------|-------------|
+| **BTC** | Bitcoin Testnet | [Bitcoin Coinfaucet](https://coinfaucet.eu/en/btc-testnet/) |
+| **ETH** | Ethereum Sepolia | [Sepolia Faucet](https://sepoliafaucet.com/) or [Google Cloud](https://cloud.google.com/application/web3/faucet/ethereum/sepolia) |
+| **SOL** | Solana Devnet | [Solana Faucet](https://faucet.solana.com/) |
+| **USDC** | Sepolia / Devnet | [Circle Faucet](https://faucet.circle.com/) |
 
 
 ---
