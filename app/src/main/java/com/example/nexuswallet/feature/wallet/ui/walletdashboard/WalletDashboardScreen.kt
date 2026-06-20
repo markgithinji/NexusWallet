@@ -35,6 +35,7 @@ import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
@@ -56,6 +57,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.example.nexuswallet.feature.core.ui.NexusTextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -119,6 +121,8 @@ fun WalletDashboardScreen(
     val isPrivacyModeEnabled by viewModel.isPrivacyModeEnabled.collectAsStateWithLifecycle()
     val selectedCurrency by viewModel.selectedCurrency.collectAsStateWithLifecycle()
 
+    var showRenameDialog by remember { mutableStateOf<Wallet?>(null) }
+
     LaunchedEffect(operationError) {
         operationError?.let {
             viewModel.clearOperationError()
@@ -128,6 +132,17 @@ fun WalletDashboardScreen(
     // Refresh when screen comes to foreground
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.refresh()
+    }
+
+    if (showRenameDialog != null) {
+        RenameWalletDialog(
+            currentName = showRenameDialog!!.name,
+            onConfirm = { newName ->
+                viewModel.renameWallet(showRenameDialog!!.id, newName)
+                showRenameDialog = null
+            },
+            onDismiss = { showRenameDialog = null }
+        )
     }
 
     Scaffold(
@@ -189,6 +204,9 @@ fun WalletDashboardScreen(
                             },
                             onDeleteWallet = { walletId ->
                                 viewModel.deleteWallet(walletId)
+                            },
+                            onRenameWallet = { wallet ->
+                                showRenameDialog = wallet
                             }
                         )
                     }
@@ -293,7 +311,8 @@ fun DashboardContent(
     isPrivacyModeEnabled: Boolean,
     selectedCurrency: String,
     onWalletClick: (Wallet) -> Unit,
-    onDeleteWallet: (String) -> Unit
+    onDeleteWallet: (String) -> Unit,
+    onRenameWallet: (Wallet) -> Unit
 ) {
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp > 600
@@ -341,6 +360,7 @@ fun DashboardContent(
                             selectedCurrency = selectedCurrency,
                             onWalletClick = { onWalletClick(wallet) },
                             onDelete = { onDeleteWallet(wallet.id) },
+                            onRename = { onRenameWallet(wallet) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -357,7 +377,8 @@ fun DashboardContent(
                     isPrivacyModeEnabled = isPrivacyModeEnabled,
                     selectedCurrency = selectedCurrency,
                     onWalletClick = { onWalletClick(wallet) },
-                    onDelete = { onDeleteWallet(wallet.id) }
+                    onDelete = { onDeleteWallet(wallet.id) },
+                    onRename = { onRenameWallet(wallet) }
                 )
             }
         }
@@ -373,6 +394,7 @@ fun WalletCard(
     selectedCurrency: String,
     onWalletClick: () -> Unit,
     onDelete: () -> Unit,
+    onRename: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var isExpanded by remember { mutableStateOf(false) }
@@ -531,7 +553,8 @@ fun WalletCard(
                     balance = balance,
                     isPrivacyModeEnabled = isPrivacyModeEnabled,
                     selectedCurrency = selectedCurrency,
-                    onDelete = { showDeleteDialog = true }
+                    onDelete = { showDeleteDialog = true },
+                    onRename = onRename
                 )
             }
         }
@@ -544,7 +567,8 @@ fun WalletExpandedContent(
     balance: WalletBalance?,
     isPrivacyModeEnabled: Boolean,
     selectedCurrency: String,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onRename: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -675,8 +699,26 @@ fun WalletExpandedContent(
         // Delete button
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            TextButton(
+                onClick = onRename
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Edit,
+                    contentDescription = stringResource(R.string.rename_wallet),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    stringResource(R.string.rename_wallet),
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
             TextButton(
                 onClick = onDelete,
                 colors = ButtonDefaults.textButtonColors(
@@ -1028,6 +1070,53 @@ fun EmptyWalletsContent(
             }
         }
     }
+}
+
+@Composable
+fun RenameWalletDialog(
+    currentName: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf(currentName) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.rename_wallet),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                NexusTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = stringResource(R.string.new_wallet_name)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (name.isNotBlank()) {
+                        onConfirm(name)
+                    }
+                }
+            ) {
+                Text(stringResource(R.string.save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surface
+    )
 }
 
 @Composable

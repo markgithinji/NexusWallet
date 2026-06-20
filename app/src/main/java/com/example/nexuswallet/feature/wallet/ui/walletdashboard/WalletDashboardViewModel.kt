@@ -150,6 +150,21 @@ class WalletDashboardViewModel @Inject constructor(
         }
     }
 
+    fun renameWallet(walletId: String, newName: String) {
+        viewModelScope.launch {
+            _isOperationLoading.update { true }
+            _operationError.update { null }
+
+            runCatching {
+                walletRepository.updateWalletName(walletId, newName)
+            }.onFailure { e ->
+                _operationError.update { "Failed to rename wallet: ${e.message}" }
+            }
+
+            _isOperationLoading.update { false }
+        }
+    }
+
     fun refresh() {
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastRefreshTime < refreshThreshold && _isRefreshing.value) return

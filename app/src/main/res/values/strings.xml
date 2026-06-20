@@ -304,4 +304,7 @@
     <string name="failed_to_set_pin">Failed to set PIN</string>
     <string name="setting_pin">Setting PIN&#8230;</string>
     <string name="confirm">Confirm</string>
+    <string name="rename_wallet">Rename Wallet</string>
+    <string name="new_wallet_name">New Wallet Name</string>
+    <string name="save">Save</string>
 </resources>

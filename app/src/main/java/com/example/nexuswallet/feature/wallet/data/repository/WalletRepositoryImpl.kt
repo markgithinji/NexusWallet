@@ -28,4 +28,8 @@ class WalletRepositoryImpl @Inject constructor(
     // === BALANCE OPERATIONS ===
     override suspend fun getWalletBalance(walletId: String): WalletBalance? =
         balanceDataSource.loadWalletBalance(walletId)
+
+    override suspend fun updateWalletName(walletId: String, newName: String) {
+        walletDataSource.updateWalletName(walletId, newName)
+    }
 }

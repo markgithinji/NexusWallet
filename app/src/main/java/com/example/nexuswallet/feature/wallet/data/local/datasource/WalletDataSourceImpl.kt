@@ -101,6 +101,10 @@ class WalletDataSourceImpl @Inject constructor(
     override suspend fun deleteWallet(walletId: String) {
         walletDao.delete(walletId)
     }
+
+    override suspend fun updateWalletName(walletId: String, newName: String) {
+        walletDao.updateName(walletId, newName)
+    }
 }
 
 

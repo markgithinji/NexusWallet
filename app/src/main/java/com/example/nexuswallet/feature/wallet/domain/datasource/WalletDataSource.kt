@@ -8,4 +8,5 @@ interface WalletDataSource {
     suspend fun loadWallet(walletId: String): Wallet?
     fun loadAllWallets(): Flow<List<Wallet>>
     suspend fun deleteWallet(walletId: String)
+    suspend fun updateWalletName(walletId: String, newName: String)
 }

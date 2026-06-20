@@ -9,4 +9,5 @@ interface WalletRepository {
     suspend fun getWallet(walletId: String): Wallet?
     suspend fun deleteWallet(walletId: String)
     suspend fun getWalletBalance(walletId: String): WalletBalance?
+    suspend fun updateWalletName(walletId: String, newName: String)
 }

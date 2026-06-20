@@ -51,6 +51,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.example.nexuswallet.feature.core.ui.NexusTextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -117,6 +118,7 @@ fun WalletDetailScreen(
 
     var showAssetSelector by remember { mutableStateOf(false) }
     var selectorPurpose by remember { mutableStateOf(AssetSelectorPurpose.SEND) }
+    var showRenameDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(walletId) {
         walletViewModel.loadWallet(walletId)
@@ -139,6 +141,17 @@ fun WalletDetailScreen(
         }
     }
 
+    if (showRenameDialog) {
+        RenameWalletDialog(
+            currentName = uiState.wallet?.name ?: "",
+            onConfirm = { newName ->
+                walletViewModel.renameWallet(newName)
+                showRenameDialog = false
+            },
+            onDismiss = { showRenameDialog = false }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -149,7 +162,8 @@ fun WalletDetailScreen(
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.clickable { showRenameDialog = true }
                     )
                 },
                 navigationIcon = {
@@ -1032,6 +1046,53 @@ private fun AssetSelectionDialog(
             }
         },
         confirmButton = {},
+        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+
+@Composable
+fun RenameWalletDialog(
+    currentName: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf(currentName) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.rename_wallet),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                NexusTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = stringResource(R.string.new_wallet_name)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (name.isNotBlank()) {
+                        onConfirm(name)
+                    }
+                }
+            ) {
+                Text(stringResource(R.string.save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
         shape = RoundedCornerShape(20.dp),
         containerColor = MaterialTheme.colorScheme.surface
     )

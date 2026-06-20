@@ -56,6 +56,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import com.example.nexuswallet.feature.core.ui.NexusTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -1734,31 +1735,11 @@ fun WalletNameStep(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        OutlinedTextField(
+        NexusTextField(
             value = walletName,
             onValueChange = onNameChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = {
-                Text(
-                    stringResource(R.string.wallet_name_label),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            placeholder = {
-                Text(
-                    stringResource(R.string.wallet_name_placeholder),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                cursorColor = MaterialTheme.colorScheme.primary,
-                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            label = stringResource(R.string.wallet_name_label),
+            placeholder = stringResource(R.string.wallet_name_placeholder)
         )
 
         Spacer(modifier = Modifier.height(8.dp))

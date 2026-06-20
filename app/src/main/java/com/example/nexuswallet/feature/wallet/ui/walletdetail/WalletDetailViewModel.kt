@@ -358,6 +358,21 @@ class WalletDetailViewModel @Inject constructor(
         }
     }
 
+    fun renameWallet(newName: String) {
+        val currentWallet = _uiState.value.wallet ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            runCatching {
+                walletRepository.updateWalletName(currentWallet.id, newName)
+                // Reload wallet to get updated name
+                val updatedWallet = walletRepository.getWallet(currentWallet.id)
+                _uiState.update { it.copy(wallet = updatedWallet, isLoading = false) }
+            }.onFailure { e ->
+                _uiState.update { it.copy(error = "Failed to rename wallet: ${e.message}", isLoading = false) }
+            }
+        }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
