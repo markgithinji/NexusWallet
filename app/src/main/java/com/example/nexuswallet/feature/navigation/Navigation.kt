@@ -13,7 +13,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import com.example.nexuswallet.BackupScreen
 import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredScreen
 import com.example.nexuswallet.feature.bitcoin.ui.send.BitcoinSendScreen
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
@@ -37,6 +36,8 @@ import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.history.TransactionHistoryScreen
 import com.example.nexuswallet.feature.wallet.ui.recive.ReceiveScreen
 import com.example.nexuswallet.feature.wallet.ui.transactiondetail.TransactionDetailScreen
+import com.example.nexuswallet.feature.wallet.ui.backup.BackupScreen
+import com.example.nexuswallet.feature.wallet.ui.backup.BackupViewModel
 import com.example.nexuswallet.feature.wallet.ui.importwallet.ImportWalletScreen
 import com.example.nexuswallet.feature.wallet.ui.importwallet.ImportWalletViewModel
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationScreen
@@ -201,6 +202,9 @@ fun Navigation(
                 },
                 onNavigateToTransactionDetail = { walletId, txId, coin ->
                     navController.navigate(TransactionDetailRoute(walletId, txId,coin))
+                },
+                onMoreClick = {
+                    navController.navigate(AuthenticateRoute(AuthTarget.Backup(args.walletId)))
                 }
             )
         }
@@ -382,10 +386,12 @@ fun Navigation(
         composable<BackupRoute> { backStackEntry ->
 
             val args = backStackEntry.toRoute<BackupRoute>()
+            val viewModel = hiltViewModel<BackupViewModel>()
 
             BackupScreen(
                 walletId = args.walletId,
-                onNavigateUp = { navController.navigateUp() }
+                onNavigateUp = { navController.navigateUp() },
+                viewModel = viewModel
             )
         }
 
@@ -421,6 +427,11 @@ fun Navigation(
                         }
                         is AuthTarget.TransactionDetail -> {
                             navController.navigate(TransactionDetailRoute(target.walletId, target.transactionId, target.coin)) {
+                                popUpTo<AuthenticateRoute> { inclusive = true }
+                            }
+                        }
+                        is AuthTarget.Backup -> {
+                            navController.navigate(BackupRoute(target.walletId)) {
                                 popUpTo<AuthenticateRoute> { inclusive = true }
                             }
                         }

@@ -20,4 +20,7 @@ sealed interface AuthTarget {
     @Serializable
     data class TransactionDetail(val walletId: String, val transactionId: String, val coin: Coin) :
         AuthTarget
+
+    @Serializable
+    data class Backup(val walletId: String) : AuthTarget
 }
