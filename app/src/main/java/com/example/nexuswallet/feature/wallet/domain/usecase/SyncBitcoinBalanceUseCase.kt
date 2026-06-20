@@ -1,0 +1,64 @@
+package com.example.nexuswallet.feature.wallet.domain.usecase
+
+import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
+import java.math.BigDecimal
+import java.math.RoundingMode
+import javax.inject.Inject
+
+class SyncBitcoinBalanceUseCase @Inject constructor(
+    private val balanceDataSource: BalanceDataSource,
+    private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+    private val logger: Logger,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+) {
+    private val tag = "SyncBitcoinBalanceUC"
+
+    suspend operator fun invoke(
+        walletId: String,
+        coin: BitcoinCoin,
+        price: Double
+    ): List<ChainSyncError> = withContext(ioDispatcher) {
+        val balanceResult = bitcoinBlockchainRepository.getBalance(
+            address = coin.address,
+            network = coin.network
+        )
+
+        when (balanceResult) {
+            is Result.Success -> {
+                val btcBalance = balanceResult.data
+                val satoshiBalance =
+                    (btcBalance * BigDecimal("100000000")).toBigInteger().toString()
+                val usdValue = btcBalance.toDouble() * price
+
+                val btcBalanceDomain = BitcoinBalance(
+                    address = coin.address,
+                    satoshis = satoshiBalance,
+                    btc = btcBalance.setScale(8, RoundingMode.HALF_UP).toPlainString(),
+                    usdValue = usdValue
+                )
+
+                balanceDataSource.saveBitcoinBalance(walletId, coin.network, btcBalanceDomain)
+                logger.d(tag, "Bitcoin ${coin.network.name} balance updated: $btcBalance BTC")
+                emptyList()
+            }
+
+            is Result.Error -> {
+                logger.e(tag, "Failed to sync Bitcoin: ${balanceResult.message}")
+                listOf(ChainSyncError(coin.network, balanceResult.message, coin.symbol))
+            }
+
+            else -> listOf(
+                ChainSyncError(coin.network, "Unknown error syncing Bitcoin", coin.symbol)
+            )
+        }
+    }
+}

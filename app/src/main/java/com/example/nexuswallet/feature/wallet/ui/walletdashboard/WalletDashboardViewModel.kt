@@ -8,7 +8,9 @@ import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.domain.usecase.SyncWalletBalancesUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +25,9 @@ import javax.inject.Inject
 @HiltViewModel
 class WalletDashboardViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
-    private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
+    private val syncBitcoinBalanceUseCase: SyncBitcoinBalanceUseCase,
+    private val syncSolanaBalanceUseCase: SyncSolanaBalanceUseCase,
+    private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
     private val getSimplePricesUseCase: GetSimplePricesUseCase
 ) : ViewModel() {
 
@@ -132,9 +136,22 @@ class WalletDashboardViewModel @Inject constructor(
                 }
 
                 currentWallets.forEach { wallet ->
-                    val result = syncWalletBalancesUseCase(wallet, prices)
-                    if (result is Result.Success && result.data.hasErrors) {
-                        allErrors.addAll(result.data.errors)
+                    // Sync Bitcoin
+                    wallet.bitcoinCoins.forEach { coin ->
+                        val errors = syncBitcoinBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0)
+                        allErrors.addAll(errors)
+                    }
+
+                    // Sync Solana
+                    wallet.solanaCoins.forEach { coin ->
+                        val errors = syncSolanaBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0)
+                        allErrors.addAll(errors)
+                    }
+
+                    // Sync EVM
+                    if (wallet.evmTokens.isNotEmpty()) {
+                        val errors = syncEVMBalancesUseCase(wallet.id, wallet.evmTokens, prices)
+                        allErrors.addAll(errors)
                     }
                 }
 

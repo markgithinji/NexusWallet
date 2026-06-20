@@ -7,7 +7,6 @@ import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactio
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.domain.usecase.SyncWalletBalancesUseCase
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext

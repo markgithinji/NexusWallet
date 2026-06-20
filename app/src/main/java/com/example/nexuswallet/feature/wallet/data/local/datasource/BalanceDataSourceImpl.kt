@@ -10,6 +10,7 @@ import com.example.nexuswallet.feature.wallet.data.local.mapper.toEntity
 import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
@@ -28,23 +29,43 @@ class BalanceDataSourceImpl @Inject constructor(
     override suspend fun saveWalletBalance(balance: WalletBalance) {
         // Save Bitcoin balances
         balance.bitcoinBalances.forEach { (network, bitcoinBalance) ->
-            val bitcoinCoin = bitcoinCoinDao.getByAddressAndNetwork(bitcoinBalance.address, network)
-            if (bitcoinCoin != null) {
-                bitcoinBalanceDao.insert(bitcoinBalance.toEntity(bitcoinCoin.id))
-            }
+            saveBitcoinBalance(balance.walletId, network, bitcoinBalance)
         }
 
         // Save Solana balances
         balance.solanaBalances.forEach { (network, solanaBalance) ->
-            val solanaCoin = solanaCoinDao.getByAddressAndNetwork(solanaBalance.address, network)
-            if (solanaCoin != null) {
-                solanaBalanceDao.insert(solanaBalance.toEntity(solanaCoin.id))
-            }
+            saveSolanaBalance(balance.walletId, network, solanaBalance)
         }
 
         // Save EVM balances
-        balance.evmBalances.forEach { evmBalance ->
-            evmBalanceDao.insert(evmBalance.toEntity(balance.walletId))
+        saveEVMBalances(balance.walletId, balance.evmBalances)
+    }
+
+    override suspend fun saveBitcoinBalance(
+        walletId: String,
+        network: BitcoinNetwork,
+        balance: BitcoinBalance
+    ) {
+        val bitcoinCoin = bitcoinCoinDao.getByAddressAndNetwork(balance.address, network)
+        if (bitcoinCoin != null) {
+            bitcoinBalanceDao.insert(balance.toEntity(bitcoinCoin.id))
+        }
+    }
+
+    override suspend fun saveSolanaBalance(
+        walletId: String,
+        network: SolanaNetwork,
+        balance: SolanaBalance
+    ) {
+        val solanaCoin = solanaCoinDao.getByAddressAndNetwork(balance.address, network)
+        if (solanaCoin != null) {
+            solanaBalanceDao.insert(balance.toEntity(solanaCoin.id))
+        }
+    }
+
+    override suspend fun saveEVMBalances(walletId: String, balances: List<EVMBalance>) {
+        balances.forEach { evmBalance ->
+            evmBalanceDao.insert(evmBalance.toEntity(walletId))
         }
     }
 

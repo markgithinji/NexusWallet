@@ -19,7 +19,9 @@ import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatBalanceUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetAllTransactionsUseCase
-import com.example.nexuswallet.feature.wallet.domain.usecase.SyncWalletBalancesUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -38,7 +40,9 @@ import javax.inject.Inject
 @HiltViewModel
 class WalletDetailViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
-    private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
+    private val syncBitcoinBalanceUseCase: SyncBitcoinBalanceUseCase,
+    private val syncSolanaBalanceUseCase: SyncSolanaBalanceUseCase,
+    private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
     private val getAllTransactionsUseCase: GetAllTransactionsUseCase,
     private val marketRepository: MarketRepository,
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
@@ -171,39 +175,47 @@ class WalletDetailViewModel @Inject constructor(
             val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
 
             // 2. Sync balances with prices
-            when (val syncResult = syncWalletBalancesUseCase(wallet, prices)) {
-                is Result.Success -> {
-                    val updatedBalance = walletRepository.getWalletBalance(walletId)
-                    if (updatedBalance != null) {
-                        _uiState.update {
-                            it.copy(
-                                balance = updatedBalance,
-                                hasSyncError = false,
-                                syncErrorMessage = null,
-                                isRefreshingBalance = false,
-                                lastBalanceSyncTime = System.currentTimeMillis()
-                            )
-                        }
-                        updateAssets()
-                    }
-                }
+            val allErrors = mutableListOf<com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError>()
 
-                is Result.Error -> {
+            wallet.bitcoinCoins.forEach { coin ->
+                allErrors.addAll(syncBitcoinBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0))
+            }
+
+            wallet.solanaCoins.forEach { coin ->
+                allErrors.addAll(syncSolanaBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0))
+            }
+
+            if (wallet.evmTokens.isNotEmpty()) {
+                allErrors.addAll(syncEVMBalancesUseCase(wallet.id, wallet.evmTokens, prices))
+            }
+
+            if (allErrors.isEmpty()) {
+                val updatedBalance = walletRepository.getWalletBalance(walletId)
+                if (updatedBalance != null) {
                     _uiState.update {
                         it.copy(
-                            hasSyncError = true,
-                            syncErrorMessage = syncResult.message,
-                            isRefreshingBalance = false
+                            balance = updatedBalance,
+                            hasSyncError = false,
+                            syncErrorMessage = null,
+                            isRefreshingBalance = false,
+                            lastBalanceSyncTime = System.currentTimeMillis()
                         )
                     }
-                    val currentBalance = walletRepository.getWalletBalance(walletId)
-                    if (currentBalance != null && currentBalance != _uiState.value.balance) {
-                        _uiState.update { it.copy(balance = currentBalance) }
-                        updateAssets()
-                    }
+                    updateAssets()
                 }
-
-                Result.Loading -> {}
+            } else {
+                _uiState.update {
+                    it.copy(
+                        hasSyncError = true,
+                        syncErrorMessage = allErrors.joinToString { error -> "${error.assetSymbol}: ${error.message}" },
+                        isRefreshingBalance = false
+                    )
+                }
+                val currentBalance = walletRepository.getWalletBalance(walletId)
+                if (currentBalance != null && currentBalance != _uiState.value.balance) {
+                    _uiState.update { it.copy(balance = currentBalance) }
+                    updateAssets()
+                }
             }
         }
     }

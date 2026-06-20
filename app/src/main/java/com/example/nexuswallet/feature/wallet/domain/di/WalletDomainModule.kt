@@ -21,7 +21,9 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.GetBitcoinDetailUse
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetEthereumDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetSolanaDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetTransactionDetailUseCase
-import com.example.nexuswallet.feature.wallet.domain.usecase.SyncWalletBalancesUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.ValidateMnemonicUseCase
 import com.example.nexuswallet.feature.core.domain.di.DefaultDispatcher
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
@@ -182,19 +184,47 @@ object WalletDomainModule {
 
     @Provides
     @Singleton
-    fun provideSyncWalletBalancesUseCase(
+    fun provideSyncBitcoinBalanceUseCase(
         balanceDataSource: BalanceDataSource,
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-        evmBlockchainRepository: EVMBlockchainRepository,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        logger: Logger
+    ): SyncBitcoinBalanceUseCase {
+        return SyncBitcoinBalanceUseCase(
+            balanceDataSource = balanceDataSource,
+            bitcoinBlockchainRepository = bitcoinBlockchainRepository,
+            logger = logger,
+            ioDispatcher = ioDispatcher
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideSyncSolanaBalanceUseCase(
+        balanceDataSource: BalanceDataSource,
         solanaBlockchainRepository: SolanaBlockchainRepository,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
-    ): SyncWalletBalancesUseCase {
-        return SyncWalletBalancesUseCase(
+    ): SyncSolanaBalanceUseCase {
+        return SyncSolanaBalanceUseCase(
             balanceDataSource = balanceDataSource,
-            bitcoinBlockchainRepository = bitcoinBlockchainRepository,
-            evmBlockchainRepository = evmBlockchainRepository,
             solanaBlockchainRepository = solanaBlockchainRepository,
+            logger = logger,
+            ioDispatcher = ioDispatcher
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideSyncEVMBalancesUseCase(
+        balanceDataSource: BalanceDataSource,
+        evmBlockchainRepository: EVMBlockchainRepository,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher,
+        logger: Logger
+    ): SyncEVMBalancesUseCase {
+        return SyncEVMBalancesUseCase(
+            balanceDataSource = balanceDataSource,
+            evmBlockchainRepository = evmBlockchainRepository,
             logger = logger,
             ioDispatcher = ioDispatcher
         )
