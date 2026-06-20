@@ -43,13 +43,21 @@ class WalletDashboardViewModel @Inject constructor(
     private val _totalPortfolioValue = MutableStateFlow(BigDecimal.ZERO)
     val totalPortfolioValue: StateFlow<BigDecimal> = _totalPortfolioValue.asStateFlow()
 
-    // Loading state for specific operations (delete, refresh)
+    // Loading state for background sync/refresh
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    // Loading state for specific critical operations (delete)
     private val _isOperationLoading = MutableStateFlow(false)
     val isOperationLoading: StateFlow<Boolean> = _isOperationLoading.asStateFlow()
 
     // Operation error state
     private val _operationError = MutableStateFlow<String?>(null)
     val operationError: StateFlow<String?> = _operationError.asStateFlow()
+
+    // Tracking last refresh time
+    private var lastRefreshTime = 0L
+    private val refreshThreshold = 30_000L // 30 seconds
 
     init {
         observeWallets()
@@ -113,8 +121,17 @@ class WalletDashboardViewModel @Inject constructor(
     }
 
     fun refresh() {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastRefreshTime < refreshThreshold && _isRefreshing.value) return
+        if (currentTime - lastRefreshTime < refreshThreshold && !(_uiState.value is Result.Error)) {
+            // If we refreshed recently and have data, don't block or restart sync
+            return
+        }
+
         viewModelScope.launch {
-            _isOperationLoading.update { true }
+            _isRefreshing.update { true }
+            _isOperationLoading.update { false } // Safety reset
+            lastRefreshTime = currentTime
             _operationError.update { null }
 
             val currentWallets = (_uiState.value as? Result.Success)?.data ?: emptyList()
@@ -169,7 +186,7 @@ class WalletDashboardViewModel @Inject constructor(
                 loadBalances(currentWallets)
             }
 
-            _isOperationLoading.update { false }
+            _isRefreshing.update { false }
         }
     }
 

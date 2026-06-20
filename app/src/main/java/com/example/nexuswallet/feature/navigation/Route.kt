@@ -19,6 +19,9 @@ data object MarketRoute : Route
 data object CreateWalletRoute : Route
 
 @Serializable
+data object ImportWalletRoute : Route
+
+@Serializable
 data object SettingsRoute : Route
 
 @Serializable

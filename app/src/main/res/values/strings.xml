@@ -85,6 +85,13 @@
     <string name="total_assets">Total Assets:</string>
     <string name="go_to_dashboard">Go to Dashboard</string>
 
+    <!-- Import Wallet -->
+    <string name="import_wallet_title">Import Wallet</string>
+    <string name="import_wallet_desc">Enter your 12-word recovery phrase to restore your wallet.</string>
+    <string name="mnemonic_word_label">Word %1$d</string>
+    <string name="import_button">Import Wallet</string>
+    <string name="invalid_mnemonic">Invalid recovery phrase. Please check the words and order.</string>
+
     <!-- Market -->
     <string name="market_title">Market</string>
     <string name="loading_market_data">Loading market data&#8230;</string>

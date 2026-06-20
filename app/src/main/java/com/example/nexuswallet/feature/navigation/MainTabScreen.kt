@@ -42,6 +42,7 @@ import com.example.nexuswallet.feature.wallet.ui.walletdashboard.WalletDashboard
 @Composable
 fun MainTabScreen(
     onNavigateToCreateWallet: () -> Unit,
+    onNavigateToImportWallet: () -> Unit,
     onNavigateToWalletDetail: (String) -> Unit,
     onNavigateToTokenDetail: (String) -> Unit,
     onNavigateToSecurity: () -> Unit,
@@ -163,6 +164,7 @@ fun MainTabScreen(
             0 -> WalletDashboardScreen(
                 onNavigateToWalletDetail = onNavigateToWalletDetail,
                 onNavigateToCreateWallet = onNavigateToCreateWallet,
+                onNavigateToImportWallet = onNavigateToImportWallet,
                 padding = PaddingValues(
                     top = scaffoldPadding.calculateTopPadding(),
                     bottom = scaffoldPadding.calculateBottomPadding()

@@ -37,6 +37,8 @@ import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.history.TransactionHistoryScreen
 import com.example.nexuswallet.feature.wallet.ui.recive.ReceiveScreen
 import com.example.nexuswallet.feature.wallet.ui.transactiondetail.TransactionDetailScreen
+import com.example.nexuswallet.feature.wallet.ui.importwallet.ImportWalletScreen
+import com.example.nexuswallet.feature.wallet.ui.importwallet.ImportWalletViewModel
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationViewModel
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WelcomeScreen
@@ -85,7 +87,7 @@ fun Navigation(
                     navController.navigate(CreateWalletRoute)
                 },
                 onImportWallet = {
-                    // TODO: Navigate to import wallet screen
+                    navController.navigate(ImportWalletRoute)
                 },
                 onSkip = {
                     navController.navigate(MainRoute) {
@@ -99,6 +101,9 @@ fun Navigation(
             MainTabScreen(
                 onNavigateToCreateWallet = {
                     navController.navigate(CreateWalletRoute)
+                },
+                onNavigateToImportWallet = {
+                    navController.navigate(ImportWalletRoute)
                 },
                 onNavigateToWalletDetail = { walletId ->
                     if (isAuthenticationRequired) {
@@ -134,6 +139,22 @@ fun Navigation(
             val viewModel = hiltViewModel<WalletCreationViewModel>()
 
             WalletCreationScreen(
+                viewModel = viewModel,
+                onNavigateUp = { navController.navigateUp() },
+                onNavigateToMain = {
+                    navController.navigate(MainRoute) {
+                        popUpTo(navController.graph.id) {
+                            inclusive = true
+                        }
+                    }
+                }
+            )
+        }
+
+        composable<ImportWalletRoute> {
+            val viewModel = hiltViewModel<ImportWalletViewModel>()
+
+            ImportWalletScreen(
                 viewModel = viewModel,
                 onNavigateUp = { navController.navigateUp() },
                 onNavigateToMain = {

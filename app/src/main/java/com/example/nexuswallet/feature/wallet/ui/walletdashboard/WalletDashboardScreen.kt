@@ -44,11 +44,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -102,6 +106,7 @@ import com.example.nexuswallet.feature.core.util.formatCurrency
 fun WalletDashboardScreen(
     onNavigateToWalletDetail: (String) -> Unit,
     onNavigateToCreateWallet: () -> Unit,
+    onNavigateToImportWallet: () -> Unit,
     padding: PaddingValues,
     viewModel: WalletDashboardViewModel = hiltViewModel()
 ) {
@@ -109,9 +114,8 @@ fun WalletDashboardScreen(
     val balances by viewModel.balances.collectAsStateWithLifecycle()
     val totalPortfolio by viewModel.totalPortfolioValue.collectAsStateWithLifecycle()
     val isOperationLoading by viewModel.isOperationLoading.collectAsStateWithLifecycle()
+    val isRefreshingState by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val operationError by viewModel.operationError.collectAsStateWithLifecycle()
-
-    var isRefreshing by remember { mutableStateOf(false) }
 
     LaunchedEffect(operationError) {
         operationError?.let {
@@ -126,9 +130,19 @@ fun WalletDashboardScreen(
 
     Scaffold(
         topBar = {
-            DashboardTopBar(
-                onCreateWallet = onNavigateToCreateWallet,
-            )
+            Column {
+                DashboardTopBar(
+                    onCreateWallet = onNavigateToCreateWallet,
+                    onImportWallet = onNavigateToImportWallet
+                )
+                if (isRefreshingState) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().height(2.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = Color.Transparent
+                    )
+                }
+            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { scaffoldPadding ->
@@ -146,10 +160,10 @@ fun WalletDashboardScreen(
                 is Result.Error -> {
                     EmptyWalletsContent(
                         onCreateWallet = onNavigateToCreateWallet,
+                        onImportWallet = onNavigateToImportWallet,
                         isError = true,
                         errorMessage = state.message,
                         onRetry = {
-                            isRefreshing = true
                             viewModel.refresh()
                         }
                     )
@@ -158,7 +172,8 @@ fun WalletDashboardScreen(
                 is Result.Success -> {
                     if (state.data.isEmpty()) {
                         EmptyWalletsContent(
-                            onCreateWallet = onNavigateToCreateWallet
+                            onCreateWallet = onNavigateToCreateWallet,
+                            onImportWallet = onNavigateToImportWallet
                         )
                     } else {
                         DashboardContent(
@@ -195,7 +210,10 @@ fun WalletDashboardScreen(
 @Composable
 fun DashboardTopBar(
     onCreateWallet: () -> Unit,
+    onImportWallet: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     TopAppBar(
         title = {
             Row(
@@ -216,14 +234,43 @@ fun DashboardTopBar(
             }
         },
         actions = {
-            IconButton(
-                onClick = onCreateWallet
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Add,
-                    contentDescription = stringResource(R.string.create_wallet),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Box {
+                IconButton(
+                    onClick = { showMenu = true }
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = stringResource(R.string.create_wallet),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.create_new_wallet)) },
+                        onClick = {
+                            showMenu = false
+                            onCreateWallet()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Add, contentDescription = null)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.import_existing_wallet)) },
+                        onClick = {
+                            showMenu = false
+                            onImportWallet()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Shield, contentDescription = null)
+                        }
+                    )
+                }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -846,6 +893,7 @@ fun AnimatedPortfolioHeader(
 @Composable
 fun EmptyWalletsContent(
     onCreateWallet: () -> Unit,
+    onImportWallet: () -> Unit,
     isError: Boolean = false,
     errorMessage: String? = null,
     onRetry: (() -> Unit)? = null
@@ -908,18 +956,42 @@ fun EmptyWalletsContent(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
-                    onClick = if (isError && onRetry != null) onRetry else onCreateWallet,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text(
-                        if (isError) stringResource(R.string.try_again) else stringResource(R.string.create_wallet),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
+                if (isError) {
+                    Button(
+                        onClick = onRetry ?: {},
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Text(
+                            stringResource(R.string.try_again),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Button(
+                            onClick = onCreateWallet,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(stringResource(R.string.create_new_wallet))
+                        }
+
+                        OutlinedButton(
+                            onClick = onImportWallet,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(stringResource(R.string.import_existing_wallet))
+                        }
+                    }
                 }
             }
         }
