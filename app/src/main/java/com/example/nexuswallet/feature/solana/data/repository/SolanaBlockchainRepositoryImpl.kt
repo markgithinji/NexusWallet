@@ -287,19 +287,16 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
                 it.fromUserAccount == walletAddress || it.toUserAccount == walletAddress
             }
 
-            if (nativeTransfer != null) {
-                val isIncoming = nativeTransfer.toUserAccount == walletAddress
-                val amount = nativeTransfer.amount
-
+            nativeTransfer?.let {
+                val isIncoming = it.toUserAccount == walletAddress
                 TransferInfo(
-                    from = nativeTransfer.fromUserAccount,
-                    to = nativeTransfer.toUserAccount,
-                    amount = amount,
+                    from = it.fromUserAccount,
+                    to = it.toUserAccount,
+                    amount = it.amount,
                     isIncoming = isIncoming,
                     fee = transaction.fee
                 )
             }
-            null
         } catch (e: Exception) {
             null
         }

@@ -202,7 +202,7 @@ class SendSolanaUseCase @Inject constructor(
             walletId = walletId,
             fromAddress = coin.address,
             toAddress = toAddress,
-            status = TransactionStatus.SUCCESS,
+            status = TransactionStatus.PENDING,
             timestamp = System.currentTimeMillis(),
             note = note,
             feeLevel = feeLevel,
