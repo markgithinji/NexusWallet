@@ -24,6 +24,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 
 ### 🔐 **Android Security Expertise**
 - **BIP39 mnemonic generation** with 12-word seed phrases and verification step
+- **Secure Wallet Import** - Industry-standard BIP39 restoration with real-time word validation
 - **Hierarchical Deterministic (HD) wallet derivation** for multiple cryptocurrencies
 - **Android KeyStore encryption** for secure seed phrase and private key storage
 - **Biometric authentication** (fingerprint/face ID) with PIN fallback
@@ -66,10 +67,10 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 
 ### Wallet Management
 - **Multi-wallet support** - Create and manage multiple wallets
-- **Network selection** - Mainnet and testnet support for all chains
+- **Network selection** - Choose specific mainnets and testnets to "bring back" during the import process
 - **Token selection** - Choose which tokens to enable per wallet
 - **Wallet backup** - Seed phrase display with security checklist
-- **Wallet restoration** - Import existing wallets from seed phrase
+- **Wallet restoration** - Seamlessly import existing wallets from any BIP39-compliant app (MetaMask, Trust Wallet, etc.) using 12-word seed phrases
 - **Wallet deletion** - Secure wallet removal
 
 ### Transaction Capabilities
@@ -139,7 +140,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 | ✅ Portfolio Tracking | Complete | Total value across all assets |
 | ✅ Crypto News | Complete | Aggregated news from CoinStats |
 | ✅ Transaction Review | Complete | Confirm details before sending |
-| 🔄 Wallet Import | In Progress | Restore from seed phrase |
+| ✅ Wallet Import | Complete | Restore any BIP39-compliant wallet with full asset selection |
 | ✅ Price Charts | Complete | Historical price graphs |
 | 🔄 Push Notifications | Planned | Transaction confirmations |
 | 🔄 Multiple Languages | Planned | i18n support |
