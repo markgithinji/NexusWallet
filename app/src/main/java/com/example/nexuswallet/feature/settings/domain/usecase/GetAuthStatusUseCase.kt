@@ -17,6 +17,7 @@ class GetAuthStatusUseCase @Inject constructor(
         val pinSet = securityPreferencesRepository.getPinHash() != null
         val biometricEnabled = securityPreferencesRepository.isBiometricEnabled()
         val privacyModeEnabled = securityPreferencesRepository.isPrivacyModeEnabled()
+        val requireAuthForSend = securityPreferencesRepository.isRequireAuthForSend()
 
         val availableMethods = buildList {
             if (pinSet) add(AuthMethod.PIN)
@@ -27,13 +28,14 @@ class GetAuthStatusUseCase @Inject constructor(
             isPinSet = pinSet,
             isBiometricEnabled = biometricEnabled,
             isPrivacyModeEnabled = privacyModeEnabled,
+            isRequireAuthForSend = requireAuthForSend,
             availableMethods = availableMethods,
             isAnyAuthEnabled = pinSet || biometricEnabled
         )
 
         logger.d(
             "GetAuthStatusUseCase",
-            "Auth status retrieved: PIN set=$pinSet, Biometric enabled=$biometricEnabled, Privacy mode=$privacyModeEnabled"
+            "Auth status retrieved: PIN set=$pinSet, Biometric enabled=$biometricEnabled, Privacy mode=$privacyModeEnabled, Require Auth for Send=$requireAuthForSend"
         )
         return Result.Success(authStatus)
     }

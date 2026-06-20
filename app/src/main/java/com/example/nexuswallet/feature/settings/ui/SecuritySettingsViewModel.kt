@@ -68,6 +68,7 @@ class SecuritySettingsViewModel @Inject constructor(
                             isBiometricEnabled = status.isBiometricEnabled,
                             isPinSet = status.isPinSet,
                             isPrivacyModeEnabled = status.isPrivacyModeEnabled,
+                            isRequireAuthForSend = status.isRequireAuthForSend,
                             availableAuthMethods = status.availableMethods,
                             isAnyAuthEnabled = status.isAnyAuthEnabled
                         )
@@ -114,6 +115,21 @@ class SecuritySettingsViewModel @Inject constructor(
         }
     }
 
+    fun setRequireAuthForSend(enabled: Boolean) {
+        viewModelScope.launch {
+            _operationState.value = SecurityOperation.UPDATING
+
+            try {
+                securityPreferencesRepository.setRequireAuthForSend(enabled)
+                refreshAuthStatus()
+            } catch (e: Exception) {
+                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(e.message ?: "Failed to update security preference"))
+            }
+
+            _operationState.value = SecurityOperation.IDLE
+        }
+    }
+
     private suspend fun refreshAuthStatus() {
         when (val result = getAuthStatusUseCase()) {
             is Result.Success -> {
@@ -125,6 +141,7 @@ class SecuritySettingsViewModel @Inject constructor(
                                 isBiometricEnabled = status.isBiometricEnabled,
                                 isPinSet = status.isPinSet,
                                 isPrivacyModeEnabled = status.isPrivacyModeEnabled,
+                                isRequireAuthForSend = status.isRequireAuthForSend,
                                 availableAuthMethods = status.availableMethods,
                                 isAnyAuthEnabled = status.isAnyAuthEnabled
                             )
@@ -137,6 +154,7 @@ class SecuritySettingsViewModel @Inject constructor(
                                     isBiometricEnabled = status.isBiometricEnabled,
                                     isPinSet = status.isPinSet,
                                     isPrivacyModeEnabled = status.isPrivacyModeEnabled,
+                                    isRequireAuthForSend = status.isRequireAuthForSend,
                                     availableAuthMethods = status.availableMethods,
                                     isAnyAuthEnabled = status.isAnyAuthEnabled
                                 )

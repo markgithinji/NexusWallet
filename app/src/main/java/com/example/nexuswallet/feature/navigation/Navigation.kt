@@ -58,6 +58,7 @@ fun Navigation(
     val isWalletsLoading by navigationViewModel.isWalletsLoading.collectAsStateWithLifecycle()
     val isAuthenticationRequired by navigationViewModel.isAuthenticationRequired.collectAsStateWithLifecycle()
     val isPrivacyModeEnabled by navigationViewModel.isPrivacyModeEnabled.collectAsStateWithLifecycle()
+    val isRequireAuthForSendEnabled by navigationViewModel.isRequireAuthForSendEnabled.collectAsStateWithLifecycle()
 
     if (isWalletsLoading) {
         FullScreenLoading(message = "Loading wallets...")
@@ -196,7 +197,11 @@ fun Navigation(
                     navController.navigate(ReceiveRoute(walletId, coin))
                 },
                 onSendClick = { walletId, coin ->
-                    navController.navigate(SendRoute(walletId, coin))
+                    if (isRequireAuthForSendEnabled) {
+                        navController.navigate(AuthenticateRoute(AuthTarget.Send(walletId, coin)))
+                    } else {
+                        navController.navigate(SendRoute(walletId, coin))
+                    }
                 },
                 onNavigateToAllTransactions = { walletId ->
                     navController.navigate(AllTransactionsRoute(walletId))
@@ -224,7 +229,11 @@ fun Navigation(
                     navController.navigate(ReceiveRoute(walletId, coin))
                 },
                 onNavigateToSend = { walletId, coin ->
-                    navController.navigate(SendRoute(walletId, coin))
+                    if (isRequireAuthForSendEnabled) {
+                        navController.navigate(AuthenticateRoute(AuthTarget.Send(walletId, coin)))
+                    } else {
+                        navController.navigate(SendRoute(walletId, coin))
+                    }
                 },
                 onNavigateToAllTransactions = { walletId, coin ->
                     navController.navigate(CoinTransactionsRoute(walletId, coin))

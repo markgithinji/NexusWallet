@@ -4,6 +4,7 @@ data class AuthStatus(
     val isPinSet: Boolean,
     val isBiometricEnabled: Boolean,
     val isPrivacyModeEnabled: Boolean,
+    val isRequireAuthForSend: Boolean,
     val availableMethods: List<AuthMethod>,
     val isAnyAuthEnabled: Boolean
 )

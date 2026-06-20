@@ -231,6 +231,13 @@ private fun SecuritySettingsContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        TransactionSecuritySection(
+            isRequireAuthEnabled = securityState.isRequireAuthForSend,
+            onToggle = viewModel::setRequireAuthForSend
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         BackupSection(
             onCreateBackup = viewModel::createBackup,
             onRestoreBackup = viewModel::restoreBackup,
@@ -495,6 +502,34 @@ private fun PrivacySection(
             )
             Switch(
                 checked = isPrivacyModeEnabled,
+                onCheckedChange = onToggle
+            )
+        }
+    }
+}
+
+@Composable
+private fun TransactionSecuritySection(
+    isRequireAuthEnabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    SecuritySection(
+        title = "Transaction Security",
+        description = "Require authentication for every outgoing transaction"
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (isRequireAuthEnabled) "Always Require" else "Standard",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = if (isRequireAuthEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            Switch(
+                checked = isRequireAuthEnabled,
                 onCheckedChange = onToggle
             )
         }

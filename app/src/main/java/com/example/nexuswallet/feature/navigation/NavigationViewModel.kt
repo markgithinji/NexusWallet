@@ -37,10 +37,14 @@ class NavigationViewModel @Inject constructor(
     private val _isPrivacyModeEnabled = MutableStateFlow(false)
     val isPrivacyModeEnabled: StateFlow<Boolean> = _isPrivacyModeEnabled.asStateFlow()
 
+    private val _isRequireAuthForSendEnabled = MutableStateFlow(false)
+    val isRequireAuthForSendEnabled: StateFlow<Boolean> = _isRequireAuthForSendEnabled.asStateFlow()
+
     init {
         observeWallets()
         observeAuthenticationStatus()
         observePrivacyMode()
+        observeTransactionSecurity()
     }
 
     private fun observeWallets() {
@@ -73,6 +77,14 @@ class NavigationViewModel @Inject constructor(
         viewModelScope.launch {
             securityPreferencesRepository.observePrivacyModeEnabled().collect { isEnabled ->
                 _isPrivacyModeEnabled.value = isEnabled
+            }
+        }
+    }
+
+    private fun observeTransactionSecurity() {
+        viewModelScope.launch {
+            securityPreferencesRepository.observeRequireAuthForSend().collect { isEnabled ->
+                _isRequireAuthForSendEnabled.value = isEnabled
             }
         }
     }

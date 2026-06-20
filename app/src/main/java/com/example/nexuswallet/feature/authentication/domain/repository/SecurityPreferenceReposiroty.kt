@@ -26,7 +26,11 @@ interface SecurityPreferencesRepository {
     suspend fun setPrivacyModeEnabled(enabled: Boolean)
     suspend fun isPrivacyModeEnabled(): Boolean
 
+    suspend fun setRequireAuthForSend(enabled: Boolean)
+    suspend fun isRequireAuthForSend(): Boolean
+
     fun observePinHash(): Flow<String?>
     fun observeBiometricEnabled(): Flow<Boolean>
     fun observePrivacyModeEnabled(): Flow<Boolean>
+    fun observeRequireAuthForSend(): Flow<Boolean>
 }

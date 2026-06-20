@@ -185,6 +185,21 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
         } ?: false
     }
 
+    override suspend fun setRequireAuthForSend(enabled: Boolean) {
+        safeEdit {
+            dataStore.edit { preferences ->
+                preferences[REQUIRE_AUTH_FOR_SEND_KEY] = enabled
+            }
+        }
+    }
+
+    override suspend fun isRequireAuthForSend(): Boolean {
+        return safeGet(defaultValue = false) {
+            val preferences = dataStore.data.first()
+            preferences[REQUIRE_AUTH_FOR_SEND_KEY] ?: false
+        } ?: false
+    }
+
     override fun observePinHash(): Flow<String?> =
         dataStore.data.map { preferences ->
             preferences[PIN_HASH_KEY]
@@ -200,6 +215,11 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             preferences[PRIVACY_MODE_ENABLED_KEY] ?: false
         }
 
+    override fun observeRequireAuthForSend(): Flow<Boolean> =
+        dataStore.data.map { preferences ->
+            preferences[REQUIRE_AUTH_FOR_SEND_KEY] ?: false
+        }
+
     companion object {
         private val ENCRYPTED_MNEMONIC_KEY = stringPreferencesKey("encrypted_mnemonic")
         private val ENCRYPTED_PRIVATE_KEY_KEY = stringPreferencesKey("encrypted_private_key")
@@ -209,5 +229,6 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
         private val PIN_HASH_KEY = stringPreferencesKey("pin_hash")
         private val LAST_AUTH_TIME_KEY = longPreferencesKey("last_authentication_time")
         private val PRIVACY_MODE_ENABLED_KEY = booleanPreferencesKey("privacy_mode_enabled")
+        private val REQUIRE_AUTH_FOR_SEND_KEY = booleanPreferencesKey("require_auth_for_send")
     }
 }

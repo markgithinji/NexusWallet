@@ -6,6 +6,7 @@ data class SecurityUiState(
     val isBiometricEnabled: Boolean = false,
     val isPinSet: Boolean = false,
     val isPrivacyModeEnabled: Boolean = false,
+    val isRequireAuthForSend: Boolean = false,
     val availableAuthMethods: List<AuthMethod> = emptyList(),
     val isAnyAuthEnabled: Boolean = false
 )
