@@ -8,6 +8,7 @@ import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_TES
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
+import com.example.nexuswallet.feature.core.util.Slip10
 import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
@@ -421,45 +422,36 @@ class CreateWalletUseCase @Inject constructor(
     }
 
     private fun deriveSolanaKeypairFromSeed(seed: ByteArray, derivationPath: String): Keypair {
-        // THIS IS A TEMPORARY SOLUTION TODO: use a proper HD derivation library in production
-        val pathSeed = seed + derivationPath.toByteArray()
-        val expandedSeed = deriveSolanaExpandedSeed(pathSeed)
-        return Keypair.fromSecretKey(expandedSeed)
+        val derivedKey = Slip10.deriveKey(seed, derivationPath)
+        // Solana secret keys are [32-byte seed] + [32-byte public key].
+        // sol4k's fromSecretKey re-derives the public key if we provide the seed.
+        return Keypair.fromSecretKey(derivedKey + ByteArray(32))
     }
 
     private fun deriveSolanaPrivateKey(mnemonic: List<String>, derivationPath: String): ByteArray? {
         return try {
             val seed = MnemonicUtils.generateSeed(mnemonic.joinToString(" "), "")
-            val pathSeed = seed + derivationPath.toByteArray()
-            val expandedSeed = deriveSolanaExpandedSeed(pathSeed)
+            val derivedKey = Slip10.deriveKey(seed, derivationPath)
+            seed.fill(0)
 
-            seed.fill(0) // Clear seed
-            pathSeed.fill(0) // Clear path seed
-
-            expandedSeed
+            // We store the 64-byte secret key (seed + padded space for re-derivation)
+            // to stay consistent with the expected format in SendSolanaUseCase.
+            val secretKey = derivedKey + ByteArray(32)
+            derivedKey.fill(0)
+            
+            secretKey
         } catch (e: Exception) {
             logger.e(tag, "Failed to derive Solana private key", e)
             null
         }
     }
 
-    private fun deriveSolanaExpandedSeed(seed: ByteArray): ByteArray {
-        val hash = MessageDigest.getInstance(HASH_ALGORITHM_SHA256).digest(seed)
-        val expandedSeed = ByteArray(EXPANDED_SEED_SIZE_64)
-        System.arraycopy(hash, ARRAY_START_INDEX, expandedSeed, ARRAY_START_INDEX, HASH_SIZE_32)
-        val secondHash = MessageDigest.getInstance(HASH_ALGORITHM_SHA256).digest(hash)
-        System.arraycopy(secondHash, ARRAY_START_INDEX, expandedSeed, HASH_SIZE_32, HASH_SIZE_32)
-        return expandedSeed
-    }
-
     companion object {
         private const val HARDENED_BIT = 0x80000000
         private const val ETHEREUM_DERIVATION_PATH = "m/44'/60'/0'/0/0"
         private const val SOLANA_MAINNET_DERIVATION_PATH = "m/44'/501'/0'/0'"
-        private const val SOLANA_DEVNET_DERIVATION_PATH = "m/44'/501'/1'/0'"
+        private const val SOLANA_DEVNET_DERIVATION_PATH = "m/44'/501'/0'/0'"
         private const val HASH_ALGORITHM_SHA256 = "SHA-256"
-        private const val EXPANDED_SEED_SIZE_64 = 64
-        private const val HASH_SIZE_32 = 32
         private const val ARRAY_START_INDEX = 0
     }
 }
