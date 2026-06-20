@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncWalletBalancesUseCase
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -19,6 +20,7 @@ class GetBitcoinDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+    private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -73,7 +75,8 @@ class GetBitcoinDetailUseCase @Inject constructor(
             Result.Loading -> {}
         }
 
-        // 4. Get balance
+        // 4. Sync and Get balance
+        syncWalletBalancesUseCase(wallet)
         val balance = walletRepository.getWalletBalance(walletId)
         val coinBalance = balance?.bitcoinBalances?.get(bitcoinCoin.network)
         logger.d(tag, "Balance for ${network.name}: ${coinBalance?.btc ?: "0"} BTC")

@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactio
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncWalletBalancesUseCase
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -18,6 +19,7 @@ class GetSolanaDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val solanaTransactionRepository: SolanaTransactionRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
+    private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -86,7 +88,8 @@ class GetSolanaDetailUseCase @Inject constructor(
             }
         }
 
-        // 5. Get balance
+        // 5. Sync and Get balance
+        syncWalletBalancesUseCase(wallet)
         val balance = walletRepository.getWalletBalance(walletId)
         val coinBalance = balance?.solanaBalances?.get(network)
         logger.d(tag, "Balance for ${network.name}: ${coinBalance?.sol ?: "0"} SOL")

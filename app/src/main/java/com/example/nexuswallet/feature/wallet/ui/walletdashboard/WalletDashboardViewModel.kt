@@ -6,6 +6,7 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncWalletBalancesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +20,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class WalletDashboardViewModel @Inject constructor(
-    private val walletRepository: WalletRepository
+    private val walletRepository: WalletRepository,
+    private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase
 ) : ViewModel() {
 
     // State
@@ -108,13 +110,14 @@ class WalletDashboardViewModel @Inject constructor(
             _isOperationLoading.update { true }
             _operationError.update { null }
 
-            runCatching {
-                val currentWallets = (_uiState.value as? Result.Success)?.data ?: emptyList()
-                if (currentWallets.isNotEmpty()) {
-                    loadBalances(currentWallets)
+            val currentWallets = (_uiState.value as? Result.Success)?.data ?: emptyList()
+            if (currentWallets.isNotEmpty()) {
+                currentWallets.forEach { wallet ->
+                    runCatching {
+                        syncWalletBalancesUseCase(wallet)
+                    }
                 }
-            }.onFailure { e ->
-                _operationError.update { "Failed to refresh: ${e.message}" }
+                loadBalances(currentWallets)
             }
 
             _isOperationLoading.update { false }

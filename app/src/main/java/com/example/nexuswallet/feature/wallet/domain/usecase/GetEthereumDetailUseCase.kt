@@ -13,6 +13,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncWalletBalancesUseCase
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -25,6 +26,7 @@ class GetEthereumDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
+    private val syncWalletBalancesUseCase: SyncWalletBalancesUseCase,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -101,7 +103,8 @@ class GetEthereumDetailUseCase @Inject constructor(
             }
         }
 
-        // 5. Get balance
+        // 5. Sync and Get balance
+        syncWalletBalancesUseCase(wallet)
         val balance = walletRepository.getWalletBalance(walletId)
         val tokenBalance = balance?.evmBalances?.find {
             it.network == verifiedToken.network && it.evmTokenType == verifiedToken.evmTokenType
