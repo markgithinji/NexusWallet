@@ -1,10 +1,10 @@
 # Nexus Wallet 🔐 — Cryptocurrency Wallet for Android
 
-**Nexus Wallet** is a modern cryptocurrency wallet built with **Kotlin and Jetpack Compose**, showcasing advanced Android development skills in security, real-time data handling, and modern architecture. It connects to multiple blockchain APIs (Etherscan, Blockstream, Solana RPC) for secure balance checking and transaction management.
+**Nexus Wallet** is a self-hosted **oflfine-first** ryptocurrency wallet built with **Kotlin and Jetpack Compose**, showcasing advanced Android development skills in security, real-time data handling, and modern architecture. It connects to multiple blockchain APIs (Etherscan, Blockstream, Solana RPC) for secure balance checking and transaction management.
 
 It allows users to **create wallets, manage multiple cryptocurrencies, send and receive transactions**, and monitor **real-time market data**.
 
-> 🧠 **Note:** Nexus Wallet is currently under active development and is NOT intended for real cryptocurrency storage. It is a portfolio project demonstrating Android development expertise.
+> 🧠 **Note:** Nexus Wallet is a portfolio project demonstrating Android development expertise. Since it is under active development, **avoid using it for real cryptocurrency storage**.
 
 ---
 
@@ -29,6 +29,8 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Android KeyStore encryption** for secure seed phrase and private key storage
 - **Biometric authentication** (fingerprint/face ID) with PIN fallback
 - **Encrypted local storage** using AndroidX Security Crypto for sensitive data
+- **Offline-first architecture** with caching for balances, transactions, and wallet data; works without internet connection
+- **Self-hosted architecture** with local-only key storage, no backend server
 - **Secure transaction signing** without exposing private keys to the UI layer
 - **Authentication middleware** for protected routes requiring biometric verification
 
@@ -100,6 +102,10 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Crypto News** - Latest blockchain news aggregated from multiple sources
 
 ### User Experience
+- **Seed phrase security checklist** - Guided backup process with verification steps
+- **Transaction status tracking** - Real-time status updates with explorer links after sending
+- **Pre-transaction confirmation** - Dedicated review screen showing amount, recipient, and fees before signing
+- **Destructive action confirmation** - Confirmation dialogs for dangerous actions
 - **Pull-to-refresh** - Manual refresh of balances and transactions
 - **Skeleton loading states** - Smooth loading experience
 - **Error handling** - User-friendly error messages with retry options
