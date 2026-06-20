@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.usdc
+package com.example.nexuswallet.feature.ethereum.util
 
 import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork

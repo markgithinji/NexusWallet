@@ -18,7 +18,7 @@ import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STAN
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.USDT_GAS_LIMIT
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
-import com.example.nexuswallet.feature.usdc.Web3jFactory
+import com.example.nexuswallet.feature.ethereum.util.Web3jFactory
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
