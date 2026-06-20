@@ -4,7 +4,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.market.domain.model.NewsArticle
 import com.example.nexuswallet.feature.market.domain.model.ChartData
 import com.example.nexuswallet.feature.market.domain.model.ChartDuration
@@ -20,11 +19,9 @@ import javax.inject.Inject
 @HiltViewModel
 class TokenDetailViewModel @Inject constructor(
     private val marketRepository: MarketRepository,
-    private val logger: Logger,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val tag = "TokenDetailVM"
     private val tokenId: String = checkNotNull(savedStateHandle["tokenId"])
 
     // Token details state
@@ -98,17 +95,13 @@ class TokenDetailViewModel @Inject constructor(
             // Use tokenId (slug) for news search which works best with CoinStats
             val searchQuery = tokenId
 
-            logger.d(tag, "Loading news for $tokenId using search query: $searchQuery")
-
             when (val result = marketRepository.getCoinNews(searchQuery)) {
                 is Result.Success -> {
-                    logger.d(tag, "Successfully loaded ${result.data.size} news articles")
                     _newsState.value = Result.Success(result.data)
                     hasLoadedNews = true
                 }
 
                 is Result.Error -> {
-                    logger.e(tag, "Failed to load news: ${result.message}")
                     _newsState.value = Result.Error(result.message, result.throwable)
                 }
 

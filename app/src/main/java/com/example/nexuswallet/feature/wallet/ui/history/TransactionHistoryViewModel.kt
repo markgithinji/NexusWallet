@@ -12,7 +12,6 @@ import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetAllTransactionsUseCase
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
-import com.example.nexuswallet.feature.logging.Logger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -25,11 +24,9 @@ class TransactionHistoryViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
     private val getAllTransactionsUseCase: GetAllTransactionsUseCase,
     private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
-    private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
-    private val tag = "TransactionHistoryVM"
     private val _uiState = MutableStateFlow(TransactionHistoryState())
     val uiState: StateFlow<TransactionHistoryState> = _uiState.asStateFlow()
 
@@ -44,7 +41,6 @@ class TransactionHistoryViewModel @Inject constructor(
 
             val wallet = walletRepository.getWallet(walletId)
             if (wallet == null) {
-                logger.e(tag, "Wallet not found: $walletId")
                 _uiState.update { it.copy(isLoading = false, error = "Wallet not found") }
                 return@launch
             }
@@ -54,7 +50,6 @@ class TransactionHistoryViewModel @Inject constructor(
                 .conflate() // DROP rapid intermediate updates during sync
                 .distinctUntilChanged() // Only proceed if the list content changed
                 .catch { e ->
-                    logger.e(tag, "Error in transaction flow", e)
                     _uiState.update { it.copy(isLoading = false, error = e.message) }
                 }
                 .collect { allTransactions ->
