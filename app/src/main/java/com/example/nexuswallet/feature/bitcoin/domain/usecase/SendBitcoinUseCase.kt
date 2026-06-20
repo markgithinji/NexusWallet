@@ -169,7 +169,7 @@ class SendBitcoinUseCase @Inject constructor(
                     walletId = walletId,
                     fromAddress = preparedTx.fromAddress,
                     toAddress = preparedTx.toAddress,
-                    status = TransactionStatus.SUCCESS,
+                    status = TransactionStatus.PENDING,
                     timestamp = System.currentTimeMillis(),
                     note = null,
                     feeLevel = preparedTx.feeLevel,
