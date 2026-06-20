@@ -605,7 +605,8 @@ fun NetworkSelectionStep(
                             is EthereumNetwork -> stringResource(R.string.ethereum_name) to stringResource(R.string.ethereum_symbol)
                             is SolanaNetwork -> stringResource(R.string.solana_name) to stringResource(R.string.solana_symbol)
                         }
-                        val networkType = if (network.isTestnet) " ${stringResource(R.string.testnet_suffix)}" else ""
+                        val suffixRes = if (network is SolanaNetwork) R.string.devnet_suffix else R.string.testnet_suffix
+                        val networkType = if (network.isTestnet) " ${stringResource(suffixRes)}" else ""
                         Text(
                             text = "• $coinName$networkType - $coinSymbol",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -624,7 +625,8 @@ fun NetworkSelectionStep(
                                     EVMTokenType.USDT -> stringResource(R.string.usdt_name) to stringResource(R.string.usdt_symbol)
                                     EVMTokenType.NATIVE -> stringResource(R.string.ethereum_name) to stringResource(R.string.ethereum_symbol) // Won't be shown due to filter
                                 }
-                                val networkType = if (network.isTestnet) " ${stringResource(R.string.testnet_suffix)}" else ""
+                                val suffixRes = if (network is SolanaNetwork) R.string.devnet_suffix else R.string.testnet_suffix
+                                val networkType = if (network.isTestnet) " ${stringResource(suffixRes)}" else ""
                                 Text(
                                     text = "• $tokenName ($tokenSymbol) on Ethereum$networkType",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1886,7 +1888,7 @@ fun WalletSuccessStep(
 
                 // Solana Coins with icons
                 wallet.solanaCoins.forEach { coin ->
-                    val networkSuffix = if (coin.network.isTestnet) " (Testnet)" else ""
+                    val networkSuffix = if (coin.network.isTestnet) " (Devnet)" else ""
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(vertical = 4.dp)

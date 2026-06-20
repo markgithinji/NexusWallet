@@ -82,6 +82,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
@@ -437,12 +438,13 @@ fun AssetCard(
                     )
 
                     if (asset.coin.network.isTestnet) {
+                        val badgeText = if (asset.coin.network is SolanaNetwork) "Devnet" else "Testnet"
                         Surface(
                             shape = RoundedCornerShape(4.dp),
                             color = MaterialTheme.colorScheme.warning.copy(alpha = 0.1f)
                         ) {
                             Text(
-                                text = "Testnet",
+                                text = badgeText,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.warning,
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)

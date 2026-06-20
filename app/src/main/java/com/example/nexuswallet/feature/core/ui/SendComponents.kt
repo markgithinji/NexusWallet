@@ -159,11 +159,7 @@ fun NetworkSelectorCard(
     currentNetwork: Network?,
     onClick: () -> Unit
 ) {
-    val displayName = if (currentNetwork?.isTestnet == true) {
-        "${currentNetwork.name} Testnet"
-    } else {
-        currentNetwork?.name ?: "Select Network"
-    }
+    val displayName = currentNetwork?.name ?: "Select Network"
 
     Card(
         modifier = Modifier
@@ -236,11 +232,7 @@ fun NetworkSelectorDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(availableNetworks) { network ->
-                    val displayName = if (network.isTestnet) {
-                        "${network.name} Testnet"
-                    } else {
-                        network.name
-                    }
+                    val displayName = network.name
                     val isSelected = network == currentNetwork
 
                     Card(
@@ -349,7 +341,7 @@ fun SendBalanceCard(
 
                     if (network != null && network.isTestnet) {
                         Text(
-                            text = "Network: ${network.name} Testnet",
+                            text = "Network: ${network.name}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

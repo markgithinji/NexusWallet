@@ -282,8 +282,7 @@ fun TransactionReviewScreen(
         else -> false
     }
 
-    val isTestnet = coin.network.isTestnet
-    val fullNetworkName = if (isTestnet) "${coin.network.name} Testnet" else coin.network.name
+    val fullNetworkName = coin.network.name
 
     val tokenIconRes = when (selectedToken) {
         is NativeETH -> R.drawable.ethereum
