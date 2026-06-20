@@ -97,6 +97,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.ui.walletdetail.shimmer
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
+import com.example.nexuswallet.ui.theme.onSuccessContainer
 import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.successContainer
@@ -837,7 +838,8 @@ fun SuccessBanner(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.successContainer
+            containerColor = MaterialTheme.colorScheme.successContainer,
+            contentColor = MaterialTheme.colorScheme.onSuccessContainer
         ),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
@@ -873,12 +875,12 @@ fun SuccessBanner(
                     text = "Transaction Sent!",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSuccessContainer
                 )
                 Text(
                     text = "Hash: ${txHash.take(6)}...${txHash.takeLast(4)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSuccessContainer.copy(alpha = 0.8f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -898,7 +900,7 @@ fun SuccessBanner(
                         Icon(
                             Icons.Outlined.OpenInBrowser,
                             contentDescription = "View on Explorer",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.onSuccessContainer,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -912,7 +914,7 @@ fun SuccessBanner(
                     Icon(
                         Icons.Outlined.Close,
                         contentDescription = "Dismiss",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onSuccessContainer.copy(alpha = 0.7f),
                         modifier = Modifier.size(18.dp)
                     )
                 }
