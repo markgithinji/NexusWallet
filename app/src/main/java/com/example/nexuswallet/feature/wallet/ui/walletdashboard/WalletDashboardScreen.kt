@@ -270,7 +270,10 @@ fun DashboardContent(
         }
 
         if (isTablet) {
-            items(wallets.chunked(2)) { walletPair ->
+            items(
+                items = wallets.chunked(2),
+                key = { pair -> pair.joinToString("-") { it.id } }
+            ) { walletPair ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -287,7 +290,10 @@ fun DashboardContent(
                 }
             }
         } else {
-            items(wallets) { wallet ->
+            items(
+                items = wallets,
+                key = { it.id }
+            ) { wallet ->
                 WalletCard(
                     wallet = wallet,
                     balance = balances[wallet.id],
