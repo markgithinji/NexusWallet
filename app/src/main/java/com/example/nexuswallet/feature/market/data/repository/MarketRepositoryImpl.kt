@@ -64,10 +64,7 @@ class MarketRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getCoinNews(coinNameOrSymbol: String): Result<List<NewsArticle>> {
-        logger.d(tag, "Fetching news for: $coinNameOrSymbol")
-        
         val coinId = resolveCoinId(coinNameOrSymbol)
-        logger.d(tag, "Resolved coinId for news: $coinId")
 
         val result = SafeApiCall.make {
             val response = coinStatsApi.getNews(
@@ -75,8 +72,6 @@ class MarketRepositoryImpl @Inject constructor(
                 type = "latest",
                 limit = 10
             )
-            
-            logger.d(tag, "CoinStats response received with ${response.news.size} items")
             
             response.news
                 .filter { article ->

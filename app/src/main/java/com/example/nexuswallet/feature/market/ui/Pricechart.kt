@@ -51,14 +51,14 @@ fun PriceLineChart(
         val width = size.width
         val height = size.height
 
-        val paddingBottom = 30f
-        val paddingLeft = 65f
+        val paddingBottom = 60f
+        val paddingLeft = 110f
 
         val chartHeight = height - paddingBottom
 
         val stepX =
             if (pricePoints.size > 1)
-                (width - paddingLeft) / (pricePoints.size - 1)
+                (width - paddingLeft - 20f) / (pricePoints.size - 1)
             else 0f
 
         val points = pricePoints.mapIndexed { index, point ->
@@ -72,10 +72,30 @@ fun PriceLineChart(
         }
 
         // =========================
+        // AXES LINES
+        // =========================
+
+        // X-axis line
+        drawLine(
+            color = axisColor.copy(alpha = 0.5f),
+            start = Offset(paddingLeft, chartHeight),
+            end = Offset(width, chartHeight),
+            strokeWidth = 2f
+        )
+
+        // Y-axis line
+        drawLine(
+            color = axisColor.copy(alpha = 0.5f),
+            start = Offset(paddingLeft, 0f),
+            end = Offset(paddingLeft, chartHeight),
+            strokeWidth = 2f
+        )
+
+        // =========================
         // Y AXIS INTERVALS
         // =========================
 
-        val yAxisSteps = (chartHeight / 50).toInt().coerceIn(4, 6)
+        val yAxisSteps = 5
         val priceStep = range / yAxisSteps
 
         for (i in 0..yAxisSteps) {
@@ -86,7 +106,7 @@ fun PriceLineChart(
 
             // Grid line
             drawLine(
-                color = axisColor.copy(alpha = 0.3f),
+                color = axisColor.copy(alpha = 0.2f),
                 start = Offset(paddingLeft, y),
                 end = Offset(width, y),
                 strokeWidth = 1f
@@ -98,18 +118,21 @@ fun PriceLineChart(
             val textLayout = textMeasurer.measure(
                 text = label,
                 style = TextStyle(
-                    fontSize = 13.sp,
+                    fontSize = 11.sp,
                     color = textColor
                 )
             )
 
-            drawText(
-                textLayout,
-                topLeft = Offset(
-                    paddingLeft - textLayout.size.width - 8f,
-                    y - textLayout.size.height / 2
+            // Don't draw the bottom-most Y label if it's too close to X axis labels
+            if (i > 0) {
+                drawText(
+                    textLayout,
+                    topLeft = Offset(
+                        paddingLeft - textLayout.size.width - 12f,
+                        y - textLayout.size.height / 2
+                    )
                 )
-            )
+            }
         }
 
         // =========================
@@ -202,23 +225,29 @@ fun PriceLineChart(
                 val textLayout = textMeasurer.measure(
                     text = text,
                     style = TextStyle(
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         color = textColor
                     )
                 )
 
+                val labelX = when (i) {
+                    0 -> x // Align first label to the left of the point
+                    xAxisSteps -> x - textLayout.size.width // Align last label to the right
+                    else -> x - textLayout.size.width / 2 // Center others
+                }
+
                 drawText(
                     textLayout,
                     topLeft = Offset(
-                        x - textLayout.size.width / 2,
-                        height - textLayout.size.height
+                        labelX,
+                        height - textLayout.size.height - 4f
                     )
                 )
 
                 drawLine(
-                    color = axisColor,
+                    color = axisColor.copy(alpha = 0.5f),
                     start = Offset(x, chartHeight),
-                    end = Offset(x, chartHeight + 6f),
+                    end = Offset(x, chartHeight + 10f),
                     strokeWidth = 1f
                 )
             }
