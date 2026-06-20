@@ -277,9 +277,7 @@ fun Navigation(
                                     feeLevel = feeLevel?.name,
                                     coin = coin
                                 )
-                            ) {
-                                popUpTo<SendRoute> { inclusive = true }
-                            }
+                            )
                         }
                     )
                 }
@@ -298,9 +296,7 @@ fun Navigation(
                                     feeLevel = feeLevel?.name,
                                     coin = coin
                                 )
-                            ) {
-                                popUpTo<SendRoute> { inclusive = true }
-                            }
+                            )
                         }
                     )
                 }
@@ -319,9 +315,7 @@ fun Navigation(
                                     feeLevel = feeLevel?.name,
                                     coin = coin
                                 )
-                            ) {
-                                popUpTo<SendRoute> { inclusive = true }
-                            }
+                            )
                         }
                     )
                 }
@@ -342,9 +336,7 @@ fun Navigation(
                 feeLevel = feeLevel.toString(),
                 coin = args.coin,
                 onNavigateUp = {
-                    navController.navigate(WalletDetailRoute(args.walletId)) {
-                        popUpTo(WalletDetailRoute(args.walletId)) { inclusive = true }
-                    }
+                    navController.navigateUp()
                 },
                 onNavigateToWalletDetail = { walletId ->
                     navController.navigate(WalletDetailRoute(walletId)) {

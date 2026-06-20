@@ -22,6 +22,7 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.SyncWalletBalancesU
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +47,8 @@ class WalletDetailViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(WalletDetailUiState(isLoading = true))
     val uiState: StateFlow<WalletDetailUiState> = _uiState.asStateFlow()
+
+    private var transactionsJob: Job? = null
 
     // Cache expiration times
     private companion object {
@@ -199,7 +202,8 @@ class WalletDetailViewModel @Inject constructor(
         wallet: Wallet,
         forceRefresh: Boolean = false
     ) {
-        viewModelScope.launch {
+        transactionsJob?.cancel()
+        transactionsJob = viewModelScope.launch {
             // Set loading state only if it's a manual refresh
             if (forceRefresh) {
                 _uiState.update { it.copy(isRefreshingTransactions = true) }
