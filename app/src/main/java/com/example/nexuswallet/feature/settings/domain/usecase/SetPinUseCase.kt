@@ -16,8 +16,16 @@ class SetPinUseCase @Inject constructor(
     suspend operator fun invoke(pin: String): Result<Boolean> {
         val pinHash = pinHasher.hashPin(pin)
         securityPreferencesRepository.storePinHash(pinHash)
-        val success = securityPreferencesRepository.getPinHash() != null
-        logger.d("SetPinUseCase", "PIN set successfully: $success")
-        return Result.Success(success)
+        
+        // Verify storage success
+        val success = securityPreferencesRepository.getPinHash() == pinHash
+        
+        return if (success) {
+            logger.d("SetPinUseCase", "PIN set successfully")
+            Result.Success(true)
+        } else {
+            logger.e("SetPinUseCase", "PIN hash verification failed")
+            Result.Error("Failed to verify PIN storage")
+        }
     }
 }
