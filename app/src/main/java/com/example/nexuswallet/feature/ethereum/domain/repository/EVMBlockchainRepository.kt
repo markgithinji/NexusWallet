@@ -47,6 +47,7 @@ interface EVMBlockchainRepository {
         toAddress: String,
         amountWei: BigInteger,
         gasPriceWei: BigInteger,
+        gasLimit: BigInteger,
         nonce: BigInteger,
         chainId: Long,
         network: EthereumNetwork
@@ -60,6 +61,7 @@ interface EVMBlockchainRepository {
         tokenContract: String,
         tokenDecimals: Int,
         gasPriceWei: BigInteger,
+        gasLimit: BigInteger,
         nonce: BigInteger,
         chainId: Long,
         network: EthereumNetwork,
@@ -79,4 +81,12 @@ interface EVMBlockchainRepository {
         signedHex: String,
         network: EthereumNetwork
     ): Result<BroadcastResult>
+
+    suspend fun estimateGas(
+        fromAddress: String,
+        toAddress: String,
+        amount: BigInteger,
+        tokenContract: String?,
+        network: EthereumNetwork
+    ): Result<BigInteger>
 }

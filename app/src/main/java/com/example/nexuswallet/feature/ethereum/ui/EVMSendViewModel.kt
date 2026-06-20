@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.RoundingMode
 import javax.inject.Inject
 
@@ -49,6 +50,7 @@ class EVMSendViewModel @Inject constructor(
     private var wallet: Wallet? = null
     private var evmTokensByNetwork: Map<EthereumNetwork, List<EVMToken>> = emptyMap()
     private var currentCoin: EVMToken? = null
+    private var feeJob: kotlinx.coroutines.Job? = null
 
     fun initialize(walletId: String, coin: EVMToken? = null) {
         viewModelScope.launch {
@@ -164,6 +166,7 @@ class EVMSendViewModel @Inject constructor(
                 )
             }
             loadBalances()
+            loadFeeEstimate()
             loadFiatRate(token)
         }
     }
@@ -280,54 +283,69 @@ class EVMSendViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadFeeEstimate() {
-        val state = _uiState.value
-        val currentToken = state.selectedToken
+    private fun loadFeeEstimate() {
+        feeJob?.cancel()
+        feeJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(500) // Debounce fee estimation
+            val state = _uiState.value
+            val currentToken = state.selectedToken ?: return@launch
 
-        // Set fee loading state
-        _uiState.update { currentState ->
-            if (currentState.selectedToken == currentToken) {
-                currentState.copy(isFeeLoading = true)
+            // Set fee loading state
+            _uiState.update { currentState ->
+                if (currentState.selectedToken == currentToken) {
+                    currentState.copy(isFeeLoading = true)
+                } else {
+                    currentState
+                }
+            }
+
+            // Prepare parameters for dynamic estimation if available
+            val amountInWei = if (state.amountValue > BigDecimal.ZERO) {
+                state.amountValue.multiply(BigDecimal.TEN.pow(currentToken.decimals)).toBigInteger()
             } else {
-                currentState
+                BigInteger.ONE // Use small amount for estimation if not entered
             }
-        }
 
-        val feeEstimateResult = getFeeEstimateUseCase(
-            feeLevel = state.feeLevel,
-            network = state.network,
-            isToken = state.selectedToken?.evmTokenType != EVMTokenType.NATIVE
-        )
+            val feeEstimateResult = getFeeEstimateUseCase(
+                feeLevel = state.feeLevel,
+                network = state.network,
+                isToken = currentToken.evmTokenType != EVMTokenType.NATIVE,
+                fromAddress = state.fromAddress,
+                toAddress = state.toAddress.takeIf { it.length >= 40 }, // Basic check for address
+                amount = amountInWei,
+                tokenContract = if (currentToken.evmTokenType == EVMTokenType.NATIVE) null else currentToken.contractAddress
+            )
 
-        when (feeEstimateResult) {
-            is Result.Success -> {
-                _uiState.update { currentState ->
-                    if (currentState.selectedToken == currentToken) {
-                        currentState.copy(
-                            feeEstimate = feeEstimateResult.data,
-                            isFeeLoading = false
-                        )
-                    } else {
-                        currentState
+            when (feeEstimateResult) {
+                is Result.Success -> {
+                    _uiState.update { currentState ->
+                        if (currentState.selectedToken == currentToken) {
+                            currentState.copy(
+                                feeEstimate = feeEstimateResult.data,
+                                isFeeLoading = false
+                            )
+                        } else {
+                            currentState
+                        }
+                    }
+                    validateInputs()
+                }
+
+                is Result.Error -> {
+                    _uiState.update { currentState ->
+                        if (currentState.selectedToken == currentToken) {
+                            currentState.copy(
+                                error = "Failed to load fee: ${feeEstimateResult.message}",
+                                isFeeLoading = false
+                            )
+                        } else {
+                            currentState
+                        }
                     }
                 }
-                validateInputs()
-            }
 
-            is Result.Error -> {
-                _uiState.update { currentState ->
-                    if (currentState.selectedToken == currentToken) {
-                        currentState.copy(
-                            error = "Failed to load fee: ${feeEstimateResult.message}",
-                            isFeeLoading = false
-                        )
-                    } else {
-                        currentState
-                    }
-                }
+                Result.Loading -> {}
             }
-
-            Result.Loading -> {}
         }
     }
 
@@ -337,6 +355,9 @@ class EVMSendViewModel @Inject constructor(
                 is EVMSendEvent.ToAddressChanged -> {
                     _uiState.update { it.copy(toAddress = event.address) }
                     validateInputs()
+                    if (event.address.length >= 40) {
+                        loadFeeEstimate()
+                    }
                 }
 
                 is EVMSendEvent.AmountChanged -> {
@@ -348,6 +369,9 @@ class EVMSendViewModel @Inject constructor(
                         )
                     }
                     validateInputs()
+                    if (amountValue > BigDecimal.ZERO) {
+                        loadFeeEstimate()
+                    }
                 }
 
                 is EVMSendEvent.NoteChanged -> _uiState.update { it.copy(note = event.note) }

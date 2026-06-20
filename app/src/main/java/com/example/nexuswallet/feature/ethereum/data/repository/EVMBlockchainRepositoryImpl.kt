@@ -182,6 +182,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         toAddress: String,
         amountWei: BigInteger,
         gasPriceWei: BigInteger,
+        gasLimit: BigInteger,
         nonce: BigInteger,
         chainId: Long,
         network: EthereumNetwork
@@ -190,7 +191,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
             val rawTransaction = RawTransaction.createEtherTransaction(
                 nonce,
                 gasPriceWei,
-                BigInteger.valueOf(GAS_LIMIT_STANDARD),
+                gasLimit,
                 toAddress,
                 amountWei
             )
@@ -212,6 +213,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         tokenContract: String,
         tokenDecimals: Int,
         gasPriceWei: BigInteger,
+        gasLimit: BigInteger,
         nonce: BigInteger,
         chainId: Long,
         network: EthereumNetwork,
@@ -225,12 +227,6 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
             )
 
             val encodedFunction = FunctionEncoder.encode(function)
-
-            // Apply token-specific gas limits
-            val gasLimit = when (evmTokenType) {
-                EVMTokenType.USDT -> BigInteger.valueOf(USDT_GAS_LIMIT)
-                else -> BigInteger.valueOf(DEFAULT_TOKEN_GAS_LIMIT)
-            }
 
             val rawTransaction = RawTransaction.createTransaction(
                 nonce,
@@ -360,6 +356,62 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
                     success = true,
                     hash = response.transactionHash
                 )
+            }
+        }
+    }
+
+    override suspend fun estimateGas(
+        fromAddress: String,
+        toAddress: String,
+        amount: BigInteger,
+        tokenContract: String?,
+        network: EthereumNetwork
+    ): Result<BigInteger> = withContext(ioDispatcher) {
+        SafeApiCall.make {
+            val web3j = web3jFactory.create(network)
+
+            val transaction = if (tokenContract == null) {
+                // Native ETH transfer
+                Transaction.createEtherTransaction(
+                    fromAddress,
+                    null,
+                    null,
+                    null,
+                    toAddress,
+                    amount
+                )
+            } else {
+                // Token transfer
+                val function = Function(
+                    "transfer",
+                    listOf(Address(toAddress), Uint256(amount)),
+                    emptyList()
+                )
+                val encodedFunction = FunctionEncoder.encode(function)
+                Transaction.createFunctionCallTransaction(
+                    fromAddress,
+                    null, null, null,
+                    tokenContract,
+                    encodedFunction
+                )
+            }
+
+            val response = web3j.ethEstimateGas(transaction).send()
+
+            if (response.hasError()) {
+                // Fallback to defaults if estimation fails
+                if (tokenContract == null) {
+                    BigInteger.valueOf(GAS_LIMIT_STANDARD)
+                } else {
+                    // Check if it's USDT for specific default
+                    // Note: We don't have EVMTokenType here, but we can check if it's a known USDT contract if needed
+                    // For now use a safe default
+                    BigInteger.valueOf(DEFAULT_TOKEN_GAS_LIMIT)
+                }
+            } else {
+                val estimated = response.amountUsed
+                // Add 10% buffer
+                estimated.multiply(BigInteger.valueOf(110)).divide(BigInteger.valueOf(100))
             }
         }
     }

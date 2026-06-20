@@ -131,28 +131,44 @@ class SendEVMAssetUseCase @Inject constructor(
             // Convert Gwei to Wei
             val gasPriceWei = (BigDecimal(gasPriceGwei) * BigDecimal(GWEI_TO_WEI)).toBigInteger()
 
-            // Gas limit based on token type
-            val gasLimit = if (token.evmTokenType != EVMTokenType.NATIVE) {
-                when (token.evmTokenType) {
-                    EVMTokenType.USDT -> USDT_GAS_LIMIT
-                    else -> DEFAULT_TOKEN_GAS_LIMIT
+            // 5. Estimate gas limit
+            logger.d(tag, "Step 5: Estimating gas limit...")
+            val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
+
+            val gasLimitResult = evmBlockchainRepository.estimateGas(
+                fromAddress = token.address,
+                toAddress = toAddress,
+                amount = amountInWei,
+                tokenContract = if (token.evmTokenType == EVMTokenType.NATIVE) null else token.contractAddress,
+                network = token.network
+            )
+
+            val gasLimit = when (gasLimitResult) {
+                is Result.Success -> gasLimitResult.data
+                else -> {
+                    logger.w(tag, "Gas estimation failed, using fallback limits")
+                    if (token.evmTokenType != EVMTokenType.NATIVE) {
+                        when (token.evmTokenType) {
+                            EVMTokenType.USDT -> BigInteger.valueOf(USDT_GAS_LIMIT)
+                            else -> BigInteger.valueOf(DEFAULT_TOKEN_GAS_LIMIT)
+                        }
+                    } else {
+                        BigInteger.valueOf(GAS_LIMIT_STANDARD)
+                    }
                 }
-            } else {
-                GAS_LIMIT_STANDARD
             }
 
-            val totalFeeWei = gasPriceWei.multiply(BigInteger.valueOf(gasLimit))
+            val totalFeeWei = gasPriceWei.multiply(gasLimit)
             val totalFeeEth = BigDecimal(totalFeeWei).divide(
                 BigDecimal(WEI_PER_ETH),
                 18,
                 RoundingMode.HALF_UP
             ).toPlainString()
 
-            logger.d(tag, "Gas price: $gasPriceGwei Gwei, Fee: $totalFeeEth ETH")
+            logger.d(tag, "Gas price: $gasPriceGwei Gwei, Gas Limit: $gasLimit, Fee: $totalFeeEth ETH")
 
-            // 5. Create and sign transaction
-            logger.d(tag, "Step 5: Creating and signing transaction...")
-            val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
+            // 6. Create and sign transaction
+            logger.d(tag, "Step 6: Creating and signing transaction...")
 
             val createResult = when (token.evmTokenType) {
                 EVMTokenType.NATIVE -> evmBlockchainRepository.createAndSignNativeTransaction(
@@ -161,6 +177,7 @@ class SendEVMAssetUseCase @Inject constructor(
                     toAddress = toAddress,
                     amountWei = amountInWei,
                     gasPriceWei = gasPriceWei,
+                    gasLimit = gasLimit,
                     nonce = nonce,
                     chainId = token.network.chainId.toLong(),
                     network = token.network
@@ -174,6 +191,7 @@ class SendEVMAssetUseCase @Inject constructor(
                     tokenContract = token.contractAddress,
                     tokenDecimals = token.decimals,
                     gasPriceWei = gasPriceWei,
+                    gasLimit = gasLimit,
                     nonce = nonce,
                     chainId = token.network.chainId.toLong(),
                     network = token.network,
@@ -226,7 +244,7 @@ class SendEVMAssetUseCase @Inject constructor(
                                 amountEth = amount.toPlainString(),
                                 gasPriceWei = gasPriceWei.toString(),
                                 gasPriceGwei = gasPriceGwei,
-                                gasLimit = gasLimit,
+                                gasLimit = gasLimit.toLong(),
                                 feeWei = totalFeeWei.toString(),
                                 feeEth = totalFeeEth,
                                 nonce = nonce.toInt(),
@@ -255,7 +273,7 @@ class SendEVMAssetUseCase @Inject constructor(
                                 amountWei = amountInWei.toString(),
                                 gasPriceWei = gasPriceWei.toString(),
                                 gasPriceGwei = gasPriceGwei,
-                                gasLimit = gasLimit,
+                                gasLimit = gasLimit.toLong(),
                                 feeWei = totalFeeWei.toString(),
                                 feeEth = totalFeeEth,
                                 nonce = nonce.toInt(),

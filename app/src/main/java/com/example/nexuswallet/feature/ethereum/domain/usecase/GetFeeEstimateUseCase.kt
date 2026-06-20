@@ -27,11 +27,36 @@ class GetFeeEstimateUseCase @Inject constructor(
     suspend operator fun invoke(
         feeLevel: FeeLevel,
         network: EthereumNetwork,
-        isToken: Boolean
+        isToken: Boolean,
+        fromAddress: String? = null,
+        toAddress: String? = null,
+        amount: BigInteger? = null,
+        tokenContract: String? = null
     ): Result<EVMFeeEstimate> {
         logger.d(tag, "Getting fee estimate for $feeLevel on ${network.name} (isToken=$isToken)")
 
-        // Get current gas price in Gwei from repository
+        // 1. Get gas limit - try dynamic estimation if we have data
+        val gasLimitResult = if (fromAddress != null && toAddress != null && amount != null) {
+            evmBlockchainRepository.estimateGas(
+                fromAddress = fromAddress,
+                toAddress = toAddress,
+                amount = amount,
+                tokenContract = tokenContract,
+                network = network
+            )
+        } else {
+            null
+        }
+
+        val gasLimit = when (gasLimitResult) {
+            is Result.Success -> gasLimitResult.data
+            else -> {
+                // Fallback to constants if no data or estimation failed
+                BigInteger.valueOf(if (isToken) DEFAULT_TOKEN_GAS_LIMIT else GAS_LIMIT_STANDARD)
+            }
+        }
+
+        // 2. Get current gas price in Gwei from repository
         val gasPriceResult = evmBlockchainRepository.getCurrentGasPrice(network)
 
         return when (gasPriceResult) {
@@ -50,11 +75,8 @@ class GetFeeEstimateUseCase @Inject constructor(
                     .multiply(BigDecimal(GWEI_TO_WEI))
                     .toBigInteger()
 
-                // Gas limit based on token transfer vs native transfer
-                val gasLimit = if (isToken) DEFAULT_TOKEN_GAS_LIMIT else GAS_LIMIT_STANDARD
-
                 // Calculate total fee
-                val totalFeeWei = gasPriceWei.multiply(BigInteger.valueOf(gasLimit))
+                val totalFeeWei = gasPriceWei.multiply(gasLimit)
 
                 // Convert to ETH for display
                 val totalFeeEth = BigDecimal(totalFeeWei).divide(
@@ -73,7 +95,7 @@ class GetFeeEstimateUseCase @Inject constructor(
                     EVMFeeEstimate(
                         gasPriceGwei = gasPriceGwei,
                         gasPriceWei = gasPriceWei.toString(),
-                        gasLimit = gasLimit,
+                        gasLimit = gasLimit.toLong(),
                         totalFeeWei = totalFeeWei.toString(),
                         totalFeeEth = totalFeeEth,
                         estimatedTime = estimatedTime,
