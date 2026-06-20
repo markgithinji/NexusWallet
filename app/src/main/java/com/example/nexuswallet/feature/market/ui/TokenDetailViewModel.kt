@@ -27,20 +27,6 @@ class TokenDetailViewModel @Inject constructor(
     private val tag = "TokenDetailVM"
     private val tokenId: String = checkNotNull(savedStateHandle["tokenId"])
 
-    // Map token IDs to display names for news search
-    private val tokenDisplayNames = mapOf(
-        "bitcoin" to "Bitcoin",
-        "ethereum" to "Ethereum",
-        "solana" to "Solana",
-        "cardano" to "Cardano",
-        "binancecoin" to "Binance Coin",
-        "ripple" to "XRP",
-        "dogecoin" to "Dogecoin",
-        "polkadot" to "Polkadot",
-        "matic-network" to "Polygon",
-        "avalanche-2" to "Avalanche"
-    )
-
     // Token details state
     private val _uiState = MutableStateFlow<Result<TokenDetail>>(Result.Loading)
     val uiState: StateFlow<Result<TokenDetail>> = _uiState.asStateFlow()
@@ -109,11 +95,8 @@ class TokenDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _newsState.value = Result.Loading
 
-            // Get display name for news search from the loaded token details if available
-            val searchQuery = when (val currentState = _uiState.value) {
-                is Result.Success -> currentState.data.name
-                else -> tokenDisplayNames[tokenId] ?: tokenId.replaceFirstChar { it.uppercase() }
-            }
+            // Use tokenId (slug) for news search which works best with CoinStats
+            val searchQuery = tokenId
 
             logger.d(tag, "Loading news for $tokenId using search query: $searchQuery")
 

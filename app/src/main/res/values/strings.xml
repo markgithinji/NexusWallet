@@ -145,10 +145,9 @@
     <string name="change">Change</string>
     <string name="price_trend">Price trend</string>
     <string name="close">Close</string>
-    <string name="latest_news_delay">Latest News (24h delay)</string>
+    <string name="latest_news">Latest News</string>
     <string name="failed_to_load_news">Failed to load news</string>
     <string name="no_news_available">No news available</string>
-    <string name="free_plan_warning">⚠️ Free plan: 24h delay, no links</string>
     <string name="rank_label">Rank #%1$d</string>
     <string name="current_price">Current Price</string>
     <string name="trend_24h">24h trend</string>

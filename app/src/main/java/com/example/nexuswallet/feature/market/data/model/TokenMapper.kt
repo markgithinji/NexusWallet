@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.market.data.model
 
 import com.example.nexuswallet.feature.market.data.remote.model.coingecko.TokenDetailDto
 import com.example.nexuswallet.feature.market.data.remote.model.coingecko.CoinGeckoTokenDto
-import com.example.nexuswallet.feature.market.data.remote.model.cryptopanic.CryptoPanicPostDto
+import com.example.nexuswallet.feature.market.data.remote.model.coinstats.CoinStatsNewsDto
 import com.example.nexuswallet.feature.market.data.remote.model.coingecko.MarketChartDto
 import com.example.nexuswallet.feature.market.domain.model.NewsArticle
 import com.example.nexuswallet.feature.market.data.remote.model.coingecko.Sparkline7dDto
@@ -33,13 +33,13 @@ fun Sparkline7dDto.toSparklineData(): SparklineData {
     return SparklineData(price = price)
 }
 
-fun CryptoPanicPostDto.toNewsArticle(): NewsArticle {
+fun CoinStatsNewsDto.toNewsArticle(): NewsArticle {
     return NewsArticle(
         title = title,
         summary = description,
-        publishedAt = publishedAt,
-        source = "CryptoPanic", // Default since source isn't provided
-        url = "" // No URL in free plan
+        publishedAt = java.time.Instant.ofEpochMilli(feedDate).toString(),
+        source = source,
+        url = link ?: ""
     )
 }
 fun MarketChartDto.toChartData(): ChartData {

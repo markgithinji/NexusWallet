@@ -7,7 +7,7 @@ import com.example.nexuswallet.feature.market.data.model.toChartData
 import com.example.nexuswallet.feature.market.data.model.toNewsArticle
 import com.example.nexuswallet.feature.market.data.model.toTokenDetail
 import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
-import com.example.nexuswallet.feature.market.data.remote.CryptoPanicApi
+import com.example.nexuswallet.feature.market.data.remote.CoinStatsApi
 import com.example.nexuswallet.feature.market.domain.MarketRepository
 import com.example.nexuswallet.feature.market.domain.model.ChartData
 import com.example.nexuswallet.feature.market.domain.model.ChartDuration
@@ -19,13 +19,11 @@ import javax.inject.Singleton
 @Singleton
 class MarketRepositoryImpl @Inject constructor(
     private val coinGeckoApi: CoinGeckoApi,
-    private val cryptoPanicApi: CryptoPanicApi,
+    private val coinStatsApi: CoinStatsApi,
     private val logger: Logger
 ) : MarketRepository {
 
     private val tag = "MarketRepo"
-    private var requestCount = 0
-    private val maxRequests = 100
 
     override suspend fun getLatestPricePercentages(): Result<Map<String, Double>> {
         return SafeApiCall.make {
@@ -65,46 +63,27 @@ class MarketRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getCoinNews(coinName: String): Result<List<NewsArticle>> {
-        logger.d(tag, "Fetching news for coin: $coinName")
-        requestCount++
-        if (requestCount > maxRequests) {
-            logger.w(tag, "News request limit exceeded: $requestCount/$maxRequests")
-            return Result.Error("Monthly request limit exceeded (100/month)")
-        }
-
-        val currencyCode = when (val name = coinName.lowercase()) {
-            "bitcoin" -> "BTC"
-            "ethereum" -> "ETH"
-            "solana" -> "SOL"
-            "cardano" -> "ADA"
-            "binance coin", "binancecoin" -> "BNB"
-            "ripple", "xrp" -> "XRP"
-            "dogecoin" -> "DOGE"
-            "polkadot" -> "DOT"
-            "polygon" -> "MATIC"
-            "avalanche" -> "AVAX"
-            else -> {
-                logger.w(tag, "No currency code found for name: $name")
-                null
-            }
-        }
-
-        logger.d(tag, "Resolved currency code: $currencyCode")
+    override suspend fun getCoinNews(coinNameOrSymbol: String): Result<List<NewsArticle>> {
+        logger.d(tag, "Fetching news for: $coinNameOrSymbol")
+        
+        val coinId = resolveCoinId(coinNameOrSymbol)
+        logger.d(tag, "Resolved coinId for news: $coinId")
 
         val result = SafeApiCall.make {
-            val response = cryptoPanicApi.getNews(
-                public = true,
-                currencies = currencyCode,
-                kind = "news",
-                regions = "en"
+            val response = coinStatsApi.getNews(
+                coinId = coinId,
+                type = "latest",
+                limit = 10
             )
             
-            logger.d(tag, "CryptoPanic response received with ${response.results.size} items")
+            logger.d(tag, "CoinStats response received with ${response.news.size} items")
             
-            response.results
+            response.news
+                .filter { article ->
+                    // Strict client-side filtering by coinId (slug)
+                    coinId == null || article.relatedCoins?.contains(coinId) == true
+                }
                 .map { it.toNewsArticle() }
-                .take(5)
         }
 
         if (result is Result.Error) {
@@ -112,5 +91,30 @@ class MarketRepositoryImpl @Inject constructor(
         }
 
         return result
+    }
+
+    private fun resolveCoinId(input: String): String? {
+        val normalized = input.trim().lowercase()
+        
+        // Map common names and symbols to CoinStats slugs
+        return when (normalized) {
+            "bitcoin", "btc" -> "bitcoin"
+            "ethereum", "eth" -> "ethereum"
+            "solana", "sol" -> "solana"
+            "cardano", "ada" -> "cardano"
+            "binance coin", "binancecoin", "bnb" -> "binance-coin"
+            "ripple", "xrp" -> "ripple"
+            "dogecoin", "doge" -> "dogecoin"
+            "polkadot", "dot" -> "polkadot"
+            "polygon", "matic" -> "polygon"
+            "avalanche", "avax" -> "avalanche"
+            "chainlink", "link" -> "chainlink"
+            "uniswap", "uni" -> "uniswap"
+            "litecoin", "ltc" -> "litecoin"
+            else -> {
+                // Return as is, might be a valid slug
+                normalized
+            }
+        }
     }
 }

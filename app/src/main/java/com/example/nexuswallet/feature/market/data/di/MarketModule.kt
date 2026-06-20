@@ -3,9 +3,9 @@ package com.example.nexuswallet.feature.market.data.di
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.market.data.remote.BinanceWebSocketImpl
 import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
-import com.example.nexuswallet.feature.market.data.remote.CryptoPanicApi
+import com.example.nexuswallet.feature.market.data.remote.CoinStatsApi
 import com.example.nexuswallet.feature.market.data.remote.interceptor.CoinGeckoInterceptor
-import com.example.nexuswallet.feature.market.data.remote.interceptor.CryptoPanicInterceptor
+import com.example.nexuswallet.feature.market.data.remote.interceptor.CoinStatsInterceptor
 import com.example.nexuswallet.feature.market.data.repository.CoinGeckoRepositoryImpl
 import com.example.nexuswallet.feature.market.data.repository.MarketRepositoryImpl
 import com.example.nexuswallet.feature.market.data.repository.WebSocketRepositoryImpl
@@ -32,7 +32,7 @@ import javax.inject.Singleton
 object MarketModule {
 
     private const val COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3/"
-    private const val CRYPTOPANIC_BASE_URL = "https://cryptopanic.com/api/developer/v2/"
+    private const val COINSTATS_BASE_URL = "https://openapiv1.coinstats.app/"
 
     @Provides
     @Singleton
@@ -76,28 +76,28 @@ object MarketModule {
 
     @Provides
     @Singleton
-    @Named("cryptopanic_okhttp")
-    fun provideCryptoPanicOkHttpClient(
-        cryptoPanicInterceptor: CryptoPanicInterceptor,
+    @Named("coinstats_okhttp")
+    fun provideCoinStatsOkHttpClient(
+        coinStatsInterceptor: CoinStatsInterceptor,
         okHttpClient: OkHttpClient
     ): OkHttpClient {
         return okHttpClient.newBuilder()
-            .addInterceptor(cryptoPanicInterceptor)
+            .addInterceptor(coinStatsInterceptor)
             .build()
     }
 
     @Provides
     @Singleton
-    fun provideCryptoPanicApi(
-        @Named("cryptopanic_okhttp") client: OkHttpClient,
+    fun provideCoinStatsApi(
+        @Named("coinstats_okhttp") client: OkHttpClient,
         json: Json
-    ): CryptoPanicApi {
+    ): CoinStatsApi {
         return Retrofit.Builder()
-            .baseUrl(CRYPTOPANIC_BASE_URL)
+            .baseUrl(COINSTATS_BASE_URL)
             .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
-            .create(CryptoPanicApi::class.java)
+            .create(CoinStatsApi::class.java)
     }
 
     @Provides
@@ -120,12 +120,12 @@ object MarketModule {
     @Singleton
     fun provideMarketRepository(
         coinGeckoApi: CoinGeckoApi,
-        cryptoPanicApi: CryptoPanicApi,
+        coinStatsApi: CoinStatsApi,
         logger: Logger
     ): MarketRepository {
         return MarketRepositoryImpl(
             coinGeckoApi,
-            cryptoPanicApi,
+            coinStatsApi,
             logger
         )
     }

@@ -39,7 +39,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **SPL Token Support** - Solana token program integration for SPL tokens
 - **Real-time price updates** - WebSocket connection to Binance WebSocket API for live cryptocurrency prices
 - **Market data aggregation** - CoinGecko REST API for historical data and market trends
-- **Crypto news aggregation** - CryptoPanic API for latest cryptocurrency news
+- **Crypto news aggregation** - CoinStats API for latest cryptocurrency news
 - **JSON-RPC client** - Direct blockchain node communication via Web3j for Ethereum and custom RPC for Bitcoin/Solana
 
 ### 🔌 **Real-time Data & WebSocket Integration**
@@ -137,7 +137,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 | ✅ Transaction History | Complete | Recent and all transactions |
 | ✅ Market Data | Complete | Live prices from CoinGecko |
 | ✅ Portfolio Tracking | Complete | Total value across all assets |
-| ✅ Crypto News | Complete | Aggregated news from CryptoPanic |
+| ✅ Crypto News | Complete | Aggregated news from CoinStats |
 | ✅ Transaction Review | Complete | Confirm details before sending |
 | 🔄 Wallet Import | In Progress | Restore from seed phrase |
 | ✅ Price Charts | Complete | Historical price graphs |
@@ -165,7 +165,7 @@ ALCHEMY_API_KEY=your_alchemy_api_key
 
 # Market Data
 COINGECKO_API_KEY=your_coingecko_api_key
-CRYPTOPANIC_API_KEY=your_cryptopanic_api_key
+COINSTATS_API_KEY=your_coinstats_api_key
 
 # Solana
 HELIUS_API_KEY=your_helius_api_key
@@ -175,7 +175,7 @@ HELIUS_API_KEY=your_helius_api_key
 - [Etherscan API](https://etherscan.io/apis) - Free tier: 5 requests/second
 - [Alchemy](https://www.alchemy.com/) - Free tier: 300M compute units/month
 - [CoinGecko API](https://www.coingecko.com/en/api) - Free tier: 50 calls/minute
-- [CryptoPanic API](https://cryptopanic.com/developers/api/) - Free tier: 1000 requests/day
+- [CoinStats API](https://coinstats.app/developers/) - News & Market Data
 - [Helius](https://helius.xyz/) - Free tier: 50 requests/second
 
 ## 🚀 Getting Started
@@ -196,7 +196,7 @@ HELIUS_API_KEY=your_helius_api_key
    ETHERSCAN_API_KEY=your_key_here
    ALCHEMY_API_KEY=your_key_here
    COINGECKO_API_KEY=your_key_here
-   CRYPTOPANIC_API_KEY=your_key_here
+   COINSTATS_API_KEY=your_key_here
    HELIUS_API_KEY=your_key_here
    ```
 4. **Open in Android Studio**

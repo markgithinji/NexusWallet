@@ -10,5 +10,5 @@ interface MarketRepository {
     suspend fun getLatestPricePercentages(): Result<Map<String, Double>>
     suspend fun getTokenDetails(tokenId: String): Result<TokenDetail>
     suspend fun getMarketChart(tokenId: String, duration: ChartDuration): Result<ChartData>
-    suspend fun getCoinNews(coinName: String): Result<List<NewsArticle>>
+    suspend fun getCoinNews(coinNameOrSymbol: String): Result<List<NewsArticle>>
 }
