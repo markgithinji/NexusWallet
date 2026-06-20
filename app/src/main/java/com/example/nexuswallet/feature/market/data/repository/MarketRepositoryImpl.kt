@@ -88,6 +88,16 @@ class MarketRepositoryImpl @Inject constructor(
         return result
     }
 
+    override suspend fun getSimplePrices(ids: List<String>): Result<Map<String, Double>> {
+        return SafeApiCall.make {
+            val response = coinGeckoApi.getSimplePrice(
+                ids = ids.joinToString(","),
+                vsCurrencies = "usd"
+            )
+            response.mapValues { it.value["usd"] ?: 0.0 }
+        }
+    }
+
     private fun resolveCoinId(input: String): String? {
         val normalized = input.trim().lowercase()
         

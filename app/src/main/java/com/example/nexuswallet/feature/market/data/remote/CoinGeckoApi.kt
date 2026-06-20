@@ -34,4 +34,10 @@ interface CoinGeckoApi {
         @Query("days") days: String, // "1", "7", "30", "90", "365", "max"
         @Query("interval") interval: String? = null // Optional: "daily" for >90 days
     ): MarketChartDto
+
+    @GET("simple/price")
+    suspend fun getSimplePrice(
+        @Query("ids") ids: String,
+        @Query("vs_currencies") vsCurrencies: String = "usd"
+    ): Map<String, Map<String, Double>>
 }
