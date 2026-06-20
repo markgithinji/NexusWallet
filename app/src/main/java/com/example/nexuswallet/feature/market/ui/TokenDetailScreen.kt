@@ -212,7 +212,7 @@ private fun TokenDetailTopBar(
                 Text(
                     text = token?.name ?: tokenId.replaceFirstChar { it.uppercase() },
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

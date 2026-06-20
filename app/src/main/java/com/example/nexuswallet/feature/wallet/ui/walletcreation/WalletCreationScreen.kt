@@ -133,7 +133,9 @@ fun WalletCreationScreen(
             TopAppBar(
                 title = {
                     Text(
-                        stringResource(R.string.create_wallet),
+                        text = stringResource(R.string.create_wallet),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 },
