@@ -142,18 +142,47 @@ fun AboutScreen(
             if (showTosDialog) {
                 AlertDialog(
                     onDismissRequest = { showTosDialog = false },
-                    title = { Text(stringResource(R.string.terms_of_service)) },
-                    text = {
+                    title = {
                         Text(
-                            text = stringResource(R.string.tos_content),
-                            style = MaterialTheme.typography.bodyMedium
+                            text = stringResource(R.string.terms_of_service),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     },
-                    confirmButton = {
-                        TextButton(onClick = { showTosDialog = false }) {
-                            Text(stringResource(R.string.close))
+                    text = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 400.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = stringResource(R.string.tos_content),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 20.sp
+                            )
                         }
-                    }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = { showTosDialog = false },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = stringResource(R.string.close),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    },
+                    shape = RoundedCornerShape(20.dp),
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             }
         }

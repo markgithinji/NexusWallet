@@ -1086,32 +1086,39 @@ fun RenameWalletDialog(
             Text(
                 text = stringResource(R.string.rename_wallet),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
-            Column {
+            Column(modifier = Modifier.padding(top = 8.dp)) {
                 NexusTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = stringResource(R.string.new_wallet_name)
+                    label = stringResource(R.string.new_wallet_name),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = {
                     if (name.isNotBlank()) {
                         onConfirm(name)
                     }
-                }
+                },
+                shape = RoundedCornerShape(12.dp),
+                enabled = name.isNotBlank() && name != currentName
             ) {
                 Text(stringResource(R.string.save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
+                Text(
+                    text = stringResource(R.string.cancel),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         },
         shape = RoundedCornerShape(20.dp),
@@ -1141,19 +1148,22 @@ fun DeleteWalletDialog(
             Text(
                 text = stringResource(R.string.delete_wallet_confirmation, walletName),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 20.sp
             )
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = onConfirm,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
                 )
             ) {
                 Text(
-                    stringResource(R.string.delete),
-                    style = MaterialTheme.typography.labelLarge
+                    text = stringResource(R.string.delete),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onError
                 )
             }
         },
@@ -1165,7 +1175,7 @@ fun DeleteWalletDialog(
                 )
             ) {
                 Text(
-                    stringResource(R.string.cancel),
+                    text = stringResource(R.string.cancel),
                     style = MaterialTheme.typography.labelLarge
                 )
             }

@@ -1020,16 +1020,17 @@ private fun AssetSelectionDialog(
                 else
                     stringResource(R.string.select_asset_to_receive),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
-            Column {
+            Column(modifier = Modifier.padding(top = 8.dp)) {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 400.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(assets) { asset ->
                         AssetSelectionRow(
@@ -1038,16 +1039,20 @@ private fun AssetSelectionDialog(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Text(text = stringResource(R.string.cancel))
-                }
             }
         },
-        confirmButton = {},
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = stringResource(R.string.cancel),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
         shape = RoundedCornerShape(20.dp),
         containerColor = MaterialTheme.colorScheme.surface
     )
@@ -1067,32 +1072,40 @@ fun RenameWalletDialog(
             Text(
                 text = stringResource(R.string.rename_wallet),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
-            Column {
+            Column(modifier = Modifier.padding(top = 8.dp)) {
                 NexusTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = stringResource(R.string.new_wallet_name)
+                    label = stringResource(R.string.new_wallet_name),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = {
                     if (name.isNotBlank()) {
                         onConfirm(name)
                     }
-                }
+                },
+                shape = RoundedCornerShape(12.dp),
+                enabled = name.isNotBlank() && name != currentName
             ) {
                 Text(stringResource(R.string.save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
+                Text(
+                    text = stringResource(R.string.cancel),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         },
         shape = RoundedCornerShape(20.dp),

@@ -156,32 +156,72 @@ fun CurrencySelectionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.select_currency)) },
+        title = {
+            Text(
+                text = stringResource(R.string.select_currency),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
         text = {
-            Column {
+            Column(
+                modifier = Modifier.padding(top = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 currencies.forEach { (code, label) ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onCurrencySelected(code) }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    val isSelected = code == selectedCurrency
+                    Surface(
+                        onClick = { onCurrencySelected(code) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isSelected) 
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                        else 
+                            Color.Transparent,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        RadioButton(
-                            selected = code == selectedCurrency,
-                            onClick = { onCurrencySelected(code) }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = label)
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = { onCurrencySelected(code) },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (isSelected)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurface,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text(
+                    text = stringResource(R.string.cancel),
+                    style = MaterialTheme.typography.labelLarge
+                )
             }
-        }
+        },
+        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }
 
