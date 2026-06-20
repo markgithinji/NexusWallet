@@ -215,7 +215,7 @@ fun BitcoinSendScreen(
             // Bottom Bar
             SendBottomBar(
                 isValid = state.isValid,
-                isLoading = state.isLoading,
+                isLoading = state.isLoading || state.isFeeLoading,
                 error = errorState.activeError,
                 onSend = {
                     focusManager.clearFocus()

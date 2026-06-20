@@ -44,6 +44,7 @@ class BitcoinSendViewModel @Inject constructor(
     private var wallet: Wallet? = null
     private var bitcoinCoins: Map<BitcoinNetwork, BitcoinCoin> = emptyMap()
     private var currentCoin: BitcoinCoin? = null
+    private var feeJob: kotlinx.coroutines.Job? = null
 
     fun handleEvent(event: BitcoinSendEvent) {
         viewModelScope.launch {
@@ -105,15 +106,17 @@ class BitcoinSendViewModel @Inject constructor(
                         network = walletInfo.network,
                         coin = targetCoin,
                         availableNetworks = availableNetworks,
-                        isLoading = false,
                         isInitialized = true
                     )
                 }
 
                 // Load balance, fee estimate, and fiat rate after initialization
+                // We keep isLoading = true until these are done or at least started
                 loadBalance(walletInfo.walletAddress, walletInfo.network)
                 loadFeeEstimate(FeeLevel.NORMAL)
                 loadFiatRate()
+
+                _state.update { it.copy(isLoading = false) }
             }
 
             is Result.Error -> handleError(result.message)
@@ -141,6 +144,7 @@ class BitcoinSendViewModel @Inject constructor(
 
     private suspend fun loadFeeEstimate(feeLevel: FeeLevel) {
         val state = _state.value
+        _state.update { it.copy(isFeeLoading = true) }
 
         // Fetch UTXOs to determine input count dynamically
         val utxosResult = bitcoinBlockchainRepository.getUnspentOutputs(state.walletAddress, state.network)
@@ -161,12 +165,15 @@ class BitcoinSendViewModel @Inject constructor(
             network = state.network
         )) {
             is Result.Success -> {
-                _state.update { it.copy(feeEstimate = result.data) }
+                _state.update { it.copy(feeEstimate = result.data, isFeeLoading = false) }
                 validateInputs()
             }
 
-            is Result.Error -> handleError("Failed to load fee: ${result.message}")
-            else -> {}
+            is Result.Error -> {
+                _state.update { it.copy(isFeeLoading = false) }
+                handleError("Failed to load fee: ${result.message}")
+            }
+            else -> _state.update { it.copy(isFeeLoading = false) }
         }
     }
 
@@ -188,6 +195,17 @@ class BitcoinSendViewModel @Inject constructor(
             )
         }
         validateInputs()
+        if (amountValue > BigDecimal.ZERO) {
+            refreshFeeEstimate()
+        }
+    }
+
+    private fun refreshFeeEstimate() {
+        feeJob?.cancel()
+        feeJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(500)
+            loadFeeEstimate(_state.value.feeLevel)
+        }
     }
 
     private suspend fun updateFeeLevel(feeLevel: FeeLevel) {

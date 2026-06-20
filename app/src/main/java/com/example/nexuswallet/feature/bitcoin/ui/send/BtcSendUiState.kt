@@ -25,6 +25,7 @@ data class BtcSendUiState(
     val validationResult: SendValidationResult = SendValidationResult(isValid = false),
     val isValid: Boolean = false,
     val isLoading: Boolean = false,
+    val isFeeLoading: Boolean = false,
     val isInitialized: Boolean = false,
     val error: String? = null
 )
