@@ -210,7 +210,7 @@ fun SolanaSendScreen(
             // Bottom Bar
             SendBottomBar(
                 isValid = state.validationResult.isValid,
-                isLoading = state.isLoading,
+                isLoading = state.isLoading || state.isFeeLoading,
                 error = errorState.activeError,
                 onSend = {
                     focusManager.clearFocus()

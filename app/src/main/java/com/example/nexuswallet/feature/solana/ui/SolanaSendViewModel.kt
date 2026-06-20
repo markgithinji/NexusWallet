@@ -47,6 +47,7 @@ class SolanaSendViewModel @Inject constructor(
     private var wallet: Wallet? = null
     private var solanaCoins: Map<SolanaNetwork, SolanaCoin> = emptyMap()
     private var currentCoin: SolanaCoin? = null
+    private var feeJob: kotlinx.coroutines.Job? = null
 
     fun init(walletId: String, coin: SolanaCoin? = null) {
         viewModelScope.launch {
@@ -239,6 +240,9 @@ class SolanaSendViewModel @Inject constructor(
                 is SolanaSendEvent.ToAddressChanged -> {
                     _state.update { it.copy(toAddress = event.address) }
                     validateInputs()
+                    if (event.address.length >= 32) {
+                        refreshFeeEstimate()
+                    }
                 }
 
                 is SolanaSendEvent.AmountChanged -> {
@@ -250,6 +254,9 @@ class SolanaSendViewModel @Inject constructor(
                         )
                     }
                     validateInputs()
+                    if (amountValue > BigDecimal.ZERO) {
+                        refreshFeeEstimate()
+                    }
                 }
 
                 is SolanaSendEvent.FeeLevelChanged -> {
@@ -370,8 +377,9 @@ class SolanaSendViewModel @Inject constructor(
 
     fun updateToAddress(address: String) {
         _state.update { it.copy(toAddress = address) }
-        viewModelScope.launch {
-            validateInputs()
+        validateInputs()
+        if (address.length >= 32) {
+            refreshFeeEstimate()
         }
     }
 
@@ -383,8 +391,17 @@ class SolanaSendViewModel @Inject constructor(
                 amountValue = amountValue
             )
         }
-        viewModelScope.launch {
-            validateInputs()
+        validateInputs()
+        if (amountValue > BigDecimal.ZERO) {
+            refreshFeeEstimate()
+        }
+    }
+
+    private fun refreshFeeEstimate() {
+        feeJob?.cancel()
+        feeJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(500)
+            loadFeeEstimate(_state.value.network)
         }
     }
 
