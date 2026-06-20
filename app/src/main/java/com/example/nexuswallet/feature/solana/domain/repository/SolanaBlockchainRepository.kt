@@ -34,7 +34,9 @@ interface SolanaBlockchainRepository {
         fromKeypair: Keypair,
         toAddress: String,
         lamports: Long,
-        network: SolanaNetwork
+        network: SolanaNetwork,
+        priorityFeeRate: Long = 0,
+        computeUnitLimit: Int = 0
     ): Result<SolanaSignedTransaction>
 
     suspend fun broadcastTransaction(

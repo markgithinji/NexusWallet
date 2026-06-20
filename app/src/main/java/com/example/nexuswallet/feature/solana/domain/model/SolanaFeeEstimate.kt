@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 data class SolanaFeeEstimate(
     val feeLamports: Long,
     val feeSol: String,
+    val priorityFeeRate: Long, // in micro-lamports
     val estimatedTime: Int,
     val priority: FeeLevel,
     val computeUnits: Int,

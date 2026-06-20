@@ -120,7 +120,9 @@ class SendSolanaUseCase @Inject constructor(
                 fromKeypair = keypair,
                 toAddress = toAddress,
                 lamports = lamports,
-                network = coin.network
+                network = coin.network,
+                priorityFeeRate = feeEstimate.priorityFeeRate,
+                computeUnitLimit = feeEstimate.computeUnits
             )
 
             if (signedTxResult is Result.Error) {

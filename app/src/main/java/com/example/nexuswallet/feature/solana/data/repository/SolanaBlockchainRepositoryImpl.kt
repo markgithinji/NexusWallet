@@ -26,6 +26,8 @@ import org.sol4k.Keypair
 import org.sol4k.PublicKey
 import org.sol4k.TransactionMessage
 import org.sol4k.VersionedTransaction
+import org.sol4k.instruction.SetComputeUnitLimitInstruction
+import org.sol4k.instruction.SetComputeUnitPriceInstruction
 import org.sol4k.instruction.TransferInstruction
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -152,6 +154,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
             SolanaFeeEstimate(
                 feeLamports = totalFeeLamports,
                 feeSol = totalFeeSol,
+                priorityFeeRate = priorityFeeRate.toLong(),
                 estimatedTime = estimatedTime,
                 priority = feeLevel,
                 computeUnits = computeUnits
@@ -192,16 +195,29 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         fromKeypair: Keypair,
         toAddress: String,
         lamports: Long,
-        network: SolanaNetwork
+        network: SolanaNetwork,
+        priorityFeeRate: Long,
+        computeUnitLimit: Int
     ): Result<SolanaSignedTransaction> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val connection = getRpcConnection(network)
             val blockhash = connection.getLatestBlockhash()
             val receiver = PublicKey(toAddress)
 
-            val instructions = listOf(
-                TransferInstruction(fromKeypair.publicKey, receiver, lamports)
-            )
+            val instructions = mutableListOf<org.sol4k.instruction.Instruction>()
+
+            // 1. Set Compute Unit Price (Priority Fee)
+            if (priorityFeeRate > 0) {
+                instructions.add(SetComputeUnitPriceInstruction(priorityFeeRate))
+            }
+
+            // 2. Set Compute Unit Limit
+            if (computeUnitLimit > 0) {
+                instructions.add(SetComputeUnitLimitInstruction(computeUnitLimit.toLong()))
+            }
+
+            // 3. Add Transfer Instruction
+            instructions.add(TransferInstruction(fromKeypair.publicKey, receiver, lamports))
 
             val message = TransactionMessage.newMessage(
                 feePayer = fromKeypair.publicKey,
