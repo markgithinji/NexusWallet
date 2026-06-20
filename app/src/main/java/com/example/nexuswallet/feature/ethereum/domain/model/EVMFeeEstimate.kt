@@ -5,13 +5,14 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class EVMFeeEstimate(
-    val gasPriceGwei: String,           // Gas price in Gwei
-    val gasPriceWei: String,             // Gas price in Wei
-    val gasLimit: Long,                   // Gas limit (21000 for ETH, higher for tokens)
-    val totalFeeWei: String,              // Total fee in Wei
-    val totalFeeEth: String,               // Total fee in ETH (human readable)
+    val gasPriceGwei: String,           // Legacy gas price or Max Fee in Gwei
+    val gasPriceWei: String,             // Legacy gas price or Max Fee in Wei
+    val gasLimit: Long,                   // Gas limit
+    val totalFeeWei: String,              // Total fee in Wei (Max)
+    val totalFeeEth: String,               // Total fee in ETH (Max)
     val estimatedTime: Int,                // Estimated time in seconds
     val priority: FeeLevel,
-    val baseFee: String? = null,           // Base fee for EIP-1559 (optional)
+    val baseFee: String? = null,           // Base fee for EIP-1559 in Gwei
+    val maxPriorityFeeGwei: String? = null, // Max priority fee in Gwei
     val isEIP1559: Boolean = false         // Whether this is an EIP-1559 fee estimate
 )

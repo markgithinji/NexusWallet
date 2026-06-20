@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.market.data.repository
 
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.SafeApiCall
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.market.data.model.toChartData
 import com.example.nexuswallet.feature.market.data.model.toNewsArticle
 import com.example.nexuswallet.feature.market.data.model.toTokenDetail
@@ -18,9 +19,11 @@ import javax.inject.Singleton
 @Singleton
 class MarketRepositoryImpl @Inject constructor(
     private val coinGeckoApi: CoinGeckoApi,
-    private val cryptoPanicApi: CryptoPanicApi
+    private val cryptoPanicApi: CryptoPanicApi,
+    private val logger: Logger
 ) : MarketRepository {
 
+    private val tag = "MarketRepo"
     private var requestCount = 0
     private val maxRequests = 100
 
@@ -63,34 +66,51 @@ class MarketRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getCoinNews(coinName: String): Result<List<NewsArticle>> {
+        logger.d(tag, "Fetching news for coin: $coinName")
         requestCount++
         if (requestCount > maxRequests) {
+            logger.w(tag, "News request limit exceeded: $requestCount/$maxRequests")
             return Result.Error("Monthly request limit exceeded (100/month)")
         }
 
-        val currencyCode = when (coinName.lowercase()) {
+        val currencyCode = when (val name = coinName.lowercase()) {
             "bitcoin" -> "BTC"
             "ethereum" -> "ETH"
             "solana" -> "SOL"
             "cardano" -> "ADA"
-            "binance coin" -> "BNB"
+            "binance coin", "binancecoin" -> "BNB"
             "ripple", "xrp" -> "XRP"
             "dogecoin" -> "DOGE"
             "polkadot" -> "DOT"
             "polygon" -> "MATIC"
             "avalanche" -> "AVAX"
-            else -> null
+            else -> {
+                logger.w(tag, "No currency code found for name: $name")
+                null
+            }
         }
 
-        return SafeApiCall.make {
-            cryptoPanicApi.getNews(
+        logger.d(tag, "Resolved currency code: $currencyCode")
+
+        val result = SafeApiCall.make {
+            val response = cryptoPanicApi.getNews(
                 public = true,
                 currencies = currencyCode,
                 kind = "news",
                 regions = "en"
-            ).results
+            )
+            
+            logger.d(tag, "CryptoPanic response received with ${response.results.size} items")
+            
+            response.results
                 .map { it.toNewsArticle() }
                 .take(5)
         }
+
+        if (result is Result.Error) {
+            logger.e(tag, "Error fetching news from API: ${result.message}", result.throwable)
+        }
+
+        return result
     }
 }

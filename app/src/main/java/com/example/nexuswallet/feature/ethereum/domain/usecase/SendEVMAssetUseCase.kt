@@ -36,6 +36,7 @@ class SendEVMAssetUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
+    private val getFeeEstimateUseCase: GetFeeEstimateUseCase,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val keyStoreRepository: KeyStoreRepository,
     private val logger: Logger,
@@ -105,105 +106,116 @@ class SendEVMAssetUseCase @Inject constructor(
                 token.network
             )
 
-            if (nonceResult is Result.Error) {
-                logger.e(tag, "Failed to get nonce: ${nonceResult.message}")
-                return@withContext Result.Error(nonceResult.message)
+            if (nonceResult !is Result.Success) {
+                val message = (nonceResult as? Result.Error)?.message ?: "Failed to get nonce"
+                logger.e(tag, message)
+                return@withContext Result.Error(message)
             }
-            val nonce = (nonceResult as Result.Success).data
+            val nonce = nonceResult.data
 
-            // 3. Get current gas price directly
-            logger.d(tag, "Step 3: Getting current gas price...")
-            val gasPriceResult = evmBlockchainRepository.getCurrentGasPrice(token.network)
-
-            if (gasPriceResult is Result.Error) {
-                logger.e(tag, "Failed to get gas price: ${gasPriceResult.message}")
-                return@withContext Result.Error(gasPriceResult.message)
-            }
-            val gasPrice = (gasPriceResult as Result.Success).data
-
-            // 4. Calculate gas price based on fee level
-            val gasPriceGwei = when (feeLevel) {
-                FeeLevel.SLOW -> gasPrice.safe
-                FeeLevel.NORMAL -> gasPrice.propose
-                FeeLevel.FAST -> gasPrice.fast
-            }
-
-            // Convert Gwei to Wei
-            val gasPriceWei = (BigDecimal(gasPriceGwei) * BigDecimal(GWEI_TO_WEI)).toBigInteger()
-
-            // 5. Estimate gas limit
-            logger.d(tag, "Step 5: Estimating gas limit...")
+            // 4. Get fee estimate (includes EIP-1559 logic)
+            logger.d(tag, "Step 4: Getting fee estimate...")
             val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
-
-            val gasLimitResult = evmBlockchainRepository.estimateGas(
+            
+            val feeEstimateResult = getFeeEstimateUseCase(
+                feeLevel = feeLevel,
+                network = token.network,
+                isToken = token.evmTokenType != EVMTokenType.NATIVE,
                 fromAddress = token.address,
                 toAddress = toAddress,
                 amount = amountInWei,
-                tokenContract = if (token.evmTokenType == EVMTokenType.NATIVE) null else token.contractAddress,
-                network = token.network
+                tokenContract = if (token.evmTokenType == EVMTokenType.NATIVE) null else token.contractAddress
             )
 
-            val gasLimit = when (gasLimitResult) {
-                is Result.Success -> gasLimitResult.data
-                else -> {
-                    logger.w(tag, "Gas estimation failed, using fallback limits")
-                    if (token.evmTokenType != EVMTokenType.NATIVE) {
-                        when (token.evmTokenType) {
-                            EVMTokenType.USDT -> BigInteger.valueOf(USDT_GAS_LIMIT)
-                            else -> BigInteger.valueOf(DEFAULT_TOKEN_GAS_LIMIT)
-                        }
-                    } else {
-                        BigInteger.valueOf(GAS_LIMIT_STANDARD)
-                    }
-                }
+            if (feeEstimateResult !is Result.Success) {
+                val message = (feeEstimateResult as? Result.Error)?.message ?: "Failed to get fee estimate"
+                logger.e(tag, message)
+                return@withContext Result.Error(message)
             }
+            val feeEstimate = feeEstimateResult.data
 
-            val totalFeeWei = gasPriceWei.multiply(gasLimit)
-            val totalFeeEth = BigDecimal(totalFeeWei).divide(
-                BigDecimal(WEI_PER_ETH),
-                18,
-                RoundingMode.HALF_UP
-            ).toPlainString()
+            val gasLimit = BigInteger.valueOf(feeEstimate.gasLimit)
+            val totalFeeWei = BigInteger(feeEstimate.totalFeeWei)
+            val totalFeeEth = feeEstimate.totalFeeEth
 
-            logger.d(tag, "Gas price: $gasPriceGwei Gwei, Gas Limit: $gasLimit, Fee: $totalFeeEth ETH")
+            logger.d(tag, "Fee Estimate - EIP1559: ${feeEstimate.isEIP1559}, Limit: $gasLimit, Fee: $totalFeeEth ETH")
 
             // 6. Create and sign transaction
             logger.d(tag, "Step 6: Creating and signing transaction...")
 
             val createResult = when (token.evmTokenType) {
-                EVMTokenType.NATIVE -> evmBlockchainRepository.createAndSignNativeTransaction(
-                    fromAddress = token.address,
-                    fromPrivateKey = privateKeyBytes,
-                    toAddress = toAddress,
-                    amountWei = amountInWei,
-                    gasPriceWei = gasPriceWei,
-                    gasLimit = gasLimit,
-                    nonce = nonce,
-                    chainId = token.network.chainId.toLong(),
-                    network = token.network
-                )
+                EVMTokenType.NATIVE -> if (feeEstimate.isEIP1559) {
+                    evmBlockchainRepository.createAndSignNative1559Transaction(
+                        fromAddress = token.address,
+                        fromPrivateKey = privateKeyBytes,
+                        toAddress = toAddress,
+                        amountWei = amountInWei,
+                        maxPriorityFeePerGas = BigDecimal(feeEstimate.maxPriorityFeeGwei!!)
+                            .multiply(BigDecimal(GWEI_TO_WEI.toString())).toBigInteger(),
+                        maxFeePerGas = BigInteger(feeEstimate.gasPriceWei),
+                        gasLimit = gasLimit,
+                        nonce = nonce,
+                        chainId = token.network.chainId.toLong(),
+                        network = token.network
+                    )
+                } else {
+                    evmBlockchainRepository.createAndSignNativeTransaction(
+                        fromAddress = token.address,
+                        fromPrivateKey = privateKeyBytes,
+                        toAddress = toAddress,
+                        amountWei = amountInWei,
+                        gasPriceWei = BigInteger(feeEstimate.gasPriceWei),
+                        gasLimit = gasLimit,
+                        nonce = nonce,
+                        chainId = token.network.chainId.toLong(),
+                        network = token.network
+                    )
+                }
 
-                EVMTokenType.USDC, EVMTokenType.USDT -> evmBlockchainRepository.createAndSignTokenTransaction(
-                    fromAddress = token.address,
-                    fromPrivateKey = privateKeyBytes,
-                    toAddress = toAddress,
-                    amount = amountInWei,
-                    tokenContract = token.contractAddress,
-                    tokenDecimals = token.decimals,
-                    gasPriceWei = gasPriceWei,
-                    gasLimit = gasLimit,
-                    nonce = nonce,
-                    chainId = token.network.chainId.toLong(),
-                    network = token.network,
-                    evmTokenType = token.evmTokenType
-                )
+                EVMTokenType.USDC, EVMTokenType.USDT -> if (feeEstimate.isEIP1559) {
+                    evmBlockchainRepository.createAndSignToken1559Transaction(
+                        fromAddress = token.address,
+                        fromPrivateKey = privateKeyBytes,
+                        toAddress = toAddress,
+                        amount = amountInWei,
+                        tokenContract = token.contractAddress,
+                        tokenDecimals = token.decimals,
+                        maxPriorityFeePerGas = BigDecimal(feeEstimate.maxPriorityFeeGwei!!)
+                            .multiply(BigDecimal(GWEI_TO_WEI.toString())).toBigInteger(),
+                        maxFeePerGas = BigInteger(feeEstimate.gasPriceWei),
+                        gasLimit = gasLimit,
+                        nonce = nonce,
+                        chainId = token.network.chainId.toLong(),
+                        network = token.network,
+                        evmTokenType = token.evmTokenType
+                    )
+                } else {
+                    evmBlockchainRepository.createAndSignTokenTransaction(
+                        fromAddress = token.address,
+                        fromPrivateKey = privateKeyBytes,
+                        toAddress = toAddress,
+                        amount = amountInWei,
+                        tokenContract = token.contractAddress,
+                        tokenDecimals = token.decimals,
+                        gasPriceWei = BigInteger(feeEstimate.gasPriceWei),
+                        gasLimit = gasLimit,
+                        nonce = nonce,
+                        chainId = token.network.chainId.toLong(),
+                        network = token.network,
+                        evmTokenType = token.evmTokenType
+                    )
+                }
             }
 
-            if (createResult is Result.Error) {
-                logger.e(tag, "Failed to create transaction: ${createResult.message}")
-                return@withContext Result.Error(createResult.message)
+            if (createResult !is Result.Success) {
+                val message = (createResult as? Result.Error)?.message ?: "Failed to create transaction"
+                logger.e(tag, message)
+                return@withContext Result.Error(message)
             }
-            val (_, signedHex, txHash) = (createResult as Result.Success).data
+            val (_, signedHex, txHash) = createResult.data
+            
+            val gasPriceGwei = feeEstimate.gasPriceGwei
+            val gasPriceWei = feeEstimate.gasPriceWei
 
             // 6. Broadcast transaction
             logger.d(tag, "Step 6: Broadcasting transaction...")
@@ -242,7 +254,7 @@ class SendEVMAssetUseCase @Inject constructor(
                                 symbol = token.symbol,
                                 amountWei = amountInWei.toString(),
                                 amountEth = amount.toPlainString(),
-                                gasPriceWei = gasPriceWei.toString(),
+                                gasPriceWei = gasPriceWei,
                                 gasPriceGwei = gasPriceGwei,
                                 gasLimit = gasLimit.toLong(),
                                 feeWei = totalFeeWei.toString(),
@@ -271,7 +283,7 @@ class SendEVMAssetUseCase @Inject constructor(
                                 fee = totalFeeEth,
                                 symbol = token.symbol,
                                 amountWei = amountInWei.toString(),
-                                gasPriceWei = gasPriceWei.toString(),
+                                gasPriceWei = gasPriceWei,
                                 gasPriceGwei = gasPriceGwei,
                                 gasLimit = gasLimit.toLong(),
                                 feeWei = totalFeeWei.toString(),

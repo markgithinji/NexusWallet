@@ -567,9 +567,11 @@ private fun NewsSection(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = stringResource(R.string.failed_to_load_news),
+                                text = newsState.message.ifBlank { stringResource(R.string.failed_to_load_news) },
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 16.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             TextButton(onClick = onRetry) {

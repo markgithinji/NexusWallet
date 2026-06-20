@@ -5,5 +5,8 @@ data class GasPrice(
     val propose: String,
     val fast: String,
     val lastBlock: String? = null,
-    val baseFee: String? = null
+    val baseFee: String? = null,
+    val safePriorityFee: String? = null,
+    val proposePriorityFee: String? = null,
+    val fastPriorityFee: String? = null
 )

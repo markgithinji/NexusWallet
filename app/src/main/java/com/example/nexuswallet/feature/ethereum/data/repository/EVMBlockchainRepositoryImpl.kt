@@ -205,6 +205,83 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun createAndSignNative1559Transaction(
+        fromAddress: String,
+        fromPrivateKey: ByteArray,
+        toAddress: String,
+        amountWei: BigInteger,
+        maxPriorityFeePerGas: BigInteger,
+        maxFeePerGas: BigInteger,
+        gasLimit: BigInteger,
+        nonce: BigInteger,
+        chainId: Long,
+        network: EthereumNetwork
+    ): Result<Triple<RawTransaction, String, String>> = withContext(ioDispatcher) {
+        SafeApiCall.make {
+            val rawTransaction = RawTransaction.createTransaction(
+                chainId,
+                nonce,
+                gasLimit,
+                toAddress,
+                amountWei,
+                "", // data
+                maxPriorityFeePerGas,
+                maxFeePerGas
+            )
+
+            val credentials = Credentials.create(ECKeyPair.create(fromPrivateKey))
+            val signedMessage = TransactionEncoder.signMessage(rawTransaction, chainId, credentials)
+            val signedHex = Numeric.toHexString(signedMessage)
+            val txHash = Numeric.toHexString(Hash.sha3(Numeric.hexStringToByteArray(signedHex)))
+
+            Triple(rawTransaction, signedHex, txHash)
+        }
+    }
+
+    override suspend fun createAndSignToken1559Transaction(
+        fromAddress: String,
+        fromPrivateKey: ByteArray,
+        toAddress: String,
+        amount: BigInteger,
+        tokenContract: String,
+        tokenDecimals: Int,
+        maxPriorityFeePerGas: BigInteger,
+        maxFeePerGas: BigInteger,
+        gasLimit: BigInteger,
+        nonce: BigInteger,
+        chainId: Long,
+        network: EthereumNetwork,
+        evmTokenType: EVMTokenType
+    ): Result<Triple<RawTransaction, String, String>> = withContext(ioDispatcher) {
+        SafeApiCall.make {
+            val function = Function(
+                "transfer",
+                listOf(Address(toAddress), Uint256(amount)),
+                listOf(object : TypeReference<Bool>() {})
+            )
+
+            val encodedFunction = FunctionEncoder.encode(function)
+
+            val rawTransaction = RawTransaction.createTransaction(
+                chainId,
+                nonce,
+                gasLimit,
+                tokenContract,
+                BigInteger.ZERO,
+                encodedFunction,
+                maxPriorityFeePerGas,
+                maxFeePerGas
+            )
+
+            val credentials = Credentials.create(ECKeyPair.create(fromPrivateKey))
+            val signedMessage = TransactionEncoder.signMessage(rawTransaction, chainId, credentials)
+            val signedHex = Numeric.toHexString(signedMessage)
+            val txHash = Numeric.toHexString(Hash.sha3(Numeric.hexStringToByteArray(signedHex)))
+
+            Triple(rawTransaction, signedHex, txHash)
+        }
+    }
+
     override suspend fun createAndSignTokenTransaction(
         fromAddress: String,
         fromPrivateKey: ByteArray,
@@ -263,29 +340,41 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
 
         val result = SafeApiCall.make {
             val web3j = web3jFactory.create(network)
-            val gasPrice = web3j.ethGasPrice().send()
-
-            if (gasPrice.hasError()) {
-                throw Exception("Gas price error: ${gasPrice.error?.message}")
+            
+            // 1. Get Base Fee from latest block
+            val block = web3j.ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false).send()
+            if (block.hasError()) throw Exception("Block error: ${block.error?.message}")
+            val baseFeeWei = block.block.baseFeePerGas
+            
+            // 2. Get Max Priority Fee Per Gas
+            val priorityFeeResponse = web3j.ethMaxPriorityFeePerGas().send()
+            val priorityFeeWei = if (priorityFeeResponse.hasError()) {
+                // Fallback if not supported
+                BigInteger.valueOf(1_500_000_000L) // 1.5 Gwei fallback
+            } else {
+                priorityFeeResponse.maxPriorityFeePerGas
             }
 
+            // 3. Get Legacy Gas Price
+            val gasPrice = web3j.ethGasPrice().send()
+            if (gasPrice.hasError()) throw Exception("Gas price error: ${gasPrice.error?.message}")
             val gasPriceWei = gasPrice.gasPrice
-            val gasPriceGwei = gasPriceWei.toBigDecimal().divide(
-                BigDecimal(GWEI_TO_WEI),
-                6,
-                RoundingMode.HALF_UP
-            )
 
-            val priceStr = gasPriceGwei.toString()
+            val gweiDivisor = BigDecimal(GWEI_TO_WEI)
+            
+            val gasPriceGwei = gasPriceWei.toBigDecimal().divide(gweiDivisor, 6, RoundingMode.HALF_UP)
+            val baseFeeGwei = baseFeeWei?.toBigDecimal()?.divide(gweiDivisor, 6, RoundingMode.HALF_UP)
+            val priorityFeeGwei = priorityFeeWei.toBigDecimal().divide(gweiDivisor, 6, RoundingMode.HALF_UP)
 
             GasPrice(
-                safe = (gasPriceGwei * SLOW_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP)
-                    .toString(),
-                propose = priceStr,
-                fast = (gasPriceGwei * FAST_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP)
-                    .toString(),
-                lastBlock = null,
-                baseFee = null
+                safe = (gasPriceGwei * SLOW_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString(),
+                propose = gasPriceGwei.setScale(6, RoundingMode.HALF_UP).toString(),
+                fast = (gasPriceGwei * FAST_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString(),
+                lastBlock = block.block.number.toString(),
+                baseFee = baseFeeGwei?.setScale(6, RoundingMode.HALF_UP)?.toString(),
+                safePriorityFee = (priorityFeeGwei * SLOW_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString(),
+                proposePriorityFee = priorityFeeGwei.setScale(6, RoundingMode.HALF_UP).toString(),
+                fastPriorityFee = (priorityFeeGwei * FAST_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString()
             )
         }
 

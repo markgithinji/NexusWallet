@@ -53,6 +53,19 @@ interface EVMBlockchainRepository {
         network: EthereumNetwork
     ): Result<Triple<RawTransaction, String, String>>
 
+    suspend fun createAndSignNative1559Transaction(
+        fromAddress: String,
+        fromPrivateKey: ByteArray,
+        toAddress: String,
+        amountWei: BigInteger,
+        maxPriorityFeePerGas: BigInteger,
+        maxFeePerGas: BigInteger,
+        gasLimit: BigInteger,
+        nonce: BigInteger,
+        chainId: Long,
+        network: EthereumNetwork
+    ): Result<Triple<RawTransaction, String, String>>
+
     suspend fun createAndSignTokenTransaction(
         fromAddress: String,
         fromPrivateKey: ByteArray,
@@ -61,6 +74,22 @@ interface EVMBlockchainRepository {
         tokenContract: String,
         tokenDecimals: Int,
         gasPriceWei: BigInteger,
+        gasLimit: BigInteger,
+        nonce: BigInteger,
+        chainId: Long,
+        network: EthereumNetwork,
+        evmTokenType: EVMTokenType
+    ): Result<Triple<RawTransaction, String, String>>
+
+    suspend fun createAndSignToken1559Transaction(
+        fromAddress: String,
+        fromPrivateKey: ByteArray,
+        toAddress: String,
+        amount: BigInteger,
+        tokenContract: String,
+        tokenDecimals: Int,
+        maxPriorityFeePerGas: BigInteger,
+        maxFeePerGas: BigInteger,
         gasLimit: BigInteger,
         nonce: BigInteger,
         chainId: Long,

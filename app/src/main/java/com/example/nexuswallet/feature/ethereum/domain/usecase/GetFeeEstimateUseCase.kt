@@ -62,46 +62,91 @@ class GetFeeEstimateUseCase @Inject constructor(
         return when (gasPriceResult) {
             is Result.Success -> {
                 val gasPrice = gasPriceResult.data
+                val isEIP1559 = gasPrice.baseFee != null
 
-                // Get gas price in Gwei based on selected fee level
-                val gasPriceGwei = when (feeLevel) {
-                    FeeLevel.SLOW -> gasPrice.safe
-                    FeeLevel.NORMAL -> gasPrice.propose
-                    FeeLevel.FAST -> gasPrice.fast
-                }
+                if (isEIP1559) {
+                    val baseFeeGwei = BigDecimal(gasPrice.baseFee!!)
+                    val priorityFeeGwei = when (feeLevel) {
+                        FeeLevel.SLOW -> BigDecimal(gasPrice.safePriorityFee!!)
+                        FeeLevel.NORMAL -> BigDecimal(gasPrice.proposePriorityFee!!)
+                        FeeLevel.FAST -> BigDecimal(gasPrice.fastPriorityFee!!)
+                    }
 
-                // Convert Gwei to Wei for calculation
-                val gasPriceWei = BigDecimal(gasPriceGwei)
-                    .multiply(BigDecimal(GWEI_TO_WEI))
-                    .toBigInteger()
+                    // Max Fee = (Base Fee * 2) + Priority Fee
+                    val maxFeeGwei = baseFeeGwei.multiply(BigDecimal("2")).add(priorityFeeGwei)
 
-                // Calculate total fee
-                val totalFeeWei = gasPriceWei.multiply(gasLimit)
+                    // Convert to Wei
+                    val maxFeeWei = maxFeeGwei.multiply(BigDecimal(GWEI_TO_WEI)).toBigInteger()
 
-                // Convert to ETH for display
-                val totalFeeEth = BigDecimal(totalFeeWei).divide(
-                    BigDecimal(WEI_PER_ETH),
-                    18,
-                    RoundingMode.HALF_UP
-                ).toPlainString()
+                    // Total fee (estimated max)
+                    val totalFeeWei = maxFeeWei.multiply(gasLimit)
 
-                val estimatedTime = when (feeLevel) {
-                    FeeLevel.SLOW -> ESTIMATED_TIME_SLOW
-                    FeeLevel.NORMAL -> ESTIMATED_TIME_NORMAL
-                    FeeLevel.FAST -> ESTIMATED_TIME_FAST
-                }
+                    // Convert to ETH for display
+                    val totalFeeEth = BigDecimal(totalFeeWei).divide(
+                        BigDecimal(WEI_PER_ETH),
+                        18,
+                        RoundingMode.HALF_UP
+                    ).toPlainString()
 
-                Result.Success(
-                    EVMFeeEstimate(
-                        gasPriceGwei = gasPriceGwei,
-                        gasPriceWei = gasPriceWei.toString(),
-                        gasLimit = gasLimit.toLong(),
-                        totalFeeWei = totalFeeWei.toString(),
-                        totalFeeEth = totalFeeEth,
-                        estimatedTime = estimatedTime,
-                        priority = feeLevel
+                    val estimatedTime = when (feeLevel) {
+                        FeeLevel.SLOW -> ESTIMATED_TIME_SLOW
+                        FeeLevel.NORMAL -> ESTIMATED_TIME_NORMAL
+                        FeeLevel.FAST -> ESTIMATED_TIME_FAST
+                    }
+
+                    Result.Success(
+                        EVMFeeEstimate(
+                            gasPriceGwei = maxFeeGwei.setScale(6, RoundingMode.HALF_UP).toString(),
+                            gasPriceWei = maxFeeWei.toString(),
+                            gasLimit = gasLimit.toLong(),
+                            totalFeeWei = totalFeeWei.toString(),
+                            totalFeeEth = totalFeeEth,
+                            estimatedTime = estimatedTime,
+                            priority = feeLevel,
+                            baseFee = baseFeeGwei.setScale(6, RoundingMode.HALF_UP).toString(),
+                            maxPriorityFeeGwei = priorityFeeGwei.setScale(6, RoundingMode.HALF_UP).toString(),
+                            isEIP1559 = true
+                        )
                     )
-                )
+                } else {
+                    // Legacy fallback
+                    val gasPriceGwei = when (feeLevel) {
+                        FeeLevel.SLOW -> gasPrice.safe
+                        FeeLevel.NORMAL -> gasPrice.propose
+                        FeeLevel.FAST -> gasPrice.fast
+                    }
+
+                    val gasPriceWei = BigDecimal(gasPriceGwei)
+                        .multiply(BigDecimal(GWEI_TO_WEI))
+                        .toBigInteger()
+
+                    val totalFeeWei = gasPriceWei.multiply(gasLimit)
+
+                    val totalFeeEth = BigDecimal(totalFeeWei).divide(
+                        BigDecimal(WEI_PER_ETH),
+                        18,
+                        RoundingMode.HALF_UP
+                    ).toPlainString()
+
+                    val estimatedTime = when (feeLevel) {
+                        FeeLevel.SLOW -> ESTIMATED_TIME_SLOW
+                        FeeLevel.NORMAL -> ESTIMATED_TIME_NORMAL
+                        FeeLevel.FAST -> ESTIMATED_TIME_FAST
+                    }
+
+                    Result.Success(
+                        EVMFeeEstimate(
+                            gasPriceGwei = gasPriceGwei,
+                            gasPriceWei = gasPriceWei.toString(),
+                            gasLimit = gasLimit.toLong(),
+                            totalFeeWei = totalFeeWei.toString(),
+                            totalFeeEth = totalFeeEth,
+                            estimatedTime = estimatedTime,
+                            priority = feeLevel,
+                            isEIP1559 = false
+                        )
+                    )
+                }
             }
 
             is Result.Error -> {

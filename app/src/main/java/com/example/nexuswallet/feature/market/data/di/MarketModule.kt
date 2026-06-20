@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.market.data.di
 
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.market.data.remote.BinanceWebSocketImpl
 import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
 import com.example.nexuswallet.feature.market.data.remote.CryptoPanicApi
@@ -119,11 +120,13 @@ object MarketModule {
     @Singleton
     fun provideMarketRepository(
         coinGeckoApi: CoinGeckoApi,
-        cryptoPanicApi: CryptoPanicApi
+        cryptoPanicApi: CryptoPanicApi,
+        logger: Logger
     ): MarketRepository {
         return MarketRepositoryImpl(
             coinGeckoApi,
-            cryptoPanicApi
+            cryptoPanicApi,
+            logger
         )
     }
 }
