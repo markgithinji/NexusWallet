@@ -111,7 +111,7 @@ import kotlinx.coroutines.flow.firstOrNull
 @Composable
 fun TransactionReviewScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToWalletDetail: (String) -> Unit,
+    onDone: (String, Coin) -> Unit,
     walletId: String,
     toAddress: String,
     amount: String,
@@ -366,7 +366,7 @@ fun TransactionReviewScreen(
                         }
                     }
                 },
-                onDone = { onNavigateToWalletDetail(walletId) }
+                onDone = { onDone(walletId, coin) }
             )
         },
         containerColor = MaterialTheme.colorScheme.background

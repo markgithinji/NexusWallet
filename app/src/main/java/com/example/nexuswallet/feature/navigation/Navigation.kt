@@ -375,9 +375,9 @@ fun Navigation(
                 onNavigateUp = {
                     navController.navigateUp()
                 },
-                onNavigateToWalletDetail = { walletId ->
-                    navController.navigate(WalletDetailRoute(walletId)) {
-                        popUpTo(WalletDetailRoute(walletId)) { inclusive = true }
+                onDone = { walletId, coin ->
+                    navController.navigate(CoinDetailRoute(walletId, coin)) {
+                        popUpTo(CoinDetailRoute(walletId, coin)) { inclusive = true }
                     }
                 }
             )
