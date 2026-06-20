@@ -250,6 +250,14 @@
     <string name="security_description">PIN, Biometric, Encryption</string>
     <string name="currency_settings">Currency</string>
     <string name="currency_description">Display currency preferences</string>
+    <string name="select_currency">Select Currency</string>
+    <string name="currency_usd">USD - US Dollar</string>
+    <string name="currency_eur">EUR - Euro</string>
+    <string name="currency_gbp">GBP - British Pound</string>
+    <string name="currency_jpy">JPY - Japanese Yen</string>
+    <string name="currency_aud">AUD - Australian Dollar</string>
+    <string name="currency_cad">CAD - Canadian Dollar</string>
+    <string name="currency_kes">KES - Kenya Shilling</string>
     <string name="network_settings">Networks</string>
     <string name="network_description">Configure blockchain networks</string>
     <string name="about_settings">About</string>

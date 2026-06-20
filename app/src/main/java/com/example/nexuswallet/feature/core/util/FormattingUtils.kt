@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.core.util
 
 import java.text.NumberFormat
+import java.util.Currency
 import java.util.Locale
 
 /**
@@ -26,10 +27,19 @@ fun Double.formatTwoDecimals(): String = String.format(Locale.US, "%.2f", this)
 fun Float.formatTwoDecimals(): String = String.format(Locale.US, "%.2f", this)
 
 /**
- * Formats a value as USD currency (e.g., $1,234.56).
+ * Formats a value as currency (e.g., $1,234.56, €1.234,56).
  */
-fun Double.formatCurrency(): String =
-    NumberFormat.getCurrencyInstance(Locale.US).format(this)
+fun Double.formatCurrency(currencyCode: String = "USD"): String {
+    return try {
+        val format = NumberFormat.getCurrencyInstance(Locale.getDefault())
+        format.currency = Currency.getInstance(currencyCode.uppercase())
+        format.format(this)
+    } catch (e: Exception) {
+        // Fallback to USD if currency code is invalid
+        val format = NumberFormat.getCurrencyInstance(Locale.US)
+        format.format(this)
+    }
+}
 
 /**
  * Formats a percentage with a sign and two decimals (e.g., +5.23% or -1.10%).

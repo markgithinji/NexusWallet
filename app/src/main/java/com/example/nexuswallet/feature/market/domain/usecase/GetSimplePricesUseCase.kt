@@ -16,11 +16,14 @@ class GetSimplePricesUseCase @Inject constructor(
         "USDT" to "tether"
     )
 
-    suspend operator fun invoke(symbols: List<String>): Result<Map<String, Double>> {
+    suspend operator fun invoke(
+        symbols: List<String>,
+        vsCurrency: String = "usd"
+    ): Result<Map<String, Double>> {
         val ids = symbols.mapNotNull { symbolToId[it.uppercase()] }.distinct()
         if (ids.isEmpty()) return Result.Success(emptyMap())
 
-        return when (val marketResult = marketRepository.getSimplePrices(ids)) {
+        return when (val marketResult = marketRepository.getSimplePrices(ids, vsCurrency)) {
             is Result.Success -> {
                 val pricesBySymbol = symbols.associateWith { symbol ->
                     val id = symbolToId[symbol.uppercase()]

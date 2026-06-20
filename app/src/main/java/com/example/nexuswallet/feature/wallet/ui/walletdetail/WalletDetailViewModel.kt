@@ -23,6 +23,7 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceU
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -34,7 +35,9 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
+import java.util.Currency
 import java.util.Locale
+import com.example.nexuswallet.feature.core.util.formatCurrency
 import javax.inject.Inject
 
 @HiltViewModel
@@ -48,6 +51,7 @@ class WalletDetailViewModel @Inject constructor(
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
     private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
     private val formatBalanceUseCase: FormatBalanceUseCase,
+    private val securityPreferencesRepository: SecurityPreferencesRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
@@ -59,7 +63,24 @@ class WalletDetailViewModel @Inject constructor(
     // Cache expiration times
     private companion object {
         const val BALANCE_CACHE_TIME = 2 * 60 * 1000      // 2 minutes
-        private val USD_FORMATTER = NumberFormat.getCurrencyInstance(Locale.US)
+    }
+
+    init {
+        observeSelectedCurrency()
+    }
+
+    private fun observeSelectedCurrency() {
+        viewModelScope.launch {
+            securityPreferencesRepository.observeSelectedCurrency().collect { currency ->
+                val previousCurrency = _uiState.value.selectedCurrency
+                _uiState.update { it.copy(selectedCurrency = currency) }
+                
+                // If currency changed and we have a wallet, refresh to get new prices
+                if (previousCurrency != currency && _uiState.value.wallet != null) {
+                    refresh()
+                }
+            }
+        }
     }
 
     fun loadWallet(walletId: String) {
@@ -171,7 +192,7 @@ class WalletDetailViewModel @Inject constructor(
                     wallet.solanaCoins.map { it.symbol } +
                     wallet.evmTokens.map { it.symbol }).distinct()
 
-            val pricesResult = getSimplePricesUseCase(symbols)
+            val pricesResult = getSimplePricesUseCase(symbols, _uiState.value.selectedCurrency)
             val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
 
             // 2. Sync balances with prices
@@ -266,11 +287,12 @@ class WalletDetailViewModel @Inject constructor(
             walletId = wallet.id,
             wallet = wallet,
             balance = state.balance,
-            pricePercentages = state.pricePercentages
+            pricePercentages = state.pricePercentages,
+            currencyCode = state.selectedCurrency
         )
 
         val totalUsd = assets.sumOf { it.usdValue }
-        val totalFormatted = USD_FORMATTER.format(totalUsd)
+        val totalFormatted = totalUsd.formatCurrency(state.selectedCurrency)
 
         _uiState.update {
             it.copy(

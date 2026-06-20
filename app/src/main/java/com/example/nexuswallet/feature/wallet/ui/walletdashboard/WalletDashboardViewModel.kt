@@ -60,6 +60,9 @@ class WalletDashboardViewModel @Inject constructor(
     private val _isPrivacyModeEnabled = MutableStateFlow(false)
     val isPrivacyModeEnabled: StateFlow<Boolean> = _isPrivacyModeEnabled.asStateFlow()
 
+    private val _selectedCurrency = MutableStateFlow("USD")
+    val selectedCurrency: StateFlow<String> = _selectedCurrency.asStateFlow()
+
     // Tracking last refresh time
     private var lastRefreshTime = 0L
     private val refreshThreshold = 30_000L // 30 seconds
@@ -67,12 +70,25 @@ class WalletDashboardViewModel @Inject constructor(
     init {
         observeWallets()
         observePrivacyMode()
+        observeSelectedCurrency()
     }
 
     private fun observePrivacyMode() {
         viewModelScope.launch {
             securityPreferencesRepository.observePrivacyModeEnabled().collect { isEnabled ->
                 _isPrivacyModeEnabled.value = isEnabled
+            }
+        }
+    }
+
+    private fun observeSelectedCurrency() {
+        viewModelScope.launch {
+            securityPreferencesRepository.observeSelectedCurrency().collect { currency ->
+                val previousCurrency = _selectedCurrency.value
+                _selectedCurrency.value = currency
+                if (previousCurrency != currency) {
+                    refresh()
+                }
             }
         }
     }
@@ -159,7 +175,7 @@ class WalletDashboardViewModel @Inject constructor(
                             wallet.evmTokens.map { it.symbol }
                 }.distinct()
 
-                val pricesResult = getSimplePricesUseCase(allSymbols)
+                val pricesResult = getSimplePricesUseCase(allSymbols, _selectedCurrency.value)
                 val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
 
                 if (pricesResult is Result.Error) {

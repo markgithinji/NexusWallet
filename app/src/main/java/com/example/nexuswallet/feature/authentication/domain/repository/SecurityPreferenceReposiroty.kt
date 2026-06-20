@@ -29,8 +29,12 @@ interface SecurityPreferencesRepository {
     suspend fun setRequireAuthForSend(enabled: Boolean)
     suspend fun isRequireAuthForSend(): Boolean
 
+    suspend fun setSelectedCurrency(currencyCode: String)
+    suspend fun getSelectedCurrency(): String
+
     fun observePinHash(): Flow<String?>
     fun observeBiometricEnabled(): Flow<Boolean>
     fun observePrivacyModeEnabled(): Flow<Boolean>
     fun observeRequireAuthForSend(): Flow<Boolean>
+    fun observeSelectedCurrency(): Flow<String>
 }

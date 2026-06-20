@@ -22,7 +22,8 @@ class FormatBalanceUseCase @Inject constructor() {
         walletId: String,
         wallet: Wallet,
         balance: WalletBalance?,
-        pricePercentages: Map<String, Double>
+        pricePercentages: Map<String, Double>,
+        currencyCode: String = "USD"
     ): List<AssetDisplayInfo> {
         val assets = mutableListOf<AssetDisplayInfo>()
 
@@ -43,7 +44,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     balance = coinBalance?.btc ?: "0",
                     balanceFormatted = formatCryptoAmount(coinBalance?.btc ?: "0"),
                     usdValue = coinBalance?.usdValue ?: 0.0,
-                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(),
+                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currencyCode),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.let { it.formatPercent() },
                     address = coin.address
@@ -68,7 +69,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     balance = coinBalance?.sol ?: "0",
                     balanceFormatted = formatCryptoAmount(coinBalance?.sol ?: "0"),
                     usdValue = coinBalance?.usdValue ?: 0.0,
-                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(),
+                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currencyCode),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.let { it.formatPercent() },
                     tokenCount = coin.splTokens.size,
@@ -90,7 +91,7 @@ class FormatBalanceUseCase @Inject constructor() {
                         balance = "0",
                         balanceFormatted = "0",
                         usdValue = 0.0,
-                        usdValueFormatted = "$0.00",
+                        usdValueFormatted = (0.0).formatCurrency(currencyCode),
                         priceChangePercentage = null,
                         priceChangeFormatted = null,
                         address = token.mintAddress
@@ -124,7 +125,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     balance = tokenBalance?.balanceDecimal ?: "0",
                     balanceFormatted = formatCryptoAmount(tokenBalance?.balanceDecimal ?: "0"),
                     usdValue = tokenBalance?.usdValue ?: 0.0,
-                    usdValueFormatted = (tokenBalance?.usdValue ?: 0.0).formatCurrency(),
+                    usdValueFormatted = (tokenBalance?.usdValue ?: 0.0).formatCurrency(currencyCode),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.let { it.formatPercent() },
                     address = token.address

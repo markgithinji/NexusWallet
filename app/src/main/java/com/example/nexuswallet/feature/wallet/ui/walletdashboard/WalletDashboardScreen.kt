@@ -117,6 +117,7 @@ fun WalletDashboardScreen(
     val isRefreshingState by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val operationError by viewModel.operationError.collectAsStateWithLifecycle()
     val isPrivacyModeEnabled by viewModel.isPrivacyModeEnabled.collectAsStateWithLifecycle()
+    val selectedCurrency by viewModel.selectedCurrency.collectAsStateWithLifecycle()
 
     LaunchedEffect(operationError) {
         operationError?.let {
@@ -182,6 +183,7 @@ fun WalletDashboardScreen(
                             totalPortfolio = totalPortfolio,
                             balances = balances,
                             isPrivacyModeEnabled = isPrivacyModeEnabled,
+                            selectedCurrency = selectedCurrency,
                             onWalletClick = { wallet ->
                                 onNavigateToWalletDetail(wallet.id)
                             },
@@ -289,6 +291,7 @@ fun DashboardContent(
     totalPortfolio: BigDecimal,
     balances: Map<String, WalletBalance>,
     isPrivacyModeEnabled: Boolean,
+    selectedCurrency: String,
     onWalletClick: (Wallet) -> Unit,
     onDeleteWallet: (String) -> Unit
 ) {
@@ -306,7 +309,8 @@ fun DashboardContent(
                 totalPortfolio = totalPortfolio,
                 walletCount = wallets.size,
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
-                isTablet = isTablet
+                isTablet = isTablet,
+                selectedCurrency = selectedCurrency
             )
         }
 
@@ -334,6 +338,7 @@ fun DashboardContent(
                             wallet = wallet,
                             balance = balances[wallet.id],
                             isPrivacyModeEnabled = isPrivacyModeEnabled,
+                            selectedCurrency = selectedCurrency,
                             onWalletClick = { onWalletClick(wallet) },
                             onDelete = { onDeleteWallet(wallet.id) },
                             modifier = Modifier.weight(1f)
@@ -350,6 +355,7 @@ fun DashboardContent(
                     wallet = wallet,
                     balance = balances[wallet.id],
                     isPrivacyModeEnabled = isPrivacyModeEnabled,
+                    selectedCurrency = selectedCurrency,
                     onWalletClick = { onWalletClick(wallet) },
                     onDelete = { onDeleteWallet(wallet.id) }
                 )
@@ -364,6 +370,7 @@ fun WalletCard(
     wallet: Wallet,
     balance: WalletBalance?,
     isPrivacyModeEnabled: Boolean,
+    selectedCurrency: String,
     onWalletClick: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
@@ -449,7 +456,7 @@ fun WalletCard(
                         )
 
                         Text(
-                            text = if (isPrivacyModeEnabled) "****" else totalUsdValue.formatCurrency(),
+                            text = if (isPrivacyModeEnabled) "****" else totalUsdValue.formatCurrency(selectedCurrency),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -523,6 +530,7 @@ fun WalletCard(
                     wallet = wallet,
                     balance = balance,
                     isPrivacyModeEnabled = isPrivacyModeEnabled,
+                    selectedCurrency = selectedCurrency,
                     onDelete = { showDeleteDialog = true }
                 )
             }
@@ -535,6 +543,7 @@ fun WalletExpandedContent(
     wallet: Wallet,
     balance: WalletBalance?,
     isPrivacyModeEnabled: Boolean,
+    selectedCurrency: String,
     onDelete: () -> Unit
 ) {
     Column(
@@ -564,6 +573,7 @@ fun WalletExpandedContent(
                 usdValue = btcBalance?.usdValue ?: 0.0,
                 color = bitcoinLight,
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
+                selectedCurrency = selectedCurrency,
                 showZeroBalance = true
             )
         }
@@ -584,6 +594,7 @@ fun WalletExpandedContent(
                 usdValue = solBalance?.usdValue ?: 0.0,
                 color = solanaLight,
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
+                selectedCurrency = selectedCurrency,
                 showZeroBalance = true
             )
         }
@@ -610,6 +621,7 @@ fun WalletExpandedContent(
                 usdValue = tokenBalance?.usdValue ?: 0.0,
                 color = ethereumLight,
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
+                selectedCurrency = selectedCurrency,
                 showZeroBalance = true
             )
         }
@@ -631,6 +643,7 @@ fun WalletExpandedContent(
                 usdValue = tokenBalance?.usdValue ?: 0.0,
                 color = usdcLight,
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
+                selectedCurrency = selectedCurrency,
                 showZeroBalance = true
             )
         }
@@ -652,6 +665,7 @@ fun WalletExpandedContent(
                 usdValue = tokenBalance?.usdValue ?: 0.0,
                 color = Color(0xFF26A17B),
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
+                selectedCurrency = selectedCurrency,
                 showZeroBalance = true
             )
         }
@@ -692,6 +706,7 @@ fun SimpleBalanceRow(
     usdValue: Double,
     color: Color,
     isPrivacyModeEnabled: Boolean,
+    selectedCurrency: String,
     showZeroBalance: Boolean = false
 ) {
     if (!showZeroBalance && usdValue <= 0) return
@@ -753,7 +768,7 @@ fun SimpleBalanceRow(
         }
 
         Text(
-            text = if (isPrivacyModeEnabled) "****" else usdValue.formatCurrency(),
+            text = if (isPrivacyModeEnabled) "****" else usdValue.formatCurrency(selectedCurrency),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (usdValue > 0) FontWeight.SemiBold else FontWeight.Normal,
             color = if (usdValue > 0)
@@ -786,7 +801,8 @@ fun AnimatedPortfolioHeader(
     totalPortfolio: BigDecimal,
     walletCount: Int,
     isPrivacyModeEnabled: Boolean,
-    isTablet: Boolean
+    isTablet: Boolean,
+    selectedCurrency: String
 ) {
     var previousValue by remember { mutableStateOf(totalPortfolio) }
     val animatedValue = remember { Animatable(previousValue.toFloat()) }
@@ -831,7 +847,7 @@ fun AnimatedPortfolioHeader(
 
             // Animated Value
             Text(
-                text = if (isPrivacyModeEnabled) "****" else animatedValue.value.toDouble().formatCurrency(),
+                text = if (isPrivacyModeEnabled) "****" else animatedValue.value.toDouble().formatCurrency(selectedCurrency),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onPrimary,

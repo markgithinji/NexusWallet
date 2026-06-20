@@ -14,6 +14,7 @@ data class WalletDetailUiState(
     // Unified assets list
     val assets: List<AssetDisplayInfo> = emptyList(),
     val totalBalanceFormatted: String = "$0.00",
+    val selectedCurrency: String = "USD",
 
     // Granular loading states
     val isLoading: Boolean = false,

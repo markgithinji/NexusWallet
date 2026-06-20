@@ -200,6 +200,21 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
         } ?: false
     }
 
+    override suspend fun setSelectedCurrency(currencyCode: String) {
+        safeEdit {
+            dataStore.edit { preferences ->
+                preferences[SELECTED_CURRENCY_KEY] = currencyCode
+            }
+        }
+    }
+
+    override suspend fun getSelectedCurrency(): String {
+        return safeGet(defaultValue = "USD") {
+            val preferences = dataStore.data.first()
+            preferences[SELECTED_CURRENCY_KEY] ?: "USD"
+        } ?: "USD"
+    }
+
     override fun observePinHash(): Flow<String?> =
         dataStore.data.map { preferences ->
             preferences[PIN_HASH_KEY]
@@ -220,6 +235,11 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             preferences[REQUIRE_AUTH_FOR_SEND_KEY] ?: false
         }
 
+    override fun observeSelectedCurrency(): Flow<String> =
+        dataStore.data.map { preferences ->
+            preferences[SELECTED_CURRENCY_KEY] ?: "USD"
+        }
+
     companion object {
         private val ENCRYPTED_MNEMONIC_KEY = stringPreferencesKey("encrypted_mnemonic")
         private val ENCRYPTED_PRIVATE_KEY_KEY = stringPreferencesKey("encrypted_private_key")
@@ -230,5 +250,6 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
         private val LAST_AUTH_TIME_KEY = longPreferencesKey("last_authentication_time")
         private val PRIVACY_MODE_ENABLED_KEY = booleanPreferencesKey("privacy_mode_enabled")
         private val REQUIRE_AUTH_FOR_SEND_KEY = booleanPreferencesKey("require_auth_for_send")
+        private val SELECTED_CURRENCY_KEY = stringPreferencesKey("selected_currency")
     }
 }

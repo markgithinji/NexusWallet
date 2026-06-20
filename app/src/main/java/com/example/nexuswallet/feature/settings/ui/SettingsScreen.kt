@@ -35,13 +35,30 @@ import androidx.navigation.NavController
 import androidx.compose.material3.MaterialTheme
 
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateToSecurity: () -> Unit
+    onNavigateToSecurity: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val selectedCurrency by viewModel.selectedCurrency.collectAsStateWithLifecycle()
+    var showCurrencyDialog by remember { mutableStateOf(false) }
+
+    if (showCurrencyDialog) {
+        CurrencySelectionDialog(
+            selectedCurrency = selectedCurrency,
+            onCurrencySelected = { currency ->
+                viewModel.setSelectedCurrency(currency)
+                showCurrencyDialog = false
+            },
+            onDismiss = { showCurrencyDialog = false }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -92,9 +109,9 @@ fun SettingsScreen(
             // Currency Settings
             SettingsItem(
                 title = stringResource(R.string.currency_settings),
-                description = stringResource(R.string.currency_description),
+                description = stringResource(R.string.currency_description) + " ($selectedCurrency)",
                 icon = Icons.Outlined.CurrencyExchange,
-                onClick = { /* Navigate to currency settings */ }
+                onClick = { showCurrencyDialog = true }
             )
 
             Spacer(modifier = Modifier.height(1.dp))
@@ -118,6 +135,53 @@ fun SettingsScreen(
             )
         }
     }
+}
+
+@Composable
+fun CurrencySelectionDialog(
+    selectedCurrency: String,
+    onCurrencySelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val currencies = listOf(
+        "USD" to stringResource(R.string.currency_usd),
+        "EUR" to stringResource(R.string.currency_eur),
+        "GBP" to stringResource(R.string.currency_gbp),
+        "JPY" to stringResource(R.string.currency_jpy),
+        "AUD" to stringResource(R.string.currency_aud),
+        "CAD" to stringResource(R.string.currency_cad),
+        "KES" to stringResource(R.string.currency_kes)
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.select_currency)) },
+        text = {
+            Column {
+                currencies.forEach { (code, label) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onCurrencySelected(code) }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = code == selectedCurrency,
+                            onClick = { onCurrencySelected(code) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = label)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
 }
 
 @Composable
