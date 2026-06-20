@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.wallet.ui.walletdashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
@@ -28,7 +29,8 @@ class WalletDashboardViewModel @Inject constructor(
     private val syncBitcoinBalanceUseCase: SyncBitcoinBalanceUseCase,
     private val syncSolanaBalanceUseCase: SyncSolanaBalanceUseCase,
     private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
-    private val getSimplePricesUseCase: GetSimplePricesUseCase
+    private val getSimplePricesUseCase: GetSimplePricesUseCase,
+    private val securityPreferencesRepository: SecurityPreferencesRepository
 ) : ViewModel() {
 
     // State
@@ -55,12 +57,24 @@ class WalletDashboardViewModel @Inject constructor(
     private val _operationError = MutableStateFlow<String?>(null)
     val operationError: StateFlow<String?> = _operationError.asStateFlow()
 
+    private val _isPrivacyModeEnabled = MutableStateFlow(false)
+    val isPrivacyModeEnabled: StateFlow<Boolean> = _isPrivacyModeEnabled.asStateFlow()
+
     // Tracking last refresh time
     private var lastRefreshTime = 0L
     private val refreshThreshold = 30_000L // 30 seconds
 
     init {
         observeWallets()
+        observePrivacyMode()
+    }
+
+    private fun observePrivacyMode() {
+        viewModelScope.launch {
+            securityPreferencesRepository.observePrivacyModeEnabled().collect { isEnabled ->
+                _isPrivacyModeEnabled.value = isEnabled
+            }
+        }
     }
 
     private fun observeWallets() {

@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.settings.domain.usecase.ClearAllSecurityDataUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.ClearPinUseCase
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 class SecuritySettingsViewModel @Inject constructor(
     private val getAuthStatusUseCase: GetAuthStatusUseCase,
     private val setBiometricEnabledUseCase: SetBiometricEnabledUseCase,
+    private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val setPinUseCase: SetPinUseCase,
     private val clearPinUseCase: ClearPinUseCase,
     private val clearAllSecurityDataUseCase: ClearAllSecurityDataUseCase
@@ -65,6 +67,7 @@ class SecuritySettingsViewModel @Inject constructor(
                         SecurityUiState(
                             isBiometricEnabled = status.isBiometricEnabled,
                             isPinSet = status.isPinSet,
+                            isPrivacyModeEnabled = status.isPrivacyModeEnabled,
                             availableAuthMethods = status.availableMethods,
                             isAnyAuthEnabled = status.isAnyAuthEnabled
                         )
@@ -96,6 +99,21 @@ class SecuritySettingsViewModel @Inject constructor(
         }
     }
 
+    fun setPrivacyModeEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            _operationState.value = SecurityOperation.UPDATING
+
+            try {
+                securityPreferencesRepository.setPrivacyModeEnabled(enabled)
+                refreshAuthStatus()
+            } catch (e: Exception) {
+                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(e.message ?: "Failed to update privacy mode"))
+            }
+
+            _operationState.value = SecurityOperation.IDLE
+        }
+    }
+
     private suspend fun refreshAuthStatus() {
         when (val result = getAuthStatusUseCase()) {
             is Result.Success -> {
@@ -106,6 +124,7 @@ class SecuritySettingsViewModel @Inject constructor(
                             val updatedState = currentState.data.copy(
                                 isBiometricEnabled = status.isBiometricEnabled,
                                 isPinSet = status.isPinSet,
+                                isPrivacyModeEnabled = status.isPrivacyModeEnabled,
                                 availableAuthMethods = status.availableMethods,
                                 isAnyAuthEnabled = status.isAnyAuthEnabled
                             )
@@ -117,6 +136,7 @@ class SecuritySettingsViewModel @Inject constructor(
                                 SecurityUiState(
                                     isBiometricEnabled = status.isBiometricEnabled,
                                     isPinSet = status.isPinSet,
+                                    isPrivacyModeEnabled = status.isPrivacyModeEnabled,
                                     availableAuthMethods = status.availableMethods,
                                     isAnyAuthEnabled = status.isAnyAuthEnabled
                                 )

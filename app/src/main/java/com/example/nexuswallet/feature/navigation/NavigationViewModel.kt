@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.navigation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.settings.domain.usecase.IsBiometricEnabledUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.IsPinSetUseCase
@@ -20,6 +21,7 @@ import javax.inject.Inject
 class NavigationViewModel @Inject constructor(
     private val isPinSetUseCase: IsPinSetUseCase,
     private val isBiometricEnabledUseCase: IsBiometricEnabledUseCase,
+    private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val walletRepository: WalletRepository
 ) : ViewModel() {
 
@@ -32,9 +34,13 @@ class NavigationViewModel @Inject constructor(
     private val _isAuthenticationRequired = MutableStateFlow(false)
     val isAuthenticationRequired: StateFlow<Boolean> = _isAuthenticationRequired.asStateFlow()
 
+    private val _isPrivacyModeEnabled = MutableStateFlow(false)
+    val isPrivacyModeEnabled: StateFlow<Boolean> = _isPrivacyModeEnabled.asStateFlow()
+
     init {
         observeWallets()
         observeAuthenticationStatus()
+        observePrivacyMode()
     }
 
     private fun observeWallets() {
@@ -59,6 +65,14 @@ class NavigationViewModel @Inject constructor(
                 isPinSet || isBiometricEnabled
             }.collect { isRequired ->
                 _isAuthenticationRequired.value = isRequired
+            }
+        }
+    }
+
+    private fun observePrivacyMode() {
+        viewModelScope.launch {
+            securityPreferencesRepository.observePrivacyModeEnabled().collect { isEnabled ->
+                _isPrivacyModeEnabled.value = isEnabled
             }
         }
     }

@@ -224,6 +224,13 @@ private fun SecuritySettingsContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        PrivacySection(
+            isPrivacyModeEnabled = securityState.isPrivacyModeEnabled,
+            onToggle = viewModel::setPrivacyModeEnabled
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         BackupSection(
             onCreateBackup = viewModel::createBackup,
             onRestoreBackup = viewModel::restoreBackup,
@@ -463,6 +470,34 @@ private fun BiometricToggle(
                 uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         )
+    }
+}
+
+@Composable
+private fun PrivacySection(
+    isPrivacyModeEnabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    SecuritySection(
+        title = "Privacy Mode",
+        description = "Hide balances on main screen"
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (isPrivacyModeEnabled) "Enabled" else "Disabled",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = if (isPrivacyModeEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            Switch(
+                checked = isPrivacyModeEnabled,
+                onCheckedChange = onToggle
+            )
+        }
     }
 }
 

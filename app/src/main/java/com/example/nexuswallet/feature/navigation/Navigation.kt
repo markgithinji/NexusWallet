@@ -57,6 +57,7 @@ fun Navigation(
     val wallets by navigationViewModel.wallets.collectAsStateWithLifecycle()
     val isWalletsLoading by navigationViewModel.isWalletsLoading.collectAsStateWithLifecycle()
     val isAuthenticationRequired by navigationViewModel.isAuthenticationRequired.collectAsStateWithLifecycle()
+    val isPrivacyModeEnabled by navigationViewModel.isPrivacyModeEnabled.collectAsStateWithLifecycle()
 
     if (isWalletsLoading) {
         FullScreenLoading(message = "Loading wallets...")

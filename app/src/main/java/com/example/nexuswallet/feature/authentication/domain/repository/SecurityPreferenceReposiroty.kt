@@ -23,6 +23,10 @@ interface SecurityPreferencesRepository {
     suspend fun saveLastAuthenticationTime(timestamp: Long)
     suspend fun getLastAuthenticationTime(): Long?
 
+    suspend fun setPrivacyModeEnabled(enabled: Boolean)
+    suspend fun isPrivacyModeEnabled(): Boolean
+
     fun observePinHash(): Flow<String?>
     fun observeBiometricEnabled(): Flow<Boolean>
+    fun observePrivacyModeEnabled(): Flow<Boolean>
 }
