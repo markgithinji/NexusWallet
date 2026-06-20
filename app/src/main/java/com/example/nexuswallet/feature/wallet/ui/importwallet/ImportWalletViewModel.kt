@@ -1,0 +1,147 @@
+package com.example.nexuswallet.feature.wallet.ui.importwallet
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.usecase.CreateWalletUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.ValidateMnemonicUseCase
+import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class ImportWalletViewModel @Inject constructor(
+    private val validateMnemonicUseCase: ValidateMnemonicUseCase,
+    private val createWalletUseCase: CreateWalletUseCase
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow<WalletCreationUiState>(WalletCreationUiState.Idle)
+    val uiState: StateFlow<WalletCreationUiState> = _uiState.asStateFlow()
+
+    private val _currentStep = MutableStateFlow(0)
+    val currentStep: StateFlow<Int> = _currentStep.asStateFlow()
+
+    private val _mnemonicWords = MutableStateFlow(List(12) { "" })
+    val mnemonicWords: StateFlow<List<String>> = _mnemonicWords.asStateFlow()
+
+    private val _walletName = MutableStateFlow("")
+    val walletName: StateFlow<String> = _walletName.asStateFlow()
+
+    private val _selectedNetworks = MutableStateFlow<Set<Network>>(
+        setOf(
+            BitcoinNetwork.Mainnet,
+            BitcoinNetwork.Testnet,
+            EthereumNetwork.Mainnet,
+            EthereumNetwork.Sepolia
+        )
+    )
+    val selectedNetworks: StateFlow<Set<Network>> = _selectedNetworks.asStateFlow()
+
+    private val _selectedTokens = MutableStateFlow<Map<EthereumNetwork, Set<EVMTokenType>>>(emptyMap())
+    val selectedTokens: StateFlow<Map<EthereumNetwork, Set<EVMTokenType>>> = _selectedTokens.asStateFlow()
+
+    fun updateWord(index: Int, word: String) {
+        _mnemonicWords.update { current ->
+            current.toMutableList().apply {
+                this[index] = word.trim().lowercase()
+            }
+        }
+    }
+
+    fun setWalletName(name: String) {
+        _walletName.value = name
+    }
+
+    fun nextStep() {
+        if (_currentStep.value == 0) {
+            _currentStep.value = 1
+        }
+    }
+
+    fun previousStep() {
+        if (_currentStep.value == 1) {
+            _currentStep.value = 0
+        }
+    }
+
+    fun toggleNetwork(network: Network, isSelected: Boolean) {
+        _selectedNetworks.update { current ->
+            if (isSelected) current + network else current - network
+        }
+        if (!isSelected && network is EthereumNetwork) {
+            _selectedTokens.update { it - network }
+        }
+    }
+
+    fun toggleToken(network: EthereumNetwork, evmTokenType: EVMTokenType, isSelected: Boolean) {
+        _selectedTokens.update { current ->
+            val currentTokens = current.toMutableMap()
+            val networkTokens = currentTokens[network]?.toMutableSet() ?: mutableSetOf()
+
+            if (isSelected) networkTokens.add(evmTokenType) else networkTokens.remove(evmTokenType)
+
+            if (networkTokens.isEmpty()) currentTokens.remove(network)
+            else currentTokens[network] = networkTokens
+
+            currentTokens
+        }
+    }
+
+    fun importWallet() {
+        val words = _mnemonicWords.value
+        if (words.any { it.isBlank() }) {
+            _uiState.value = WalletCreationUiState.Error("Please fill in all 12 words")
+            return
+        }
+
+        if (!validateMnemonicUseCase(words)) {
+            _uiState.value = WalletCreationUiState.Error("Invalid mnemonic phrase")
+            return
+        }
+
+        if (_selectedNetworks.value.isEmpty()) {
+            _uiState.value = WalletCreationUiState.Error("Please select at least one network")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = WalletCreationUiState.Loading
+            
+            val name = _walletName.value.ifBlank { "Imported Wallet" }
+            
+            val result = createWalletUseCase(
+                mnemonic = words,
+                name = name,
+                selectedNetworks = _selectedNetworks.value,
+                selectedTokens = _selectedTokens.value
+            )
+
+            when (result) {
+                is Result.Success -> {
+                    _uiState.value = WalletCreationUiState.WalletCreated(result.data)
+                }
+                is Result.Error -> {
+                    _uiState.value = WalletCreationUiState.Error(result.message)
+                }
+                else -> {
+                    _uiState.value = WalletCreationUiState.Error("Unexpected result")
+                }
+            }
+        }
+    }
+    
+    fun resetError() {
+        if (_uiState.value is WalletCreationUiState.Error) {
+            _uiState.value = WalletCreationUiState.Idle
+        }
+    }
+}
