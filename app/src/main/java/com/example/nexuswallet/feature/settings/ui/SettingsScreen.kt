@@ -43,6 +43,7 @@ import com.example.nexuswallet.R
 @Composable
 fun SettingsScreen(
     onNavigateToSecurity: () -> Unit,
+    onNavigateToAbout: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val selectedCurrency by viewModel.selectedCurrency.collectAsStateWithLifecycle()
@@ -131,7 +132,7 @@ fun SettingsScreen(
                 title = stringResource(R.string.about_settings),
                 description = stringResource(R.string.about_description),
                 icon = Icons.Outlined.Info,
-                onClick = { /* Navigate to about screen */ }
+                onClick = onNavigateToAbout
             )
         }
     }

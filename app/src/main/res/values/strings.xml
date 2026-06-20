@@ -262,6 +262,14 @@
     <string name="network_description">Configure blockchain networks</string>
     <string name="about_settings">About</string>
     <string name="about_description">App version and information</string>
+    <string name="app_version">Version %1$s</string>
+    <string name="terms_of_service">Terms of Service</string>
+    <string name="github_repository">GitHub Repository</string>
+    <string name="follow_us_twitter">Follow us on Twitter</string>
+    <string name="social_media">Social Media</string>
+    <string name="legal">Legal</string>
+    <string name="links">Links</string>
+    <string name="tos_content">By using Nexus Wallet, you agree to our terms. This is a non-custodial wallet. You are solely responsible for your recovery phrase and funds. The developers are not liable for any loss of assets.</string>
     <string name="security_status">Security Status</string>
     <string name="security_score">Security Score</string>
     <string name="biometric_authentication">Biometric Authentication</string>

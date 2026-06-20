@@ -28,6 +28,9 @@ data object SettingsRoute : Route
 data object SecuritySettingsRoute : Route
 
 @Serializable
+data object AboutRoute : Route
+
+@Serializable
 data class WalletDetailRoute(val walletId: String) : Route
 
 @Serializable

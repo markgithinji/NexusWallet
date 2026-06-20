@@ -22,6 +22,7 @@ import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.navigation.navtype.AuthTargetNavType
 import com.example.nexuswallet.feature.navigation.navtype.CoinNavType
 import com.example.nexuswallet.feature.navigation.navtype.NetworkNavType
+import com.example.nexuswallet.feature.settings.ui.AboutScreen
 import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
 import com.example.nexuswallet.feature.settings.ui.SettingsScreen
 import com.example.nexuswallet.feature.solana.ui.SolanaSendScreen
@@ -125,6 +126,9 @@ fun Navigation(
                 onNavigateToSecurity = {
                     navController.navigate(SecuritySettingsRoute)
                 },
+                onNavigateToAbout = {
+                    navController.navigate(AboutRoute)
+                },
                 padding = PaddingValues(0.dp)
             )
         }
@@ -174,7 +178,16 @@ fun Navigation(
             SettingsScreen(
                 onNavigateToSecurity = {
                     navController.navigate(SecuritySettingsRoute)
+                },
+                onNavigateToAbout = {
+                    navController.navigate(AboutRoute)
                 }
+            )
+        }
+
+        composable<AboutRoute> {
+            AboutScreen(
+                onNavigateUp = { navController.navigateUp() }
             )
         }
 

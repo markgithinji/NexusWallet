@@ -46,6 +46,7 @@ fun MainTabScreen(
     onNavigateToWalletDetail: (String) -> Unit,
     onNavigateToTokenDetail: (String) -> Unit,
     onNavigateToSecurity: () -> Unit,
+    onNavigateToAbout: () -> Unit,
     padding: PaddingValues
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
@@ -180,7 +181,8 @@ fun MainTabScreen(
             )
 
             2 -> SettingsScreen(
-                onNavigateToSecurity = onNavigateToSecurity
+                onNavigateToSecurity = onNavigateToSecurity,
+                onNavigateToAbout = onNavigateToAbout
             )
         }
     }
