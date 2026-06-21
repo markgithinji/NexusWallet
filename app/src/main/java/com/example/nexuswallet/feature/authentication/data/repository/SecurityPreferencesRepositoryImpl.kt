@@ -27,8 +27,8 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
         encryptedMnemonic: String,
         iv: ByteArray
     ) {
-        val key = stringPreferencesKey("${ENCRYPTED_MNEMONIC_KEY.name}_$walletId")
-        val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_$walletId")
+        val key = stringPreferencesKey("${ENCRYPTED_MNEMONIC_KEY.name}_${walletId.lowercase()}")
+        val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_${walletId.lowercase()}")
 
         safeEdit {
             dataStore.edit { preferences ->
@@ -39,16 +39,16 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getEncryptedMnemonic(walletId: String): Pair<String, ByteArray>? {
-        val key = stringPreferencesKey("${ENCRYPTED_MNEMONIC_KEY.name}_$walletId")
-        val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_$walletId")
+        val key = stringPreferencesKey("${ENCRYPTED_MNEMONIC_KEY.name}_${walletId.lowercase()}")
+        val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_${walletId.lowercase()}")
 
         return safeGet {
             val preferences = dataStore.data.first()
             val encrypted = preferences[key]
             val ivHex = preferences[ivKey]
 
-            if (encrypted != null && ivHex != null) {
-                Pair(encrypted,ivHex.decodeHex())
+            if ((encrypted != null) && (ivHex != null)) {
+                Pair(encrypted, ivHex.decodeHex())
             } else {
                 null
             }
@@ -61,8 +61,11 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
         encryptedKey: String,
         iv: ByteArray
     ) {
-        val key = stringPreferencesKey("${ENCRYPTED_PRIVATE_KEY_KEY.name}_${walletId}_$keyType")
-        val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_${walletId}_$keyType")
+        val keyName = "${ENCRYPTED_PRIVATE_KEY_KEY.name}_${walletId.lowercase()}_${keyType.lowercase()}"
+        val ivKeyName = "${INITIALIZATION_VECTOR_KEY.name}_${walletId.lowercase()}_${keyType.lowercase()}"
+        
+        val key = stringPreferencesKey(keyName)
+        val ivKey = stringPreferencesKey(ivKeyName)
 
         safeEdit {
             dataStore.edit { preferences ->
@@ -76,15 +79,17 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
         walletId: String,
         keyType: String
     ): Pair<String, ByteArray>? {
-        val key = stringPreferencesKey("${ENCRYPTED_PRIVATE_KEY_KEY.name}_${walletId}_$keyType")
-        val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_${walletId}_$keyType")
-
+        val keyName = "${ENCRYPTED_PRIVATE_KEY_KEY.name}_${walletId.lowercase()}_${keyType.lowercase()}"
+        val ivKeyName = "${INITIALIZATION_VECTOR_KEY.name}_${walletId.lowercase()}_${keyType.lowercase()}"
+        
         return safeGet {
             val preferences = dataStore.data.first()
+            val key = stringPreferencesKey(keyName)
+            val ivKey = stringPreferencesKey(ivKeyName)
             val encrypted = preferences[key]
             val ivHex = preferences[ivKey]
 
-            if (encrypted != null && ivHex != null) {
+            if ((encrypted != null) && (ivHex != null)) {
                 Pair(encrypted, ivHex.decodeHex())
             } else {
                 null
@@ -93,15 +98,15 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getEncryptedBackup(walletId: String): Pair<String, ByteArray>? {
-        val backupKey = stringPreferencesKey("${ENCRYPTED_BACKUP_KEY.name}_$walletId")
-        val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_backup_$walletId")
+        val backupKey = stringPreferencesKey("${ENCRYPTED_BACKUP_KEY.name}_${walletId.lowercase()}")
+        val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_backup_${walletId.lowercase()}")
 
         return safeGet {
             val preferences = dataStore.data.first()
             val encrypted = preferences[backupKey]
             val ivHex = preferences[ivKey]
 
-            if (encrypted != null && ivHex != null) {
+            if ((encrypted != null) && (ivHex != null)) {
                 Pair(encrypted, ivHex.decodeHex())
             } else {
                 null

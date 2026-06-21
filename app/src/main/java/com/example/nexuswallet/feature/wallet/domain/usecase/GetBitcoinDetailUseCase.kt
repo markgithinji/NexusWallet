@@ -1,9 +1,11 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
+import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
@@ -19,6 +21,9 @@ class GetBitcoinDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+    private val syncBitcoinBalanceUseCase: SyncBitcoinBalanceUseCase,
+    private val getSimplePricesUseCase: GetSimplePricesUseCase,
+    private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -73,7 +78,19 @@ class GetBitcoinDetailUseCase @Inject constructor(
             Result.Loading -> {}
         }
 
-        // 4. Get balance (Already synced by ViewModel)
+        // 3.5. Sync fresh balance
+        try {
+            val currency = securityPreferencesRepository.getSelectedCurrency()
+            val pricesResult = getSimplePricesUseCase(listOf(bitcoinCoin.symbol), currency)
+            val price = if (pricesResult is Result.Success) pricesResult.data[bitcoinCoin.symbol] ?: 0.0 else 0.0
+
+            syncBitcoinBalanceUseCase(walletId, bitcoinCoin, price)
+            logger.d(tag, "Synced balance for $walletId, network ${network.name}")
+        } catch (e: Exception) {
+            logger.e(tag, "Failed to sync Bitcoin balance", e)
+        }
+
+        // 4. Get balance (Already synced)
         val balance = walletRepository.getWalletBalance(walletId)
         val coinBalance = balance?.bitcoinBalances?.get(bitcoinCoin.network)
         logger.d(tag, "Balance for ${network.name}: ${coinBalance?.btc ?: "0"} BTC")

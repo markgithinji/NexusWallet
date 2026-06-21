@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
@@ -134,6 +135,9 @@ object WalletDomainModule {
         walletRepository: WalletRepository,
         bitcoinTransactionRepository: BitcoinTransactionRepository,
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+        syncBitcoinBalanceUseCase: SyncBitcoinBalanceUseCase,
+        getSimplePricesUseCase: GetSimplePricesUseCase,
+        securityPreferencesRepository: SecurityPreferencesRepository,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetBitcoinDetailUseCase {
@@ -141,6 +145,9 @@ object WalletDomainModule {
             walletRepository = walletRepository,
             bitcoinTransactionRepository = bitcoinTransactionRepository,
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
+            syncBitcoinBalanceUseCase = syncBitcoinBalanceUseCase,
+            getSimplePricesUseCase = getSimplePricesUseCase,
+            securityPreferencesRepository = securityPreferencesRepository,
             logger = logger,
             ioDispatcher = ioDispatcher
         )
@@ -152,6 +159,9 @@ object WalletDomainModule {
         walletRepository: WalletRepository,
         evmTransactionRepository: EVMTransactionRepository,
         evmBlockchainRepository: EVMBlockchainRepository,
+        syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
+        getSimplePricesUseCase: GetSimplePricesUseCase,
+        securityPreferencesRepository: SecurityPreferencesRepository,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetEthereumDetailUseCase {
@@ -159,6 +169,9 @@ object WalletDomainModule {
             walletRepository = walletRepository,
             evmTransactionRepository = evmTransactionRepository,
             evmBlockchainRepository = evmBlockchainRepository,
+            syncEVMBalancesUseCase = syncEVMBalancesUseCase,
+            getSimplePricesUseCase = getSimplePricesUseCase,
+            securityPreferencesRepository = securityPreferencesRepository,
             logger = logger,
             ioDispatcher = ioDispatcher
         )
@@ -170,6 +183,9 @@ object WalletDomainModule {
         walletRepository: WalletRepository,
         solanaTransactionRepository: SolanaTransactionRepository,
         solanaBlockchainRepository: SolanaBlockchainRepository,
+        syncSolanaBalanceUseCase: SyncSolanaBalanceUseCase,
+        getSimplePricesUseCase: GetSimplePricesUseCase,
+        securityPreferencesRepository: SecurityPreferencesRepository,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetSolanaDetailUseCase {
@@ -177,6 +193,9 @@ object WalletDomainModule {
             walletRepository = walletRepository,
             solanaTransactionRepository = solanaTransactionRepository,
             solanaBlockchainRepository = solanaBlockchainRepository,
+            syncSolanaBalanceUseCase = syncSolanaBalanceUseCase,
+            getSimplePricesUseCase = getSimplePricesUseCase,
+            securityPreferencesRepository = securityPreferencesRepository,
             logger = logger,
             ioDispatcher = ioDispatcher
         )

@@ -1,7 +1,9 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
+import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
@@ -18,6 +20,9 @@ class GetSolanaDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val solanaTransactionRepository: SolanaTransactionRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
+    private val syncSolanaBalanceUseCase: SyncSolanaBalanceUseCase,
+    private val getSimplePricesUseCase: GetSimplePricesUseCase,
+    private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -86,7 +91,19 @@ class GetSolanaDetailUseCase @Inject constructor(
             }
         }
 
-        // 5. Get balance (Already synced by ViewModel)
+        // 4.5. Sync fresh balance
+        try {
+            val currency = securityPreferencesRepository.getSelectedCurrency()
+            val pricesResult = getSimplePricesUseCase(listOf(solanaCoin.symbol), currency)
+            val price = if (pricesResult is Result.Success) pricesResult.data[solanaCoin.symbol] ?: 0.0 else 0.0
+
+            syncSolanaBalanceUseCase(walletId, solanaCoin, price)
+            logger.d(tag, "Synced balance for $walletId, network ${network.name}")
+        } catch (e: Exception) {
+            logger.e(tag, "Failed to sync Solana balance", e)
+        }
+
+        // 5. Get balance (Already synced)
         val balance = walletRepository.getWalletBalance(walletId)
         val coinBalance = balance?.solanaBalances?.get(network)
         logger.d(tag, "Balance for ${network.name}: ${coinBalance?.sol ?: "0"} SOL")

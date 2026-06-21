@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
+import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
@@ -7,6 +8,7 @@ import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
@@ -25,6 +27,9 @@ class GetEthereumDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
+    private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
+    private val getSimplePricesUseCase: GetSimplePricesUseCase,
+    private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -101,7 +106,19 @@ class GetEthereumDetailUseCase @Inject constructor(
             }
         }
 
-        // 5. Get balance (Already synced by ViewModel)
+        // 4.5. Sync fresh balances
+        try {
+            val currency = securityPreferencesRepository.getSelectedCurrency()
+            val pricesResult = getSimplePricesUseCase(wallet.evmTokens.map { it.symbol }, currency)
+            val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
+            
+            syncEVMBalancesUseCase(walletId, wallet.evmTokens, prices)
+            logger.d(tag, "Synced balances for wallet: $walletId")
+        } catch (e: Exception) {
+            logger.e(tag, "Failed to sync balances", e)
+        }
+
+        // 5. Get balance (Already synced)
         val balance = walletRepository.getWalletBalance(walletId)
         val tokenBalance = balance?.evmBalances?.find {
             it.network == verifiedToken.network && it.evmTokenType == verifiedToken.evmTokenType
