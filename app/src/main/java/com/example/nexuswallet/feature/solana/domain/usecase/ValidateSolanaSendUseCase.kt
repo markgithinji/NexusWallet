@@ -65,8 +65,8 @@ class ValidateSolanaSendUseCase @Inject constructor(
             logger.w(tag, "Insufficient balance: have $balance SOL, need $totalRequired SOL")
             return SendValidationResult(
                 isValid = false,
-                balanceError = "Insufficient balance. You have ${balance.setScale(9)} SOL but need ${
-                    totalRequired.setScale(9)
+                balanceError = "Insufficient balance. You have ${balance.setScale(9).stripTrailingZeros().toPlainString()} SOL but need ${
+                    totalRequired.setScale(9).stripTrailingZeros().toPlainString()
                 } SOL (including fees)"
             )
         }

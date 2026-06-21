@@ -110,10 +110,8 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
             logger.w(tag, "Insufficient balance: have $balance BTC, need $totalRequired BTC")
             return SendValidationResult(
                 isValid = false,
-                balanceError = "Insufficient balance. You have ${balance.setScale(8)} BTC but need ${
-                    totalRequired.setScale(
-                        8
-                    )
+                balanceError = "Insufficient balance. You have ${balance.setScale(8).stripTrailingZeros().toPlainString()} BTC but need ${
+                    totalRequired.setScale(8).stripTrailingZeros().toPlainString()
                 } BTC (including fees)"
             )
         }

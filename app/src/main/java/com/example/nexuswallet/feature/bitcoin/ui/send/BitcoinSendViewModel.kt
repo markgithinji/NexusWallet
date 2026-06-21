@@ -131,7 +131,7 @@ class BitcoinSendViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         balance = balance,
-                        balanceFormatted = "${balance.setScale(8, RoundingMode.HALF_UP)} BTC"
+                        balanceFormatted = "${balance.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} BTC"
                     )
                 }
                 validateInputs()

@@ -181,7 +181,7 @@ class SolanaSendViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         balance = balance,
-                        balanceFormatted = "${balance.setScale(4, RoundingMode.HALF_UP)} SOL",
+                        balanceFormatted = "${balance.setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} SOL",
                         isLoading = false
                     )
                 }

@@ -247,10 +247,10 @@ class EVMSendViewModel @Inject constructor(
                             tokenBalance = balance,
                             balanceFormatted = when (token) {
                                 is USDCToken, is USDTToken ->
-                                    "$${balance.setScale(2, RoundingMode.HALF_UP)} ${token.symbol}"
+                                    "$${balance.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} ${token.symbol}"
 
                                 else ->
-                                    "${balance.setScale(4, RoundingMode.HALF_UP)} ${token.symbol}"
+                                    "${balance.setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} ${token.symbol}"
                             },
                             isLoading = false,
                             balancesLoaded = true
