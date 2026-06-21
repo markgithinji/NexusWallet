@@ -72,6 +72,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -117,7 +118,7 @@ fun SendTopBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     painter = painterResource(id = iconRes),
-                    contentDescription = "Coin icon",
+                    contentDescription = stringResource(R.string.token_icon),
                     modifier = Modifier.size(24.dp),
                     tint = Color.Unspecified
                 )
@@ -134,7 +135,7 @@ fun SendTopBar(
             IconButton(onClick = onNavigateUp) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    "Back",
+                    stringResource(R.string.back),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -160,7 +161,7 @@ fun NetworkSelectorCard(
     currentNetwork: Network?,
     onClick: () -> Unit
 ) {
-    val displayName = currentNetwork?.name ?: "Select Network"
+    val displayName = currentNetwork?.name ?: stringResource(R.string.select_network)
 
     Card(
         modifier = Modifier
@@ -181,14 +182,14 @@ fun NetworkSelectorCard(
         ) {
             Icon(
                 imageVector = Icons.Outlined.Lan,
-                contentDescription = "Network icon",
+                contentDescription = stringResource(R.string.network_icon),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Network",
+                    text = stringResource(R.string.network_label),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -201,7 +202,7 @@ fun NetworkSelectorCard(
             }
             Icon(
                 imageVector = Icons.Outlined.ChevronRight,
-                contentDescription = "Change network",
+                contentDescription = stringResource(R.string.change_network),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -221,7 +222,7 @@ fun NetworkSelectorDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Text(
-                text = "Select Network",
+                text = stringResource(R.string.select_network),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -267,7 +268,7 @@ fun NetworkSelectorDialog(
                             if (isSelected) {
                                 Icon(
                                     imageVector = Icons.Outlined.CheckCircle,
-                                    contentDescription = "Selected",
+                                    contentDescription = stringResource(R.string.selected),
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -284,7 +285,7 @@ fun NetworkSelectorDialog(
                     contentColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
@@ -320,7 +321,7 @@ fun SendBalanceCard(
             ) {
                 Column {
                     Text(
-                        text = "Available Balance",
+                        text = stringResource(R.string.available_balance),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -342,7 +343,7 @@ fun SendBalanceCard(
 
                     if (network != null && network.isTestnet) {
                         Text(
-                            text = "Network: ${network.name}",
+                            text = stringResource(R.string.on_network, network.name),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -358,7 +359,7 @@ fun SendBalanceCard(
                 ) {
                     Icon(
                         painter = painterResource(id = iconRes),
-                        contentDescription = "Coin icon",
+                        contentDescription = stringResource(R.string.token_icon),
                         tint = Color.Unspecified,
                         modifier = Modifier.size(28.dp)
                     )
@@ -373,12 +374,12 @@ fun SendBalanceCard(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = "Wallet icon",
+                    contentDescription = stringResource(R.string.wallet_icon),
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "From: ${address.take(6)}...${address.takeLast(4)}",
+                    text = stringResource(R.string.from_label) + ": ${address.take(6)}...${address.takeLast(4)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -424,7 +425,7 @@ fun SendAddressInput(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Recipient Address",
+                text = stringResource(R.string.recipient_address),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -451,7 +452,7 @@ fun SendAddressInput(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Close,
-                                contentDescription = "Clear",
+                                contentDescription = stringResource(R.string.clear),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -482,12 +483,12 @@ fun SendAddressInput(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.QrCodeScanner,
-                        contentDescription = "Scan",
+                        contentDescription = stringResource(R.string.scan),
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        "Scan",
+                        stringResource(R.string.scan),
                         maxLines = 1,
                         style = MaterialTheme.typography.labelLarge
                     )
@@ -511,12 +512,12 @@ fun SendAddressInput(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.ContentPaste,
-                        contentDescription = "Paste",
+                        contentDescription = stringResource(R.string.paste),
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        "Paste",
+                        stringResource(R.string.paste),
                         maxLines = 1,
                         style = MaterialTheme.typography.labelLarge
                     )
@@ -565,7 +566,7 @@ fun SendAmountInput(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "Amount",
+                    text = stringResource(R.string.amount),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -580,11 +581,10 @@ fun SendAmountInput(
                     is NativeETH -> 6
                 }
 
+                val maxBalanceFormatted = balance.setScale(maxDecimals, RoundingMode.HALF_UP).stripTrailingZeros()
+                    .toPlainString()
                 Text(
-                    text = "Max: ${
-                        balance.setScale(maxDecimals, RoundingMode.HALF_UP).stripTrailingZeros()
-                            .toPlainString()
-                    } $symbol",
+                    text = stringResource(R.string.max_label, maxBalanceFormatted, symbol),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -613,7 +613,7 @@ fun SendAmountInput(
                             },
                         placeholder = {
                             Text(
-                                "0.00000000",
+                                stringResource(R.string.amount_placeholder),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                 maxLines = 1
@@ -633,7 +633,7 @@ fun SendAmountInput(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Outlined.Close,
-                                            contentDescription = "Clear",
+                                            contentDescription = stringResource(R.string.clear),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -678,7 +678,7 @@ fun SendAmountInput(
                     modifier = Modifier.height(56.dp)
                 ) {
                     Text(
-                        "MAX",
+                        stringResource(R.string.max_button),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -749,7 +749,7 @@ fun SendFeeSelection(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Transaction Fee",
+                text = stringResource(R.string.transaction_fee),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -768,11 +768,11 @@ fun SendFeeSelection(
                 is BitcoinCoin -> {
                     (feeEstimate as? BitcoinFeeEstimate)?.let { fee ->
                         FeeDetailsRow(
-                            label = "Network Fee",
+                            label = stringResource(R.string.network_fee_label).removeSuffix(":"),
                             value = "${fee.totalFeeBtc} BTC"
                         )
                         FeeDetailsRow(
-                            label = "Fee Rate",
+                            label = stringResource(R.string.fee_rate),
                             value = "${fee.feePerByte} sat/byte"
                         )
                     }
@@ -781,15 +781,15 @@ fun SendFeeSelection(
                 is NativeETH -> {
                     (feeEstimate as? EVMFeeEstimate)?.let { fee ->
                         FeeDetailsRow(
-                            label = "Network Fee",
+                            label = stringResource(R.string.network_fee_label).removeSuffix(":"),
                             value = "${fee.totalFeeEth} ETH"
                         )
                         FeeDetailsRow(
-                            label = "Gas Price",
+                            label = stringResource(R.string.gas_price),
                             value = "${fee.gasPriceGwei} Gwei"
                         )
                         FeeDetailsRow(
-                            label = "Gas Limit",
+                            label = stringResource(R.string.gas_limit),
                             value = fee.gasLimit.toString()
                         )
                     }
@@ -798,15 +798,15 @@ fun SendFeeSelection(
                 is USDCToken, is USDTToken -> {
                     (feeEstimate as? EVMFeeEstimate)?.let { fee ->
                         FeeDetailsRow(
-                            label = "Network Fee",
+                            label = stringResource(R.string.network_fee_label).removeSuffix(":"),
                             value = "${fee.totalFeeEth} ETH"
                         )
                         FeeDetailsRow(
-                            label = "Gas Price",
+                            label = stringResource(R.string.gas_price),
                             value = "${fee.gasPriceGwei} Gwei"
                         )
                         FeeDetailsRow(
-                            label = "Gas Limit",
+                            label = stringResource(R.string.gas_limit),
                             value = fee.gasLimit.toString()
                         )
                     }
@@ -815,12 +815,12 @@ fun SendFeeSelection(
                 is SolanaCoin -> {
                     (feeEstimate as? SolanaFeeEstimate)?.let { fee ->
                         FeeDetailsRow(
-                            label = "Network Fee",
+                            label = stringResource(R.string.network_fee_label).removeSuffix(":"),
                             value = "${fee.feeSol} SOL"
                         )
                         if (fee.computeUnits > 0) {
                             FeeDetailsRow(
-                                label = "Compute Units",
+                                label = stringResource(R.string.compute_units),
                                 value = fee.computeUnits.toString()
                             )
                         }
@@ -990,13 +990,13 @@ fun SendBottomBar(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        "Processing...",
+                        stringResource(R.string.processing),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
                     Text(
-                        text = "Continue",
+                        text = stringResource(R.string.continue_button),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimary
@@ -1040,7 +1040,7 @@ fun MaxAmountDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Text(
-                text = "Send Maximum",
+                text = stringResource(R.string.send_maximum),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -1054,7 +1054,7 @@ fun MaxAmountDialog(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Available:",
+                            text = stringResource(R.string.available_label),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1073,7 +1073,7 @@ fun MaxAmountDialog(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Network Fee:",
+                            text = stringResource(R.string.network_fee_label),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1103,7 +1103,7 @@ fun MaxAmountDialog(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Maximum Send:",
+                            text = stringResource(R.string.maximum_send_label),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -1129,13 +1129,13 @@ fun MaxAmountDialog(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "This will send all available funds minus the network fee.",
+                        text = stringResource(R.string.send_all_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
                     Text(
-                        text = "Insufficient balance to cover network fee.",
+                        text = stringResource(R.string.insufficient_fee_balance),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -1158,7 +1158,7 @@ fun MaxAmountDialog(
                     )
                 ) {
                     Text(
-                        "Use Maximum",
+                        stringResource(R.string.use_maximum),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
@@ -1172,7 +1172,7 @@ fun MaxAmountDialog(
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
-                Text("Cancel", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.cancel), style = MaterialTheme.typography.labelLarge)
             }
         }
     )
@@ -1208,7 +1208,7 @@ fun ErrorMessage(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Error,
-                    contentDescription = "Error",
+                    contentDescription = stringResource(R.string.error),
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(20.dp)
                 )
@@ -1227,7 +1227,7 @@ fun ErrorMessage(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Close,
-                    contentDescription = "Dismiss",
+                    contentDescription = stringResource(R.string.dismiss),
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(16.dp)
                 )
@@ -1245,7 +1245,7 @@ fun TokenSelectorCard(
         is NativeETH -> Triple(R.drawable.ethereum, ethereumLight, selectedToken.name)
         is USDCToken -> Triple(R.drawable.usdc, usdcLight, selectedToken.name)
         is USDTToken -> Triple(R.drawable.tether, usdtLight, selectedToken.name)
-        else -> Triple(null, MaterialTheme.colorScheme.primary, "Select token")
+        else -> Triple(null, MaterialTheme.colorScheme.primary, stringResource(R.string.select_token))
     }
 
     Card(
@@ -1275,14 +1275,14 @@ fun TokenSelectorCard(
                 if (iconRes != null) {
                     Icon(
                         painter = painterResource(id = iconRes),
-                        contentDescription = "Token icon",
+                        contentDescription = stringResource(R.string.token_icon),
                         tint = Color.Unspecified,
                         modifier = Modifier.size(20.dp)
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Outlined.Token,
-                        contentDescription = "Token icon",
+                        contentDescription = stringResource(R.string.token_icon),
                         tint = color,
                         modifier = Modifier.size(16.dp)
                     )
@@ -1291,7 +1291,7 @@ fun TokenSelectorCard(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Token",
+                    text = stringResource(R.string.token_label),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1304,7 +1304,7 @@ fun TokenSelectorCard(
             }
             Icon(
                 imageVector = Icons.Outlined.ChevronRight,
-                contentDescription = "Change token",
+                contentDescription = stringResource(R.string.change_token),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -1324,7 +1324,7 @@ fun TokenSelectorDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Text(
-                text = "Select Token",
+                text = stringResource(R.string.select_token),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -1371,14 +1371,14 @@ fun TokenSelectorDialog(
                                 if (iconRes != null) {
                                     Icon(
                                         painter = painterResource(id = iconRes),
-                                        contentDescription = "Token icon",
+                                        contentDescription = stringResource(R.string.token_icon),
                                         tint = Color.Unspecified,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 } else {
                                     Icon(
                                         imageVector = Icons.Outlined.Token,
-                                        contentDescription = "Token icon",
+                                        contentDescription = stringResource(R.string.token_icon),
                                         tint = color,
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -1413,7 +1413,7 @@ fun TokenSelectorDialog(
                             if (isSelected) {
                                 Icon(
                                     imageVector = Icons.Outlined.CheckCircle,
-                                    contentDescription = "Selected",
+                                    contentDescription = stringResource(R.string.selected),
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -1430,7 +1430,7 @@ fun TokenSelectorDialog(
                     contentColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )

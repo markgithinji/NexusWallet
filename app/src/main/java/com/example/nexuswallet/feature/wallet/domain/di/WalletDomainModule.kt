@@ -118,8 +118,7 @@ object WalletDomainModule {
             keyStoreRepository = keyStoreRepository,
             securityPreferencesRepository = securityPreferencesRepository,
             logger = logger,
-            defaultDispatcher = defaultDispatcher,
-            ioDispatcher = ioDispatcher
+            defaultDispatcher = defaultDispatcher
         )
     }
 

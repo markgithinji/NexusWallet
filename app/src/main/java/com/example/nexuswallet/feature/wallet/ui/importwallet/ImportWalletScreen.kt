@@ -108,7 +108,7 @@ fun ImportNetworkSelectionStep(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Select Networks to Import",
+            text = stringResource(R.string.select_networks_to_import),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)
@@ -182,7 +182,7 @@ fun ImportNetworkSelectionStep(
         if (selectedNetworks.any { it is EthereumNetwork }) {
             Spacer(Modifier.height(24.dp))
             Text(
-                text = "Tokens",
+                text = stringResource(R.string.tokens),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -246,7 +246,7 @@ fun ImportNetworkSelectionStep(
             modifier = Modifier.fillMaxWidth(),
             enabled = selectedNetworks.isNotEmpty()
         ) {
-            Text("Next")
+            Text(stringResource(R.string.continue_button))
         }
     }
 }
@@ -277,7 +277,7 @@ fun ImportMnemonicStep(
         )
 
         Text(
-            text = "Recovery Phrase",
+            text = stringResource(R.string.recovery_phrase_title),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)

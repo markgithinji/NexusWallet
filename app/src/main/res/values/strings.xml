@@ -307,4 +307,63 @@
     <string name="rename_wallet">Rename Wallet</string>
     <string name="new_wallet_name">New Wallet Name</string>
     <string name="save">Save</string>
+
+    <!-- Backup Screen -->
+    <string name="decrypting_recovery_phrase">Decrypting recovery phrase&#8230;</string>
+    <string name="your_recovery_phrase">Your 12-Word Recovery Phrase</string>
+    <string name="saved_safely_button">I\'ve Saved It Safely</string>
+    <string name="failed_to_load_mnemonic">Failed to load recovery phrase</string>
+
+    <!-- Import Wallet Screen -->
+    <string name="select_networks_to_import">Select Networks to Import</string>
+    <string name="recovery_phrase_title">Recovery Phrase</string>
+
+    <!-- Send & Transaction Review -->
+    <string name="review_transaction">Review Transaction</string>
+    <string name="confirm_and_send">Confirm &amp; Send</string>
+    <string name="transaction_sent">Transaction Sent!</string>
+    <string name="transaction_broadcast">Your transaction has been broadcast</string>
+    <string name="hash_copied">Hash copied</string>
+    <string name="address_copied_small">Address copied</string>
+    <string name="you_are_sending">You are sending</string>
+    <string name="on_network">on %1$s</string>
+    <string name="from_label">From</string>
+    <string name="to_label">To</string>
+    <string name="total_fee">Total Fee</string>
+    <string name="gas_price">Gas Price</string>
+    <string name="gas_limit">Gas Limit</string>
+    <string name="fee_rate">Fee Rate</string>
+    <string name="compute_units">Compute Units</string>
+    <string name="estimated_time_label">Estimated time</string>
+    <string name="select_network">Select Network</string>
+    <string name="network_label">Network</string>
+    <string name="change_network">Change network</string>
+    <string name="selected">Selected</string>
+    <string name="available_balance">Available Balance</string>
+    <string name="network_icon">Network icon</string>
+    <string name="recipient_address">Recipient Address</string>
+    <string name="clear">Clear</string>
+    <string name="scan">Scan</string>
+    <string name="paste">Paste</string>
+    <string name="amount">Amount</string>
+    <string name="max_label">Max: %1$s %2$s</string>
+    <string name="amount_placeholder">0.00000000</string>
+    <string name="max_button">MAX</string>
+    <string name="transaction_fee">Transaction Fee</string>
+    <string name="send_maximum">Send Maximum</string>
+    <string name="use_maximum">Use Maximum</string>
+    <string name="available_label">Available:</string>
+    <string name="network_fee_label">Network Fee:</string>
+    <string name="maximum_send_label">Maximum Send:</string>
+    <string name="send_all_desc">This will send all available funds minus the network fee.</string>
+    <string name="insufficient_fee_balance">Insufficient balance to cover network fee.</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="select_token">Select Token</string>
+    <string name="token_label">Token</string>
+    <string name="change_token">Change token</string>
+    <string name="preparing">Preparing&#8230;</string>
+    <string name="sending">Sending&#8230;</string>
+    <string name="view_on_explorer">View on %1$s Explorer</string>
+    <string name="transaction_cannot_be_sent">Transaction cannot be sent:</string>
+    <string name="done_button">Done</string>
 </resources>

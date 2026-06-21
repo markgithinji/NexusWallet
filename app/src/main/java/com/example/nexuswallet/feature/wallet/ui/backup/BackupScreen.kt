@@ -66,7 +66,7 @@ fun BackupScreen(
         }
     ) { padding ->
         if (isLoading) {
-            FullScreenLoading(message = "Decrypting recovery phrase...")
+            FullScreenLoading(message = stringResource(R.string.decrypting_recovery_phrase))
         } else if (mnemonic != null) {
             Column(
                 modifier = Modifier
@@ -103,7 +103,7 @@ fun BackupScreen(
                 }
 
                 Text(
-                    text = "Your 12-Word Recovery Phrase",
+                    text = stringResource(R.string.your_recovery_phrase),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -126,12 +126,12 @@ fun BackupScreen(
                         .fillMaxWidth()
                         .padding(vertical = 24.dp)
                 ) {
-                    Text("I've Saved It Safely")
+                    Text(stringResource(R.string.saved_safely_button))
                 }
             }
         } else {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Failed to load recovery phrase", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.failed_to_load_mnemonic), color = MaterialTheme.colorScheme.error)
             }
         }
     }

@@ -64,6 +64,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -147,7 +148,7 @@ fun TransactionReviewScreen(
                 is BitcoinReviewEffect.TransactionSent -> {
                     txHash = effect.txHash
                     explorerUrl = effect.explorerUrl
-                    txStatus = "Transaction sent!"
+                    txStatus = context.getString(R.string.transaction_sent)
                     isSending = false
                     showSuccessBanner = true
                     delay(5000)
@@ -169,7 +170,7 @@ fun TransactionReviewScreen(
                 is EVMSendEffect.TransactionSent -> {
                     txHash = effect.txHash
                     explorerUrl = effect.explorerUrl
-                    txStatus = "Transaction sent!"
+                    txStatus = context.getString(R.string.transaction_sent)
                     isSending = false
                     showSuccessBanner = true
                     delay(5000)
@@ -191,7 +192,7 @@ fun TransactionReviewScreen(
                 is SolanaSendEffect.TransactionSent -> {
                     txHash = effect.txHash
                     explorerUrl = effect.explorerUrl
-                    txStatus = "Transaction sent!"
+                    txStatus = context.getString(R.string.transaction_sent)
                     isSending = false
                     showSuccessBanner = true
                     delay(5000)
@@ -296,13 +297,13 @@ fun TransactionReviewScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             painter = painterResource(id = iconRes),
-                            contentDescription = "Coin icon",
+                            contentDescription = stringResource(R.string.token_icon),
                             modifier = Modifier.size(24.dp),
                             tint = Color.Unspecified
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Review Transaction",
+                            text = stringResource(R.string.review_transaction),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -313,7 +314,7 @@ fun TransactionReviewScreen(
                     IconButton(onClick = onNavigateUp) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            "Back",
+                            stringResource(R.string.back),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -341,7 +342,7 @@ fun TransactionReviewScreen(
                         is EVMToken -> {
                             ethereumViewModel.send { hash ->
                                 txHash = hash
-                                txStatus = "Transaction sent!"
+                                txStatus = context.getString(R.string.transaction_sent)
                                 isSending = false
                             }
                         }
@@ -349,7 +350,7 @@ fun TransactionReviewScreen(
                         is SolanaCoin -> {
                             solanaViewModel.send { hash ->
                                 txHash = hash
-                                txStatus = "Transaction sent!"
+                                txStatus = context.getString(R.string.transaction_sent)
                                 isSending = false
                             }
                         }
@@ -357,7 +358,7 @@ fun TransactionReviewScreen(
                         is BitcoinCoin -> {
                             bitcoinReviewViewModel.sendTransaction { hash ->
                                 txHash = hash
-                                txStatus = "Transaction sent!"
+                                txStatus = context.getString(R.string.transaction_sent)
                                 isSending = false
                             }
                         }
@@ -463,7 +464,7 @@ fun TransactionReviewContent(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Transaction cannot be sent:",
+                        text = stringResource(R.string.transaction_cannot_be_sent),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onErrorContainer
@@ -501,7 +502,7 @@ fun TransactionReviewContent(
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    text = "You are sending",
+                    text = stringResource(R.string.you_are_sending),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -531,14 +532,14 @@ fun TransactionReviewContent(
 
                 if (selectedToken != null && selectedToken !is NativeETH) {
                     Text(
-                        text = "on ${selectedToken.network.name}",
+                        text = stringResource(R.string.on_network, selectedToken.network.name),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 } else if (networkName != null) {
                     Text(
-                        text = "on $networkName",
+                        text = stringResource(R.string.on_network, networkName),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
@@ -552,7 +553,7 @@ fun TransactionReviewContent(
         // From Address
         if (!fromAddress.isNullOrEmpty()) {
             AddressCard(
-                label = "From",
+                label = stringResource(R.string.from_label),
                 address = fromAddress,
                 coinColor = coinColor,
                 iconRes = iconRes,
@@ -564,7 +565,7 @@ fun TransactionReviewContent(
 
         // To Address Card
         AddressCard(
-            label = "To",
+            label = stringResource(R.string.to_label),
             address = toAddress,
             coinColor = coinColor,
             iconRes = tokenIconRes ?: iconRes,
@@ -636,7 +637,7 @@ fun AddressCard(
             ) {
                 Icon(
                     painter = painterResource(id = iconRes),
-                    contentDescription = "Coin icon",
+                    contentDescription = stringResource(R.string.token_icon),
                     tint = Color.Unspecified,
                     modifier = Modifier.size(24.dp)
                 )
@@ -670,7 +671,7 @@ fun AddressCard(
             IconButton(onClick = onCopy) {
                 Icon(
                     Icons.Outlined.ContentCopy,
-                    "Copy",
+                    stringResource(R.string.copy_address),
                     tint = coinColor,
                     modifier = Modifier.size(16.dp)
                 )
@@ -718,7 +719,7 @@ fun TransactionSuccessCard(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.CheckCircle,
-                        contentDescription = "Success",
+                        contentDescription = stringResource(R.string.selected),
                         tint = MaterialTheme.colorScheme.success,
                         modifier = Modifier.size(24.dp)
                     )
@@ -726,13 +727,13 @@ fun TransactionSuccessCard(
 
                 Column {
                     Text(
-                        text = "Transaction Sent!",
+                        text = stringResource(R.string.transaction_sent),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Your transaction has been broadcast",
+                        text = stringResource(R.string.transaction_broadcast),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -782,13 +783,13 @@ fun TransactionSuccessCard(
                                 context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             val clip = ClipData.newPlainText("Transaction Hash", hash)
                             clipboard.setPrimaryClip(clip)
-                            Toast.makeText(context, "Hash copied", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.hash_copied), Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.ContentCopy,
-                            contentDescription = "Copy hash",
+                            contentDescription = stringResource(R.string.hash_copied),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
@@ -869,7 +870,7 @@ fun SuccessBanner(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = "Transaction Sent!",
+                    text = stringResource(R.string.transaction_sent),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSuccessContainer
@@ -896,7 +897,7 @@ fun SuccessBanner(
                     ) {
                         Icon(
                             Icons.Outlined.OpenInBrowser,
-                            contentDescription = "View on Explorer",
+                            contentDescription = stringResource(R.string.view_on_explorer, ""),
                             tint = MaterialTheme.colorScheme.onSuccessContainer,
                             modifier = Modifier.size(18.dp)
                         )
@@ -910,7 +911,7 @@ fun SuccessBanner(
                 ) {
                     Icon(
                         Icons.Outlined.Close,
-                        contentDescription = "Dismiss",
+                        contentDescription = stringResource(R.string.dismiss),
                         tint = MaterialTheme.colorScheme.onSuccessContainer.copy(alpha = 0.7f),
                         modifier = Modifier.size(18.dp)
                     )
@@ -950,7 +951,7 @@ fun TransactionBottomBar(
                     )
                 ) {
                     Text(
-                        "Done",
+                        stringResource(R.string.done_button),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelLarge
                     )
@@ -981,9 +982,9 @@ fun TransactionBottomBar(
                 ) {
                     Text(
                         if (isSending || isPreparing) {
-                            if (isPreparing) "Preparing..." else txStatus.ifEmpty { "Sending..." }
+                            if (isPreparing) stringResource(R.string.preparing) else txStatus.ifEmpty { stringResource(R.string.sending) }
                         } else {
-                            "Confirm & Send"
+                            stringResource(R.string.confirm_and_send)
                         },
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelLarge
@@ -999,9 +1000,9 @@ fun EVMFeePreviewCard(feeEstimate: EVMFeeEstimate) {
     FeePreviewCard(
         priority = feeEstimate.priority,
         rows = listOf(
-            "Total Fee" to "${feeEstimate.totalFeeEth} ETH",
-            "Gas Price" to "${feeEstimate.gasPriceGwei} Gwei",
-            "Gas Limit" to feeEstimate.gasLimit.toString()
+            stringResource(R.string.total_fee) to "${feeEstimate.totalFeeEth} ETH",
+            stringResource(R.string.gas_price) to "${feeEstimate.gasPriceGwei} Gwei",
+            stringResource(R.string.gas_limit) to feeEstimate.gasLimit.toString()
         ),
         estimatedTime = feeEstimate.estimatedTime
     )
@@ -1012,8 +1013,8 @@ fun BitcoinFeePreviewCard(feeEstimate: BitcoinFeeEstimate) {
     FeePreviewCard(
         priority = feeEstimate.priority,
         rows = listOf(
-            "Total Fee" to "${feeEstimate.totalFeeBtc} BTC",
-            "Fee Rate" to "${feeEstimate.feePerByte} sat/byte"
+            stringResource(R.string.total_fee) to "${feeEstimate.totalFeeBtc} BTC",
+            stringResource(R.string.fee_rate) to "${feeEstimate.feePerByte} sat/byte"
         ),
         estimatedTime = feeEstimate.estimatedTime
     )
@@ -1024,8 +1025,8 @@ fun SolanaFeePreviewCard(feeEstimate: SolanaFeeEstimate) {
     FeePreviewCard(
         priority = feeEstimate.priority,
         rows = listOf(
-            "Total Fee" to "${feeEstimate.feeSol} SOL",
-            "Compute Units" to feeEstimate.computeUnits.toString()
+            stringResource(R.string.total_fee) to "${feeEstimate.feeSol} SOL",
+            stringResource(R.string.compute_units) to feeEstimate.computeUnits.toString()
         ),
         estimatedTime = feeEstimate.estimatedTime
     )
@@ -1059,12 +1060,12 @@ fun FeePreviewCard(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.LocalGasStation,
-                    contentDescription = "Gas station icon",
+                    contentDescription = stringResource(R.string.gas),
                     modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Network Fee",
+                    text = stringResource(R.string.network_fee_label).removeSuffix(":"),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -1132,12 +1133,12 @@ fun FeePreviewCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Schedule,
-                                contentDescription = "Schedule icon",
+                                contentDescription = stringResource(R.string.estimated_time_label),
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "Estimated time",
+                                text = stringResource(R.string.estimated_time_label),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1297,6 +1298,6 @@ private fun copyToClipboard(context: Context, address: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clip = ClipData.newPlainText("Address", address)
     clipboard.setPrimaryClip(clip)
-    Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
+    Toast.makeText(context, context.getString(R.string.address_copied_small), Toast.LENGTH_SHORT).show()
 }
 
