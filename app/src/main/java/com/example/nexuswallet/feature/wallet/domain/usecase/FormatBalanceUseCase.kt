@@ -1,5 +1,7 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
+import com.example.nexuswallet.feature.core.util.formatCurrency
+import com.example.nexuswallet.feature.core.util.formatPercent
 import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
@@ -8,10 +10,6 @@ import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.text.NumberFormat
-import java.util.Locale
-import com.example.nexuswallet.feature.core.util.formatCurrency
-import com.example.nexuswallet.feature.core.util.formatPercent
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -125,7 +123,8 @@ class FormatBalanceUseCase @Inject constructor() {
                     balance = tokenBalance?.balanceDecimal ?: "0",
                     balanceFormatted = formatCryptoAmount(tokenBalance?.balanceDecimal ?: "0"),
                     usdValue = tokenBalance?.usdValue ?: 0.0,
-                    usdValueFormatted = (tokenBalance?.usdValue ?: 0.0).formatCurrency(currencyCode),
+                    usdValueFormatted = (tokenBalance?.usdValue
+                        ?: 0.0).formatCurrency(currencyCode),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.let { it.formatPercent() },
                     address = token.address

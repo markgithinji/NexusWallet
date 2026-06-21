@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
@@ -80,9 +81,6 @@ import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
 import com.example.nexuswallet.ui.theme.usdtLight
 import com.example.nexuswallet.ui.theme.warning
-import java.text.NumberFormat
-import java.util.Locale
-import com.example.nexuswallet.feature.core.util.formatCurrency
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -150,7 +148,11 @@ fun CoinDetailScreen(
                     context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText(context.getString(R.string.address_label), address)
                 clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, context.getString(R.string.address_copied_toast), Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.address_copied_toast),
+                    Toast.LENGTH_SHORT
+                ).show()
             },
             onReceive = { onNavigateToReceive(walletId, currentCoin) },
             onSend = { onNavigateToSend(walletId, currentCoin) },

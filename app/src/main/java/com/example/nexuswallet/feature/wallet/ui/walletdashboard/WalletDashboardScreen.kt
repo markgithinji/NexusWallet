@@ -57,7 +57,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import com.example.nexuswallet.feature.core.ui.NexusTextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -69,7 +68,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
@@ -87,7 +85,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.NexusTextField
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
@@ -96,12 +96,10 @@ import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
-import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
-import com.example.nexuswallet.feature.core.util.formatCurrency
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -154,7 +152,9 @@ fun WalletDashboardScreen(
                 )
                 if (isRefreshingState) {
                     LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth().height(2.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(2.dp),
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = Color.Transparent
                     )
@@ -478,7 +478,9 @@ fun WalletCard(
                         )
 
                         Text(
-                            text = if (isPrivacyModeEnabled) "****" else totalUsdValue.formatCurrency(selectedCurrency),
+                            text = if (isPrivacyModeEnabled) "****" else totalUsdValue.formatCurrency(
+                                selectedCurrency
+                            ),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -494,14 +496,22 @@ fun WalletCard(
                     ) {
                         wallet.bitcoinCoins.forEach { coin ->
                             CoinBadge(
-                                text = if (coin.network.isTestnet) "${coin.symbol} ${stringResource(R.string.test_suffix)}" else coin.symbol,
+                                text = if (coin.network.isTestnet) "${coin.symbol} ${
+                                    stringResource(
+                                        R.string.test_suffix
+                                    )
+                                }" else coin.symbol,
                                 color = bitcoinLight,
                             )
                         }
 
                         wallet.solanaCoins.forEach { coin ->
                             CoinBadge(
-                                text = if (coin.network.isTestnet) "${coin.symbol} ${stringResource(R.string.dev_suffix)}" else coin.symbol,
+                                text = if (coin.network.isTestnet) "${coin.symbol} ${
+                                    stringResource(
+                                        R.string.dev_suffix
+                                    )
+                                }" else coin.symbol,
                                 color = solanaLight,
                             )
                         }
@@ -536,7 +546,9 @@ fun WalletCard(
                 ) {
                     Icon(
                         imageVector = if (isExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                        contentDescription = if (isExpanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
+                        contentDescription = if (isExpanded) stringResource(R.string.collapse) else stringResource(
+                            R.string.expand
+                        ),
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -889,7 +901,8 @@ fun AnimatedPortfolioHeader(
 
             // Animated Value
             Text(
-                text = if (isPrivacyModeEnabled) "****" else animatedValue.value.toDouble().formatCurrency(selectedCurrency),
+                text = if (isPrivacyModeEnabled) "****" else animatedValue.value.toDouble()
+                    .formatCurrency(selectedCurrency),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onPrimary,
@@ -997,7 +1010,9 @@ fun EmptyWalletsContent(
             ) {
                 Icon(
                     imageVector = if (isError) Icons.Outlined.Error else Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = if (isError) stringResource(R.string.error) else stringResource(R.string.no_wallets_yet),
+                    contentDescription = if (isError) stringResource(R.string.error) else stringResource(
+                        R.string.no_wallets_yet
+                    ),
                     modifier = Modifier.size(56.dp),
                     tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1005,7 +1020,9 @@ fun EmptyWalletsContent(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = if (isError) stringResource(R.string.something_went_wrong) else stringResource(R.string.no_wallets_yet),
+                    text = if (isError) stringResource(R.string.something_went_wrong) else stringResource(
+                        R.string.no_wallets_yet
+                    ),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,

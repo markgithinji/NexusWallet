@@ -36,7 +36,7 @@ class ImportWalletViewModel @Inject constructor(
     private val _walletName = MutableStateFlow("")
     val walletName: StateFlow<String> = _walletName.asStateFlow()
 
-    private val _selectedNetworks = MutableStateFlow<Set<Network>>(
+    private val _selectedNetworks = MutableStateFlow(
         setOf(
             BitcoinNetwork.Mainnet,
             BitcoinNetwork.Testnet,
@@ -136,12 +136,6 @@ class ImportWalletViewModel @Inject constructor(
                     _uiState.value = WalletCreationUiState.Error("Unexpected result")
                 }
             }
-        }
-    }
-    
-    fun resetError() {
-        if (_uiState.value is WalletCreationUiState.Error) {
-            _uiState.value = WalletCreationUiState.Idle
         }
     }
 }

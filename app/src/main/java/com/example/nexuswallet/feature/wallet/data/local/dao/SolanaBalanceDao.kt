@@ -6,7 +6,6 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.nexuswallet.feature.wallet.data.local.entity.SolanaBalanceEntity
-import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SolanaBalanceDao {

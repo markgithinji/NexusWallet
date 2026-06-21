@@ -92,6 +92,8 @@ fun ReceiveScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val addressCopiedMessage = stringResource(R.string.address_copied)
+    val walletAddressLabel = stringResource(R.string.wallet_address)
 
     LaunchedEffect(Unit) {
         viewModel.initialize(walletId, coin)
@@ -100,7 +102,7 @@ fun ReceiveScreen(
     LaunchedEffect(uiState.copiedToClipboard) {
         if (uiState.copiedToClipboard) {
             snackbarHostState.showSnackbar(
-                message = context.getString(R.string.address_copied),
+                message = addressCopiedMessage,
                 duration = SnackbarDuration.Short
             )
         }
@@ -139,7 +141,7 @@ fun ReceiveScreen(
                 onCopy = {
                     val clipboard =
                         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clip = ClipData.newPlainText(context.getString(R.string.wallet_address), uiState.address)
+                    val clip = ClipData.newPlainText(walletAddressLabel, uiState.address)
                     clipboard.setPrimaryClip(clip)
                     viewModel.onCopyClicked()
                 },

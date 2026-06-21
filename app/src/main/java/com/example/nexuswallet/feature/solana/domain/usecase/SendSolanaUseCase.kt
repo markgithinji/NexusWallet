@@ -269,7 +269,6 @@ class SendSolanaUseCase @Inject constructor(
 
     companion object{
         private const val SIGNATURE_PREVIEW_LENGTH = 8
-        private const val HEX_PREFIX = "0x"
         private const val KEYPAIR_64_BYTES = 64
         private const val KEYPAIR_32_BYTES = 32
     }

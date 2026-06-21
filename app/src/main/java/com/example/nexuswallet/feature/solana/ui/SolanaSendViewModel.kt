@@ -169,7 +169,7 @@ class SolanaSendViewModel @Inject constructor(
 
     private suspend fun loadFiatRate() {
         when (val result = marketRepository.getTokenDetails("solana")) {
-            is com.example.nexuswallet.feature.core.util.Result.Success -> {
+            is Result.Success -> {
                 _state.update { it.copy(fiatRate = result.data.currentPrice) }
             }
 

@@ -168,7 +168,7 @@ class WalletDashboardViewModel @Inject constructor(
     fun refresh() {
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastRefreshTime < refreshThreshold && _isRefreshing.value) return
-        if (currentTime - lastRefreshTime < refreshThreshold && !(_uiState.value is Result.Error)) {
+        if (currentTime - lastRefreshTime < refreshThreshold && _uiState.value !is Result.Error) {
             // If we refreshed recently and have data, don't block or restart sync
             return
         }

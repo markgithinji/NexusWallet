@@ -51,12 +51,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import com.example.nexuswallet.feature.core.ui.NexusTextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -77,6 +77,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.NexusTextField
+import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
@@ -97,9 +99,6 @@ import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
 import com.example.nexuswallet.ui.theme.usdtLight
 import com.example.nexuswallet.ui.theme.warning
-import java.text.NumberFormat
-import java.util.Locale
-import com.example.nexuswallet.feature.core.util.formatCurrency
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -438,7 +437,8 @@ fun AssetCard(
                     )
 
                     if (asset.coin.network.isTestnet) {
-                        val badgeText = if (asset.coin.network is SolanaNetwork) "Devnet" else "Testnet"
+                        val badgeText =
+                            if (asset.coin.network is SolanaNetwork) "Devnet" else "Testnet"
                         Surface(
                             shape = RoundedCornerShape(4.dp),
                             color = MaterialTheme.colorScheme.warning.copy(alpha = 0.1f)
@@ -519,7 +519,7 @@ fun WalletHeaderCard(
         totalBalanceFormatted.replace("[$,]".toRegex(), "").toDoubleOrNull() ?: 0.0
     }
 
-    var previousValue by remember { mutableStateOf(numericBalance) }
+    var previousValue by remember { mutableDoubleStateOf(numericBalance) }
     val animatedValue = remember { Animatable(previousValue.toFloat()) }
 
     LaunchedEffect(numericBalance) {

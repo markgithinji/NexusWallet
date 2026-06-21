@@ -1,20 +1,19 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.core.domain.di.DefaultDispatcher
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.Slip10
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_MAINNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_TESTNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
-import com.example.nexuswallet.feature.core.util.Slip10
 import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.core.domain.di.DefaultDispatcher
-import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
@@ -38,7 +37,6 @@ import org.sol4k.Keypair
 import org.web3j.crypto.Bip32ECKeyPair
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.MnemonicUtils
-import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,8 +46,7 @@ class CreateWalletUseCase @Inject constructor(
     private val keyStoreRepository: KeyStoreRepository,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val logger: Logger,
-    @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher
 ) {
 
     private val tag = "CreateWalletUC"
@@ -74,7 +71,10 @@ class CreateWalletUseCase @Inject constructor(
             }
         }.joinToString()
 
-        logger.d(tag, "Creating wallet: $name, Selected networks: $networkLog, Selected tokens: $tokenLog")
+        logger.d(
+            tag,
+            "Creating wallet: $name, Selected networks: $networkLog, Selected tokens: $tokenLog"
+        )
 
         val walletId = "wallet_${System.currentTimeMillis()}"
         val bitcoinCoins = mutableListOf<BitcoinCoin>()
@@ -87,9 +87,10 @@ class CreateWalletUseCase @Inject constructor(
             createBitcoinCoin(mnemonic, network)?.let { coin ->
                 bitcoinCoins.add(coin)
                 logger.d(tag, "Bitcoin ${network.name} coin created")
-            } ?: return@withContext Result.Error("Failed to create Bitcoin ${network.name} coin").also {
-                logger.e(tag, "Failed to create Bitcoin ${network.name} coin")
-            }
+            } ?: return@withContext Result.Error("Failed to create Bitcoin ${network.name} coin")
+                .also {
+                    logger.e(tag, "Failed to create Bitcoin ${network.name} coin")
+                }
         }
 
         // Process Ethereum networks (Native ETH)
@@ -108,20 +109,23 @@ class CreateWalletUseCase @Inject constructor(
                             evmTokens.add(usdcToken)
                             logger.d(tag, "USDC token created on ${network.name}")
                         }
+
                         EVMTokenType.USDT -> {
                             val usdtToken = createUSDTToken(nativeEth)
                             evmTokens.add(usdtToken)
                             logger.d(tag, "USDT token created on ${network.name}")
                         }
+
                         EVMTokenType.NATIVE -> {
                             // Native ETH is already added via network selection, skip
                             logger.d(tag, "Native ETH already included for ${network.name}")
                         }
                     }
                 }
-            } ?: return@withContext Result.Error("Failed to create Ethereum ${network.name} coin").also {
-                logger.e(tag, "Failed to create Ethereum ${network.name} coin")
-            }
+            } ?: return@withContext Result.Error("Failed to create Ethereum ${network.name} coin")
+                .also {
+                    logger.e(tag, "Failed to create Ethereum ${network.name} coin")
+                }
         }
 
         // Process Solana networks
@@ -130,9 +134,10 @@ class CreateWalletUseCase @Inject constructor(
             createSolanaCoin(mnemonic, network)?.let { coin ->
                 solanaCoins.add(coin)
                 logger.d(tag, "Solana ${network.name} coin created")
-            } ?: return@withContext Result.Error("Failed to create Solana ${network.name} coin").also {
-                logger.e(tag, "Failed to create Solana ${network.name} coin")
-            }
+            } ?: return@withContext Result.Error("Failed to create Solana ${network.name} coin")
+                .also {
+                    logger.e(tag, "Failed to create Solana ${network.name} coin")
+                }
         }
 
         // Validate at least one asset was created
@@ -198,7 +203,10 @@ class CreateWalletUseCase @Inject constructor(
                 encryptedKey = encryptedKey.toHex(),
                 iv = keyIv
             )
-            logger.d(tag, "Ethereum private key stored successfully for wallet: $walletId with keyType: $KEY_ETHEREUM_MAIN")
+            logger.d(
+                tag,
+                "Ethereum private key stored successfully for wallet: $walletId with keyType: $KEY_ETHEREUM_MAIN"
+            )
         }
 
         // Store Solana private keys
@@ -231,7 +239,10 @@ class CreateWalletUseCase @Inject constructor(
             return@withContext Result.Error("Failed to save wallet: ${e.message}", e)
         }
 
-        logger.d(tag, "Wallet created successfully: $walletId with ${bitcoinCoins.size} Bitcoin, ${solanaCoins.size} Solana, and ${evmTokens.size} EVM assets")
+        logger.d(
+            tag,
+            "Wallet created successfully: $walletId with ${bitcoinCoins.size} Bitcoin, ${solanaCoins.size} Solana, and ${evmTokens.size} EVM assets"
+        )
         Result.Success(wallet)
     }
 
@@ -438,7 +449,7 @@ class CreateWalletUseCase @Inject constructor(
             // to stay consistent with the expected format in SendSolanaUseCase.
             val secretKey = derivedKey + ByteArray(32)
             derivedKey.fill(0)
-            
+
             secretKey
         } catch (e: Exception) {
             logger.e(tag, "Failed to derive Solana private key", e)
@@ -451,7 +462,5 @@ class CreateWalletUseCase @Inject constructor(
         private const val ETHEREUM_DERIVATION_PATH = "m/44'/60'/0'/0/0"
         private const val SOLANA_MAINNET_DERIVATION_PATH = "m/44'/501'/0'/0'"
         private const val SOLANA_DEVNET_DERIVATION_PATH = "m/44'/501'/0'/0'"
-        private const val HASH_ALGORITHM_SHA256 = "SHA-256"
-        private const val ARRAY_START_INDEX = 0
     }
 }

@@ -21,8 +21,6 @@ class SolanaTransactionRepositoryImpl @Inject constructor(
 
         val entity = transaction.toEntity()
         solanaTransactionDao.insert(entity)
-
-        val saved = solanaTransactionDao.getById(transaction.id)
     }
 
     override suspend fun getTransactionsSync(

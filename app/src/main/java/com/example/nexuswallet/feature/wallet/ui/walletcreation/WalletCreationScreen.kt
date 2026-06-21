@@ -54,9 +54,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import com.example.nexuswallet.feature.core.ui.NexusTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -86,6 +83,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.NexusTextField
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
@@ -601,12 +599,22 @@ fun NetworkSelectionStep(
                     // Show selected networks
                     selectedNetworks.forEach { network ->
                         val (coinName, coinSymbol) = when (network) {
-                            is BitcoinNetwork -> stringResource(R.string.bitcoin_name) to stringResource(R.string.bitcoin_symbol)
-                            is EthereumNetwork -> stringResource(R.string.ethereum_name) to stringResource(R.string.ethereum_symbol)
-                            is SolanaNetwork -> stringResource(R.string.solana_name) to stringResource(R.string.solana_symbol)
+                            is BitcoinNetwork -> stringResource(R.string.bitcoin_name) to stringResource(
+                                R.string.bitcoin_symbol
+                            )
+
+                            is EthereumNetwork -> stringResource(R.string.ethereum_name) to stringResource(
+                                R.string.ethereum_symbol
+                            )
+
+                            is SolanaNetwork -> stringResource(R.string.solana_name) to stringResource(
+                                R.string.solana_symbol
+                            )
                         }
-                        val suffixRes = if (network is SolanaNetwork) R.string.devnet_suffix else R.string.testnet_suffix
-                        val networkType = if (network.isTestnet) " ${stringResource(suffixRes)}" else ""
+                        val suffixRes =
+                            if (network is SolanaNetwork) R.string.devnet_suffix else R.string.testnet_suffix
+                        val networkType =
+                            if (network.isTestnet) " ${stringResource(suffixRes)}" else ""
                         Text(
                             text = "• $coinName$networkType - $coinSymbol",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -621,12 +629,22 @@ fun NetworkSelectionStep(
                             .filter { it != EVMTokenType.NATIVE } // Filter out NATIVE tokens
                             .forEach { tokenType ->
                                 val (tokenName, tokenSymbol) = when (tokenType) {
-                                    EVMTokenType.USDC -> stringResource(R.string.usdc_name) to stringResource(R.string.usdc_symbol)
-                                    EVMTokenType.USDT -> stringResource(R.string.usdt_name) to stringResource(R.string.usdt_symbol)
-                                    EVMTokenType.NATIVE -> stringResource(R.string.ethereum_name) to stringResource(R.string.ethereum_symbol) // Won't be shown due to filter
+                                    EVMTokenType.USDC -> stringResource(R.string.usdc_name) to stringResource(
+                                        R.string.usdc_symbol
+                                    )
+
+                                    EVMTokenType.USDT -> stringResource(R.string.usdt_name) to stringResource(
+                                        R.string.usdt_symbol
+                                    )
+
+                                    EVMTokenType.NATIVE -> stringResource(R.string.ethereum_name) to stringResource(
+                                        R.string.ethereum_symbol
+                                    ) // Won't be shown due to filter
                                 }
-                                val suffixRes = if (network is SolanaNetwork) R.string.devnet_suffix else R.string.testnet_suffix
-                                val networkType = if (network.isTestnet) " ${stringResource(suffixRes)}" else ""
+                                val suffixRes =
+                                    if (false) R.string.devnet_suffix else R.string.testnet_suffix
+                                val networkType =
+                                    if (network.isTestnet) " ${stringResource(suffixRes)}" else ""
                                 Text(
                                     text = "• $tokenName ($tokenSymbol) on Ethereum$networkType",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1154,7 +1172,7 @@ fun MnemonicDisplayStep(
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
-                Text(
+                    Text(
                         text = stringResource(R.string.safety_checklist_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
@@ -1496,7 +1514,11 @@ fun MnemonicVerificationStep(
                     .padding(12.dp)
             ) {
                 Text(
-                    text = stringResource(R.string.selected_words, enteredWords.size, mnemonic.size),
+                    text = stringResource(
+                        R.string.selected_words,
+                        enteredWords.size,
+                        mnemonic.size
+                    ),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
