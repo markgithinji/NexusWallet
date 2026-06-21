@@ -76,12 +76,12 @@ class SendEVMAssetUseCase @Inject constructor(
         logger.d(tag, "Network: ${token.network.name}")
 
         // 1. Get encrypted private key
-        logger.d(tag, "Step 1: Retrieving private key...")
+        logger.d(tag, "Step 1: Retrieving private key for wallet: $walletId with type: $KEY_ETHEREUM_MAIN")
         val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
             walletId = walletId,
             keyType = KEY_ETHEREUM_MAIN
         ) ?: run {
-            logger.e(tag, "No private key found for wallet: $walletId")
+            logger.e(tag, "No private key found for wallet: $walletId with keyType: $KEY_ETHEREUM_MAIN")
             return@withContext Result.Error("No private key found")
         }
 

@@ -198,7 +198,7 @@ class CreateWalletUseCase @Inject constructor(
                 encryptedKey = encryptedKey.toHex(),
                 iv = keyIv
             )
-            logger.d(tag, "Ethereum private key stored successfully")
+            logger.d(tag, "Ethereum private key stored successfully for wallet: $walletId with keyType: $KEY_ETHEREUM_MAIN")
         }
 
         // Store Solana private keys

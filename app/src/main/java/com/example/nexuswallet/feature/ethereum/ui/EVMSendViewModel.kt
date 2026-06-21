@@ -250,7 +250,7 @@ class EVMSendViewModel @Inject constructor(
                                     "$${balance.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} ${token.symbol}"
 
                                 else ->
-                                    "${balance.setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} ${token.symbol}"
+                                    "${balance.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} ${token.symbol}"
                             },
                             isLoading = false,
                             balancesLoaded = true
