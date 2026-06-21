@@ -20,22 +20,21 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Article
+import androidx.compose.material.icons.automirrored.outlined.TrendingDown
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.TrendingDown
-import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,16 +48,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import com.example.nexuswallet.feature.core.util.formatLargeNumber
-import com.example.nexuswallet.feature.core.util.formatPrice
-import com.example.nexuswallet.feature.core.util.formatSupply
-import com.example.nexuswallet.feature.core.util.formatTwoDecimals
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import com.example.nexuswallet.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,10 +60,15 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.market.domain.model.NewsArticle
+import com.example.nexuswallet.feature.core.util.formatLargeNumber
+import com.example.nexuswallet.feature.core.util.formatPrice
+import com.example.nexuswallet.feature.core.util.formatSupply
+import com.example.nexuswallet.feature.core.util.formatTwoDecimals
 import com.example.nexuswallet.feature.market.domain.model.ChartData
 import com.example.nexuswallet.feature.market.domain.model.ChartDuration
+import com.example.nexuswallet.feature.market.domain.model.NewsArticle
 import com.example.nexuswallet.feature.market.domain.model.TokenDetail
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
@@ -226,7 +225,7 @@ private fun TokenDetailTopBar(
         navigationIcon = {
             IconButton(onClick = onNavigateUp) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.back),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -448,9 +447,9 @@ fun PriceChart(
                                         ) {
                                             Icon(
                                                 imageVector = if (priceChange >= 0)
-                                                    Icons.Outlined.TrendingUp
+                                                    Icons.AutoMirrored.Outlined.TrendingUp
                                                 else
-                                                    Icons.Outlined.TrendingDown,
+                                                    Icons.AutoMirrored.Outlined.TrendingDown,
                                                 contentDescription = stringResource(R.string.price_trend),
                                                 modifier = Modifier.size(12.dp),
                                                 tint = if (priceChange >= 0)
@@ -536,7 +535,7 @@ private fun NewsSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Article,
+                    imageVector = Icons.AutoMirrored.Outlined.Article,
                     contentDescription = stringResource(R.string.news_icon),
                     modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.primary
@@ -681,7 +680,12 @@ fun TokenHeaderCard(token: TokenDetail) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "${token.symbol.uppercase()} • ${stringResource(R.string.rank_label, token.marketCapRank)}",
+                    text = "${token.symbol.uppercase()} • ${
+                        stringResource(
+                            R.string.rank_label,
+                            token.marketCapRank
+                        )
+                    }",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -730,9 +734,9 @@ fun PriceCard(token: TokenDetail) {
                 ) {
                     Icon(
                         imageVector = if (token.priceChangePercentage24h >= 0)
-                            Icons.Outlined.TrendingUp
+                            Icons.AutoMirrored.Outlined.TrendingUp
                         else
-                            Icons.Outlined.TrendingDown,
+                            Icons.AutoMirrored.Outlined.TrendingDown,
                         contentDescription = stringResource(R.string.trend_24h),
                         modifier = Modifier.size(16.dp),
                         tint = if (token.priceChangePercentage24h >= 0)
@@ -760,7 +764,11 @@ fun PriceCard(token: TokenDetail) {
 
                 // 24h range
                 Text(
-                    text = "${stringResource(R.string.low_short)}$${token.low24h.formatPrice()} ${stringResource(R.string.high_short)}$${token.high24h.formatPrice()}",
+                    text = "${stringResource(R.string.low_short)}$${token.low24h.formatPrice()} ${
+                        stringResource(
+                            R.string.high_short
+                        )
+                    }$${token.high24h.formatPrice()}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -795,7 +803,11 @@ fun MarketStatsCard(token: TokenDetail) {
             StatRowWithChange(
                 label = stringResource(R.string.market_cap),
                 value = "$${formatLargeNumber(token.marketCap)}",
-                change = "${((token.marketCap / token.currentPrice) * 100).toInt()}%${stringResource(R.string.of_supply)}",
+                change = "${((token.marketCap / token.currentPrice) * 100).toInt()}%${
+                    stringResource(
+                        R.string.of_supply
+                    )
+                }",
                 changeUp = true
             )
 
@@ -813,7 +825,11 @@ fun MarketStatsCard(token: TokenDetail) {
             StatRowWithChange(
                 label = stringResource(R.string.volume_24h),
                 value = "$${formatLargeNumber(token.totalVolume)}",
-                change = "${((token.totalVolume / token.marketCap) * 100).toInt()}%${stringResource(R.string.of_market_cap)}",
+                change = "${((token.totalVolume / token.marketCap) * 100).toInt()}%${
+                    stringResource(
+                        R.string.of_market_cap
+                    )
+                }",
                 changeUp = true
             )
 
@@ -857,7 +873,7 @@ fun SupplyCard(token: TokenDetail) {
             StatRowWithChange(
                 label = stringResource(R.string.circulating_supply),
                 value = formatSupply(token.circulatingSupply),
-                change = "${token.symbol.uppercase()}",
+                change = token.symbol.uppercase(),
                 changeUp = true
             )
 
@@ -866,7 +882,7 @@ fun SupplyCard(token: TokenDetail) {
                 StatRowWithChange(
                     label = stringResource(R.string.total_supply),
                     value = formatSupply(it),
-                    change = "${token.symbol.uppercase()}",
+                    change = token.symbol.uppercase(),
                     changeUp = true
                 )
             }
@@ -876,7 +892,7 @@ fun SupplyCard(token: TokenDetail) {
                 StatRowWithChange(
                     label = stringResource(R.string.max_supply),
                     value = formatSupply(it),
-                    change = "${token.symbol.uppercase()}",
+                    change = token.symbol.uppercase(),
                     changeUp = true
                 )
             }
@@ -1029,37 +1045,6 @@ fun AllTimeCard(token: TokenDetail) {
                     textAlign = TextAlign.End
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun AboutCard(token: TokenDetail) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.about_token, token.name),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = token.description ?: stringResource(R.string.no_description),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
         }
     }
 }

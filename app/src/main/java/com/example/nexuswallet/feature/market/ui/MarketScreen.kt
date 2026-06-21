@@ -1,8 +1,7 @@
 package com.example.nexuswallet.feature.market.ui
 
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -30,6 +29,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
+import androidx.compose.material.icons.automirrored.outlined.TrendingDown
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CurrencyBitcoin
@@ -38,25 +39,39 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Sell
-import androidx.compose.material.icons.outlined.TrendingDown
-import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import com.example.nexuswallet.R
-import com.example.nexuswallet.feature.core.util.formatPrice
-import com.example.nexuswallet.feature.core.util.formatTwoDecimals
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,12 +81,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
+import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.formatPrice
+import com.example.nexuswallet.feature.core.util.formatTwoDecimals
 import com.example.nexuswallet.feature.market.domain.model.Token
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.ui.theme.success
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -527,7 +543,7 @@ fun TokenItem(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = token.marketCapRank?.toString() ?: "—",
+                    text = token.marketCapRank.toString(),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -558,7 +574,8 @@ fun TokenItem(
 
                 // Show shimmer while loading
                 if (painterState.value is AsyncImagePainter.State.Loading ||
-                    painterState.value == null) {
+                    painterState.value == null
+                ) {
                     ShimmerPlaceholder(
                         modifier = Modifier
                             .size(32.dp)
@@ -617,7 +634,7 @@ fun TokenItem(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                val priceChange = token.priceChangePercentage24h ?: 0.0
+                val priceChange = token.priceChangePercentage24h
                 val changeColor = if (priceChange >= 0)
                     MaterialTheme.colorScheme.success
                 else
@@ -629,9 +646,9 @@ fun TokenItem(
                 ) {
                     Icon(
                         imageVector = if (priceChange >= 0)
-                            Icons.Outlined.TrendingUp
+                            Icons.AutoMirrored.Outlined.TrendingUp
                         else
-                            Icons.Outlined.TrendingDown,
+                            Icons.AutoMirrored.Outlined.TrendingDown,
                         contentDescription = "Price trend",
                         modifier = Modifier.size(12.dp),
                         tint = changeColor
@@ -822,41 +839,6 @@ fun EmptySearchResult() {
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun LoadingView() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(0.dp),
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(32.dp)
-            ) {
-                CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 3.dp
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = stringResource(R.string.loading_market_data),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }

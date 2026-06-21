@@ -32,15 +32,15 @@ import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
+import com.example.nexuswallet.feature.wallet.ui.backup.BackupScreen
+import com.example.nexuswallet.feature.wallet.ui.backup.BackupViewModel
 import com.example.nexuswallet.feature.wallet.ui.coindetail.CoinDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.history.TransactionHistoryScreen
-import com.example.nexuswallet.feature.wallet.ui.recive.ReceiveScreen
-import com.example.nexuswallet.feature.wallet.ui.transactiondetail.TransactionDetailScreen
-import com.example.nexuswallet.feature.wallet.ui.backup.BackupScreen
-import com.example.nexuswallet.feature.wallet.ui.backup.BackupViewModel
 import com.example.nexuswallet.feature.wallet.ui.importwallet.ImportWalletScreen
 import com.example.nexuswallet.feature.wallet.ui.importwallet.ImportWalletViewModel
+import com.example.nexuswallet.feature.wallet.ui.recive.ReceiveScreen
+import com.example.nexuswallet.feature.wallet.ui.transactiondetail.TransactionDetailScreen
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationScreen
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationViewModel
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WelcomeScreen
@@ -58,7 +58,6 @@ fun Navigation(
     val wallets by navigationViewModel.wallets.collectAsStateWithLifecycle()
     val isWalletsLoading by navigationViewModel.isWalletsLoading.collectAsStateWithLifecycle()
     val isAuthenticationRequired by navigationViewModel.isAuthenticationRequired.collectAsStateWithLifecycle()
-    val isPrivacyModeEnabled by navigationViewModel.isPrivacyModeEnabled.collectAsStateWithLifecycle()
     val isRequireAuthForSendEnabled by navigationViewModel.isRequireAuthForSendEnabled.collectAsStateWithLifecycle()
 
     if (isWalletsLoading) {
@@ -197,7 +196,7 @@ fun Navigation(
             )
         }
 
-        composable<WalletDetailRoute>(typeMap = typeMap){ backStackEntry ->
+        composable<WalletDetailRoute>(typeMap = typeMap) { backStackEntry ->
             val args = backStackEntry.toRoute<WalletDetailRoute>()
 
             WalletDetailScreen(
@@ -220,7 +219,7 @@ fun Navigation(
                     navController.navigate(AllTransactionsRoute(walletId))
                 },
                 onNavigateToTransactionDetail = { walletId, txId, coin ->
-                    navController.navigate(TransactionDetailRoute(walletId, txId,coin))
+                    navController.navigate(TransactionDetailRoute(walletId, txId, coin))
                 },
                 onMoreClick = {
                     navController.navigate(AuthenticateRoute(AuthTarget.Backup(args.walletId)))
@@ -252,7 +251,7 @@ fun Navigation(
                     navController.navigate(CoinTransactionsRoute(walletId, coin))
                 },
                 onNavigateToTransactionDetail = { walletId, txId, coin ->
-                    navController.navigate(TransactionDetailRoute(walletId, txId,coin))
+                    navController.navigate(TransactionDetailRoute(walletId, txId, coin))
                 }
             )
         }
@@ -433,26 +432,37 @@ fun Navigation(
                                 popUpTo<AuthenticateRoute> { inclusive = true }
                             }
                         }
+
                         is AuthTarget.CoinDetail -> {
                             navController.navigate(CoinDetailRoute(target.walletId, target.coin)) {
                                 popUpTo<AuthenticateRoute> { inclusive = true }
                             }
                         }
+
                         is AuthTarget.Send -> {
                             navController.navigate(SendRoute(target.walletId, target.coin)) {
                                 popUpTo<AuthenticateRoute> { inclusive = true }
                             }
                         }
+
                         is AuthTarget.Receive -> {
                             navController.navigate(ReceiveRoute(target.walletId, target.coin)) {
                                 popUpTo<AuthenticateRoute> { inclusive = true }
                             }
                         }
+
                         is AuthTarget.TransactionDetail -> {
-                            navController.navigate(TransactionDetailRoute(target.walletId, target.transactionId, target.coin)) {
+                            navController.navigate(
+                                TransactionDetailRoute(
+                                    target.walletId,
+                                    target.transactionId,
+                                    target.coin
+                                )
+                            ) {
                                 popUpTo<AuthenticateRoute> { inclusive = true }
                             }
                         }
+
                         is AuthTarget.Backup -> {
                             navController.navigate(BackupRoute(target.walletId)) {
                                 popUpTo<AuthenticateRoute> { inclusive = true }

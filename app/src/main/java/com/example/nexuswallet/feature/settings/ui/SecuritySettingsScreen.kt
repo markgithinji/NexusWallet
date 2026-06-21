@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -120,7 +121,7 @@ private fun SecurityTopBar(onNavigateUp: () -> Unit) {
         navigationIcon = {
             IconButton(onClick = onNavigateUp) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -700,7 +701,6 @@ private fun SecurityOperationOverlay(operationState: SecurityOperation) {
                             SecurityOperation.BACKING_UP -> stringResource(R.string.creating_backup)
                             SecurityOperation.RESTORING -> stringResource(R.string.restoring)
                             SecurityOperation.UPDATING -> stringResource(R.string.updating)
-                            else -> stringResource(R.string.processing)
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

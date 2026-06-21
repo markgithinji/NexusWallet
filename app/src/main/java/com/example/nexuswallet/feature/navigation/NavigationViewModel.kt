@@ -3,7 +3,6 @@ package com.example.nexuswallet.feature.navigation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.settings.domain.usecase.IsBiometricEnabledUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.IsPinSetUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
