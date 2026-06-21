@@ -10,9 +10,9 @@ import com.example.nexuswallet.feature.market.data.repository.CoinGeckoRepositor
 import com.example.nexuswallet.feature.market.data.repository.MarketRepositoryImpl
 import com.example.nexuswallet.feature.market.data.repository.WebSocketRepositoryImpl
 import com.example.nexuswallet.feature.market.domain.BinanceWebSocket
-import com.example.nexuswallet.feature.market.domain.CoinGeckoRepository
-import com.example.nexuswallet.feature.market.domain.MarketRepository
-import com.example.nexuswallet.feature.market.domain.WebSocketRepository
+import com.example.nexuswallet.feature.market.domain.repository.CoinGeckoRepository
+import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
+import com.example.nexuswallet.feature.market.domain.repository.WebSocketRepository
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import dagger.Module
 import dagger.Provides

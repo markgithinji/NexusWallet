@@ -8,7 +8,7 @@ import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.core.domain.model.Transaction
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.market.domain.MarketRepository
+import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
@@ -34,9 +34,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.NumberFormat
-import java.util.Currency
-import java.util.Locale
 import com.example.nexuswallet.feature.core.util.formatCurrency
 import javax.inject.Inject
 

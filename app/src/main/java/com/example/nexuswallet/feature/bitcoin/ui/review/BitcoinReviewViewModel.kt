@@ -98,7 +98,10 @@ class BitcoinReviewViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         balance = balance,
-                        balanceFormatted = "${balance.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} BTC"
+                        balanceFormatted = "${
+                            balance.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros()
+                                .toPlainString()
+                        } BTC"
                     )
                 }
                 loadFeeEstimate()
@@ -123,7 +126,8 @@ class BitcoinReviewViewModel @Inject constructor(
         _state.update { it.copy(isFeeLoading = true) }
 
         // Fetch UTXOs to determine input count dynamically
-        val utxosResult = bitcoinBlockchainRepository.getUnspentOutputs(state.fromAddress, state.network)
+        val utxosResult =
+            bitcoinBlockchainRepository.getUnspentOutputs(state.fromAddress, state.network)
         val inputCount = if (utxosResult is Result.Success) {
             val selected = bitcoinBlockchainRepository.selectUtxos(
                 utxosResult.data,

@@ -8,7 +8,7 @@ import com.example.nexuswallet.feature.market.data.model.toNewsArticle
 import com.example.nexuswallet.feature.market.data.model.toTokenDetail
 import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
 import com.example.nexuswallet.feature.market.data.remote.CoinStatsApi
-import com.example.nexuswallet.feature.market.domain.MarketRepository
+import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.market.domain.model.ChartData
 import com.example.nexuswallet.feature.market.domain.model.ChartDuration
 import com.example.nexuswallet.feature.market.domain.model.NewsArticle

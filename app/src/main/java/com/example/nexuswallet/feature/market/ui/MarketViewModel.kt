@@ -3,8 +3,8 @@ package com.example.nexuswallet.feature.market.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.market.domain.CoinGeckoRepository
-import com.example.nexuswallet.feature.market.domain.WebSocketRepository
+import com.example.nexuswallet.feature.market.domain.repository.CoinGeckoRepository
+import com.example.nexuswallet.feature.market.domain.repository.WebSocketRepository
 import com.example.nexuswallet.feature.market.domain.model.Token
 import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
 import dagger.hilt.android.lifecycle.HiltViewModel

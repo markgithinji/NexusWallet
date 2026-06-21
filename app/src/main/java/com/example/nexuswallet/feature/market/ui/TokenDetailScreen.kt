@@ -74,6 +74,10 @@ import com.example.nexuswallet.feature.market.domain.model.TokenDetail
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
 import com.example.nexuswallet.ui.theme.success
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1177,9 +1181,9 @@ fun NewsItem(
 fun formatRelativeTime(dateString: String): String {
     val result = remember(dateString) {
         try {
-            val published = java.time.Instant.parse(dateString)
-            val now = java.time.Instant.now()
-            val hours = java.time.Duration.between(published, now).toHours()
+            val published = Instant.parse(dateString)
+            val now = Instant.now()
+            val hours = Duration.between(published, now).toHours()
             Triple(true, hours, published)
         } catch (e: Exception) {
             Triple(false, 0L, null)
@@ -1189,14 +1193,14 @@ fun formatRelativeTime(dateString: String): String {
     if (!result.first) return dateString.take(10)
 
     val hours = result.second
-    val published = result.third as java.time.Instant
+    val published = result.third as Instant
 
     return when {
         hours < 1 -> stringResource(R.string.just_now)
         hours < 24 -> stringResource(R.string.hours_ago, hours)
         hours < 168 -> stringResource(R.string.days_ago, hours / 24)
-        else -> java.time.format.DateTimeFormatter
+        else -> DateTimeFormatter
             .ofPattern("MMM d")
-            .format(published.atZone(java.time.ZoneId.systemDefault()))
+            .format(published.atZone(ZoneId.systemDefault()))
     }
 }

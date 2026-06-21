@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.bitcoin.domain.usecase
 
-import com.example.nexuswallet.feature.bitcoin.data.model.UTXO
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
@@ -9,11 +8,11 @@ import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_OUT
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.toSatoshis
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
-import com.example.nexuswallet.feature.core.util.toSatoshis
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
@@ -57,13 +56,15 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
         }
 
         // 1. Fetch actual UTXOs to determine input count
-        val utxosResult = bitcoinBlockchainRepository.getUnspentOutputs(bitcoinCoin.address, network)
+        val utxosResult =
+            bitcoinBlockchainRepository.getUnspentOutputs(bitcoinCoin.address, network)
         val allUtxos = when (utxosResult) {
             is Result.Success -> utxosResult.data
             is Result.Error -> {
                 logger.e(tag, "Failed to fetch UTXOs: ${utxosResult.message}")
                 return@withContext Result.Error("Failed to fetch UTXOs: ${utxosResult.message}")
             }
+
             else -> return@withContext Result.Error("Unknown error fetching UTXOs")
         }
 

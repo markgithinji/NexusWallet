@@ -6,6 +6,7 @@ import com.example.nexuswallet.feature.authentication.data.util.safeKeyStoreCall
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.security.KeyStore
@@ -23,7 +24,7 @@ import javax.inject.Singleton
 @Singleton
 class KeyStoreRepositoryImpl @Inject constructor(
     private val keyStore: KeyStore,
-    private val ioDispatcher: CoroutineDispatcher
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : KeyStoreRepository {
 
     override suspend fun encrypt(plaintext: ByteArray): Pair<ByteArray, ByteArray> =

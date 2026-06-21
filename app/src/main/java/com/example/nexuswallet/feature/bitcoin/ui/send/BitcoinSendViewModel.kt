@@ -12,12 +12,14 @@ import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_OUT
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.toSatoshis
-import com.example.nexuswallet.feature.market.domain.MarketRepository
+import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,7 +46,7 @@ class BitcoinSendViewModel @Inject constructor(
     private var wallet: Wallet? = null
     private var bitcoinCoins: Map<BitcoinNetwork, BitcoinCoin> = emptyMap()
     private var currentCoin: BitcoinCoin? = null
-    private var feeJob: kotlinx.coroutines.Job? = null
+    private var feeJob: Job? = null
 
     fun handleEvent(event: BitcoinSendEvent) {
         viewModelScope.launch {
@@ -131,7 +133,10 @@ class BitcoinSendViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         balance = balance,
-                        balanceFormatted = "${balance.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} BTC"
+                        balanceFormatted = "${
+                            balance.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros()
+                                .toPlainString()
+                        } BTC"
                     )
                 }
                 validateInputs()
@@ -147,7 +152,8 @@ class BitcoinSendViewModel @Inject constructor(
         _state.update { it.copy(isFeeLoading = true) }
 
         // Fetch UTXOs to determine input count dynamically
-        val utxosResult = bitcoinBlockchainRepository.getUnspentOutputs(state.walletAddress, state.network)
+        val utxosResult =
+            bitcoinBlockchainRepository.getUnspentOutputs(state.walletAddress, state.network)
         val inputCount = if (utxosResult is Result.Success) {
             val selected = bitcoinBlockchainRepository.selectUtxos(
                 utxosResult.data,
@@ -173,6 +179,7 @@ class BitcoinSendViewModel @Inject constructor(
                 _state.update { it.copy(isFeeLoading = false) }
                 handleError("Failed to load fee: ${result.message}")
             }
+
             else -> _state.update { it.copy(isFeeLoading = false) }
         }
     }
@@ -203,7 +210,7 @@ class BitcoinSendViewModel @Inject constructor(
     private fun refreshFeeEstimate() {
         feeJob?.cancel()
         feeJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(500)
+            delay(500)
             loadFeeEstimate(_state.value.feeLevel)
         }
     }
@@ -238,6 +245,7 @@ class BitcoinSendViewModel @Inject constructor(
             is Result.Success -> {
                 _state.update { it.copy(fiatRate = result.data.currentPrice) }
             }
+
             else -> {}
         }
     }

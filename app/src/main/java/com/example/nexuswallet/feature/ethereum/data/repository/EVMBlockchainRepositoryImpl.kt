@@ -1,7 +1,9 @@
 package com.example.nexuswallet.feature.ethereum.data.repository
 
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
-import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
+import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.SafeApiCall
 import com.example.nexuswallet.feature.ethereum.data.model.CachedGasPrice
@@ -9,17 +11,12 @@ import com.example.nexuswallet.feature.ethereum.data.model.GasPrice
 import com.example.nexuswallet.feature.ethereum.data.remote.EtherscanApiService
 import com.example.nexuswallet.feature.ethereum.data.toNativeETHTransactionList
 import com.example.nexuswallet.feature.ethereum.data.toTokenTransactionList
-import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
-import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
-import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
-import com.example.nexuswallet.feature.ethereum.util.EVMConstants.USDT_GAS_LIMIT
-import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.util.Web3jFactory
-import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.web3j.abi.FunctionEncoder
@@ -224,7 +221,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
                 gasLimit,
                 toAddress,
                 amountWei,
-                "", // data
+                "",
                 maxPriorityFeePerGas,
                 maxFeePerGas
             )
@@ -340,12 +337,12 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
 
         val result = SafeApiCall.make {
             val web3j = web3jFactory.create(network)
-            
+
             // 1. Get Base Fee from latest block
             val block = web3j.ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false).send()
             if (block.hasError()) throw Exception("Block error: ${block.error?.message}")
             val baseFeeWei = block.block.baseFeePerGas
-            
+
             // 2. Get Max Priority Fee Per Gas
             val priorityFeeResponse = web3j.ethMaxPriorityFeePerGas().send()
             val priorityFeeWei = if (priorityFeeResponse.hasError()) {
@@ -361,20 +358,31 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
             val gasPriceWei = gasPrice.gasPrice
 
             val gweiDivisor = BigDecimal(GWEI_TO_WEI)
-            
-            val gasPriceGwei = gasPriceWei.toBigDecimal().divide(gweiDivisor, 6, RoundingMode.HALF_UP)
-            val baseFeeGwei = baseFeeWei?.toBigDecimal()?.divide(gweiDivisor, 6, RoundingMode.HALF_UP)
-            val priorityFeeGwei = priorityFeeWei.toBigDecimal().divide(gweiDivisor, 6, RoundingMode.HALF_UP)
+
+            val gasPriceGwei =
+                gasPriceWei.toBigDecimal().divide(gweiDivisor, 6, RoundingMode.HALF_UP)
+            val baseFeeGwei =
+                baseFeeWei?.toBigDecimal()?.divide(gweiDivisor, 6, RoundingMode.HALF_UP)
+            val priorityFeeGwei =
+                priorityFeeWei.toBigDecimal().divide(gweiDivisor, 6, RoundingMode.HALF_UP)
 
             GasPrice(
-                safe = (gasPriceGwei * SLOW_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString(),
+                safe = (gasPriceGwei * SLOW_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP)
+                    .toString(),
                 propose = gasPriceGwei.setScale(6, RoundingMode.HALF_UP).toString(),
-                fast = (gasPriceGwei * FAST_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString(),
+                fast = (gasPriceGwei * FAST_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP)
+                    .toString(),
                 lastBlock = block.block.number.toString(),
                 baseFee = baseFeeGwei?.setScale(6, RoundingMode.HALF_UP)?.toString(),
-                safePriorityFee = (priorityFeeGwei * SLOW_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString(),
+                safePriorityFee = (priorityFeeGwei * SLOW_PRICE_MULTIPLIER).setScale(
+                    6,
+                    RoundingMode.HALF_UP
+                ).toString(),
                 proposePriorityFee = priorityFeeGwei.setScale(6, RoundingMode.HALF_UP).toString(),
-                fastPriorityFee = (priorityFeeGwei * FAST_PRICE_MULTIPLIER).setScale(6, RoundingMode.HALF_UP).toString()
+                fastPriorityFee = (priorityFeeGwei * FAST_PRICE_MULTIPLIER).setScale(
+                    6,
+                    RoundingMode.HALF_UP
+                ).toString()
             )
         }
 

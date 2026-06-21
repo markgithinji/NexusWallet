@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.authentication.data.util
 
 import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex
+import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
@@ -40,7 +41,7 @@ class PinHasher @Inject constructor() {
                 // Legacy SHA-256 format: <hash>:<salt>
                 val storedHashPart = parts[0]
                 val saltHex = parts[1]
-                val inputHash = java.security.MessageDigest.getInstance("SHA-256")
+                val inputHash = MessageDigest.getInstance("SHA-256")
                     .digest("$inputPin$saltHex".toByteArray())
                     .toHex()
                 // Legacy didn't use constant time, but we can't easily change stored format now

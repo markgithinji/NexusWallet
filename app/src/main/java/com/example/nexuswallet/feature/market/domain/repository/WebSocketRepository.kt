@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.market.domain
+package com.example.nexuswallet.feature.market.domain.repository
 
 import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
 import kotlinx.coroutines.flow.Flow

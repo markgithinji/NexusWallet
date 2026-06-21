@@ -7,7 +7,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.SafeApiCall
-import com.example.nexuswallet.feature.market.domain.CoinGeckoRepository
+import com.example.nexuswallet.feature.market.domain.repository.CoinGeckoRepository
 
 @Singleton
 class CoinGeckoRepositoryImpl @Inject constructor(

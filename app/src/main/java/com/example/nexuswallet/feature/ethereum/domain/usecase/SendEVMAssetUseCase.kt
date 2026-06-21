@@ -9,16 +9,12 @@ import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
 import com.example.nexuswallet.feature.core.util.decodeHex
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
 import com.example.nexuswallet.feature.ethereum.domain.model.SendEVMResult
-import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
-import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
-import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GWEI_TO_WEI
-import com.example.nexuswallet.feature.ethereum.util.EVMConstants.USDT_GAS_LIMIT
-import com.example.nexuswallet.feature.ethereum.util.EVMConstants.WEI_PER_ETH
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
@@ -27,7 +23,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.BigInteger
-import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -76,12 +71,18 @@ class SendEVMAssetUseCase @Inject constructor(
         logger.d(tag, "Network: ${token.network.name}")
 
         // 1. Get encrypted private key
-        logger.d(tag, "Step 1: Retrieving private key for wallet: $walletId with type: $KEY_ETHEREUM_MAIN")
+        logger.d(
+            tag,
+            "Step 1: Retrieving private key for wallet: $walletId with type: $KEY_ETHEREUM_MAIN"
+        )
         val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
             walletId = walletId,
             keyType = KEY_ETHEREUM_MAIN
         ) ?: run {
-            logger.e(tag, "No private key found for wallet: $walletId with keyType: $KEY_ETHEREUM_MAIN")
+            logger.e(
+                tag,
+                "No private key found for wallet: $walletId with keyType: $KEY_ETHEREUM_MAIN"
+            )
             return@withContext Result.Error("No private key found")
         }
 
@@ -116,7 +117,7 @@ class SendEVMAssetUseCase @Inject constructor(
             // 4. Get fee estimate (includes EIP-1559 logic)
             logger.d(tag, "Step 4: Getting fee estimate...")
             val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
-            
+
             val feeEstimateResult = getFeeEstimateUseCase(
                 feeLevel = feeLevel,
                 network = token.network,
@@ -128,7 +129,8 @@ class SendEVMAssetUseCase @Inject constructor(
             )
 
             if (feeEstimateResult !is Result.Success) {
-                val message = (feeEstimateResult as? Result.Error)?.message ?: "Failed to get fee estimate"
+                val message =
+                    (feeEstimateResult as? Result.Error)?.message ?: "Failed to get fee estimate"
                 logger.e(tag, message)
                 return@withContext Result.Error(message)
             }
@@ -138,7 +140,10 @@ class SendEVMAssetUseCase @Inject constructor(
             val totalFeeWei = BigInteger(feeEstimate.totalFeeWei)
             val totalFeeEth = feeEstimate.totalFeeEth
 
-            logger.d(tag, "Fee Estimate - EIP1559: ${feeEstimate.isEIP1559}, Limit: $gasLimit, Fee: $totalFeeEth ETH")
+            logger.d(
+                tag,
+                "Fee Estimate - EIP1559: ${feeEstimate.isEIP1559}, Limit: $gasLimit, Fee: $totalFeeEth ETH"
+            )
 
             // 6. Create and sign transaction
             logger.d(tag, "Step 6: Creating and signing transaction...")
@@ -208,12 +213,13 @@ class SendEVMAssetUseCase @Inject constructor(
             }
 
             if (createResult !is Result.Success) {
-                val message = (createResult as? Result.Error)?.message ?: "Failed to create transaction"
+                val message =
+                    (createResult as? Result.Error)?.message ?: "Failed to create transaction"
                 logger.e(tag, message)
                 return@withContext Result.Error(message)
             }
             val (_, signedHex, txHash) = createResult.data
-            
+
             val gasPriceGwei = feeEstimate.gasPriceGwei
             val gasPriceWei = feeEstimate.gasPriceWei
 

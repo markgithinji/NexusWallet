@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.solana.domain.usecase.GetSolanaBalanceUseCase
 import com.example.nexuswallet.feature.solana.domain.usecase.GetSolanaFeeEstimateUseCase
 import com.example.nexuswallet.feature.solana.domain.usecase.GetSolanaWalletUseCase
@@ -15,6 +16,8 @@ import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.util.ExplorerUrlHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -35,7 +38,7 @@ class SolanaSendViewModel @Inject constructor(
     private val getSolanaFeeEstimateUseCase: GetSolanaFeeEstimateUseCase,
     private val validateSolanaSendUseCase: ValidateSolanaSendUseCase,
     private val walletRepository: WalletRepository,
-    private val marketRepository: com.example.nexuswallet.feature.market.domain.MarketRepository,
+    private val marketRepository: MarketRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SolanaSendUIState())
@@ -47,7 +50,7 @@ class SolanaSendViewModel @Inject constructor(
     private var wallet: Wallet? = null
     private var solanaCoins: Map<SolanaNetwork, SolanaCoin> = emptyMap()
     private var currentCoin: SolanaCoin? = null
-    private var feeJob: kotlinx.coroutines.Job? = null
+    private var feeJob: Job? = null
 
     fun init(walletId: String, coin: SolanaCoin? = null) {
         viewModelScope.launch {
@@ -400,7 +403,7 @@ class SolanaSendViewModel @Inject constructor(
     private fun refreshFeeEstimate() {
         feeJob?.cancel()
         feeJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(500)
+            delay(500)
             loadFeeEstimate(_state.value.network)
         }
     }

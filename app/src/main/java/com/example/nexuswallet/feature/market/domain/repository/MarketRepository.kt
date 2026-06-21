@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.market.domain
+package com.example.nexuswallet.feature.market.domain.repository
 
 import com.example.nexuswallet.feature.market.domain.model.NewsArticle
 import com.example.nexuswallet.feature.market.domain.model.ChartData

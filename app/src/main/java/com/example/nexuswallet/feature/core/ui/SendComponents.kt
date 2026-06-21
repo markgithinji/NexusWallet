@@ -40,8 +40,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,6 +57,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,7 +68,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -92,15 +93,15 @@ import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
-import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
-import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
 import com.example.nexuswallet.ui.theme.usdtLight
 import com.example.nexuswallet.ui.theme.warning
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -324,7 +325,7 @@ fun SendBalanceCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    val usdValue = String.format("%.2f", balance.toDouble() * fiatRate)
+                    val usdValue = String.format(Locale.US, "%.2f", balance.toDouble() * fiatRate)
 
                     Text(
                         text = "$$usdValue",
@@ -401,7 +402,8 @@ fun SendAddressInput(
     focusRequester: FocusRequester = FocusRequester()
 ) {
     val focusManager = LocalFocusManager.current
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     var focused by remember { mutableStateOf(false) }
 
     LaunchedEffect(focused) {
@@ -495,9 +497,12 @@ fun SendAddressInput(
 
                 TextButton(
                     onClick = {
-                        val clip = clipboardManager.getText()
-                        if (!clip.isNullOrBlank()) {
-                            onPaste(clip.toString())
+                        scope.launch {
+                            val clipEntry = clipboard.getClipEntry()
+                            val text = clipEntry?.clipData?.getItemAt(0)?.text?.toString()
+                            if (!text.isNullOrBlank()) {
+                                onPaste(text)
+                            }
                         }
                     },
                     colors = ButtonDefaults.textButtonColors(
@@ -573,7 +578,6 @@ fun SendAmountInput(
                     is SolanaCoin -> 9
                     is USDCToken, is USDTToken -> 6
                     is NativeETH -> 6
-                    else -> 8
                 }
 
                 Text(
@@ -597,7 +601,7 @@ fun SendAmountInput(
                     OutlinedTextField(
                         value = amount,
                         onValueChange = { newValue ->
-                            if (newValue.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                            if (newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
                                 onAmountChange(newValue)
                             }
                         },
@@ -712,7 +716,7 @@ fun SendAmountInput(
                 val usdAmount = amountValue.toDouble() * fiatRate
 
                 Text(
-                    text = "≈ $${String.format("%.2f", usdAmount)} USD",
+                    text = "≈ $${String.format(Locale.US, "%.2f", usdAmount)} USD",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth(),
@@ -871,10 +875,11 @@ fun FeeLevelButton(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
-    val (text, icon) = when (level) {
-        FeeLevel.SLOW -> Pair("Slow", Icons.Outlined.Schedule)
-        FeeLevel.NORMAL -> Pair("Normal", Icons.Outlined.Speed)
-        FeeLevel.FAST -> Pair("Fast", Icons.Outlined.FlashOn)
+    val text = level.displayName
+    val icon = when (level) {
+        FeeLevel.SLOW -> Icons.Outlined.Schedule
+        FeeLevel.NORMAL -> Icons.Outlined.Speed
+        FeeLevel.FAST -> Icons.Outlined.FlashOn
     }
 
     Card(
@@ -936,11 +941,11 @@ fun FeeDetailsRow(
 
 @Composable
 fun SendBottomBar(
+    modifier: Modifier = Modifier,
     isValid: Boolean,
     isLoading: Boolean,
     error: String? = null,
-    onSend: () -> Unit,
-    modifier: Modifier = Modifier
+    onSend: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
     Surface(
@@ -1016,6 +1021,7 @@ fun MaxAmountDialog(
     val fee = when (feeEstimate) {
         is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull()
             ?: BigDecimal("0.00001")
+
         is EVMFeeEstimate -> feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
         is SolanaFeeEstimate -> feeEstimate.feeSol.toBigDecimalOrNull() ?: BigDecimal("0.000005")
         else -> when (coin) {
@@ -1023,7 +1029,6 @@ fun MaxAmountDialog(
             is NativeETH -> BigDecimal("0.001")
             is USDCToken, is USDTToken -> BigDecimal("0.001")
             is SolanaCoin -> BigDecimal("0.000005")
-            else -> BigDecimal("0.001")
         }
     }
 
@@ -1074,12 +1079,11 @@ fun MaxAmountDialog(
                         )
                         Text(
                             text = "- ${fee.stripTrailingZeros().toPlainString()} ${
-                                when {
-                                    coin is BitcoinCoin -> "BTC"
-                                    coin is SolanaCoin -> "SOL"
-                                    coin is NativeETH -> "ETH"
-                                    coin is USDCToken || coin is USDTToken -> "ETH"
-                                    else -> tokenSymbol
+                                when (coin) {
+                                    is BitcoinCoin -> "BTC"
+                                    is SolanaCoin -> "SOL"
+                                    is NativeETH -> "ETH"
+                                    is USDCToken, is USDTToken -> "ETH"
                                 }
                             }",
                             style = MaterialTheme.typography.bodyMedium,
@@ -1107,13 +1111,15 @@ fun MaxAmountDialog(
                         val maxAmountUsd = maxAmount.toDouble() * fiatRate
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
-                                text = "${maxAmount.stripTrailingZeros().toPlainString()} $tokenSymbol",
+                                text = "${
+                                    maxAmount.stripTrailingZeros().toPlainString()
+                                } $tokenSymbol",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "≈ $${String.format("%.2f", maxAmountUsd)} USD",
+                                text = "≈ $${String.format(Locale.US, "%.2f", maxAmountUsd)} USD",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1236,9 +1242,9 @@ fun TokenSelectorCard(
     onClick: () -> Unit
 ) {
     val (iconRes, color, displayName) = when (selectedToken) {
-        is NativeETH -> Triple(R.drawable.ethereum, ethereumLight, "Ethereum")
-        is USDCToken -> Triple(R.drawable.usdc, usdcLight, "USD Coin")
-        is USDTToken -> Triple(R.drawable.tether, usdtLight, "Tether USD")
+        is NativeETH -> Triple(R.drawable.ethereum, ethereumLight, selectedToken.name)
+        is USDCToken -> Triple(R.drawable.usdc, usdcLight, selectedToken.name)
+        is USDTToken -> Triple(R.drawable.tether, usdtLight, selectedToken.name)
         else -> Triple(null, MaterialTheme.colorScheme.primary, "Select token")
     }
 
@@ -1332,10 +1338,9 @@ fun TokenSelectorDialog(
                 items(availableTokens) { token ->
                     val isSelected = token == selectedToken
                     val (iconRes, color, displayName) = when (token) {
-                        is NativeETH -> Triple(R.drawable.ethereum, ethereumLight, "Ethereum")
-                        is USDCToken -> Triple(R.drawable.usdc, usdcLight, "USD Coin")
-                        is USDTToken -> Triple(R.drawable.tether, usdtLight, "Tether USD")
-                        else -> Triple(null, MaterialTheme.colorScheme.primary, token.name)
+                        is NativeETH -> Triple(R.drawable.ethereum, ethereumLight, token.name)
+                        is USDCToken -> Triple(R.drawable.usdc, usdcLight, token.name)
+                        is USDTToken -> Triple(R.drawable.tether, usdtLight, token.name)
                     }
 
                     Card(

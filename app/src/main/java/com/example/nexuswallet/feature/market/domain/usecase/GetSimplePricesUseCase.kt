@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.market.domain.usecase
 
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.market.domain.MarketRepository
+import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import javax.inject.Inject
 
 class GetSimplePricesUseCase @Inject constructor(

@@ -176,7 +176,7 @@ fun BitcoinSendScreen(
                 // Amount Input
                 SendAmountInput(
                     amount = state.amount,
-                    coin = coin,  // Pass the coin directly
+                    coin = coin,
                     fiatRate = state.fiatRate,
                     onAmountChange = {
                         amountTouched = true
@@ -206,7 +206,7 @@ fun BitcoinSendScreen(
                         viewModel.handleEvent(BitcoinSendEvent.UpdateFeeLevel(it))
                     },
                     feeEstimate = state.feeEstimate,
-                    coin = coin  // Pass the coin directly
+                    coin = coin
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -239,7 +239,7 @@ fun BitcoinSendScreen(
             feeEstimate = state.feeEstimate,
             fiatRate = state.fiatRate,
             tokenSymbol = coin.symbol,
-            coin = coin,  // Pass the coin directly
+            coin = coin,
             onDismiss = { showMaxDialog = false },
             onConfirm = { maxAmount ->
                 amountTouched = true

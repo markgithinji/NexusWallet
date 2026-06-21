@@ -13,6 +13,7 @@ import com.example.nexuswallet.feature.market.domain.model.TokenDetail
 import com.example.nexuswallet.feature.market.domain.model.VolumePoint
 import com.example.nexuswallet.feature.market.domain.model.SparklineData
 import com.example.nexuswallet.feature.market.domain.model.Token
+import java.time.Instant
 
 fun CoinGeckoTokenDto.toToken(): Token {
     return Token(
@@ -37,7 +38,7 @@ fun CoinStatsNewsDto.toNewsArticle(): NewsArticle {
     return NewsArticle(
         title = title,
         summary = description,
-        publishedAt = java.time.Instant.ofEpochMilli(feedDate).toString(),
+        publishedAt = Instant.ofEpochMilli(feedDate).toString(),
         source = source,
         url = link ?: ""
     )

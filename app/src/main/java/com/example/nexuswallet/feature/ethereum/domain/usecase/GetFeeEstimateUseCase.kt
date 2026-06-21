@@ -57,15 +57,13 @@ class GetFeeEstimateUseCase @Inject constructor(
         }
 
         // 2. Get current gas price in Gwei from repository
-        val gasPriceResult = evmBlockchainRepository.getCurrentGasPrice(network)
-
-        return when (gasPriceResult) {
+        return when (val gasPriceResult = evmBlockchainRepository.getCurrentGasPrice(network)) {
             is Result.Success -> {
                 val gasPrice = gasPriceResult.data
                 val isEIP1559 = gasPrice.baseFee != null
 
                 if (isEIP1559) {
-                    val baseFeeGwei = BigDecimal(gasPrice.baseFee!!)
+                    val baseFeeGwei = BigDecimal(gasPrice.baseFee)
                     val priorityFeeGwei = when (feeLevel) {
                         FeeLevel.SLOW -> BigDecimal(gasPrice.safePriorityFee!!)
                         FeeLevel.NORMAL -> BigDecimal(gasPrice.proposePriorityFee!!)

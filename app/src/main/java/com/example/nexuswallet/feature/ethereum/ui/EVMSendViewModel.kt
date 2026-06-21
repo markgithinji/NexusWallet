@@ -9,6 +9,7 @@ import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainR
 import com.example.nexuswallet.feature.ethereum.domain.usecase.GetFeeEstimateUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.SendEVMAssetUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.ValidateEVMSendUseCase
+import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
@@ -18,6 +19,8 @@ import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.util.ExplorerUrlHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -38,7 +41,7 @@ class EVMSendViewModel @Inject constructor(
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val validateEVMSendUseCase: ValidateEVMSendUseCase,
     private val walletRepository: WalletRepository,
-    private val marketRepository: com.example.nexuswallet.feature.market.domain.MarketRepository,
+    private val marketRepository: MarketRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EVMSendUiState())
@@ -50,7 +53,7 @@ class EVMSendViewModel @Inject constructor(
     private var wallet: Wallet? = null
     private var evmTokensByNetwork: Map<EthereumNetwork, List<EVMToken>> = emptyMap()
     private var currentCoin: EVMToken? = null
-    private var feeJob: kotlinx.coroutines.Job? = null
+    private var feeJob: Job? = null
 
     fun initialize(walletId: String, coin: EVMToken? = null) {
         viewModelScope.launch {
@@ -286,7 +289,7 @@ class EVMSendViewModel @Inject constructor(
     private fun loadFeeEstimate() {
         feeJob?.cancel()
         feeJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(500) // Debounce fee estimation
+            delay(500) // Debounce fee estimation
             val state = _uiState.value
             val currentToken = state.selectedToken ?: return@launch
 

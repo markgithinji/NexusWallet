@@ -204,7 +204,7 @@ fun EVMTransactionEntity.toDomain(): EVMTransaction {
                 signedHex = signedHex,
                 transactionType = EVMTransactionType.NATIVE_ETH,
                 evmTokenType = EVMTokenTypeValue,
-                data = data ?: ""
+                data = data
             )
         }
 
@@ -237,7 +237,7 @@ fun EVMTransactionEntity.toDomain(): EVMTransaction {
                 transactionType = EVMTransactionType.TOKEN,
                 evmTokenType = EVMTokenTypeValue,
                 tokenContract = tokenContract ?: "",
-                data = data ?: ""
+                data = data
             )
         }
     }

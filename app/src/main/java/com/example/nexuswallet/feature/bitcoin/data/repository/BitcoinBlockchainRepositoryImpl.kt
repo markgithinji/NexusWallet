@@ -240,8 +240,7 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
             tx.addOutput(outputValue, outputAddress)
 
             val fromAddress = LegacyAddress.fromKey(networkParams, fromKey).toString()
-            val allUtxosResult = getUnspentOutputs(fromAddress, network)
-            val allUtxos = when (allUtxosResult) {
+            val allUtxos = when (val allUtxosResult = getUnspentOutputs(fromAddress, network)) {
                 is Result.Success -> allUtxosResult.data
                 else -> return@withContext Result.Error("Failed to fetch UTXOs")
             }
@@ -317,7 +316,7 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
             val utxos = api.getUtxos(address)
 
             if (utxos.isEmpty()) {
-                return@make emptyList<UTXO>()
+                return@make emptyList()
             }
 
             val networkParams = when (network) {
