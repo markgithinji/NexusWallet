@@ -308,6 +308,14 @@
     <string name="new_wallet_name">New Wallet Name</string>
     <string name="save">Save</string>
 
+    <!-- Security & Privacy -->
+    <string name="privacy_mode">Privacy Mode</string>
+    <string name="privacy_mode_description">Hide balances on main screen</string>
+    <string name="transaction_security">Transaction Security</string>
+    <string name="transaction_security_description">Require authentication for outgoing transactions</string>
+    <string name="always_require">Always Require</string>
+    <string name="standard">Standard</string>
+
     <!-- Backup Screen -->
     <string name="decrypting_recovery_phrase">Decrypting recovery phrase&#8230;</string>
     <string name="your_recovery_phrase">Your 12-Word Recovery Phrase</string>

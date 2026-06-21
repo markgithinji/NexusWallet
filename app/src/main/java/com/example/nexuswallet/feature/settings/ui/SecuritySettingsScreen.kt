@@ -218,23 +218,31 @@ private fun SecuritySettingsContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        BiometricSection(
-            isBiometricEnabled = securityState.isBiometricEnabled,
-            onToggle = viewModel::setBiometricEnabled
+        SecurityToggleSection(
+            title = stringResource(R.string.biometric_authentication),
+            description = stringResource(R.string.biometric_description),
+            checked = securityState.isBiometricEnabled,
+            onCheckedChange = viewModel::setBiometricEnabled
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        PrivacySection(
-            isPrivacyModeEnabled = securityState.isPrivacyModeEnabled,
-            onToggle = viewModel::setPrivacyModeEnabled
+        SecurityToggleSection(
+            title = stringResource(R.string.privacy_mode),
+            description = stringResource(R.string.privacy_mode_description),
+            checked = securityState.isPrivacyModeEnabled,
+            onCheckedChange = viewModel::setPrivacyModeEnabled
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        TransactionSecuritySection(
-            isRequireAuthEnabled = securityState.isRequireAuthForSend,
-            onToggle = viewModel::setRequireAuthForSend
+        SecurityToggleSection(
+            title = stringResource(R.string.transaction_security),
+            description = stringResource(R.string.transaction_security_description),
+            checked = securityState.isRequireAuthForSend,
+            onCheckedChange = viewModel::setRequireAuthForSend,
+            activeText = stringResource(R.string.always_require),
+            inactiveText = stringResource(R.string.standard)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -437,101 +445,48 @@ private fun PinSetupButton(onSetupPin: () -> Unit) {
 }
 
 @Composable
-private fun BiometricSection(
-    isBiometricEnabled: Boolean,
-    onToggle: (Boolean) -> Unit
+private fun SecurityToggleSection(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    activeText: String = stringResource(R.string.enabled),
+    inactiveText: String = stringResource(R.string.disabled)
 ) {
-    SecuritySection(
-        title = stringResource(R.string.biometric_authentication),
-        description = stringResource(R.string.biometric_description)
-    ) {
-        BiometricToggle(
-            isEnabled = isBiometricEnabled,
-            onToggle = onToggle
-        )
-    }
-}
-
-@Composable
-private fun BiometricToggle(
-    isEnabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = if (isEnabled) stringResource(R.string.enabled) else stringResource(R.string.disabled),
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-            color = if (isEnabled) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f)
-        )
-        Switch(
-            checked = isEnabled,
-            onCheckedChange = onToggle,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                uncheckedThumbColor = MaterialTheme.colorScheme.onSurface,
-                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        )
-    }
-}
-
-@Composable
-private fun PrivacySection(
-    isPrivacyModeEnabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    SecuritySection(
-        title = "Privacy Mode",
-        description = "Hide balances on main screen"
-    ) {
+    SecurityCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = if (isPrivacyModeEnabled) "Enabled" else "Disabled",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = if (isPrivacyModeEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (checked) activeText else inactiveText,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = if (checked) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Switch(
-                checked = isPrivacyModeEnabled,
-                onCheckedChange = onToggle
-            )
-        }
-    }
-}
-
-@Composable
-private fun TransactionSecuritySection(
-    isRequireAuthEnabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    SecuritySection(
-        title = "Transaction Security",
-        description = "Require authentication for every outgoing transaction"
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = if (isRequireAuthEnabled) "Always Require" else "Standard",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = if (isRequireAuthEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f)
-            )
-            Switch(
-                checked = isRequireAuthEnabled,
-                onCheckedChange = onToggle
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.onSurface,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             )
         }
     }

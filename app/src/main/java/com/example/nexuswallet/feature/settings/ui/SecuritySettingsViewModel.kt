@@ -84,8 +84,6 @@ class SecuritySettingsViewModel @Inject constructor(
 
     fun setBiometricEnabled(enabled: Boolean) {
         viewModelScope.launch {
-            _operationState.value = SecurityOperation.UPDATING
-
             when (val result = setBiometricEnabledUseCase(enabled)) {
                 is Result.Success -> {
                     refreshAuthStatus()
@@ -95,38 +93,28 @@ class SecuritySettingsViewModel @Inject constructor(
                 }
                 Result.Loading -> { /* Ignore */ }
             }
-
-            _operationState.value = SecurityOperation.IDLE
         }
     }
 
     fun setPrivacyModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
-            _operationState.value = SecurityOperation.UPDATING
-
             try {
                 securityPreferencesRepository.setPrivacyModeEnabled(enabled)
                 refreshAuthStatus()
             } catch (e: Exception) {
                 _uiEffect.emit(SecurityUiEffect.ShowSnackbar(e.message ?: "Failed to update privacy mode"))
             }
-
-            _operationState.value = SecurityOperation.IDLE
         }
     }
 
     fun setRequireAuthForSend(enabled: Boolean) {
         viewModelScope.launch {
-            _operationState.value = SecurityOperation.UPDATING
-
             try {
                 securityPreferencesRepository.setRequireAuthForSend(enabled)
                 refreshAuthStatus()
             } catch (e: Exception) {
                 _uiEffect.emit(SecurityUiEffect.ShowSnackbar(e.message ?: "Failed to update security preference"))
             }
-
-            _operationState.value = SecurityOperation.IDLE
         }
     }
 
