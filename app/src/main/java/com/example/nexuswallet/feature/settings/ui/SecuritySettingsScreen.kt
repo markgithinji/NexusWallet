@@ -201,6 +201,8 @@ private fun SecuritySettingsContent(
             .padding(padding)
             .verticalScroll(rememberScrollState())
     ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
         SecurityStatusCard(
             isBiometricEnabled = securityState.isBiometricEnabled,
             isPinSet = securityState.isPinSet,
