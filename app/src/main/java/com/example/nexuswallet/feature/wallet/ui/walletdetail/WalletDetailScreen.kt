@@ -258,7 +258,10 @@ fun WalletDetailScreen(
                         transaction.coin
                     )
                 },
-                padding = padding
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding() + 16.dp,
+                    bottom = padding.calculateBottomPadding() + 32.dp
+                )
             )
 
             if (showAssetSelector) {
@@ -305,13 +308,12 @@ private fun WalletDetailContent(
     onMoreClick: () -> Unit,
     onViewAllTransactionsClick: () -> Unit,
     onTransactionClick: (TransactionDisplayInfo) -> Unit,
-    padding: PaddingValues
+    contentPadding: PaddingValues
 ) {
     LazyColumn(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(padding),
-        contentPadding = PaddingValues(vertical = 16.dp),
+            .fillMaxSize(),
+        contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Wallet Header Card

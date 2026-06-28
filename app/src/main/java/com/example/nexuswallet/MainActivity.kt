@@ -7,9 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.example.nexuswallet.feature.navigation.Navigation
 import com.example.nexuswallet.ui.theme.NexusWalletTheme
@@ -31,11 +30,8 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             NexusWalletTheme {
-                // Apply system bars padding to the entire navigation host
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .systemBarsPadding()
+                Surface(
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     Navigation(canAuthenticate = canAuthenticate)
                 }

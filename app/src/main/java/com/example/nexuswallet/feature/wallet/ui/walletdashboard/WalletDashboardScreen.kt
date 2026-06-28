@@ -166,8 +166,6 @@ fun WalletDashboardScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(scaffoldPadding)
-                .padding(padding)
         ) {
             when (val state = uiState) {
                 is Result.Loading -> {
@@ -207,7 +205,13 @@ fun WalletDashboardScreen(
                             },
                             onRenameWallet = { wallet ->
                                 showRenameDialog = wallet
-                            }
+                            },
+                            contentPadding = PaddingValues(
+                                top = scaffoldPadding.calculateTopPadding() + 8.dp,
+                                bottom = scaffoldPadding.calculateBottomPadding() + padding.calculateBottomPadding() + 16.dp,
+                                start = 16.dp,
+                                end = 16.dp
+                            )
                         )
                     }
                 }
@@ -312,7 +316,8 @@ fun DashboardContent(
     selectedCurrency: String,
     onWalletClick: (Wallet) -> Unit,
     onDeleteWallet: (String) -> Unit,
-    onRenameWallet: (Wallet) -> Unit
+    onRenameWallet: (Wallet) -> Unit,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
 ) {
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp > 600
@@ -320,7 +325,7 @@ fun DashboardContent(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {

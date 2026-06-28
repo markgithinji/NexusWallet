@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,6 +56,7 @@ fun MainTabScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .navigationBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = CardDefaults.cardColors(
@@ -181,7 +183,11 @@ fun MainTabScreen(
 
             2 -> SettingsScreen(
                 onNavigateToSecurity = onNavigateToSecurity,
-                onNavigateToAbout = onNavigateToAbout
+                onNavigateToAbout = onNavigateToAbout,
+                padding = PaddingValues(
+                    top = scaffoldPadding.calculateTopPadding(),
+                    bottom = scaffoldPadding.calculateBottomPadding()
+                )
             )
         }
     }

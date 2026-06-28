@@ -132,11 +132,11 @@ fun MarketScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .pullRefresh(refreshState)
-                .padding(scaffoldPadding)
-                .padding(padding)
         ) {
             Column(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = scaffoldPadding.calculateTopPadding())
             ) {
                 // Show disconnected banner if WebSocket is down and we have data
                 if (!isWebSocketConnected && tokens.isNotEmpty()) {
@@ -156,6 +156,13 @@ fun MarketScreen(
 
                 // Content
                 Box(modifier = Modifier.weight(1f)) {
+                    val mergedPadding = PaddingValues(
+                        top = 8.dp,
+                        bottom = scaffoldPadding.calculateBottomPadding() + padding.calculateBottomPadding() + 16.dp,
+                        start = 16.dp,
+                        end = 16.dp
+                    )
+
                     when (uiState) {
                         Result.Loading -> {
                             if (tokens.isEmpty()) {
@@ -167,7 +174,8 @@ fun MarketScreen(
                                     onTokenClick = { token ->
                                         onNavigateToTokenDetail(token.id)
                                     },
-                                    onLoadMore = { viewModel.loadNextPage() }
+                                    onLoadMore = { viewModel.loadNextPage() },
+                                    contentPadding = mergedPadding
                                 )
                             }
                         }
@@ -189,7 +197,8 @@ fun MarketScreen(
                                     onTokenClick = { token ->
                                         onNavigateToTokenDetail(token.id)
                                     },
-                                    onLoadMore = { viewModel.loadNextPage() }
+                                    onLoadMore = { viewModel.loadNextPage() },
+                                    contentPadding = mergedPadding
                                 )
                             }
                         }
@@ -204,7 +213,8 @@ fun MarketScreen(
                                     onTokenClick = { token ->
                                         onNavigateToTokenDetail(token.id)
                                     },
-                                    onLoadMore = { viewModel.loadNextPage() }
+                                    onLoadMore = { viewModel.loadNextPage() },
+                                    contentPadding = mergedPadding
                                 )
                             }
                         }
@@ -465,11 +475,12 @@ fun MarketList(
     tokens: List<Token>,
     isLoadingMore: Boolean,
     onTokenClick: (Token) -> Unit,
-    onLoadMore: () -> Unit
+    onLoadMore: () -> Unit,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(tokens) { token ->
