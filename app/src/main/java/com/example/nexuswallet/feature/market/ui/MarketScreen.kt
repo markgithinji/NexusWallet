@@ -225,7 +225,9 @@ fun MarketScreen(
             PullRefreshIndicator(
                 refreshing = isRefreshing,
                 state = refreshState,
-                modifier = Modifier.align(Alignment.TopCenter),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = scaffoldPadding.calculateTopPadding()),
                 backgroundColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary
             )
