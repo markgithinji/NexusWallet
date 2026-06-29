@@ -86,6 +86,8 @@ class MarketViewModel @Inject constructor(
     private fun loadInitialData() {
         viewModelScope.launch {
             _uiState.value = Result.Loading
+            isInitialDataLoaded = false
+            allTokensCache = emptyList()
 
             when (val result = coinGeckoRepository.getTopCryptocurrencies(
                 perPage = perPage,
@@ -93,11 +95,11 @@ class MarketViewModel @Inject constructor(
             )) {
                 is Result.Success -> {
                     val firstPage = result.data
-                    allTokensCache = firstPage
+                    allTokensCache = firstPage.distinctBy { it.id }
                     isInitialDataLoaded = true
                     // Update filtered tokens before setting success state to avoid empty state flash
                     applySearchFilter(_searchQuery.value)
-                    _uiState.value = Result.Success(firstPage)
+                    _uiState.value = Result.Success(allTokensCache)
                     currentPage = 2
 
                     // Load next pages in background
@@ -132,6 +134,8 @@ class MarketViewModel @Inject constructor(
     }
 
     private suspend fun loadPage(page: Int) {
+        if (page > 3) return // Working with 300 coins (3 pages of 100)
+
         when (val result = coinGeckoRepository.getTopCryptocurrencies(
             perPage = perPage,
             page = page
@@ -139,11 +143,21 @@ class MarketViewModel @Inject constructor(
             is Result.Success -> {
                 val tokens = result.data
                 if (tokens.isNotEmpty()) {
-                    allTokensCache = allTokensCache + tokens
-                    // Update filtered tokens before setting success state
-                    applySearchFilter(_searchQuery.value)
-                    _uiState.value = Result.Success(allTokensCache)
-                    currentPage = page + 1
+                    // Filter out tokens that are already in the cache to avoid duplicates
+                    val existingIds = allTokensCache.map { it.id }.toSet()
+                    val newTokens = tokens.filter { it.id !in existingIds }
+
+                    if (newTokens.isNotEmpty()) {
+                        allTokensCache = (allTokensCache + newTokens).distinctBy { it.id }
+                        // Update filtered tokens before setting success state
+                        applySearchFilter(_searchQuery.value)
+                        _uiState.value = Result.Success(allTokensCache)
+                    }
+
+                    // Always advance currentPage if we've successfully processed this page
+                    if (page >= currentPage) {
+                        currentPage = page + 1
+                    }
                 }
             }
 
@@ -156,7 +170,7 @@ class MarketViewModel @Inject constructor(
     }
 
     fun loadNextPage() {
-        if (_isLoadingMore.value || currentPage > 10) return
+        if (_isLoadingMore.value || currentPage > 3) return
 
         viewModelScope.launch {
             _isLoadingMore.value = true
@@ -229,39 +243,7 @@ class MarketViewModel @Inject constructor(
     }
 
     fun refreshData() {
-        viewModelScope.launch {
-            // Reset pagination but keep WebSocket connections
-            currentPage = 1
-            allTokensCache = emptyList()
-            isInitialDataLoaded = false
-
-            // Load fresh data
-            _uiState.value = Result.Loading
-
-            when (val result = coinGeckoRepository.getTopCryptocurrencies(
-                perPage = perPage,
-                page = 1
-            )) {
-                is Result.Success -> {
-                    val firstPage = result.data
-                    allTokensCache = firstPage
-                    isInitialDataLoaded = true
-                    // Update filtered tokens before setting success state
-                    applySearchFilter(_searchQuery.value)
-                    _uiState.value = Result.Success(firstPage)
-                    currentPage = 2
-
-                    // Load remaining pages in background
-                    loadRemainingPages()
-                }
-
-                is Result.Error -> {
-                    _uiState.value = Result.Error(result.message, result.throwable)
-                }
-
-                Result.Loading -> {}
-            }
-        }
+        loadInitialData()
     }
 
     fun retryWebSocket() {
