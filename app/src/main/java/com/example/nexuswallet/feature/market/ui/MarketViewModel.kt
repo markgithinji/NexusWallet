@@ -84,8 +84,9 @@ class MarketViewModel @Inject constructor(
                     val firstPage = result.data
                     allTokensCache = firstPage
                     isInitialDataLoaded = true
-                    _uiState.value = Result.Success(firstPage)
+                    // Update filtered tokens before setting success state to avoid empty state flash
                     applySearchFilter(_searchQuery.value)
+                    _uiState.value = Result.Success(firstPage)
                     currentPage = 2
 
                     // Load next pages in background
@@ -128,8 +129,9 @@ class MarketViewModel @Inject constructor(
                 val tokens = result.data
                 if (tokens.isNotEmpty()) {
                     allTokensCache = allTokensCache + tokens
-                    _uiState.value = Result.Success(allTokensCache)
+                    // Update filtered tokens before setting success state
                     applySearchFilter(_searchQuery.value)
+                    _uiState.value = Result.Success(allTokensCache)
                     currentPage = page + 1
                 }
             }
@@ -189,8 +191,9 @@ class MarketViewModel @Inject constructor(
         }
 
         allTokensCache = updatedTokens
-        _uiState.value = Result.Success(updatedTokens)
+        // Update filtered tokens before setting success state
         applySearchFilter(_searchQuery.value)
+        _uiState.value = Result.Success(updatedTokens)
     }
 
     private fun applySearchFilter(query: String) {
@@ -232,8 +235,9 @@ class MarketViewModel @Inject constructor(
                     val firstPage = result.data
                     allTokensCache = firstPage
                     isInitialDataLoaded = true
-                    _uiState.value = Result.Success(firstPage)
+                    // Update filtered tokens before setting success state
                     applySearchFilter(_searchQuery.value)
+                    _uiState.value = Result.Success(firstPage)
                     currentPage = 2
 
                     // Load remaining pages in background

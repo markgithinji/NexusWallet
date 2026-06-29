@@ -204,7 +204,8 @@ fun MarketScreen(
                         }
 
                         is Result.Success -> {
-                            if (tokens.isEmpty() && !isLoadingMore) {
+                            // Only show empty result state if we have a search query
+                            if (tokens.isEmpty() && !isLoadingMore && searchQuery.isNotBlank()) {
                                 EmptySearchResult()
                             } else {
                                 MarketList(
