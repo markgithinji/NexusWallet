@@ -22,10 +22,8 @@ class WebSocketRepositoryImpl @Inject constructor(
         return webSocketManager.fullUpdates
     }
 
-    override fun getConnectionState(): Flow<Boolean> {
-        return webSocketManager.connectionState.map { state ->
-            state == ConnectionState.CONNECTED
-        }
+    override fun getConnectionState(): Flow<ConnectionState> {
+        return webSocketManager.connectionState
     }
 
     override fun reconnect() {

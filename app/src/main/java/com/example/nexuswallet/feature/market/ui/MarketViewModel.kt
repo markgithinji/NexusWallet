@@ -7,15 +7,21 @@ import com.example.nexuswallet.feature.market.domain.repository.CoinGeckoReposit
 import com.example.nexuswallet.feature.market.domain.repository.WebSocketRepository
 import com.example.nexuswallet.feature.market.domain.model.Token
 import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
+import com.example.nexuswallet.feature.market.domain.model.ConnectionState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -32,8 +38,13 @@ class MarketViewModel @Inject constructor(
     val filteredTokens: StateFlow<List<Token>> = _filteredTokens.asStateFlow()
 
     // WebSocket connection state
-    private val _isWebSocketConnected = MutableStateFlow(false)
-    val isWebSocketConnected: StateFlow<Boolean> = _isWebSocketConnected.asStateFlow()
+    private val _connectionState = MutableStateFlow(ConnectionState.CONNECTING)
+    
+    val isWebSocketConnected: StateFlow<Boolean> = _connectionState.map { state ->
+        // We consider it "Connected" (or at least don't show the error banner) 
+        // while it's in the process of connecting.
+        state == ConnectionState.CONNECTED || state == ConnectionState.CONNECTING
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     // Search query
     private val _searchQuery = MutableStateFlow("")
@@ -170,8 +181,8 @@ class MarketViewModel @Inject constructor(
 
         // Collect connection state
         connectionStateJob = viewModelScope.launch {
-            webSocketRepository.getConnectionState().collect { isConnected ->
-                _isWebSocketConnected.value = isConnected
+            webSocketRepository.getConnectionState().collect { state ->
+                _connectionState.value = state
             }
         }
     }
@@ -255,7 +266,8 @@ class MarketViewModel @Inject constructor(
 
     fun retryWebSocket() {
         // Only reconnect if disconnected
-        if (!_isWebSocketConnected.value) {
+        val currentState = _connectionState.value
+        if (currentState == ConnectionState.DISCONNECTED || currentState == ConnectionState.ERROR) {
             viewModelScope.launch {
                 // Cancel existing collectors
                 webSocketCollectorJob?.cancel()
