@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.settings.ui
+package com.example.nexuswallet
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,20 +8,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor(
+class MainViewModel @Inject constructor(
     private val securityPreferencesRepository: SecurityPreferencesRepository
 ) : ViewModel() {
-
-    val selectedCurrency: StateFlow<String> = securityPreferencesRepository.observeSelectedCurrency()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = "USD"
-        )
 
     val themeMode: StateFlow<ThemeMode> = securityPreferencesRepository.observeThemeMode()
         .stateIn(
@@ -29,16 +21,4 @@ class SettingsViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = ThemeMode.SYSTEM
         )
-
-    fun setSelectedCurrency(currencyCode: String) {
-        viewModelScope.launch {
-            securityPreferencesRepository.setSelectedCurrency(currencyCode)
-        }
-    }
-
-    fun setThemeMode(themeMode: ThemeMode) {
-        viewModelScope.launch {
-            securityPreferencesRepository.setThemeMode(themeMode)
-        }
-    }
 }

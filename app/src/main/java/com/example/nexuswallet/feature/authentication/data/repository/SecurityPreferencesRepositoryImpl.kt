@@ -11,6 +11,7 @@ import com.example.nexuswallet.feature.authentication.data.util.safeGet
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex
+import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -220,6 +221,30 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
         } ?: "USD"
     }
 
+    override suspend fun setThemeMode(themeMode: ThemeMode) {
+        safeEdit {
+            dataStore.edit { preferences ->
+                preferences[THEME_MODE_KEY] = themeMode.name
+            }
+        }
+    }
+
+    override suspend fun getThemeMode(): ThemeMode {
+        return safeGet(defaultValue = ThemeMode.SYSTEM) {
+            val preferences = dataStore.data.first()
+            val themeModeName = preferences[THEME_MODE_KEY]
+            if (themeModeName != null) {
+                try {
+                    ThemeMode.valueOf(themeModeName.uppercase())
+                } catch (e: IllegalArgumentException) {
+                    ThemeMode.SYSTEM
+                }
+            } else {
+                ThemeMode.SYSTEM
+            }
+        } ?: ThemeMode.SYSTEM
+    }
+
     override fun observePinHash(): Flow<String?> =
         dataStore.data.map { preferences ->
             preferences[PIN_HASH_KEY]
@@ -245,6 +270,20 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             preferences[SELECTED_CURRENCY_KEY] ?: "USD"
         }
 
+    override fun observeThemeMode(): Flow<ThemeMode> =
+        dataStore.data.map { preferences ->
+            val themeModeName = preferences[THEME_MODE_KEY]
+            if (themeModeName != null) {
+                try {
+                    ThemeMode.valueOf(themeModeName.uppercase())
+                } catch (e: IllegalArgumentException) {
+                    ThemeMode.SYSTEM
+                }
+            } else {
+                ThemeMode.SYSTEM
+            }
+        }
+
     companion object {
         private val ENCRYPTED_MNEMONIC_KEY = stringPreferencesKey("encrypted_mnemonic")
         private val ENCRYPTED_PRIVATE_KEY_KEY = stringPreferencesKey("encrypted_private_key")
@@ -256,5 +295,6 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
         private val PRIVACY_MODE_ENABLED_KEY = booleanPreferencesKey("privacy_mode_enabled")
         private val REQUIRE_AUTH_FOR_SEND_KEY = booleanPreferencesKey("require_auth_for_send")
         private val SELECTED_CURRENCY_KEY = stringPreferencesKey("selected_currency")
+        private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
     }
 }

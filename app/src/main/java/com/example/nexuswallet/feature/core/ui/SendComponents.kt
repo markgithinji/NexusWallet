@@ -951,8 +951,7 @@ fun SendBottomBar(
     val haptic = LocalHapticFeedback.current
     Surface(
         modifier = modifier
-            .fillMaxWidth()
-            .navigationBarsPadding(),
+            .fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 8.dp
     ) {

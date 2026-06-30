@@ -32,9 +32,13 @@ interface SecurityPreferencesRepository {
     suspend fun setSelectedCurrency(currencyCode: String)
     suspend fun getSelectedCurrency(): String
 
+    suspend fun setThemeMode(themeMode: com.example.nexuswallet.feature.settings.domain.model.ThemeMode)
+    suspend fun getThemeMode(): com.example.nexuswallet.feature.settings.domain.model.ThemeMode
+
     fun observePinHash(): Flow<String?>
     fun observeBiometricEnabled(): Flow<Boolean>
     fun observePrivacyModeEnabled(): Flow<Boolean>
     fun observeRequireAuthForSend(): Flow<Boolean>
     fun observeSelectedCurrency(): Flow<String>
+    fun observeThemeMode(): Flow<com.example.nexuswallet.feature.settings.domain.model.ThemeMode>
 }

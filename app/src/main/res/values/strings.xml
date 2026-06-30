@@ -258,6 +258,21 @@
     <string name="currency_aud">AUD - Australian Dollar</string>
     <string name="currency_cad">CAD - Canadian Dollar</string>
     <string name="currency_kes">KES - Kenya Shilling</string>
+
+    <!-- Settings Categories -->
+    <string name="settings_category_security">Security &amp; Preferences</string>
+    <string name="settings_category_appearance">Appearance</string>
+    <string name="settings_category_network">Network</string>
+    <string name="settings_category_about">About</string>
+
+    <!-- Theme & Display -->
+    <string name="theme_settings">Theme</string>
+    <string name="theme_description">App appearance: Light, Dark, or System</string>
+    <string name="select_theme">Select Theme</string>
+    <string name="theme_system">System Default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+
     <string name="network_settings">Networks</string>
     <string name="network_description">Configure blockchain networks</string>
     <string name="about_settings">About</string>

@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,8 +22,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CurrencyExchange
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NetworkCheck
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
@@ -36,6 +39,8 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -50,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,7 +74,10 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val selectedCurrency by viewModel.selectedCurrency.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+
     var showCurrencyDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
 
     if (showCurrencyDialog) {
         CurrencySelectionDialog(
@@ -77,6 +87,17 @@ fun SettingsScreen(
                 showCurrencyDialog = false
             },
             onDismiss = { showCurrencyDialog = false }
+        )
+    }
+
+    if (showThemeDialog) {
+        ThemeSelectionDialog(
+            selectedTheme = themeMode,
+            onThemeSelected = { theme ->
+                viewModel.setThemeMode(theme)
+                showThemeDialog = false
+            },
+            onDismiss = { showThemeDialog = false }
         )
     }
 
@@ -120,44 +141,80 @@ fun SettingsScreen(
                     bottom = scaffoldPadding.calculateBottomPadding() + padding.calculateBottomPadding() + 80.dp
                 )
         ) {
-            // Security Settings Option
-            SettingsItem(
-                title = stringResource(R.string.security_settings),
-                description = stringResource(R.string.security_description),
-                icon = Icons.Outlined.Security,
-                onClick = onNavigateToSecurity
-            )
+            SettingsSection(title = stringResource(R.string.settings_category_security)) {
+                // Security Settings Option
+                SettingsItem(
+                    title = stringResource(R.string.security_settings),
+                    description = stringResource(R.string.security_description),
+                    icon = Icons.Outlined.Security,
+                    onClick = onNavigateToSecurity
+                )
 
-            Spacer(modifier = Modifier.height(1.dp))
+                // Currency Settings
+                SettingsItem(
+                    title = stringResource(R.string.currency_settings),
+                    description = stringResource(R.string.currency_description) + " ($selectedCurrency)",
+                    icon = Icons.Outlined.CurrencyExchange,
+                    onClick = { showCurrencyDialog = true }
+                )
+            }
 
-            // Currency Settings
-            SettingsItem(
-                title = stringResource(R.string.currency_settings),
-                description = stringResource(R.string.currency_description) + " ($selectedCurrency)",
-                icon = Icons.Outlined.CurrencyExchange,
-                onClick = { showCurrencyDialog = true }
-            )
+            SettingsSection(title = stringResource(R.string.settings_category_appearance)) {
+                // Theme Settings
+                val themeLabel = when (themeMode) {
+                    ThemeMode.SYSTEM -> stringResource(R.string.theme_system)
+                    ThemeMode.LIGHT -> stringResource(R.string.theme_light)
+                    ThemeMode.DARK -> stringResource(R.string.theme_dark)
+                }
+                SettingsItem(
+                    title = stringResource(R.string.theme_settings),
+                    description = stringResource(R.string.theme_description) + " ($themeLabel)",
+                    icon = Icons.Outlined.Palette,
+                    onClick = { showThemeDialog = true }
+                )
+            }
 
-            Spacer(modifier = Modifier.height(1.dp))
+            SettingsSection(title = stringResource(R.string.settings_category_network)) {
+                // Network Settings
+                SettingsItem(
+                    title = stringResource(R.string.network_settings),
+                    description = stringResource(R.string.network_description),
+                    icon = Icons.Outlined.NetworkCheck,
+                    onClick = { /* Navigate to network settings */ }
+                )
+            }
 
-            // Network Settings
-            SettingsItem(
-                title = stringResource(R.string.network_settings),
-                description = stringResource(R.string.network_description),
-                icon = Icons.Outlined.NetworkCheck,
-                onClick = { /* Navigate to network settings */ }
-            )
-
-            Spacer(modifier = Modifier.height(1.dp))
-
-            // About
-            SettingsItem(
-                title = stringResource(R.string.about_settings),
-                description = stringResource(R.string.about_description),
-                icon = Icons.Outlined.Info,
-                onClick = onNavigateToAbout
-            )
+            SettingsSection(title = stringResource(R.string.settings_category_about)) {
+                // About
+                SettingsItem(
+                    title = stringResource(R.string.about_settings),
+                    description = stringResource(R.string.about_description),
+                    icon = Icons.Outlined.Info,
+                    onClick = onNavigateToAbout
+                )
+            }
         }
+    }
+}
+
+@Composable
+fun SettingsSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+        )
+        Column(content = content)
     }
 }
 
@@ -211,6 +268,89 @@ fun CurrencySelectionDialog(
                             RadioButton(
                                 selected = isSelected,
                                 onClick = { onCurrencySelected(code) },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (isSelected)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurface,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text(
+                    text = stringResource(R.string.cancel),
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+        },
+        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+
+@Composable
+fun ThemeSelectionDialog(
+    selectedTheme: ThemeMode,
+    onThemeSelected: (ThemeMode) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val themes = listOf(
+        ThemeMode.SYSTEM to stringResource(R.string.theme_system),
+        ThemeMode.LIGHT to stringResource(R.string.theme_light),
+        ThemeMode.DARK to stringResource(R.string.theme_dark)
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.select_theme),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.padding(top = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                themes.forEach { (theme, label) ->
+                    val isSelected = theme == selectedTheme
+                    Surface(
+                        onClick = { onThemeSelected(theme) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isSelected)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                        else
+                            Color.Transparent,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = { onThemeSelected(theme) },
                                 colors = RadioButtonDefaults.colors(
                                     selectedColor = MaterialTheme.colorScheme.primary
                                 )
