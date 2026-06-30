@@ -120,6 +120,7 @@ fun WalletDetailScreen(
     var showAssetSelector by remember { mutableStateOf(false) }
     var selectorPurpose by remember { mutableStateOf(AssetSelectorPurpose.SEND) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showSyncErrorDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(walletId) {
         walletViewModel.loadWallet(walletId)
@@ -153,6 +154,13 @@ fun WalletDetailScreen(
         )
     }
 
+    if (showSyncErrorDialog) {
+        SyncErrorDialog(
+            errorMessage = uiState.syncErrorMessage ?: stringResource(R.string.unknown_error),
+            onDismiss = { showSyncErrorDialog = false }
+        )
+    }
+
     Scaffold(
         topBar = {
             Column {
@@ -180,10 +188,9 @@ fun WalletDetailScreen(
                     actions = {
                         // Show warning icon if there's a sync error
                         if (uiState.hasSyncError) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(end = 4.dp)
-                                    .size(24.dp)
+                            IconButton(
+                                onClick = { showSyncErrorDialog = true },
+                                modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Warning,
@@ -260,6 +267,7 @@ fun WalletDetailScreen(
                 onSwapClick = onSwapClick,
                 onMoreClick = onMoreClick,
                 onViewAllTransactionsClick = { onNavigateToAllTransactions(walletId) },
+                onShowSyncError = { showSyncErrorDialog = true },
                 onTransactionClick = { transaction ->
                     onNavigateToTransactionDetail(
                         walletId,
@@ -297,6 +305,47 @@ fun WalletDetailScreen(
 }
 
 @Composable
+fun SyncErrorDialog(
+    errorMessage: String,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+                Text(
+                    text = "Sync Issues",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        text = {
+            Text(
+                text = errorMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.dismiss))
+            }
+        },
+        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+
+@Composable
 private fun WalletDetailContent(
     wallet: Wallet,
     assets: List<AssetDisplayInfo>,
@@ -316,6 +365,7 @@ private fun WalletDetailContent(
     onSwapClick: () -> Unit,
     onMoreClick: () -> Unit,
     onViewAllTransactionsClick: () -> Unit,
+    onShowSyncError: () -> Unit,
     onTransactionClick: (TransactionDisplayInfo) -> Unit,
     contentPadding: PaddingValues
 ) {
@@ -333,6 +383,7 @@ private fun WalletDetailContent(
                 hasSyncError = hasSyncError,
                 isLoadingBalance = isLoadingBalance || isRefreshingBalance,
                 balanceLoadingMessage = balanceLoadingMessage,
+                onShowSyncError = onShowSyncError,
                 onReceive = {
                     if (assets.size > 1) {
                         onShowAssetSelector(AssetSelectorPurpose.RECEIVE)
@@ -516,6 +567,7 @@ fun WalletHeaderCard(
     hasSyncError: Boolean = false,
     isLoadingBalance: Boolean = false,
     balanceLoadingMessage: String = "",
+    onShowSyncError: () -> Unit,
     onReceive: () -> Unit,
     onSend: () -> Unit,
     onSwap: (() -> Unit)? = null,
@@ -586,7 +638,9 @@ fun WalletHeaderCard(
                         imageVector = Icons.Outlined.Warning,
                         contentDescription = "Sync error",
                         tint = MaterialTheme.colorScheme.warning,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clickable { onShowSyncError() }
                     )
                 }
             }
