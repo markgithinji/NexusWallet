@@ -150,14 +150,18 @@ fun WalletDashboardScreen(
                     onCreateWallet = onNavigateToCreateWallet,
                     onImportWallet = onNavigateToImportWallet
                 )
-                if (isRefreshingState) {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(2.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color.Transparent
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp)
+                ) {
+                    if (isRefreshingState) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = Color.Transparent
+                        )
+                    }
                 }
             }
         },
