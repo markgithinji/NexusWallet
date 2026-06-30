@@ -46,6 +46,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -154,69 +155,77 @@ fun WalletDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = walletViewModel.getWalletName(),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.clickable { showRenameDialog = true }
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateUp) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+            Column {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = walletViewModel.getWalletName(),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.clickable { showRenameDialog = true }
                         )
-                    }
-                },
-                actions = {
-                    // Show warning icon if there's a sync error
-                    if (uiState.hasSyncError) {
-                        Box(
-                            modifier = Modifier
-                                .padding(end = 4.dp)
-                                .size(24.dp)
-                        ) {
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateUp) {
                             Icon(
-                                imageVector = Icons.Outlined.Warning,
-                                contentDescription = "Sync error",
-                                tint = MaterialTheme.colorScheme.warning,
-                                modifier = Modifier.size(20.dp)
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.back),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    }
+                    },
+                    actions = {
+                        // Show warning icon if there's a sync error
+                        if (uiState.hasSyncError) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Warning,
+                                    contentDescription = "Sync error",
+                                    tint = MaterialTheme.colorScheme.warning,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
 
-                    // Refresh button
-                    IconButton(
-                        onClick = { walletViewModel.refresh() },
-                        enabled = !uiState.isRefreshingBalance && !uiState.isRefreshingTransactions
-                    ) {
-                        if (uiState.isRefreshingBalance || uiState.isRefreshingTransactions) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        } else {
+                        // Refresh button
+                        IconButton(
+                            onClick = { walletViewModel.refresh() },
+                            enabled = !uiState.isRefreshingBalance && !uiState.isRefreshingTransactions
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Refresh,
                                 contentDescription = "Refresh",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surface
+                    )
                 )
-            )
+                // Reserve 2dp space to prevent layout shift when refreshing indicator toggles
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp)
+                ) {
+                    if (uiState.isRefreshingBalance || uiState.isRefreshingTransactions) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = Color.Transparent
+                        )
+                    }
+                }
+            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
@@ -583,13 +592,15 @@ fun WalletHeaderCard(
             }
 
             // Show loading message if balance is loading
-            if (isLoadingBalance && balanceLoadingMessage.isNotEmpty()) {
-                Text(
-                    text = balanceLoadingMessage,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+            Box(modifier = Modifier.height(20.dp)) {
+                if (isLoadingBalance && balanceLoadingMessage.isNotEmpty()) {
+                    Text(
+                        text = balanceLoadingMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -742,15 +753,19 @@ fun TransactionsContainer(
                 }
 
                 // Show loading message
-                Text(
-                    text = loadingMessage,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    textAlign = TextAlign.Center
-                )
+                Box(modifier = Modifier.fillMaxWidth().height(24.dp)) {
+                    if (isLoading && loadingMessage.isNotEmpty() && transactions.isNotEmpty()) {
+                        Text(
+                            text = loadingMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
             } else if (transactions.isNotEmpty()) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
