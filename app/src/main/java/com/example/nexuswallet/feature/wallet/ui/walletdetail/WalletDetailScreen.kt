@@ -80,7 +80,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.NexusTextField
 import com.example.nexuswallet.feature.core.util.formatCurrency
-import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
+import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
@@ -156,7 +156,7 @@ fun WalletDetailScreen(
 
     if (showSyncErrorDialog) {
         SyncErrorDialog(
-            errorMessage = uiState.syncErrorMessage ?: stringResource(R.string.unknown_error),
+            errors = uiState.syncErrors,
             onDismiss = { showSyncErrorDialog = false }
         )
     }
@@ -241,6 +241,7 @@ fun WalletDetailScreen(
                 wallet = currentWallet,
                 assets = uiState.assets,
                 transactions = uiState.transactions,
+                syncErrors = uiState.syncErrors,
                 totalBalanceFormatted = uiState.totalBalanceFormatted,
                 hasSyncError = uiState.hasSyncError,
                 isLoadingBalance = uiState.isLoadingBalance,
@@ -306,7 +307,7 @@ fun WalletDetailScreen(
 
 @Composable
 fun SyncErrorDialog(
-    errorMessage: String,
+    errors: List<ChainSyncError>,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -322,18 +323,27 @@ fun SyncErrorDialog(
                     tint = MaterialTheme.colorScheme.error
                 )
                 Text(
-                    text = "Sync Issues",
+                    text = "Connection Issues",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             }
         },
         text = {
-            Text(
-                text = errorMessage,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Some assets couldn't be synchronized. Their balances might be out of date.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                errors.forEach { error ->
+                    SyncErrorRow(error = error)
+                }
+            }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
@@ -346,10 +356,60 @@ fun SyncErrorDialog(
 }
 
 @Composable
+fun SyncErrorRow(error: ChainSyncError) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Error,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = error.assetSymbol ?: error.network.name,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+                Text(
+                    text = error.message,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun WalletDetailContent(
     wallet: Wallet,
     assets: List<AssetDisplayInfo>,
     transactions: List<TransactionDisplayInfo>,
+    syncErrors: List<ChainSyncError>,
     totalBalanceFormatted: String,
     hasSyncError: Boolean,
     isLoadingBalance: Boolean,
@@ -410,8 +470,12 @@ private fun WalletDetailContent(
             items = assets,
             key = { it.id }
         ) { asset ->
+            val assetError = syncErrors.find { 
+                it.assetSymbol == asset.coin.symbol && it.network == asset.coin.network 
+            }
             AssetCard(
                 asset = asset,
+                hasError = assetError != null,
                 onClick = { onAssetClick(asset.coin) }
             )
         }
@@ -439,6 +503,7 @@ private fun getDefaultCoin(wallet: Wallet): Coin? = when {
 @Composable
 fun AssetCard(
     asset: AssetDisplayInfo,
+    hasError: Boolean = false,
     onClick: () -> Unit
 ) {
     val (iconRes, iconColor, iconSize) = when (asset.coin) {
@@ -512,6 +577,15 @@ fun AssetCard(
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                             )
                         }
+                    }
+
+                    if (hasError) {
+                        Icon(
+                            imageVector = Icons.Outlined.Warning,
+                            contentDescription = "Sync error",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(14.dp)
+                        )
                     }
                 }
 

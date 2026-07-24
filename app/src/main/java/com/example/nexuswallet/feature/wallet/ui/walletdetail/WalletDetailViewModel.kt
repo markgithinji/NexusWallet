@@ -215,6 +215,7 @@ class WalletDetailViewModel @Inject constructor(
                             balance = updatedBalance,
                             hasSyncError = false,
                             syncErrorMessage = null,
+                            syncErrors = emptyList(),
                             isRefreshingBalance = false,
                             lastBalanceSyncTime = System.currentTimeMillis()
                         )
@@ -226,6 +227,7 @@ class WalletDetailViewModel @Inject constructor(
                     it.copy(
                         hasSyncError = true,
                         syncErrorMessage = allErrors.joinToString { error -> "${error.assetSymbol}: ${error.message}" },
+                        syncErrors = allErrors,
                         isRefreshingBalance = false
                     )
                 }

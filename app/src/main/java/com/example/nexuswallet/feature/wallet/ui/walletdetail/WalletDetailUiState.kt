@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.wallet.ui.walletdetail
 
 import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
+import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
@@ -30,6 +31,7 @@ data class WalletDetailUiState(
     val error: String? = null,
     val hasSyncError: Boolean = false,
     val syncErrorMessage: String? = null,
+    val syncErrors: List<ChainSyncError> = emptyList(),
     val balanceError: String? = null,
     val transactionsError: String? = null
 )
