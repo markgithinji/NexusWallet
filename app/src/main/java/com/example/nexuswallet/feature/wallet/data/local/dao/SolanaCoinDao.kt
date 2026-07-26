@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Update
 import com.example.nexuswallet.feature.wallet.data.local.entity.SolanaCoinEntity
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SolanaCoinDao {
@@ -18,6 +19,12 @@ interface SolanaCoinDao {
 
     @Query("SELECT * FROM solana_coins WHERE walletId = :walletId")
     suspend fun getByWalletId(walletId: String): List<SolanaCoinEntity>
+
+    @Query("SELECT * FROM solana_coins WHERE walletId = :walletId")
+    fun observeByWalletId(walletId: String): Flow<List<SolanaCoinEntity>>
+
+    @Query("SELECT * FROM solana_coins")
+    fun observeAll(): Flow<List<SolanaCoinEntity>>
 
     @Query("DELETE FROM solana_coins WHERE walletId = :walletId")
     suspend fun deleteByWalletId(walletId: String)

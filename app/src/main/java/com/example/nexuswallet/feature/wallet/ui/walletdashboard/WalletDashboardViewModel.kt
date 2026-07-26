@@ -14,10 +14,13 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseC
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -37,13 +40,26 @@ class WalletDashboardViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<Result<List<Wallet>>>(Result.Loading)
     val uiState: StateFlow<Result<List<Wallet>>> = _uiState.asStateFlow()
 
-    // Balances map
-    private val _balances = MutableStateFlow<Map<String, WalletBalance>>(emptyMap())
-    val balances: StateFlow<Map<String, WalletBalance>> = _balances.asStateFlow()
+    // Balances map - REACTIVE
+    val balances: StateFlow<Map<String, WalletBalance>> = walletRepository.observeAllBalances()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyMap()
+        )
 
-    // Total portfolio value
-    private val _totalPortfolioValue = MutableStateFlow(BigDecimal.ZERO)
-    val totalPortfolioValue: StateFlow<BigDecimal> = _totalPortfolioValue.asStateFlow()
+    // Total portfolio value - REACTIVE
+    val totalPortfolioValue: StateFlow<BigDecimal> = balances.map { balancesMap ->
+        balancesMap.values.sumOf { balance ->
+            balance.bitcoinBalances.values.sumOf { BigDecimal(it.usdValue) } +
+                    balance.solanaBalances.values.sumOf { BigDecimal(it.usdValue) } +
+                    balance.evmBalances.sumOf { BigDecimal(it.usdValue) }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = BigDecimal.ZERO
+    )
 
     // Loading state for background sync/refresh
     private val _isRefreshing = MutableStateFlow(false)
@@ -101,38 +117,8 @@ class WalletDashboardViewModel @Inject constructor(
                 }
                 .collectLatest { walletsList ->
                     _uiState.value = Result.Success(walletsList)
-                    if (walletsList.isNotEmpty()) {
-                        loadBalances(walletsList)
-                    }
                 }
         }
-    }
-
-    private fun loadBalances(wallets: List<Wallet>) {
-        viewModelScope.launch {
-            val balancesMap = wallets.mapNotNull { wallet ->
-                runCatching { // TODO: Move catching to repo safeApicall
-                    walletRepository.getWalletBalance(wallet.id)
-                }.getOrNull()?.let { balance ->
-                    wallet.id to balance
-                }
-            }.toMap()
-
-            _balances.value = balancesMap
-            calculateTotalPortfolio(wallets)
-        }
-    }
-
-    private fun calculateTotalPortfolio(wallets: List<Wallet>) {
-        val total = wallets.sumOf { wallet ->
-            _balances.value[wallet.id]?.let { balance ->
-                balance.bitcoinBalances.values.sumOf { BigDecimal(it.usdValue) } +
-                        balance.solanaBalances.values.sumOf { BigDecimal(it.usdValue) } +
-                        balance.evmBalances.sumOf { BigDecimal(it.usdValue) }
-            } ?: BigDecimal.ZERO
-        }
-
-        _totalPortfolioValue.value = total
     }
 
     fun deleteWallet(walletId: String) {
@@ -227,8 +213,6 @@ class WalletDashboardViewModel @Inject constructor(
                     val newError = "Partial sync failure:\n$errorString"
                     _operationError.update { if (existingError != null) "$existingError\n\n$newError" else newError }
                 }
-
-                loadBalances(currentWallets)
             }
 
             _isRefreshing.update { false }

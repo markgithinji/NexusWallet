@@ -10,6 +10,8 @@ import com.example.nexuswallet.feature.core.domain.model.Transaction
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
+import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
+import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
@@ -110,10 +112,8 @@ class WalletDetailViewModel @Inject constructor(
                 // Update wallet immediately
                 _uiState.update { it.copy(wallet = loadedWallet) }
 
-                // STEP 2: Load cached balance in parallel
-                launch {
-                    loadCachedBalance(walletId)
-                }
+                // STEP 2: Observe balance reactively
+                observeWalletBalance(walletId)
 
                 // STEP 3: Load market percentages
                 launch {
@@ -138,29 +138,29 @@ class WalletDetailViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadCachedBalance(walletId: String) {
+    private fun observeWalletBalance(walletId: String) {
         _uiState.update { it.copy(isLoadingBalance = true) }
 
-        runCatching {
-            walletRepository.getWalletBalance(walletId)
-        }.onSuccess { loadedBalance ->
-            _uiState.update {
-                it.copy(
-                    balance = loadedBalance,
-                    isLoading = false,
-                    isLoadingBalance = false,
-                    lastBalanceSyncTime = System.currentTimeMillis()
-                )
-            }
-            updateAssets()
-        }.onFailure {
-            _uiState.update {
-                it.copy(
-                    balanceError = "Failed to load balance",
-                    isLoading = false,
-                    isLoadingBalance = false
-                )
-            }
+        viewModelScope.launch {
+            walletRepository.observeWalletBalance(walletId)
+                .catch { e ->
+                    _uiState.update {
+                        it.copy(
+                            balanceError = "Failed to load balance: ${e.message}",
+                            isLoadingBalance = false
+                        )
+                    }
+                }
+                .collect { loadedBalance ->
+                    _uiState.update {
+                        it.copy(
+                            balance = loadedBalance,
+                            isLoadingBalance = false,
+                            lastBalanceSyncTime = System.currentTimeMillis()
+                        )
+                    }
+                    updateAssets()
+                }
         }
     }
 
@@ -193,7 +193,7 @@ class WalletDetailViewModel @Inject constructor(
             val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
 
             // 2. Sync balances with prices
-            val allErrors = mutableListOf<com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError>()
+            val allErrors = mutableListOf<ChainSyncError>()
 
             wallet.bitcoinCoins.forEach { coin ->
                 allErrors.addAll(syncBitcoinBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0))
@@ -208,19 +208,14 @@ class WalletDetailViewModel @Inject constructor(
             }
 
             if (allErrors.isEmpty()) {
-                val updatedBalance = walletRepository.getWalletBalance(walletId)
-                if (updatedBalance != null) {
-                    _uiState.update {
-                        it.copy(
-                            balance = updatedBalance,
-                            hasSyncError = false,
-                            syncErrorMessage = null,
-                            syncErrors = emptyList(),
-                            isRefreshingBalance = false,
-                            lastBalanceSyncTime = System.currentTimeMillis()
-                        )
-                    }
-                    updateAssets()
+                _uiState.update {
+                    it.copy(
+                        hasSyncError = false,
+                        syncErrorMessage = null,
+                        syncErrors = emptyList(),
+                        isRefreshingBalance = false,
+                        lastBalanceSyncTime = System.currentTimeMillis()
+                    )
                 }
             } else {
                 _uiState.update {
@@ -230,11 +225,6 @@ class WalletDetailViewModel @Inject constructor(
                         syncErrors = allErrors,
                         isRefreshingBalance = false
                     )
-                }
-                val currentBalance = walletRepository.getWalletBalance(walletId)
-                if (currentBalance != null && currentBalance != _uiState.value.balance) {
-                    _uiState.update { it.copy(balance = currentBalance) }
-                    updateAssets()
                 }
             }
         }

@@ -14,6 +14,8 @@ import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.domain.model.SendSolanaResult
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
+import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
+import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
@@ -29,8 +31,8 @@ import javax.inject.Singleton
 @Singleton
 class SendSolanaUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
-    private val solanaBlockchainRepository: com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository,
-    private val solanaTransactionRepository: com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository,
+    private val solanaBlockchainRepository: SolanaBlockchainRepository,
+    private val solanaTransactionRepository: SolanaTransactionRepository,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val keyStoreRepository: KeyStoreRepository,
     private val logger: Logger,

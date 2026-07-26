@@ -18,4 +18,10 @@ interface BitcoinBalanceDao {
 
     @Query("SELECT * FROM bitcoin_balances WHERE coinId IN (SELECT id FROM bitcoin_coins WHERE walletId = :walletId)")
     suspend fun getByWalletId(walletId: String): List<BitcoinBalanceEntity>
+
+    @Query("SELECT * FROM bitcoin_balances WHERE coinId IN (SELECT id FROM bitcoin_coins WHERE walletId = :walletId)")
+    fun observeByWalletId(walletId: String): Flow<List<BitcoinBalanceEntity>>
+
+    @Query("SELECT * FROM bitcoin_balances")
+    fun observeAll(): Flow<List<BitcoinBalanceEntity>>
 }

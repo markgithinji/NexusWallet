@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.data.remote.model.HeliusTransactionResponse
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
+import com.example.nexuswallet.feature.solana.domain.model.TransferInfo
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import org.sol4k.Keypair
 import java.math.BigDecimal
@@ -61,5 +62,5 @@ interface SolanaBlockchainRepository {
     fun parseTransfer(
         transaction: HeliusTransactionResponse,
         walletAddress: String
-    ): com.example.nexuswallet.feature.solana.domain.model.TransferInfo?
+    ): TransferInfo?
 }

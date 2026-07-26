@@ -29,6 +29,12 @@ class WalletRepositoryImpl @Inject constructor(
     override suspend fun getWalletBalance(walletId: String): WalletBalance? =
         balanceDataSource.loadWalletBalance(walletId)
 
+    override fun observeWalletBalance(walletId: String): Flow<WalletBalance?> =
+        balanceDataSource.observeWalletBalance(walletId)
+
+    override fun observeAllBalances(): Flow<Map<String, WalletBalance>> =
+        balanceDataSource.observeAllBalances()
+
     override suspend fun updateWalletName(walletId: String, newName: String) {
         walletDataSource.updateWalletName(walletId, newName)
     }

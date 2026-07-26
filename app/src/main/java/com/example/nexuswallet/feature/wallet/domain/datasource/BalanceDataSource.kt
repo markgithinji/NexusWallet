@@ -6,6 +6,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
+import kotlinx.coroutines.flow.Flow
 
 interface BalanceDataSource {
     suspend fun saveWalletBalance(balance: WalletBalance)
@@ -13,4 +14,6 @@ interface BalanceDataSource {
     suspend fun saveSolanaBalance(walletId: String, network: SolanaNetwork, balance: SolanaBalance)
     suspend fun saveEVMBalances(walletId: String, balances: List<EVMBalance>)
     suspend fun loadWalletBalance(walletId: String): WalletBalance?
+    fun observeWalletBalance(walletId: String): Flow<WalletBalance?>
+    fun observeAllBalances(): Flow<Map<String, WalletBalance>>
 }

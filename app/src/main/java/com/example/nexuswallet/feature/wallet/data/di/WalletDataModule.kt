@@ -105,6 +105,7 @@ object WalletDataModule {
     @Provides
     @Singleton
     fun provideBalanceDataSource(
+        walletDao: WalletDao,
         bitcoinCoinDao: BitcoinCoinDao,
         solanaCoinDao: SolanaCoinDao,
         bitcoinBalanceDao: BitcoinBalanceDao,
@@ -112,6 +113,7 @@ object WalletDataModule {
         evmBalanceDao: EVMBalanceDao
     ): BalanceDataSource {
         return BalanceDataSourceImpl(
+            walletDao = walletDao,
             bitcoinCoinDao = bitcoinCoinDao,
             solanaCoinDao = solanaCoinDao,
             bitcoinBalanceDao = bitcoinBalanceDao,

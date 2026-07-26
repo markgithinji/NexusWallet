@@ -8,6 +8,7 @@ import androidx.room.Update
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.data.local.entity.EVMBalanceEntity
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface EVMBalanceDao {
@@ -19,6 +20,12 @@ interface EVMBalanceDao {
 
     @Query("SELECT * FROM evm_balances WHERE walletId = :walletId")
     suspend fun getByWalletId(walletId: String): List<EVMBalanceEntity>
+
+    @Query("SELECT * FROM evm_balances WHERE walletId = :walletId")
+    fun observeByWalletId(walletId: String): Flow<List<EVMBalanceEntity>>
+
+    @Query("SELECT * FROM evm_balances")
+    fun observeAll(): Flow<List<EVMBalanceEntity>>
 
     @Query("SELECT * FROM evm_balances WHERE walletId = :walletId AND evmTokenType = :evmTokenType AND network = :network")
     suspend fun getBalance(
