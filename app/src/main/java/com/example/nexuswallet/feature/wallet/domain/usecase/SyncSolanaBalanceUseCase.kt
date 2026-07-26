@@ -25,8 +25,9 @@ class SyncSolanaBalanceUseCase @Inject constructor(
     suspend operator fun invoke(
         walletId: String,
         coin: SolanaCoin,
-        price: Double
-    ): List<ChainSyncError> = withContext(ioDispatcher) {
+        price: Double,
+        saveToCache: Boolean = true
+    ): Pair<SolanaBalance?, List<ChainSyncError>> = withContext(ioDispatcher) {
         val solBalanceResult = solanaBlockchainRepository.getBalance(
             address = coin.address,
             network = coin.network
@@ -46,18 +47,21 @@ class SyncSolanaBalanceUseCase @Inject constructor(
                     usdValue = usdValue
                 )
 
-                balanceDataSource.saveSolanaBalance(walletId, coin.network, solanaBalanceDomain)
+                if (saveToCache) {
+                    balanceDataSource.saveSolanaBalance(walletId, coin.network, solanaBalanceDomain)
+                }
                 logger.d(tag, "Solana ${coin.network.name} balance updated: $solBalance SOL")
-                emptyList()
+                Pair(solanaBalanceDomain, emptyList())
             }
 
             is Result.Error -> {
                 logger.e(tag, "Failed to sync Solana: ${solBalanceResult.message}")
-                listOf(ChainSyncError(coin.network, solBalanceResult.message, coin.symbol))
+                Pair(null, listOf(ChainSyncError(coin.network, solBalanceResult.message, coin.symbol)))
             }
 
-            else -> listOf(
-                ChainSyncError(coin.network, "Unknown error syncing Solana", coin.symbol)
+            else -> Pair(
+                null,
+                listOf(ChainSyncError(coin.network, "Unknown error syncing Solana", coin.symbol))
             )
         }
     }

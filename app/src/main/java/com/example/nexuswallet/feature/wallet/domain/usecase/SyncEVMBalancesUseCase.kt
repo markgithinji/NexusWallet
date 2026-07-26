@@ -25,8 +25,9 @@ class SyncEVMBalancesUseCase @Inject constructor(
     suspend operator fun invoke(
         walletId: String,
         tokens: List<EVMToken>,
-        prices: Map<String, Double>
-    ): List<ChainSyncError> = withContext(ioDispatcher) {
+        prices: Map<String, Double>,
+        saveToCache: Boolean = true
+    ): Pair<List<EVMBalance>, List<ChainSyncError>> = withContext(ioDispatcher) {
         val evmBalances = mutableListOf<EVMBalance>()
         val chainErrors = mutableListOf<ChainSyncError>()
 
@@ -85,11 +86,11 @@ class SyncEVMBalancesUseCase @Inject constructor(
         }
 
         // Save all EVM balances that succeeded
-        if (evmBalances.isNotEmpty()) {
+        if (saveToCache && evmBalances.isNotEmpty()) {
             balanceDataSource.saveEVMBalances(walletId, evmBalances)
             logger.d(tag, "Saved ${evmBalances.size} EVM balances for wallet $walletId")
         }
 
-        chainErrors
+        Pair(evmBalances, chainErrors)
     }
 }

@@ -25,8 +25,9 @@ class SyncBitcoinBalanceUseCase @Inject constructor(
     suspend operator fun invoke(
         walletId: String,
         coin: BitcoinCoin,
-        price: Double
-    ): List<ChainSyncError> = withContext(ioDispatcher) {
+        price: Double,
+        saveToCache: Boolean = true
+    ): Pair<BitcoinBalance?, List<ChainSyncError>> = withContext(ioDispatcher) {
         val balanceResult = bitcoinBlockchainRepository.getBalance(
             address = coin.address,
             network = coin.network
@@ -46,18 +47,21 @@ class SyncBitcoinBalanceUseCase @Inject constructor(
                     usdValue = usdValue
                 )
 
-                balanceDataSource.saveBitcoinBalance(walletId, coin.network, btcBalanceDomain)
+                if (saveToCache) {
+                    balanceDataSource.saveBitcoinBalance(walletId, coin.network, btcBalanceDomain)
+                }
                 logger.d(tag, "Bitcoin ${coin.network.name} balance updated: $btcBalance BTC")
-                emptyList()
+                Pair(btcBalanceDomain, emptyList())
             }
 
             is Result.Error -> {
                 logger.e(tag, "Failed to sync Bitcoin: ${balanceResult.message}")
-                listOf(ChainSyncError(coin.network, balanceResult.message, coin.symbol))
+                Pair(null, listOf(ChainSyncError(coin.network, balanceResult.message, coin.symbol)))
             }
 
-            else -> listOf(
-                ChainSyncError(coin.network, "Unknown error syncing Bitcoin", coin.symbol)
+            else -> Pair(
+                null,
+                listOf(ChainSyncError(coin.network, "Unknown error syncing Bitcoin", coin.symbol))
             )
         }
     }

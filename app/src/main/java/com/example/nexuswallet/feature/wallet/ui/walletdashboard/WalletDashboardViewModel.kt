@@ -184,22 +184,41 @@ class WalletDashboardViewModel @Inject constructor(
                 }
 
                 currentWallets.forEach { wallet ->
+                    val btcBalances = mutableMapOf<com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork, com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance>()
+                    val solBalances = mutableMapOf<com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork, com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance>()
+                    val evmList = mutableListOf<com.example.nexuswallet.feature.wallet.domain.model.EVMBalance>()
+
                     // Sync Bitcoin
                     wallet.bitcoinCoins.forEach { coin ->
-                        val errors = syncBitcoinBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0)
+                        val (balance, errors) = syncBitcoinBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
+                        balance?.let { btcBalances[coin.network] = it }
                         allErrors.addAll(errors)
                     }
 
                     // Sync Solana
                     wallet.solanaCoins.forEach { coin ->
-                        val errors = syncSolanaBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0)
+                        val (balance, errors) = syncSolanaBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
+                        balance?.let { solBalances[coin.network] = it }
                         allErrors.addAll(errors)
                     }
 
                     // Sync EVM
                     if (wallet.evmTokens.isNotEmpty()) {
-                        val errors = syncEVMBalancesUseCase(wallet.id, wallet.evmTokens, prices)
+                        val (balances, errors) = syncEVMBalancesUseCase(wallet.id, wallet.evmTokens, prices, saveToCache = false)
+                        evmList.addAll(balances)
                         allErrors.addAll(errors)
+                    }
+
+                    // ATOMIC UPDATE: Save the full wallet balance at once
+                    if (btcBalances.isNotEmpty() || solBalances.isNotEmpty() || evmList.isNotEmpty()) {
+                        val newBalance = WalletBalance(
+                            walletId = wallet.id,
+                            lastUpdated = System.currentTimeMillis(),
+                            bitcoinBalances = btcBalances,
+                            solanaBalances = solBalances,
+                            evmBalances = evmList
+                        )
+                        walletRepository.saveWalletBalance(newBalance)
                     }
                 }
 
