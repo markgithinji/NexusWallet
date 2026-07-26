@@ -36,6 +36,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -123,17 +124,34 @@ fun CoinDetailScreen(
     val (coinColor, iconRes) = getCoinDetailConfig(currentCoin)
     val displayName = currentCoin.name
 
+    val isAnyLoading = state.isLoading || state.isRefreshing
+
     Scaffold(
         topBar = {
-            CoinDetailTopBar(
-                iconRes = iconRes,
-                displayName = displayName,
-                isLoading = state.isLoading,
-                onNavigateUp = onNavigateUp,
-                onRefresh = {
-                    viewModel.refresh()
+            Column {
+                CoinDetailTopBar(
+                    iconRes = iconRes,
+                    displayName = displayName,
+                    isLoading = isAnyLoading,
+                    onNavigateUp = onNavigateUp,
+                    onRefresh = {
+                        viewModel.refresh()
+                    }
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp)
+                ) {
+                    if (isAnyLoading && state.address.isNotEmpty()) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = coinColor,
+                            trackColor = Color.Transparent
+                        )
+                    }
                 }
-            )
+            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
@@ -207,19 +225,11 @@ private fun CoinDetailTopBar(
                 onClick = onRefresh,
                 enabled = !isLoading
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                } else {
-                    Icon(
-                        Icons.Outlined.Refresh,
-                        stringResource(R.string.refresh),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Icon(
+                    Icons.Outlined.Refresh,
+                    stringResource(R.string.refresh),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
