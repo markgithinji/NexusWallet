@@ -1,10 +1,12 @@
 package com.example.nexuswallet.feature.authentication.ui
 
+import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.authentication.domain.model.AuthType
 import com.example.nexuswallet.feature.authentication.domain.usecase.RecordAuthenticationUseCase
 import com.example.nexuswallet.feature.authentication.domain.usecase.VerifyPinUseCase
+import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.settings.domain.usecase.IsBiometricEnabledUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.IsPinSetUseCase
@@ -28,6 +30,9 @@ class AuthenticationViewModel @Inject constructor(
 
     private val _authenticationResult = MutableStateFlow<Result<AuthType>?>(null)
     val authenticationResult: StateFlow<Result<AuthType>?> = _authenticationResult.asStateFlow()
+
+    private val _cryptoObject = MutableStateFlow<BiometricPrompt.CryptoObject?>(null)
+    val cryptoObject: StateFlow<BiometricPrompt.CryptoObject?> = _cryptoObject.asStateFlow()
 
     private val _showPinDialog = MutableStateFlow(false)
     val showPinDialog: StateFlow<Boolean> = _showPinDialog.asStateFlow()
@@ -88,18 +93,27 @@ class AuthenticationViewModel @Inject constructor(
                     }
                 }
                 is Result.Error -> {
-                    _errorMessage.value = verifyResult.message
+                    val authException = verifyResult.throwable as? HardwareAuthRequiredException
+                    if (authException != null) {
+                        _cryptoObject.value = authException.cryptoObject
+                    } else {
+                        _errorMessage.value = verifyResult.message
+                    }
                 }
                 Result.Loading -> {}
             }
         }
     }
 
-    fun onBiometricSuccess() {
+    fun onBiometricSuccess(result: BiometricPrompt.AuthenticationResult) {
         viewModelScope.launch {
             recordAuthenticationUseCase()
             _authenticationResult.value = Result.Success(AuthType.BIOMETRIC)
         }
+    }
+
+    fun setCryptoObject(cryptoObject: BiometricPrompt.CryptoObject?) {
+        _cryptoObject.value = cryptoObject
     }
 
     fun setErrorMessage(message: String) {

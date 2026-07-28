@@ -1,12 +1,15 @@
 package com.example.nexuswallet.feature.core.data.repository
 
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.example.nexuswallet.feature.authentication.data.util.safeKeyStoreCall
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
-import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.security.KeyStore
@@ -24,6 +27,7 @@ import javax.inject.Singleton
 @Singleton
 class KeyStoreRepositoryImpl @Inject constructor(
     private val keyStore: KeyStore,
+    @ApplicationContext private val context: Context,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : KeyStoreRepository {
 
@@ -51,24 +55,6 @@ class KeyStoreRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun encryptString(plaintext: String): Pair<String, String> =
-        withContext(ioDispatcher) {
-            safeKeyStoreCall {
-                val (encryptedBytes, iv) = encrypt(plaintext.toByteArray(Charsets.UTF_8))
-                Pair(encryptedBytes.toHex(), iv.toHex())
-            }
-        }
-
-    override suspend fun decryptString(encryptedHex: String, ivHex: String): String =
-        withContext(ioDispatcher) {
-            safeKeyStoreCall {
-                val encryptedBytes = encryptedHex.decodeHex()
-                val iv = ivHex.decodeHex()
-                val decryptedBytes = decrypt(encryptedBytes, iv)
-                String(decryptedBytes, Charsets.UTF_8)
-            }
-        }
-
     override fun isKeyStoreAvailable(): Boolean {
         return try {
             keyStore.containsAlias(KEY_ALIAS) &&
@@ -86,6 +72,17 @@ class KeyStoreRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getDecryptionCipher(iv: ByteArray): Cipher {
+        val cipher = Cipher.getInstance(TRANSFORMATION)
+        val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
+        cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
+        return cipher
+    }
+
+    override fun decryptWithCipher(cipher: Cipher, encryptedData: ByteArray): ByteArray {
+        return cipher.doFinal(encryptedData)
+    }
+
     /**
      * Get or create the secret key from Android KeyStore
      */
@@ -100,17 +97,33 @@ class KeyStoreRepositoryImpl @Inject constructor(
             ANDROID_KEYSTORE
         )
 
-        val keyGenParameterSpec = KeyGenParameterSpec.Builder(
+        val builder = KeyGenParameterSpec.Builder(
             KEY_ALIAS,
             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
         )
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(KEY_SIZE)
-            .setUserAuthenticationRequired(false)
-            .build()
+            .setUserAuthenticationRequired(true)
+            .setInvalidatedByBiometricEnrollment(true)
 
-        keyGenerator.init(keyGenParameterSpec)
+        // Force biometric prompt for every use
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            builder.setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
+        } else {
+            @Suppress("DEPRECATION")
+            builder.setUserAuthenticationValidityDurationSeconds(-1)
+        }
+
+        // Use StrongBox if available (Android 9+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val hasStrongBox = context.packageManager.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE)
+            if (hasStrongBox) {
+                builder.setIsStrongBoxBacked(true)
+            }
+        }
+
+        keyGenerator.init(builder.build())
         return keyGenerator.generateKey()
     }
 

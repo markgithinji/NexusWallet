@@ -159,7 +159,7 @@ class CreateWalletUseCase @Inject constructor(
         )
 
         // Secure mnemonic
-        val mnemonicBytes = mnemonic.joinToString(" ").toByteArray(Charsets.UTF_8)
+        val mnemonicBytes = mnemonicToByteArray(mnemonic)
         val (encryptedMnemonic, mnemonicIv) = keyStoreRepository.encrypt(mnemonicBytes)
         mnemonicBytes.fill(0) // Clear plaintext mnemonic
 
@@ -176,15 +176,17 @@ class CreateWalletUseCase @Inject constructor(
                 BitcoinNetwork.Mainnet -> KEY_BITCOIN_MAINNET
                 BitcoinNetwork.Testnet -> KEY_BITCOIN_TESTNET
             }
-            val privateKeyWIF = deriveBitcoinPrivateKey(mnemonic, coin.network)
+            val privateKeyBytes = deriveBitcoinPrivateKey(mnemonic, coin.network)
                 ?: return@withContext Result.Error("Failed to derive Bitcoin private key for ${coin.network.name}")
 
-            val (encryptedKeyHex, keyIvHex) = keyStoreRepository.encryptString(privateKeyWIF)
+            val (encryptedKey, keyIv) = keyStoreRepository.encrypt(privateKeyBytes)
+            privateKeyBytes.fill(0) // Clear private key
+
             securityPreferencesRepository.storeEncryptedPrivateKey(
                 walletId = walletId,
                 keyType = keyType,
-                encryptedKey = encryptedKeyHex,
-                iv = keyIvHex.decodeHex()
+                encryptedKey = encryptedKey.toHex(),
+                iv = keyIv
             )
             logger.d(tag, "Bitcoin private key stored for ${coin.network.name}")
         }
@@ -354,7 +356,7 @@ class CreateWalletUseCase @Inject constructor(
         }
     }
 
-    private fun deriveBitcoinPrivateKey(mnemonic: List<String>, network: BitcoinNetwork): String? {
+    private fun deriveBitcoinPrivateKey(mnemonic: List<String>, network: BitcoinNetwork): ByteArray? {
         val originalContext = try {
             Context.get()
         } catch (e: IllegalStateException) {
@@ -373,7 +375,7 @@ class CreateWalletUseCase @Inject constructor(
             val seed = DeterministicSeed(mnemonic, null, "", 0L)
             val wallet = org.bitcoinj.wallet.Wallet.fromSeed(params, seed)
             val key = wallet.currentReceiveKey()
-            key.getPrivateKeyEncoded(params).toString()
+            key.privKeyBytes
         } catch (e: Exception) {
             logger.e(tag, "Failed to derive Bitcoin private key for ${network.name}", e)
             null
@@ -455,6 +457,28 @@ class CreateWalletUseCase @Inject constructor(
             logger.e(tag, "Failed to derive Solana private key", e)
             null
         }
+    }
+
+    private fun mnemonicToByteArray(mnemonic: List<String>): ByteArray {
+        var totalLength = 0
+        mnemonic.forEachIndexed { index, word ->
+            totalLength += word.length
+            if (index < mnemonic.size - 1) totalLength += 1
+        }
+        val bytes = ByteArray(totalLength)
+        var offset = 0
+        mnemonic.forEachIndexed { index, word ->
+            val wordBytes = word.toByteArray(Charsets.UTF_8)
+            System.arraycopy(wordBytes, 0, bytes, offset, wordBytes.size)
+            offset += wordBytes.size
+            if (index < mnemonic.size - 1) {
+                bytes[offset] = ' '.toByte()
+                offset += 1
+            }
+            // Note: wordBytes is short-lived and will be GC'd, 
+            // but we can't clear word itself as it's a String
+        }
+        return bytes
     }
 
     companion object {

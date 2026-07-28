@@ -18,6 +18,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import org.bitcoinj.core.ECKey
 import org.bitcoinj.core.DumpedPrivateKey
 import org.bitcoinj.core.LegacyAddress
 import org.bitcoinj.core.Transaction as BitcoinJTransaction
@@ -88,12 +89,17 @@ class SendBitcoinUseCase @Inject constructor(
         )
 
         val ecKey = try {
-            val privateKeyWIF = String(privateKeyBytes, Charsets.UTF_8)
-            val networkParams = when (bitcoinCoin.network) {
-                BitcoinNetwork.Mainnet -> MainNetParams.get()
-                BitcoinNetwork.Testnet -> TestNet3Params.get()
+            if (privateKeyBytes.size == 32) {
+                ECKey.fromPrivate(privateKeyBytes)
+            } else {
+                // Backward compatibility for WIF strings
+                val privateKeyWIF = String(privateKeyBytes, Charsets.UTF_8)
+                val networkParams = when (bitcoinCoin.network) {
+                    BitcoinNetwork.Mainnet -> MainNetParams.get()
+                    BitcoinNetwork.Testnet -> TestNet3Params.get()
+                }
+                DumpedPrivateKey.fromBase58(networkParams, privateKeyWIF).key
             }
-            DumpedPrivateKey.fromBase58(networkParams, privateKeyWIF).key
         } finally {
             privateKeyBytes.fill(0)
         }

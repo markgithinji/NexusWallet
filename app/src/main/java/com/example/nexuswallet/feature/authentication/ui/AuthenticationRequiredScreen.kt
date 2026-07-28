@@ -80,6 +80,7 @@ fun AuthenticationRequiredScreen(
     val context = LocalContext.current
 
     val authenticationResult by viewModel.authenticationResult.collectAsStateWithLifecycle()
+    val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
     val showPinDialog by viewModel.showPinDialog.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
     val isPinAvailable by viewModel.isPinAvailable.collectAsStateWithLifecycle()
@@ -94,7 +95,7 @@ fun AuthenticationRequiredScreen(
             executor,
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    viewModel.onBiometricSuccess()
+                    viewModel.onBiometricSuccess(result)
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -154,7 +155,11 @@ fun AuthenticationRequiredScreen(
             biometricHardwareAvailable = canAuthenticate,
             onBiometricClick = {
                 if (biometricPrompt != null) {
-                    biometricPrompt.authenticate(promptInfo)
+                    if (cryptoObject != null) {
+                        biometricPrompt.authenticate(promptInfo, cryptoObject!!)
+                    } else {
+                        biometricPrompt.authenticate(promptInfo)
+                    }
                 } else {
                     viewModel.setErrorMessage("Biometric authentication not available")
                 }

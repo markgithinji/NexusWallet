@@ -26,10 +26,12 @@ object AuthenticationDataModule {
     @Singleton
     fun provideKeyStoreRepository(
         keyStore: KeyStore,
+        @ApplicationContext context: Context,
         @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): KeyStoreRepository {
         return KeyStoreRepositoryImpl(
             keyStore = keyStore,
+            context = context,
             ioDispatcher = ioDispatcher
         )
     }
