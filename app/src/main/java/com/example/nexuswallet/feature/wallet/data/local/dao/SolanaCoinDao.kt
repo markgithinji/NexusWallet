@@ -29,8 +29,8 @@ interface SolanaCoinDao {
     @Query("DELETE FROM solana_coins WHERE walletId = :walletId")
     suspend fun deleteByWalletId(walletId: String)
 
-    @Query("SELECT * FROM solana_coins WHERE address = :address AND network = :network")
-    suspend fun getByAddressAndNetwork(address: String, network: SolanaNetwork): SolanaCoinEntity?
+    @Query("SELECT * FROM solana_coins WHERE address = :address AND network = :network AND walletId = :walletId")
+    suspend fun getByAddressAndNetwork(address: String, network: SolanaNetwork, walletId: String): SolanaCoinEntity?
 
     @Query("SELECT * FROM solana_coins WHERE address = :address")
     suspend fun getByAddress(address: String): SolanaCoinEntity?

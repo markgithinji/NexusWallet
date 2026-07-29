@@ -56,7 +56,10 @@ class BalanceDataSourceImpl @Inject constructor(
         network: BitcoinNetwork,
         balance: BitcoinBalance
     ) {
-        val bitcoinCoin = bitcoinCoinDao.getByAddressAndNetwork(balance.address, network)
+        // Verify wallet still exists to avoid foreign key constraint violations during race conditions
+        if (walletDao.get(walletId) == null) return
+
+        val bitcoinCoin = bitcoinCoinDao.getByAddressAndNetwork(balance.address, network, walletId)
         if (bitcoinCoin != null) {
             bitcoinBalanceDao.insert(balance.toEntity(bitcoinCoin.id))
         }
@@ -67,13 +70,19 @@ class BalanceDataSourceImpl @Inject constructor(
         network: SolanaNetwork,
         balance: SolanaBalance
     ) {
-        val solanaCoin = solanaCoinDao.getByAddressAndNetwork(balance.address, network)
+        // Verify wallet still exists to avoid foreign key constraint violations during race conditions
+        if (walletDao.get(walletId) == null) return
+
+        val solanaCoin = solanaCoinDao.getByAddressAndNetwork(balance.address, network, walletId)
         if (solanaCoin != null) {
             solanaBalanceDao.insert(balance.toEntity(solanaCoin.id))
         }
     }
 
     override suspend fun saveEVMBalances(walletId: String, balances: List<EVMBalance>) {
+        // Verify wallet still exists to avoid foreign key constraint violations during race conditions
+        if (walletDao.get(walletId) == null) return
+
         balances.forEach { evmBalance ->
             evmBalanceDao.insert(evmBalance.toEntity(walletId))
         }

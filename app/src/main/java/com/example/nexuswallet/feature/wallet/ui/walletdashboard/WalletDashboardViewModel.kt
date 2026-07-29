@@ -119,10 +119,9 @@ class WalletDashboardViewModel @Inject constructor(
                     val previousState = _uiState.value
                     _uiState.value = Result.Success(walletsList)
 
-                    // Automatically trigger refresh if this is the first time we get wallets
-                    // or if a new wallet was added
-                    val wasEmpty = (previousState as? Result.Success)?.data?.isEmpty() ?: true
-                    if (walletsList.isNotEmpty() && wasEmpty) {
+                    // Automatically trigger refresh if a new wallet was added
+                    val previousWallets = (previousState as? Result.Success)?.data ?: emptyList()
+                    if (walletsList.isNotEmpty() && walletsList.size > previousWallets.size) {
                         refresh(force = true)
                     }
                 }

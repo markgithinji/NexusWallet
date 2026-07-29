@@ -29,8 +29,8 @@ interface BitcoinCoinDao {
     @Query("DELETE FROM bitcoin_coins WHERE walletId = :walletId")
     suspend fun deleteByWalletId(walletId: String)
 
-    @Query("SELECT * FROM bitcoin_coins WHERE address = :address AND network = :network")
-    suspend fun getByAddressAndNetwork(address: String, network: BitcoinNetwork): BitcoinCoinEntity?
+    @Query("SELECT * FROM bitcoin_coins WHERE address = :address AND network = :network AND walletId = :walletId")
+    suspend fun getByAddressAndNetwork(address: String, network: BitcoinNetwork, walletId: String): BitcoinCoinEntity?
 
     @Query("SELECT * FROM bitcoin_coins WHERE address = :address")
     suspend fun getByAddress(address: String): BitcoinCoinEntity?
