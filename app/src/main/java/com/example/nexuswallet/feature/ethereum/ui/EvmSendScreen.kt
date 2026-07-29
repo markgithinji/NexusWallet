@@ -1,5 +1,11 @@
 package com.example.nexuswallet.feature.ethereum.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -174,7 +180,8 @@ fun EthereumSendScreen(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 80.dp)
-                    .padding(vertical = 16.dp),
+                    .padding(vertical = 16.dp)
+                    .animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Network Selector Card
@@ -184,7 +191,11 @@ fun EthereumSendScreen(
                 )
 
                 // Token Selector (if multiple tokens available)
-                if (state.availableTokens.size > 1) {
+                AnimatedVisibility(
+                    visible = state.availableTokens.size > 1,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
                     TokenSelectorCard(
                         selectedToken = selectedToken,
                         onClick = { showTokenSelector = true }
@@ -208,7 +219,11 @@ fun EthereumSendScreen(
                 )
 
                 // Show ETH balance for gas if this is a token
-                if (selectedToken !is NativeETH) {
+                AnimatedVisibility(
+                    visible = selectedToken !is NativeETH,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
                     Text(
                         text = "ETH for gas: ${
                             state.ethBalance.setScale(4, RoundingMode.HALF_UP).stripTrailingZeros()

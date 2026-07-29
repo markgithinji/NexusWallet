@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.solana.ui
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -119,7 +120,8 @@ fun SolanaSendScreen(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 80.dp)
-                    .padding(vertical = 16.dp),
+                    .padding(vertical = 16.dp)
+                    .animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Network Selector Card
