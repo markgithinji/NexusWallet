@@ -49,14 +49,15 @@ fun WelcomeScreen(
             .background(gradient)
             .systemBarsPadding()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(horizontal = 24.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(modifier = Modifier.weight(0.5f))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // Hero Section: Icon & Brand
         Box(
             modifier = Modifier
+                .padding(top = 16.dp)
                 .size(100.dp)
                 .clip(RoundedCornerShape(28.dp))
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
@@ -70,7 +71,7 @@ fun WelcomeScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = stringResource(R.string.app_name),
@@ -89,45 +90,56 @@ fun WelcomeScreen(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(64.dp))
 
-        // Features Grid (2x2)
-        Column(
+        // Features Card Container
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                CompactFeatureItem(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Outlined.Security,
-                    text = stringResource(R.string.feature_bip39)
-                )
-                CompactFeatureItem(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Outlined.Fingerprint,
-                    text = stringResource(R.string.feature_biometric)
-                )
-            }
-            Row(modifier = Modifier.fillMaxWidth()) {
-                CompactFeatureItem(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Outlined.VpnKey,
-                    text = stringResource(R.string.feature_keystore)
-                )
-                CompactFeatureItem(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Outlined.AccountBalanceWallet,
-                    text = stringResource(R.string.feature_multichain)
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp, horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    CompactFeatureItem(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Outlined.Security,
+                        text = stringResource(R.string.feature_bip39)
+                    )
+                    CompactFeatureItem(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Outlined.Fingerprint,
+                        text = stringResource(R.string.feature_biometric)
+                    )
+                }
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    CompactFeatureItem(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Outlined.VpnKey,
+                        text = stringResource(R.string.feature_keystore)
+                    )
+                    CompactFeatureItem(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Outlined.AccountBalanceWallet,
+                        text = stringResource(R.string.feature_multichain)
+                    )
+                }
             }
         }
 
-        Spacer(modifier = Modifier.weight(1.2f))
+        Spacer(modifier = Modifier.height(64.dp))
 
         // Action Buttons
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Button(

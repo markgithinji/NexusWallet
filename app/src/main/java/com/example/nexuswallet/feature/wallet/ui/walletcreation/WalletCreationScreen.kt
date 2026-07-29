@@ -345,10 +345,17 @@ fun WalletCreationStepper(
                 .padding(horizontal = 16.dp, vertical = 4.dp)
                 .height(4.dp),
             color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            drawStopIndicator = {}
         )
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        HorizontalDivider(
+            modifier = Modifier.fillMaxWidth(),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+        )
 
         Box(
             modifier = Modifier
@@ -379,7 +386,7 @@ fun NetworkSelectionStep(
         // ============ BITCOIN SECTION ============
         Text(
             text = stringResource(R.string.bitcoin),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = bitcoinLight,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -418,7 +425,7 @@ fun NetworkSelectionStep(
         // ============ ETHEREUM SECTION ============
         Text(
             text = stringResource(R.string.ethereum),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = ethereumLight,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -457,7 +464,7 @@ fun NetworkSelectionStep(
         // ============ SOLANA SECTION ============
         Text(
             text = stringResource(R.string.solana),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = solanaLight,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -498,7 +505,7 @@ fun NetworkSelectionStep(
         if (selectedNetworks.any { it is EthereumNetwork }) {
             Text(
                 text = stringResource(R.string.tokens),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp)

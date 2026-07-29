@@ -94,7 +94,13 @@ fun ImportWalletScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.import_wallet_title)) },
+                title = { 
+                    Text(
+                        text = stringResource(R.string.import_wallet_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = {
                         if (currentStep == 0) onNavigateUp() else viewModel.previousStep()
