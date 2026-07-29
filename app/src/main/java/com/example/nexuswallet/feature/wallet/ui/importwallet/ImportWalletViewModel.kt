@@ -1,7 +1,9 @@
 package com.example.nexuswallet.feature.wallet.ui.importwallet
 
+import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
@@ -48,6 +50,9 @@ class ImportWalletViewModel @Inject constructor(
 
     private val _selectedTokens = MutableStateFlow<Map<EthereumNetwork, Set<EVMTokenType>>>(emptyMap())
     val selectedTokens: StateFlow<Map<EthereumNetwork, Set<EVMTokenType>>> = _selectedTokens.asStateFlow()
+
+    private val _authRequest = MutableStateFlow<Long?>(null)
+    val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
 
     fun updateWord(index: Int, word: String) {
         _mnemonicWords.update { current ->
@@ -130,12 +135,23 @@ class ImportWalletViewModel @Inject constructor(
                     _uiState.value = WalletCreationUiState.WalletCreated(result.data)
                 }
                 is Result.Error -> {
-                    _uiState.value = WalletCreationUiState.Error(result.message)
+                    val authException = result.throwable as? HardwareAuthRequiredException
+                    if (authException != null) {
+                        _authRequest.value = System.currentTimeMillis()
+                        _uiState.value = WalletCreationUiState.Idle
+                    } else {
+                        _uiState.value = WalletCreationUiState.Error(result.message)
+                    }
                 }
                 else -> {
                     _uiState.value = WalletCreationUiState.Error("Unexpected result")
                 }
             }
         }
+    }
+
+    fun completeImportAfterBiometric() {
+        _authRequest.value = null
+        importWallet()
     }
 }

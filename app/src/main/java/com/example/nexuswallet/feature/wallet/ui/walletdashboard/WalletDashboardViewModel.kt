@@ -116,7 +116,15 @@ class WalletDashboardViewModel @Inject constructor(
                     _uiState.value = Result.Error("Failed to load wallets: ${e.message}")
                 }
                 .collectLatest { walletsList ->
+                    val previousState = _uiState.value
                     _uiState.value = Result.Success(walletsList)
+
+                    // Automatically trigger refresh if this is the first time we get wallets
+                    // or if a new wallet was added
+                    val wasEmpty = (previousState as? Result.Success)?.data?.isEmpty() ?: true
+                    if (walletsList.isNotEmpty() && wasEmpty) {
+                        refresh(force = true)
+                    }
                 }
         }
     }
@@ -151,12 +159,14 @@ class WalletDashboardViewModel @Inject constructor(
         }
     }
 
-    fun refresh() {
+    fun refresh(force: Boolean = false) {
         val currentTime = System.currentTimeMillis()
-        if (currentTime - lastRefreshTime < refreshThreshold && _isRefreshing.value) return
-        if (currentTime - lastRefreshTime < refreshThreshold && _uiState.value !is Result.Error) {
-            // If we refreshed recently and have data, don't block or restart sync
-            return
+        if (!force) {
+            if (currentTime - lastRefreshTime < refreshThreshold && _isRefreshing.value) return
+            if (currentTime - lastRefreshTime < refreshThreshold && _uiState.value !is Result.Error) {
+                // If we refreshed recently and have data, don't block or restart sync
+                return
+            }
         }
 
         viewModelScope.launch {

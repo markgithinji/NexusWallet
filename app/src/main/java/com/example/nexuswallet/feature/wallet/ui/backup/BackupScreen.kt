@@ -1,5 +1,9 @@
 package com.example.nexuswallet.feature.wallet.ui.backup
 
+import androidx.activity.compose.LocalActivity
+import androidx.appcompat.app.AppCompatActivity
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,12 +33,15 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
@@ -48,9 +55,51 @@ fun BackupScreen(
 ) {
     val mnemonic by viewModel.mnemonic.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
+
+    val context = LocalContext.current
+    val activity = LocalActivity.current as? AppCompatActivity
+
+    val biometricPrompt = remember(activity) {
+        if (activity == null) return@remember null
+        val executor = ContextCompat.getMainExecutor(context)
+        BiometricPrompt(
+            activity,
+            executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    viewModel.onBiometricSuccess(walletId, result)
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    // Handle error if needed
+                }
+            }
+        )
+    }
+
+    val biometricTitle = stringResource(R.string.biometric_authentication)
+    val biometricSubtitle = stringResource(R.string.reveal_recovery_phrase_subtitle)
+    val biometricCancel = stringResource(R.string.cancel)
+
+    val promptInfo = remember(biometricTitle, biometricSubtitle, biometricCancel) {
+        BiometricPrompt.PromptInfo.Builder()
+            .setTitle(biometricTitle)
+            .setSubtitle(biometricSubtitle)
+            .setNegativeButtonText(biometricCancel)
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+            .build()
+    }
 
     LaunchedEffect(walletId) {
         viewModel.loadMnemonic(walletId)
+    }
+
+    LaunchedEffect(cryptoObject) {
+        cryptoObject?.let {
+            biometricPrompt?.authenticate(promptInfo, it)
+        }
     }
 
     Scaffold(
@@ -129,9 +178,18 @@ fun BackupScreen(
                     Text(stringResource(R.string.saved_safely_button))
                 }
             }
+        } else if (errorMessage != null) {
+            Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+                Text(
+                    text = errorMessage!!,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center
+                )
+            }
         } else {
+            // Initial state or auth pending
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(stringResource(R.string.failed_to_load_mnemonic), color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.authentication_required_to_view))
             }
         }
     }

@@ -1,5 +1,7 @@
 package com.example.nexuswallet.feature.core.data.repository
 
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -104,15 +106,25 @@ class KeyStoreRepositoryImpl @Inject constructor(
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(KEY_SIZE)
-            .setUserAuthenticationRequired(true)
-            .setInvalidatedByBiometricEnrollment(true)
 
-        // Force biometric prompt for every use
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            builder.setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
-        } else {
+        // Only require authentication if biometrics are enrolled
+        val biometricManager = BiometricManager.from(context)
+        val canAuthenticate = biometricManager.canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+
+        if (canAuthenticate) {
+            builder.setUserAuthenticationRequired(true)
+            builder.setInvalidatedByBiometricEnrollment(true)
+
+            // Use a short validity duration (10 seconds) instead of 0 (per-use).
+            // This allows batch operations like Wallet Creation to succeed with one touch,
+            // while still requiring biometrics for every spend session.
             @Suppress("DEPRECATION")
-            builder.setUserAuthenticationValidityDurationSeconds(-1)
+            builder.setUserAuthenticationValidityDurationSeconds(10)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                // For modern Android, we can specify BIOMETRIC_STRONG
+                builder.setUserAuthenticationParameters(10, KeyProperties.AUTH_BIOMETRIC_STRONG)
+            }
         }
 
         // Use StrongBox if available (Android 9+)
@@ -129,7 +141,7 @@ class KeyStoreRepositoryImpl @Inject constructor(
 
     companion object {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        private const val KEY_ALIAS = "nexus_wallet_master_key"
+        private const val KEY_ALIAS = "nexus_wallet_master_key_v2"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val KEY_SIZE = 256
         private const val GCM_TAG_LENGTH = 128

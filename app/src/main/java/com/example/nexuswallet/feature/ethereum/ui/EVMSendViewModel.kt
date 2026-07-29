@@ -1,7 +1,9 @@
 package com.example.nexuswallet.feature.ethereum.ui
 
+import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
@@ -32,6 +34,7 @@ import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.RoundingMode
+import javax.crypto.Cipher
 import javax.inject.Inject
 
 @HiltViewModel
@@ -49,6 +52,12 @@ class EVMSendViewModel @Inject constructor(
 
     private val _effect = MutableSharedFlow<EVMSendEffect>()
     val effect: SharedFlow<EVMSendEffect> = _effect.asSharedFlow()
+
+    private val _cryptoObject = MutableStateFlow<BiometricPrompt.CryptoObject?>(null)
+    val cryptoObject: StateFlow<BiometricPrompt.CryptoObject?> = _cryptoObject.asStateFlow()
+
+    private val _authRequest = MutableStateFlow<Long?>(null)
+    val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
 
     private var wallet: Wallet? = null
     private var evmTokensByNetwork: Map<EthereumNetwork, List<EVMToken>> = emptyMap()
@@ -425,7 +434,7 @@ class EVMSendViewModel @Inject constructor(
         return validationResult.isValid
     }
 
-    fun send(onSuccess: (String) -> Unit) {
+    fun send(cipher: Cipher? = null, onSuccess: (String) -> Unit) {
         viewModelScope.launch {
             val state = _uiState.value
             val token = state.selectedToken ?: currentCoin
@@ -445,7 +454,8 @@ class EVMSendViewModel @Inject constructor(
                 amount = state.amountValue,
                 feeLevel = state.feeLevel,
                 token = token,
-                note = state.note.takeIf { it.isNotEmpty() }
+                note = state.note.takeIf { it.isNotEmpty() },
+                cipher = cipher
             )
 
             when (result) {
@@ -478,18 +488,32 @@ class EVMSendViewModel @Inject constructor(
                 }
 
                 is Result.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = result.message
-                        )
+                    val authException = result.throwable as? HardwareAuthRequiredException
+                    if (authException != null) {
+                        _cryptoObject.value = authException.cryptoObject
+                        _authRequest.value = System.currentTimeMillis()
+                        _uiState.update { it.copy(isLoading = false) }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = result.message
+                            )
+                        }
+                        _effect.emit(EVMSendEffect.ShowError(result.message))
                     }
-                    _effect.emit(EVMSendEffect.ShowError(result.message))
                 }
 
                 Result.Loading -> {}
             }
         }
+    }
+
+    fun completeSendAfterBiometric(result: BiometricPrompt.AuthenticationResult? = null, onSuccess: (String) -> Unit) {
+        val cipher = result?.cryptoObject?.cipher
+        _cryptoObject.value = null
+        _authRequest.value = null
+        send(cipher = cipher, onSuccess = onSuccess)
     }
 
     fun clearError() = _uiState.update { it.copy(error = null) }

@@ -336,6 +336,8 @@
     <string name="your_recovery_phrase">Your 12-Word Recovery Phrase</string>
     <string name="saved_safely_button">I\'ve Saved It Safely</string>
     <string name="failed_to_load_mnemonic">Failed to load recovery phrase</string>
+    <string name="reveal_recovery_phrase_subtitle">Reveal your recovery phrase</string>
+    <string name="authentication_required_to_view">Authentication required to view recovery phrase</string>
 
     <!-- Import Wallet Screen -->
     <string name="select_networks_to_import">Select Networks to Import</string>
@@ -345,6 +347,7 @@
     <string name="review_transaction">Review Transaction</string>
     <string name="confirm_and_send">Confirm &amp; Send</string>
     <string name="transaction_sent">Transaction Sent!</string>
+    <string name="secure_your_wallet">Confirm biometrics to secure your wallet</string>
     <string name="transaction_broadcast">Your transaction has been broadcast</string>
     <string name="hash_copied">Hash copied</string>
     <string name="address_copied_small">Address copied</string>

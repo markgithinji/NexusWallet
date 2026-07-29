@@ -8,6 +8,7 @@ import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequire
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.logging.Logger
+import javax.crypto.Cipher
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,32 +20,33 @@ class GetMnemonicUseCase @Inject constructor(
 ) {
     private val tag = "GetMnemonicUC"
 
-    suspend operator fun invoke(walletId: String): Result<List<String>> {
+    suspend operator fun invoke(walletId: String, cipher: Cipher? = null): Result<List<String>> {
         return try {
             val (encryptedMnemonicHex, iv) = securityPreferencesRepository.getEncryptedMnemonic(walletId) 
                 ?: return Result.Error("No encrypted mnemonic found for wallet: $walletId")
             
-            val decryptedBytes = try {
-                keyStoreRepository.decrypt(encryptedMnemonicHex.decodeHex(), iv)
-            } catch (e: Exception) {
-                // Check if it's an auth-required exception (sometimes wrapped)
-                val isAuthRequired = e is UserNotAuthenticatedException || e.cause is UserNotAuthenticatedException
-                
-                if (isAuthRequired) {
-                    val cipher = keyStoreRepository.getDecryptionCipher(iv)
-                    return Result.Error(
-                        message = "Authentication required",
-                        throwable = HardwareAuthRequiredException(BiometricPrompt.CryptoObject(cipher))
-                    )
+            val decryptedBytes = if (cipher != null) {
+                keyStoreRepository.decryptWithCipher(cipher, encryptedMnemonicHex.decodeHex())
+            } else {
+                try {
+                    keyStoreRepository.decrypt(encryptedMnemonicHex.decodeHex(), iv)
+                } catch (e: Exception) {
+                    val isAuthRequired = e is UserNotAuthenticatedException || e.cause is UserNotAuthenticatedException
+                    if (isAuthRequired) {
+                        val decryptionCipher = keyStoreRepository.getDecryptionCipher(iv)
+                        return Result.Error(
+                            message = "Authentication required",
+                            throwable = HardwareAuthRequiredException(BiometricPrompt.CryptoObject(decryptionCipher))
+                        )
+                    }
+                    throw e
                 }
-                throw e
             }
 
             try {
                 val mnemonicString = String(decryptedBytes, Charsets.UTF_8)
                 Result.Success(mnemonicString.split(" "))
             } finally {
-                // Clear decrypted bytes immediately
                 decryptedBytes.fill(0)
             }
         } catch (e: Exception) {

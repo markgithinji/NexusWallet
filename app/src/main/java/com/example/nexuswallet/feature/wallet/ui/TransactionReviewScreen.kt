@@ -5,6 +5,9 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.activity.compose.LocalActivity
+import androidx.appcompat.app.AppCompatActivity
+import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -71,6 +74,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -132,6 +136,80 @@ fun TransactionReviewScreen(
     val ethereumState = ethereumViewModel.uiState.collectAsStateWithLifecycle()
     val solanaState = solanaViewModel.state.collectAsStateWithLifecycle()
     val bitcoinState = bitcoinReviewViewModel.state.collectAsStateWithLifecycle()
+
+    val ethCryptoObject by ethereumViewModel.cryptoObject.collectAsStateWithLifecycle()
+    val solCryptoObject by solanaViewModel.cryptoObject.collectAsStateWithLifecycle()
+    val btcCryptoObject by bitcoinReviewViewModel.cryptoObject.collectAsStateWithLifecycle()
+
+    val ethAuthRequest by ethereumViewModel.authRequest.collectAsStateWithLifecycle()
+    val solAuthRequest by solanaViewModel.authRequest.collectAsStateWithLifecycle()
+    val btcAuthRequest by bitcoinReviewViewModel.authRequest.collectAsStateWithLifecycle()
+
+    val activity = LocalActivity.current as? AppCompatActivity
+
+    val biometricPrompt = remember(activity) {
+        if (activity == null) return@remember null
+        val executor = ContextCompat.getMainExecutor(context)
+        BiometricPrompt(
+            activity,
+            executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    val onSuccess: (String) -> Unit = { hash ->
+                        txHash = hash
+                        txStatus = context.getString(R.string.transaction_sent)
+                        isSending = false
+                    }
+
+                    when (coin) {
+                        is EVMToken -> ethereumViewModel.completeSendAfterBiometric(result, onSuccess)
+                        is SolanaCoin -> solanaViewModel.completeSendAfterBiometric(result, onSuccess)
+                        is BitcoinCoin -> bitcoinReviewViewModel.completeSendAfterBiometric(result, onSuccess)
+                    }
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    sendError = errString.toString()
+                    isSending = false
+                }
+
+                override fun onAuthenticationFailed() {
+                    // Feedback handled by system dialog
+                }
+            }
+        )
+    }
+
+    val promptInfo = remember {
+        BiometricPrompt.PromptInfo.Builder()
+            .setTitle(context.getString(R.string.biometric_authentication))
+            .setSubtitle(context.getString(R.string.confirm_and_send))
+            .setNegativeButtonText(context.getString(R.string.cancel))
+            .build()
+    }
+
+    // Handle auth requests
+    LaunchedEffect(ethAuthRequest, solAuthRequest, btcAuthRequest) {
+        val request = when (coin) {
+            is EVMToken -> ethAuthRequest
+            is SolanaCoin -> solAuthRequest
+            is BitcoinCoin -> btcAuthRequest
+        }
+
+        if (request != null) {
+            val crypto = when (coin) {
+                is EVMToken -> ethCryptoObject
+                is SolanaCoin -> solCryptoObject
+                is BitcoinCoin -> btcCryptoObject
+            }
+
+            if (crypto != null) {
+                biometricPrompt?.authenticate(promptInfo, crypto)
+            } else {
+                biometricPrompt?.authenticate(promptInfo)
+            }
+        }
+    }
 
     // Get coin config
     val (coinColor, iconRes) = getCoinDetailConfig(coin)
@@ -341,27 +419,36 @@ fun TransactionReviewScreen(
 
                     when (coin) {
                         is EVMToken -> {
-                            ethereumViewModel.send { hash ->
-                                txHash = hash
-                                txStatus = context.getString(R.string.transaction_sent)
-                                isSending = false
-                            }
+                            ethereumViewModel.send(
+                                cipher = null,
+                                onSuccess = { hash ->
+                                    txHash = hash
+                                    txStatus = context.getString(R.string.transaction_sent)
+                                    isSending = false
+                                }
+                            )
                         }
 
                         is SolanaCoin -> {
-                            solanaViewModel.send { hash ->
-                                txHash = hash
-                                txStatus = context.getString(R.string.transaction_sent)
-                                isSending = false
-                            }
+                            solanaViewModel.send(
+                                cipher = null,
+                                onSuccess = { hash ->
+                                    txHash = hash
+                                    txStatus = context.getString(R.string.transaction_sent)
+                                    isSending = false
+                                }
+                            )
                         }
 
                         is BitcoinCoin -> {
-                            bitcoinReviewViewModel.sendTransaction { hash ->
-                                txHash = hash
-                                txStatus = context.getString(R.string.transaction_sent)
-                                isSending = false
-                            }
+                            bitcoinReviewViewModel.sendTransaction(
+                                cipher = null,
+                                onSuccess = { hash ->
+                                    txHash = hash
+                                    txStatus = context.getString(R.string.transaction_sent)
+                                    isSending = false
+                                }
+                            )
                         }
                     }
                 },

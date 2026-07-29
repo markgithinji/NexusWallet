@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.bitcoin.ui.review
 
+import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
@@ -10,6 +11,7 @@ import com.example.nexuswallet.feature.bitcoin.domain.usecase.PrepareBitcoinTran
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.SendBitcoinUseCase
 import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_INPUT_COUNT
 import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_OUTPUT_COUNT
+import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.toSatoshis
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
+import javax.crypto.Cipher
 import javax.inject.Inject
 
 @HiltViewModel
@@ -43,6 +46,12 @@ class BitcoinReviewViewModel @Inject constructor(
 
     private val _effect = MutableSharedFlow<BitcoinReviewEffect>()
     val effect: SharedFlow<BitcoinReviewEffect> = _effect.asSharedFlow()
+
+    private val _cryptoObject = MutableStateFlow<BiometricPrompt.CryptoObject?>(null)
+    val cryptoObject: StateFlow<BiometricPrompt.CryptoObject?> = _cryptoObject.asStateFlow()
+
+    private val _authRequest = MutableStateFlow<Long?>(null)
+    val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
 
     fun initialize(
         walletId: String,
@@ -206,7 +215,7 @@ class BitcoinReviewViewModel @Inject constructor(
         }
     }
 
-    fun sendTransaction(onSuccess: (String) -> Unit) {
+    fun sendTransaction(cipher: Cipher? = null, onSuccess: (String) -> Unit) {
         viewModelScope.launch {
             val state = _state.value
             val preparedTx = state.preparedTransaction
@@ -221,7 +230,8 @@ class BitcoinReviewViewModel @Inject constructor(
             val result = sendBitcoinUseCase(
                 preparedTransaction = preparedTx,
                 walletId = state.walletId,
-                network = state.network
+                network = state.network,
+                cipher = cipher
             )
 
             when (result) {
@@ -252,21 +262,37 @@ class BitcoinReviewViewModel @Inject constructor(
                                 error = sendResult.error ?: "Send failed"
                             )
                         }
+                        _effect.emit(BitcoinReviewEffect.ShowError(sendResult.error ?: "Send failed"))
                     }
                 }
 
                 is Result.Error -> {
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            error = result.message
-                        )
+                    val authException = result.throwable as? HardwareAuthRequiredException
+                    if (authException != null) {
+                        _cryptoObject.value = authException.cryptoObject
+                        _authRequest.value = System.currentTimeMillis()
+                        _state.update { it.copy(isLoading = false) }
+                    } else {
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
+                                error = result.message
+                            )
+                        }
+                        _effect.emit(BitcoinReviewEffect.ShowError(result.message))
                     }
                 }
 
                 else -> {}
             }
         }
+    }
+
+    fun completeSendAfterBiometric(result: BiometricPrompt.AuthenticationResult? = null, onSuccess: (String) -> Unit) {
+        val cipher = result?.cryptoObject?.cipher
+        _cryptoObject.value = null
+        _authRequest.value = null
+        sendTransaction(cipher = cipher, onSuccess = onSuccess)
     }
 
     fun clearError() {

@@ -65,10 +65,12 @@ fun Navigation(
         return
     }
 
-    val startDestination = if (wallets.isNotEmpty()) {
-        MainRoute
-    } else {
-        WelcomeRoute
+    val startDestination = remember {
+        if (wallets.isNotEmpty()) {
+            MainRoute
+        } else {
+            WelcomeRoute
+        }
     }
 
     val typeMap = remember {
@@ -222,7 +224,7 @@ fun Navigation(
                     navController.navigate(TransactionDetailRoute(walletId, txId, coin))
                 },
                 onMoreClick = {
-                    navController.navigate(AuthenticateRoute(AuthTarget.Backup(args.walletId)))
+                    navController.navigate(BackupRoute(args.walletId))
                 }
             )
         }

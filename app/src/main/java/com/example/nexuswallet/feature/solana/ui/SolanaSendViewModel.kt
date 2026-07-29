@@ -1,7 +1,9 @@
 package com.example.nexuswallet.feature.solana.ui
 
+import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
@@ -28,6 +30,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
+import javax.crypto.Cipher
 import javax.inject.Inject
 
 @HiltViewModel
@@ -46,6 +49,12 @@ class SolanaSendViewModel @Inject constructor(
 
     private val _effect = MutableSharedFlow<SolanaSendEffect>()
     val effect: SharedFlow<SolanaSendEffect> = _effect.asSharedFlow()
+
+    private val _cryptoObject = MutableStateFlow<BiometricPrompt.CryptoObject?>(null)
+    val cryptoObject: StateFlow<BiometricPrompt.CryptoObject?> = _cryptoObject.asStateFlow()
+
+    private val _authRequest = MutableStateFlow<Long?>(null)
+    val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
 
     private var wallet: Wallet? = null
     private var solanaCoins: Map<SolanaNetwork, SolanaCoin> = emptyMap()
@@ -307,7 +316,7 @@ class SolanaSendViewModel @Inject constructor(
         return validationResult.isValid
     }
 
-    fun send(onSuccess: (String) -> Unit) {
+    fun send(cipher: Cipher? = null, onSuccess: (String) -> Unit) {
         viewModelScope.launch {
             val state = _state.value
             val solanaCoin = state.coin ?: currentCoin
@@ -329,7 +338,8 @@ class SolanaSendViewModel @Inject constructor(
                 amount = state.amountValue,
                 feeLevel = state.feeLevel,
                 coin = solanaCoin,
-                note = null
+                note = null,
+                cipher = cipher
             )
 
             when (result) {
@@ -359,19 +369,33 @@ class SolanaSendViewModel @Inject constructor(
                 }
 
                 is Result.Error -> {
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            error = result.message,
-                            step = ""
-                        )
+                    val authException = result.throwable as? HardwareAuthRequiredException
+                    if (authException != null) {
+                        _cryptoObject.value = authException.cryptoObject
+                        _authRequest.value = System.currentTimeMillis()
+                        _state.update { it.copy(isLoading = false) }
+                    } else {
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
+                                error = result.message,
+                                step = ""
+                            )
+                        }
+                        _effect.emit(SolanaSendEffect.ShowError(result.message))
                     }
-                    _effect.emit(SolanaSendEffect.ShowError(result.message))
                 }
 
                 Result.Loading -> {}
             }
         }
+    }
+
+    fun completeSendAfterBiometric(result: BiometricPrompt.AuthenticationResult? = null, onSuccess: (String) -> Unit) {
+        val cipher = result?.cryptoObject?.cipher
+        _cryptoObject.value = null
+        _authRequest.value = null
+        send(cipher = cipher, onSuccess = onSuccess)
     }
 
     fun clearError() {

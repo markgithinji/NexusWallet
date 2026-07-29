@@ -1,11 +1,13 @@
 package com.example.nexuswallet.feature.bitcoin.domain.usecase
 
+import android.security.keystore.UserNotAuthenticatedException
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.bitcoin.domain.model.SendBitcoinResult
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.util.Result
@@ -19,7 +21,6 @@ import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.bitcoinj.core.ECKey
-import org.bitcoinj.core.DumpedPrivateKey
 import org.bitcoinj.core.LegacyAddress
 import org.bitcoinj.core.Transaction as BitcoinJTransaction
 import org.bitcoinj.core.Utils
@@ -27,6 +28,7 @@ import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
 import java.math.BigDecimal
 import java.math.RoundingMode
+import javax.crypto.Cipher
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -46,7 +48,8 @@ class SendBitcoinUseCase @Inject constructor(
     suspend operator fun invoke(
         preparedTransaction: PreparedBitcoinTransaction,
         walletId: String,
-        network: BitcoinNetwork
+        network: BitcoinNetwork,
+        cipher: Cipher? = null
     ): Result<SendBitcoinResult> = withContext(ioDispatcher) {
         logger.d(
             tag,
@@ -66,40 +69,56 @@ class SendBitcoinUseCase @Inject constructor(
             return@withContext Result.Error("Bitcoin not enabled for $network")
         }
 
-        // Get private key
+        // Get private key type
         val keyType = when (bitcoinCoin.network) {
             BitcoinNetwork.Mainnet -> KEY_BITCOIN_MAINNET
             BitcoinNetwork.Testnet -> KEY_BITCOIN_TESTNET
         }
 
-        // Get private key
+        // Get encrypted private key
         val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
             walletId = walletId,
             keyType = keyType
         )
 
         if (encryptedData == null) {
-            logger.e(tag, "No private key found for wallet: $walletId")
+            logger.e(tag, "No private key found for wallet: $walletId with keyType: $keyType")
             return@withContext Result.Error("No private key found")
         }
 
-        val privateKeyBytes = keyStoreRepository.decrypt(
-            encryptedData.first.decodeHex(),
-            encryptedData.second
-        )
+        val (encryptedHex, iv) = encryptedData
+
+        val privateKeyBytes = if (cipher != null) {
+            try {
+                keyStoreRepository.decryptWithCipher(cipher, encryptedHex.decodeHex())
+            } catch (e: Exception) {
+                logger.e(tag, "Failed to decrypt with provided cipher: ${e.message}")
+                return@withContext Result.Error("Decryption failed")
+            }
+        } else {
+            try {
+                keyStoreRepository.decrypt(encryptedHex.decodeHex(), iv)
+            } catch (e: Exception) {
+                val isAuthRequired = e is UserNotAuthenticatedException || 
+                                     e.cause is UserNotAuthenticatedException ||
+                                     e is javax.crypto.IllegalBlockSizeException && e.message?.contains("user not authenticated", true) == true
+                
+                if (isAuthRequired) {
+                    return@withContext Result.Error(
+                        message = "Authentication required",
+                        throwable = HardwareAuthRequiredException(null)
+                    )
+                }
+                logger.e(tag, "Failed to decrypt private key: ${e.message}")
+                return@withContext Result.Error("Failed to decrypt private key")
+            }
+        }
 
         val ecKey = try {
-            if (privateKeyBytes.size == 32) {
-                ECKey.fromPrivate(privateKeyBytes)
-            } else {
-                // Backward compatibility for WIF strings
-                val privateKeyWIF = String(privateKeyBytes, Charsets.UTF_8)
-                val networkParams = when (bitcoinCoin.network) {
-                    BitcoinNetwork.Mainnet -> MainNetParams.get()
-                    BitcoinNetwork.Testnet -> TestNet3Params.get()
-                }
-                DumpedPrivateKey.fromBase58(networkParams, privateKeyWIF).key
-            }
+            ECKey.fromPrivate(privateKeyBytes)
+        } catch (e: Exception) {
+            logger.e(tag, "Failed to parse private key: ${e.message}")
+            return@withContext Result.Error("Invalid private key format")
         } finally {
             privateKeyBytes.fill(0)
         }

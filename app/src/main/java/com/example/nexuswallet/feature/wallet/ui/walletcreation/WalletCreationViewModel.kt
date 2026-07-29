@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.wallet.ui.walletcreation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
@@ -64,6 +65,9 @@ class WalletCreationViewModel @Inject constructor(
     // Track if mnemonic is generated
     private val _isMnemonicGenerated = MutableStateFlow(false)
     val isMnemonicGenerated: StateFlow<Boolean> = _isMnemonicGenerated.asStateFlow()
+
+    private val _authRequest = MutableStateFlow<Long?>(null)
+    val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
 
     fun generateMnemonic() {
         viewModelScope.launch {
@@ -207,7 +211,13 @@ class WalletCreationViewModel @Inject constructor(
                     }
 
                     is Result.Error -> {
-                        _uiState.value = WalletCreationUiState.Error(result.message)
+                        val authException = result.throwable as? HardwareAuthRequiredException
+                        if (authException != null) {
+                            _authRequest.value = System.currentTimeMillis()
+                            _uiState.value = WalletCreationUiState.Idle
+                        } else {
+                            _uiState.value = WalletCreationUiState.Error(result.message)
+                        }
                     }
 
                     Result.Loading -> {
@@ -218,6 +228,11 @@ class WalletCreationViewModel @Inject constructor(
                 _uiState.value = WalletCreationUiState.Error(e.message ?: "Failed to create wallet")
             }
         }
+    }
+
+    fun completeCreateAfterBiometric() {
+        _authRequest.value = null
+        createWallet()
     }
 
     fun reset() {

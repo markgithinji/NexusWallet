@@ -1,7 +1,9 @@
 package com.example.nexuswallet.feature.solana.domain.usecase
 
+import android.security.keystore.UserNotAuthenticatedException
 import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
@@ -25,6 +27,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.sol4k.Keypair
 import java.math.BigDecimal
+import javax.crypto.Cipher
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -47,7 +50,8 @@ class SendSolanaUseCase @Inject constructor(
         amount: BigDecimal,
         feeLevel: FeeLevel,
         coin: SolanaCoin,
-        note: String?
+        note: String?,
+        cipher: Cipher? = null
     ): Result<SendSolanaResult> = withContext(ioDispatcher) {
         logger.d(tag, "Sending $amount SOL to $toAddress on ${coin.network.name}")
 
@@ -93,17 +97,36 @@ class SendSolanaUseCase @Inject constructor(
         )
 
         if (encryptedData == null) {
-            logger.e(tag, "No private key found for wallet: $walletId")
+            logger.e(tag, "No private key found for wallet: $walletId with keyType: $keyType")
             return@withContext Result.Error("No private key found. Make sure Solana is enabled in your wallet.")
         }
 
         val (encryptedHex, iv) = encryptedData
 
-        val privateKeyBytes = try {
-            keyStoreRepository.decrypt(encryptedHex.decodeHex(), iv)
-        } catch (e: Exception) {
-            logger.e(tag, "Failed to decrypt private key: ${e.message}")
-            return@withContext Result.Error("Failed to decrypt private key")
+        val privateKeyBytes = if (cipher != null) {
+            try {
+                keyStoreRepository.decryptWithCipher(cipher, encryptedHex.decodeHex())
+            } catch (e: Exception) {
+                logger.e(tag, "Failed to decrypt with provided cipher: ${e.message}")
+                return@withContext Result.Error("Decryption failed")
+            }
+        } else {
+            try {
+                keyStoreRepository.decrypt(encryptedHex.decodeHex(), iv)
+            } catch (e: Exception) {
+                val isAuthRequired = e is UserNotAuthenticatedException || 
+                                     e.cause is UserNotAuthenticatedException ||
+                                     e is javax.crypto.IllegalBlockSizeException && e.message?.contains("user not authenticated", true) == true
+
+                if (isAuthRequired) {
+                    return@withContext Result.Error(
+                        message = "Authentication required",
+                        throwable = HardwareAuthRequiredException(null)
+                    )
+                }
+                logger.e(tag, "Failed to decrypt private key: ${e.message}")
+                return@withContext Result.Error("Failed to decrypt private key")
+            }
         }
 
         try {

@@ -7,6 +7,6 @@ import androidx.biometric.BiometricPrompt
  * and require biometric authentication.
  */
 class HardwareAuthRequiredException(
-    val cryptoObject: BiometricPrompt.CryptoObject,
+    val cryptoObject: BiometricPrompt.CryptoObject? = null,
     message: String = "Biometric authentication required"
 ) : Exception(message)

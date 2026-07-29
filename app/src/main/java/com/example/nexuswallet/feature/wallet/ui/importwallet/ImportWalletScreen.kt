@@ -1,5 +1,8 @@
 package com.example.nexuswallet.feature.wallet.ui.importwallet
 
+import androidx.activity.compose.LocalActivity
+import androidx.appcompat.app.AppCompatActivity
+import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -9,9 +12,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.NexusTextField
@@ -43,6 +48,42 @@ fun ImportWalletScreen(
     val currentStep by viewModel.currentStep.collectAsStateWithLifecycle()
     val selectedNetworks by viewModel.selectedNetworks.collectAsStateWithLifecycle()
     val selectedTokens by viewModel.selectedTokens.collectAsStateWithLifecycle()
+    val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
+
+    val context = LocalContext.current
+    val activity = LocalActivity.current as? AppCompatActivity
+
+    val biometricPrompt = remember(activity) {
+        if (activity == null) return@remember null
+        val executor = ContextCompat.getMainExecutor(context)
+        BiometricPrompt(
+            activity,
+            executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    viewModel.completeImportAfterBiometric()
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    // Handle error if needed
+                }
+            }
+        )
+    }
+
+    val promptInfo = remember {
+        BiometricPrompt.PromptInfo.Builder()
+            .setTitle(context.getString(R.string.biometric_authentication))
+            .setSubtitle(context.getString(R.string.secure_your_wallet))
+            .setNegativeButtonText(context.getString(R.string.cancel))
+            .build()
+    }
+
+    LaunchedEffect(authRequest) {
+        if (authRequest != null) {
+            biometricPrompt?.authenticate(promptInfo)
+        }
+    }
 
     LaunchedEffect(uiState) {
         if (uiState is WalletCreationUiState.WalletCreated) {
