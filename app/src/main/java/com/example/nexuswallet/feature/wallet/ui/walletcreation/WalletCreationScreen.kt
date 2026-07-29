@@ -697,7 +697,16 @@ fun TokenToggleCard(
     onSelectedChange: (Boolean) -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .then(
+                if (networkEnabled) {
+                    Modifier.clickable { onSelectedChange(!isSelected) }
+                } else {
+                    Modifier
+                }
+            ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected && networkEnabled) color.copy(alpha = 0.05f)
@@ -710,14 +719,7 @@ fun TokenToggleCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .then(
-                    if (networkEnabled) {
-                        Modifier.clickable { onSelectedChange(!isSelected) }
-                    } else {
-                        Modifier
-                    }
-                ),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -798,7 +800,10 @@ fun NetworkToggleCard(
     onSelectedChange: (Boolean) -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onSelectedChange(!isSelected) },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) color.copy(alpha = 0.05f)
@@ -813,8 +818,7 @@ fun NetworkToggleCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .clickable { onSelectedChange(!isSelected) },
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(

@@ -1023,13 +1023,13 @@ fun QuickActionItem(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .clickable { onClick() }
     ) {
         Box(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(color.copy(alpha = 0.1f)),
+                .background(color.copy(alpha = 0.1f))
+                .clickable { onClick() },
             contentAlignment = Alignment.Center
         ) {
             Icon(
