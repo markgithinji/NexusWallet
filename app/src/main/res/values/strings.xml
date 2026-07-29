@@ -337,7 +337,9 @@
     <string name="saved_safely_button">I\'ve Saved It Safely</string>
     <string name="failed_to_load_mnemonic">Failed to load recovery phrase</string>
     <string name="reveal_recovery_phrase_subtitle">Reveal your recovery phrase</string>
-    <string name="authentication_required_to_view">Authentication required to view recovery phrase</string>
+    <string name="authentication_required_to_view">Biometric authentication is required to decrypt and view your recovery phrase.</string>
+    <string name="authentication_required">Authentication Required</string>
+    <string name="unlock_vault">Unlock Vault</string>
 
     <!-- Import Wallet Screen -->
     <string name="select_networks_to_import">Select Networks to Import</string>
