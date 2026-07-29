@@ -12,7 +12,6 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
 import com.example.nexuswallet.feature.core.util.decodeHex
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.domain.model.SendSolanaResult
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
@@ -38,11 +37,8 @@ class SendSolanaUseCase @Inject constructor(
     private val solanaTransactionRepository: SolanaTransactionRepository,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val keyStoreRepository: KeyStoreRepository,
-    private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-
-    private val tag = "SendSolanaUC"
 
     suspend operator fun invoke(
         walletId: String,
@@ -53,10 +49,7 @@ class SendSolanaUseCase @Inject constructor(
         note: String?,
         cipher: Cipher? = null
     ): Result<SendSolanaResult> = withContext(ioDispatcher) {
-        logger.d(tag, "Sending $amount SOL to $toAddress on ${coin.network.name}")
-
         val wallet = walletRepository.getWallet(walletId) ?: run {
-            logger.e(tag, "Wallet not found: $walletId")
             return@withContext Result.Error("Wallet not found")
         }
 
@@ -66,17 +59,12 @@ class SendSolanaUseCase @Inject constructor(
         }
 
         if (solanaCoin == null) {
-            logger.e(tag, "Solana coin not found in wallet: $walletId for network ${coin.network.name}")
             return@withContext Result.Error("Solana not enabled for ${coin.network.name}")
         }
-
-        logger.d(tag, "Network: ${solanaCoin.network.name}")
-        logger.d(tag, "From address: ${solanaCoin.address.take(8)}...")
 
         // 1. Get fee estimate
         val feeResult = solanaBlockchainRepository.getFeeEstimate(feeLevel, coin.network)
         if (feeResult is Result.Error) {
-            logger.e(tag, "Failed to get fee estimate on ${coin.network.name}")
             return@withContext Result.Error(feeResult.message)
         }
         val feeEstimate = (feeResult as Result.Success).data
@@ -89,15 +77,12 @@ class SendSolanaUseCase @Inject constructor(
             SolanaNetwork.Devnet -> KEY_SOLANA_DEVNET
         }
 
-        logger.d(tag, "Looking for key with type: $keyType")
-
         val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
             walletId = walletId,
             keyType = keyType
         )
 
         if (encryptedData == null) {
-            logger.e(tag, "No private key found for wallet: $walletId with keyType: $keyType")
             return@withContext Result.Error("No private key found. Make sure Solana is enabled in your wallet.")
         }
 
@@ -107,7 +92,6 @@ class SendSolanaUseCase @Inject constructor(
             try {
                 keyStoreRepository.decryptWithCipher(cipher, encryptedHex.decodeHex())
             } catch (e: Exception) {
-                logger.e(tag, "Failed to decrypt with provided cipher: ${e.message}")
                 return@withContext Result.Error("Decryption failed")
             }
         } else {
@@ -124,7 +108,6 @@ class SendSolanaUseCase @Inject constructor(
                         throwable = HardwareAuthRequiredException(null)
                     )
                 }
-                logger.e(tag, "Failed to decrypt private key: ${e.message}")
                 return@withContext Result.Error("Failed to decrypt private key")
             }
         }
@@ -135,8 +118,6 @@ class SendSolanaUseCase @Inject constructor(
 
             val derivedAddress = keypair.publicKey.toString()
             if (derivedAddress != solanaCoin.address) {
-                logger.e(tag, "Private key doesn't match wallet")
-                logger.e(tag, "Derived: $derivedAddress, Expected: ${solanaCoin.address}")
                 return@withContext Result.Error("Private key doesn't match wallet")
             }
 
@@ -151,10 +132,6 @@ class SendSolanaUseCase @Inject constructor(
             )
 
             if (signedTxResult is Result.Error) {
-                logger.e(
-                    tag,
-                    "Failed to sign transaction on ${coin.network.name}: ${signedTxResult.message}"
-                )
                 return@withContext Result.Error(signedTxResult.message)
             }
             val signedTx = (signedTxResult as Result.Success).data
@@ -176,14 +153,6 @@ class SendSolanaUseCase @Inject constructor(
                 )
 
                 solanaTransactionRepository.saveTransaction(transaction)
-                logger.d(
-                    tag,
-                    "Transaction saved after successful broadcast: ${transaction.id} with signature ${
-                        signedTx.signature.take(SIGNATURE_PREVIEW_LENGTH)
-                    }..."
-                )
-            } else {
-                logger.e(tag, "Broadcast failed, no transaction saved: ${broadcastResult.error}")
             }
 
             val sendResult = SendSolanaResult(
@@ -192,19 +161,6 @@ class SendSolanaUseCase @Inject constructor(
                 success = broadcastResult.success,
                 error = broadcastResult.error
             )
-
-            if (sendResult.success) {
-                logger.d(
-                    tag,
-                    "Send successful on ${coin.network.name}: tx ${
-                        sendResult.txHash.take(
-                            SIGNATURE_PREVIEW_LENGTH
-                        )
-                    }..."
-                )
-            } else {
-                logger.e(tag, "Send failed on ${coin.network.name}: ${sendResult.error}")
-            }
 
             Result.Success(sendResult)
         } finally {
@@ -263,12 +219,10 @@ class SendSolanaUseCase @Inject constructor(
             }
 
             is Result.Error -> {
-                logger.e(tag, "Broadcast failed on $network: ${broadcastResult.message}")
                 BroadcastResult(success = false, error = broadcastResult.message)
             }
 
             Result.Loading -> {
-                logger.e(tag, "Broadcast timeout on $network")
                 BroadcastResult(success = false, error = "Broadcast timeout")
             }
         }
@@ -288,12 +242,10 @@ class SendSolanaUseCase @Inject constructor(
             else -> null
         }
     } catch (e: Exception) {
-        logger.e(tag, "Error creating keypair: ${e.message}")
         null
     }
 
     companion object{
-        private const val SIGNATURE_PREVIEW_LENGTH = 8
         private const val KEYPAIR_64_BYTES = 64
         private const val KEYPAIR_32_BYTES = 32
     }

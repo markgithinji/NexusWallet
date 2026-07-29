@@ -17,7 +17,6 @@ import com.example.nexuswallet.feature.ethereum.domain.model.SendEVMResult
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GWEI_TO_WEI
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
@@ -37,11 +36,8 @@ class SendEVMAssetUseCase @Inject constructor(
     private val getFeeEstimateUseCase: GetFeeEstimateUseCase,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
     private val keyStoreRepository: KeyStoreRepository,
-    private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-
-    private val tag = "SendEVMAssetUC"
 
     suspend operator fun invoke(
         walletId: String,
@@ -52,11 +48,8 @@ class SendEVMAssetUseCase @Inject constructor(
         note: String?,
         cipher: Cipher? = null
     ): Result<SendEVMResult> = withContext(ioDispatcher) {
-        logger.d(tag, "WalletId: $walletId, To: $toAddress, Amount: $amount ${token.symbol}")
-
         // Validate wallet exists
         val wallet = walletRepository.getWallet(walletId) ?: run {
-            logger.e(tag, "Wallet not found: $walletId")
             return@withContext Result.Error("Wallet not found")
         }
 
@@ -68,25 +61,14 @@ class SendEVMAssetUseCase @Inject constructor(
                     it.evmTokenType == token.evmTokenType
         }
         if (!hasToken) {
-            logger.e(tag, "Token ${token.symbol} not enabled for wallet: $walletId")
             return@withContext Result.Error("${token.symbol} not enabled for this wallet")
         }
 
-        logger.d(tag, "Network: ${token.network.name}")
-
         // 1. Get encrypted private key
-        logger.d(
-            tag,
-            "Step 1: Retrieving private key for wallet: $walletId with type: $KEY_ETHEREUM_MAIN"
-        )
         val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
             walletId = walletId,
             keyType = KEY_ETHEREUM_MAIN
         ) ?: run {
-            logger.e(
-                tag,
-                "No private key found for wallet: $walletId with keyType: $KEY_ETHEREUM_MAIN"
-            )
             return@withContext Result.Error("No private key found")
         }
 
@@ -97,7 +79,6 @@ class SendEVMAssetUseCase @Inject constructor(
             try {
                 keyStoreRepository.decryptWithCipher(cipher, encryptedHex.decodeHex())
             } catch (e: Exception) {
-                logger.e(tag, "Failed to decrypt with provided cipher: ${e.message}")
                 return@withContext Result.Error("Decryption failed")
             }
         } else {
@@ -117,14 +98,12 @@ class SendEVMAssetUseCase @Inject constructor(
                         throwable = HardwareAuthRequiredException(null)
                     )
                 }
-                logger.e(tag, "Failed to decrypt private key: ${e.message}")
                 return@withContext Result.Error("Failed to decrypt private key")
             }
         }
 
         try {
             // 2. Get nonce
-            logger.d(tag, "Step 2: Getting nonce...")
             val nonceResult = evmBlockchainRepository.getNonce(
                 token.address,
                 token.network
@@ -132,13 +111,11 @@ class SendEVMAssetUseCase @Inject constructor(
 
             if (nonceResult !is Result.Success) {
                 val message = (nonceResult as? Result.Error)?.message ?: "Failed to get nonce"
-                logger.e(tag, message)
                 return@withContext Result.Error(message)
             }
             val nonce = nonceResult.data
 
             // 4. Get fee estimate (includes EIP-1559 logic)
-            logger.d(tag, "Step 4: Getting fee estimate...")
             val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
 
             val feeEstimateResult = getFeeEstimateUseCase(
@@ -154,7 +131,6 @@ class SendEVMAssetUseCase @Inject constructor(
             if (feeEstimateResult !is Result.Success) {
                 val message =
                     (feeEstimateResult as? Result.Error)?.message ?: "Failed to get fee estimate"
-                logger.e(tag, message)
                 return@withContext Result.Error(message)
             }
             val feeEstimate = feeEstimateResult.data
@@ -163,14 +139,7 @@ class SendEVMAssetUseCase @Inject constructor(
             val totalFeeWei = BigInteger(feeEstimate.totalFeeWei)
             val totalFeeEth = feeEstimate.totalFeeEth
 
-            logger.d(
-                tag,
-                "Fee Estimate - EIP1559: ${feeEstimate.isEIP1559}, Limit: $gasLimit, Fee: $totalFeeEth ETH"
-            )
-
             // 6. Create and sign transaction
-            logger.d(tag, "Step 6: Creating and signing transaction...")
-
             val createResult = when (token.evmTokenType) {
                 EVMTokenType.NATIVE -> if (feeEstimate.isEIP1559) {
                     evmBlockchainRepository.createAndSignNative1559Transaction(
@@ -238,7 +207,6 @@ class SendEVMAssetUseCase @Inject constructor(
             if (createResult !is Result.Success) {
                 val message =
                     (createResult as? Result.Error)?.message ?: "Failed to create transaction"
-                logger.e(tag, message)
                 return@withContext Result.Error(message)
             }
             val (_, signedHex, txHash) = createResult.data
@@ -247,7 +215,6 @@ class SendEVMAssetUseCase @Inject constructor(
             val gasPriceWei = feeEstimate.gasPriceWei
 
             // 6. Broadcast transaction
-            logger.d(tag, "Step 6: Broadcasting transaction...")
             val broadcastResult = evmBlockchainRepository.broadcastTransaction(
                 signedHex,
                 token.network
@@ -260,11 +227,6 @@ class SendEVMAssetUseCase @Inject constructor(
 
                     // 7. Save transaction after successful broadcast
                     if (broadcastData.success) {
-                        logger.d(
-                            tag,
-                            "Step 7: Creating and saving transaction record after successful broadcast..."
-                        )
-
                         val transaction = when (token.evmTokenType) {
                             EVMTokenType.NATIVE -> NativeETHTransaction(
                                 id = finalTxHash,
@@ -328,17 +290,6 @@ class SendEVMAssetUseCase @Inject constructor(
                         }
 
                         evmTransactionRepository.saveTransaction(transaction)
-                        logger.d(
-                            tag,
-                            "Transaction saved after successful broadcast: ${transaction.id} with hash: ${
-                                transaction.txHash?.take(8)
-                            }..."
-                        )
-                    } else {
-                        logger.e(
-                            tag,
-                            "Broadcast returned success=false, no transaction saved: ${broadcastData.error}"
-                        )
                     }
 
                     val sendResult = SendEVMResult(
@@ -348,25 +299,14 @@ class SendEVMAssetUseCase @Inject constructor(
                         error = broadcastData.error
                     )
 
-                    if (sendResult.success) {
-                        logger.d(tag, "Send successful: tx ${sendResult.txHash.take(8)}...")
-                    } else {
-                        logger.e(tag, "Send failed: ${sendResult.error}")
-                    }
-
                     Result.Success(sendResult)
                 }
 
                 is Result.Error -> {
-                    logger.e(
-                        tag,
-                        "Broadcast failed: ${broadcastResult.message}, no transaction saved"
-                    )
                     Result.Error(broadcastResult.message, broadcastResult.throwable)
                 }
 
                 Result.Loading -> {
-                    logger.e(tag, "Broadcast timeout, no transaction saved")
                     Result.Error("Broadcast timeout")
                 }
             }

@@ -15,7 +15,6 @@ import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAIN
 import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
@@ -47,87 +46,57 @@ class CreateWalletUseCase @Inject constructor(
     private val walletDataSource: WalletDataSource,
     private val keyStoreRepository: KeyStoreRepository,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
-    private val logger: Logger,
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher
 ) {
 
-    private val tag = "CreateWalletUC"
-
     suspend operator fun invoke(
+        walletId: String,
         mnemonic: List<String>,
         name: String,
         selectedNetworks: Set<Network>,
-        selectedTokens: Map<EthereumNetwork, Set<EVMTokenType>>
+        selectedTokens: Map<EthereumNetwork, Set<EVMTokenType>>,
+        cipher: javax.crypto.Cipher? = null
     ): Result<Wallet> = withContext(defaultDispatcher) {
-        val networkLog = selectedNetworks.joinToString { network ->
-            when (network) {
-                is BitcoinNetwork -> "Bitcoin - ${network.name}"
-                is EthereumNetwork -> "Ethereum - ${network.name}"
-                is SolanaNetwork -> "Solana - ${network.name}"
-            }
-        }
+        val rawPrivateKeys = mutableMapOf<String, ByteArray>()
 
-        val tokenLog = selectedTokens.flatMap { (network, tokens) ->
-            tokens.map { tokenType ->
-                "${tokenType.symbol} on ${network.name}"
-            }
-        }.joinToString()
-
-        logger.d(
-            tag,
-            "Creating wallet: $name, Selected networks: $networkLog, Selected tokens: $tokenLog"
-        )
-
-        val walletId = "wallet_${System.currentTimeMillis()}"
         val bitcoinCoins = mutableListOf<BitcoinCoin>()
         val solanaCoins = mutableListOf<SolanaCoin>()
         val evmTokens = mutableListOf<EVMToken>()
 
+        // 1. Pre-derive all addresses and keys
         // Process Bitcoin networks
         val bitcoinNetworks = selectedNetworks.filterIsInstance<BitcoinNetwork>()
         bitcoinNetworks.forEach { network ->
             createBitcoinCoin(mnemonic, network)?.let { coin ->
                 bitcoinCoins.add(coin)
-                logger.d(tag, "Bitcoin ${network.name} coin created")
-            } ?: return@withContext Result.Error("Failed to create Bitcoin ${network.name} coin")
-                .also {
-                    logger.e(tag, "Failed to create Bitcoin ${network.name} coin")
+                deriveBitcoinPrivateKey(mnemonic, network)?.let { rawKeys ->
+                    rawPrivateKeys[network.name] = rawKeys
                 }
+            } ?: return@withContext Result.Error("Failed to create Bitcoin ${network.name} coin")
         }
 
-        // Process Ethereum networks (Native ETH)
+        // Process Ethereum networks
         val ethereumNetworks = selectedNetworks.filterIsInstance<EthereumNetwork>()
         ethereumNetworks.forEach { network ->
             createNativeETH(mnemonic, network)?.let { nativeEth ->
                 evmTokens.add(nativeEth)
-                logger.d(tag, "Ethereum ${network.name} coin created")
-
-                // Create tokens on this network if any are selected
+                
+                // Add tokens
                 val networkTokens = selectedTokens[network] ?: emptySet()
                 networkTokens.forEach { tokenType ->
                     when (tokenType) {
-                        EVMTokenType.USDC -> {
-                            val usdcToken = createUSDCToken(nativeEth)
-                            evmTokens.add(usdcToken)
-                            logger.d(tag, "USDC token created on ${network.name}")
-                        }
-
-                        EVMTokenType.USDT -> {
-                            val usdtToken = createUSDTToken(nativeEth)
-                            evmTokens.add(usdtToken)
-                            logger.d(tag, "USDT token created on ${network.name}")
-                        }
-
-                        EVMTokenType.NATIVE -> {
-                            // Native ETH is already added via network selection, skip
-                            logger.d(tag, "Native ETH already included for ${network.name}")
-                        }
+                        EVMTokenType.USDC -> evmTokens.add(createUSDCToken(nativeEth))
+                        EVMTokenType.USDT -> evmTokens.add(createUSDTToken(nativeEth))
+                        else -> {}
                     }
                 }
             } ?: return@withContext Result.Error("Failed to create Ethereum ${network.name} coin")
-                .also {
-                    logger.e(tag, "Failed to create Ethereum ${network.name} coin")
-                }
+        }
+        
+        if (evmTokens.isNotEmpty()) {
+            deriveEthereumPrivateKey(mnemonic)?.let { rawKeys ->
+                rawPrivateKeys["ETHEREUM"] = rawKeys
+            }
         }
 
         // Process Solana networks
@@ -135,20 +104,91 @@ class CreateWalletUseCase @Inject constructor(
         solanaNetworks.forEach { network ->
             createSolanaCoin(mnemonic, network)?.let { coin ->
                 solanaCoins.add(coin)
-                logger.d(tag, "Solana ${network.name} coin created")
-            } ?: return@withContext Result.Error("Failed to create Solana ${network.name} coin")
-                .also {
-                    logger.e(tag, "Failed to create Solana ${network.name} coin")
+                deriveSolanaPrivateKey(mnemonic, coin.derivationPath)?.let { rawKeys ->
+                    rawPrivateKeys[network.name] = rawKeys
                 }
+            } ?: return@withContext Result.Error("Failed to create Solana ${network.name} coin")
         }
 
-        // Validate at least one asset was created
-        if (bitcoinCoins.isEmpty() && solanaCoins.isEmpty() && evmTokens.isEmpty()) {
-            return@withContext Result.Error("No assets selected for wallet creation").also {
-                logger.e(tag, "No assets selected for wallet creation")
+        // 2. Encryption Batch (Hardware Sensitive)
+        try {
+            // Secure mnemonic
+            val mnemonicBytes = mnemonicToByteArray(mnemonic)
+            val (encryptedMnemonic, mnemonicIv) = keyStoreRepository.encrypt(mnemonicBytes)
+            mnemonicBytes.fill(0)
+
+            securityPreferencesRepository.storeEncryptedMnemonic(
+                walletId = walletId,
+                encryptedMnemonic = encryptedMnemonic.toHex(),
+                iv = mnemonicIv
+            )
+
+            // Store Bitcoin keys
+            bitcoinCoins.forEach { coin ->
+                val rawKey = rawPrivateKeys[coin.network.name] ?: return@forEach
+                val keyType = when (coin.network) {
+                    BitcoinNetwork.Mainnet -> KEY_BITCOIN_MAINNET
+                    BitcoinNetwork.Testnet -> KEY_BITCOIN_TESTNET
+                }
+                val (encryptedKey, keyIv) = keyStoreRepository.encrypt(rawKey)
+                rawKey.fill(0)
+
+                securityPreferencesRepository.storeEncryptedPrivateKey(
+                    walletId = walletId,
+                    keyType = keyType,
+                    encryptedKey = encryptedKey.toHex(),
+                    iv = keyIv
+                )
             }
+
+            // Store Ethereum key
+            rawPrivateKeys["ETHEREUM"]?.let { rawKey ->
+                val (encryptedKey, keyIv) = keyStoreRepository.encrypt(rawKey)
+                rawKey.fill(0)
+
+                securityPreferencesRepository.storeEncryptedPrivateKey(
+                    walletId = walletId,
+                    keyType = KEY_ETHEREUM_MAIN,
+                    encryptedKey = encryptedKey.toHex(),
+                    iv = keyIv
+                )
+            }
+
+            // Store Solana keys
+            solanaCoins.forEach { coin ->
+                val rawKey = rawPrivateKeys[coin.network.name] ?: return@forEach
+                val keyType = when (coin.network) {
+                    SolanaNetwork.Mainnet -> KEY_SOLANA_MAINNET
+                    SolanaNetwork.Devnet -> KEY_SOLANA_DEVNET
+                }
+                val (encryptedKey, keyIv) = keyStoreRepository.encrypt(rawKey)
+                rawKey.fill(0)
+
+                securityPreferencesRepository.storeEncryptedPrivateKey(
+                    walletId = walletId,
+                    keyType = keyType,
+                    encryptedKey = encryptedKey.toHex(),
+                    iv = keyIv
+                )
+            }
+        } catch (e: Exception) {
+            rawPrivateKeys.values.forEach { it.fill(0) }
+            val isAuthRequired = e is UserNotAuthenticatedException ||
+                    e.cause is UserNotAuthenticatedException ||
+                    e is javax.crypto.IllegalBlockSizeException && e.message?.contains("user not authenticated", true) == true
+
+            if (isAuthRequired) {
+                return@withContext Result.Error(
+                    message = "Authentication required to secure wallet",
+                    throwable = HardwareAuthRequiredException(null)
+                )
+            }
+            return@withContext Result.Error("Failed to secure wallet: ${e.message}")
+        } finally {
+            rawPrivateKeys.values.forEach { it.fill(0) }
         }
 
+        // 3. Database Persistence
         val wallet = Wallet(
             id = walletId,
             name = name,
@@ -160,108 +200,13 @@ class CreateWalletUseCase @Inject constructor(
             evmTokens = evmTokens
         )
 
-        try {
-            // Secure mnemonic
-            val mnemonicBytes = mnemonicToByteArray(mnemonic)
-            val (encryptedMnemonic, mnemonicIv) = keyStoreRepository.encrypt(mnemonicBytes)
-            mnemonicBytes.fill(0) // Clear plaintext mnemonic
-
-            securityPreferencesRepository.storeEncryptedMnemonic(
-                walletId = walletId,
-                encryptedMnemonic = encryptedMnemonic.toHex(),
-                iv = mnemonicIv
-            )
-            logger.d(tag, "Mnemonic secured successfully")
-
-            // Store Bitcoin private keys
-            bitcoinCoins.forEach { coin ->
-                val keyType = when (coin.network) {
-                    BitcoinNetwork.Mainnet -> KEY_BITCOIN_MAINNET
-                    BitcoinNetwork.Testnet -> KEY_BITCOIN_TESTNET
-                }
-                val privateKeyBytes = deriveBitcoinPrivateKey(mnemonic, coin.network)
-                    ?: return@withContext Result.Error("Failed to derive Bitcoin private key for ${coin.network.name}")
-
-                val (encryptedKey, keyIv) = keyStoreRepository.encrypt(privateKeyBytes)
-                privateKeyBytes.fill(0) // Clear private key
-
-                securityPreferencesRepository.storeEncryptedPrivateKey(
-                    walletId = walletId,
-                    keyType = keyType,
-                    encryptedKey = encryptedKey.toHex(),
-                    iv = keyIv
-                )
-                logger.d(tag, "Bitcoin private key stored for ${coin.network.name}")
-            }
-
-            // Store Ethereum private key (same for all EVM networks)
-            if (evmTokens.isNotEmpty()) {
-                val privateKeyBytes = deriveEthereumPrivateKey(mnemonic)
-                    ?: return@withContext Result.Error("Failed to derive Ethereum private key")
-
-                val (encryptedKey, keyIv) = keyStoreRepository.encrypt(privateKeyBytes)
-                privateKeyBytes.fill(0) // Clear private key
-
-                securityPreferencesRepository.storeEncryptedPrivateKey(
-                    walletId = walletId,
-                    keyType = KEY_ETHEREUM_MAIN,
-                    encryptedKey = encryptedKey.toHex(),
-                    iv = keyIv
-                )
-                logger.d(
-                    tag,
-                    "Ethereum private key stored successfully for wallet: $walletId with keyType: $KEY_ETHEREUM_MAIN"
-                )
-            }
-
-            // Store Solana private keys
-            solanaCoins.forEach { coin ->
-                val keyType = when (coin.network) {
-                    SolanaNetwork.Mainnet -> KEY_SOLANA_MAINNET
-                    SolanaNetwork.Devnet -> KEY_SOLANA_DEVNET
-                }
-                val privateKeyBytes = deriveSolanaPrivateKey(mnemonic, coin.derivationPath)
-                    ?: return@withContext Result.Error("Failed to derive Solana private key for ${coin.network.name}")
-
-                val (encryptedKey, keyIv) = keyStoreRepository.encrypt(privateKeyBytes)
-                privateKeyBytes.fill(0) // Clear private key
-
-                securityPreferencesRepository.storeEncryptedPrivateKey(
-                    walletId = walletId,
-                    keyType = keyType,
-                    encryptedKey = encryptedKey.toHex(),
-                    iv = keyIv
-                )
-                logger.d(tag, "Solana private key stored for ${coin.network.name}")
-            }
-        } catch (e: Exception) {
-            val isAuthRequired = e is UserNotAuthenticatedException ||
-                    e.cause is UserNotAuthenticatedException ||
-                    e is javax.crypto.IllegalBlockSizeException && e.message?.contains("user not authenticated", true) == true
-
-            if (isAuthRequired) {
-                return@withContext Result.Error(
-                    message = "Authentication required to secure wallet",
-                    throwable = HardwareAuthRequiredException()
-                )
-            }
-            logger.e(tag, "Failed to secure wallet data: ${e.message}")
-            return@withContext Result.Error("Failed to secure wallet: ${e.message}")
-        }
-
         // Save wallet to database
         try {
             walletDataSource.saveWallet(wallet)
-            logger.d(tag, "Wallet saved to database successfully: $walletId")
         } catch (e: Exception) {
-            logger.e(tag, "Failed to save wallet to database", e)
             return@withContext Result.Error("Failed to save wallet: ${e.message}", e)
         }
 
-        logger.d(
-            tag,
-            "Wallet created successfully: $walletId with ${bitcoinCoins.size} Bitcoin, ${solanaCoins.size} Solana, and ${evmTokens.size} EVM assets"
-        )
         Result.Success(wallet)
     }
 
@@ -293,12 +238,9 @@ class CreateWalletUseCase @Inject constructor(
             publicKey = wallet.watchingKey.pubKey.toString(),
             network = network,
             xpub = xpub
-        ).also {
-            logger.d(tag, "Bitcoin ${network.name} address created: ${address.take(8)}...")
-        }
+        )
 
     } catch (e: Exception) {
-        logger.e(tag, "Bitcoin coin creation failed for ${network.name}", e)
         null
     }
 
@@ -317,7 +259,6 @@ class CreateWalletUseCase @Inject constructor(
                 network = network
             )
         } catch (e: Exception) {
-            logger.e(tag, "Failed to create Native ETH for ${network.name}", e)
             null
         }
     }
@@ -361,14 +302,8 @@ class CreateWalletUseCase @Inject constructor(
                 network = network,
                 derivationPath = derivationPath,
                 splTokens = emptyList()
-            ).also {
-                logger.d(
-                    tag,
-                    "Solana ${network.name} coin created with address: ${it.address.take(8)}... using path: $derivationPath"
-                )
-            }
+            )
         } catch (e: Exception) {
-            logger.e(tag, "Failed to create Solana coin for ${network.name}", e)
             null
         }
     }
@@ -394,14 +329,13 @@ class CreateWalletUseCase @Inject constructor(
             val key = wallet.currentReceiveKey()
             key.privKeyBytes
         } catch (e: Exception) {
-            logger.e(tag, "Failed to derive Bitcoin private key for ${network.name}", e)
             null
         } finally {
             if (originalContext != null) {
                 try {
                     Context.propagate(originalContext)
                 } catch (e: Exception) {
-                    logger.w(tag, "Failed to restore original context", e)
+                    // Ignore
                 }
             } else {
                 try {
@@ -431,7 +365,6 @@ class CreateWalletUseCase @Inject constructor(
                 privateKey
             }
         } catch (e: Exception) {
-            logger.e(tag, "Failed to derive Ethereum private key", e)
             null
         }
     }
@@ -471,7 +404,6 @@ class CreateWalletUseCase @Inject constructor(
 
             secretKey
         } catch (e: Exception) {
-            logger.e(tag, "Failed to derive Solana private key", e)
             null
         }
     }

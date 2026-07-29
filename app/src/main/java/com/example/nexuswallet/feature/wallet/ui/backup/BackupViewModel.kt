@@ -38,22 +38,18 @@ class BackupViewModel @Inject constructor(
             _isLoading.value = true
             _errorMessage.value = null
             
-            android.util.Log.d("BackupFlow", "1. loadMnemonic called for wallet: $walletId")
             val result = getMnemonicUseCase(walletId)
             
             when (result) {
                 is Result.Success -> {
-                    android.util.Log.d("BackupFlow", "2. Success! Mnemonic loaded immediately (Vault was already open or didn't require auth)")
                     _mnemonic.value = result.data
                 }
                 is Result.Error -> {
                     val authException = result.throwable as? HardwareAuthRequiredException
                     if (authException != null) {
-                        android.util.Log.d("BackupFlow", "2. Auth Required! Signaling UI")
                         _cryptoObject.value = authException.cryptoObject
                         _authRequest.value = System.currentTimeMillis()
                     } else {
-                        android.util.Log.e("BackupFlow", "2. Error: ${result.message}")
                         _errorMessage.value = result.message
                     }
                 }
@@ -67,16 +63,13 @@ class BackupViewModel @Inject constructor(
         val cipher = result?.cryptoObject?.cipher
         _cryptoObject.value = null
         _authRequest.value = null
-        android.util.Log.d("BackupFlow", "3. Biometric Success! Retrying decryption")
         viewModelScope.launch {
             _isLoading.value = true
             when (val decryptResult = getMnemonicUseCase(walletId, cipher)) {
                 is Result.Success -> {
-                    android.util.Log.d("BackupFlow", "4. Decryption successful after biometric scan")
                     _mnemonic.value = decryptResult.data
                 }
                 is Result.Error -> {
-                    android.util.Log.e("BackupFlow", "4. Decryption failed after biometric scan: ${decryptResult.message}")
                     _errorMessage.value = decryptResult.message
                 }
                 else -> {}

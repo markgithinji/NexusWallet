@@ -49,6 +49,7 @@ fun ImportWalletScreen(
     val selectedNetworks by viewModel.selectedNetworks.collectAsStateWithLifecycle()
     val selectedTokens by viewModel.selectedTokens.collectAsStateWithLifecycle()
     val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
+    val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val activity = LocalActivity.current as? AppCompatActivity
@@ -61,7 +62,7 @@ fun ImportWalletScreen(
             executor,
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    viewModel.completeImportAfterBiometric()
+                    viewModel.completeImportAfterBiometric(result)
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -71,17 +72,25 @@ fun ImportWalletScreen(
         )
     }
 
-    val promptInfo = remember {
+    val biometricTitle = stringResource(R.string.biometric_authentication)
+    val biometricSubtitle = stringResource(R.string.secure_your_wallet)
+    val biometricCancel = stringResource(R.string.cancel)
+
+    val promptInfo = remember(biometricTitle, biometricSubtitle, biometricCancel) {
         BiometricPrompt.PromptInfo.Builder()
-            .setTitle(context.getString(R.string.biometric_authentication))
-            .setSubtitle(context.getString(R.string.secure_your_wallet))
-            .setNegativeButtonText(context.getString(R.string.cancel))
+            .setTitle(biometricTitle)
+            .setSubtitle(biometricSubtitle)
+            .setNegativeButtonText(biometricCancel)
             .build()
     }
 
     LaunchedEffect(authRequest) {
         if (authRequest != null) {
-            biometricPrompt?.authenticate(promptInfo)
+            if (cryptoObject != null) {
+                biometricPrompt?.authenticate(promptInfo, cryptoObject!!)
+            } else {
+                biometricPrompt?.authenticate(promptInfo)
+            }
         }
     }
 

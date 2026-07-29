@@ -14,7 +14,6 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_MAINNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_TESTNET
 import com.example.nexuswallet.feature.core.util.decodeHex
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
@@ -39,11 +38,8 @@ class SendBitcoinUseCase @Inject constructor(
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val keyStoreRepository: KeyStoreRepository,
     private val securityPreferencesRepository: SecurityPreferencesRepository,
-    private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
-
-    private val tag = "SendBitcoinUC"
 
     suspend operator fun invoke(
         preparedTransaction: PreparedBitcoinTransaction,
@@ -51,21 +47,14 @@ class SendBitcoinUseCase @Inject constructor(
         network: BitcoinNetwork,
         cipher: Cipher? = null
     ): Result<SendBitcoinResult> = withContext(ioDispatcher) {
-        logger.d(
-            tag,
-            "Sending prepared transaction: ${preparedTransaction.transactionId} | walletId=$walletId | network=$network"
-        )
-
         // Get wallet
         val wallet = walletRepository.getWallet(walletId) ?: run {
-            logger.e(tag, "Wallet not found: $walletId")
             return@withContext Result.Error("Wallet not found")
         }
 
         // Get the specific Bitcoin coin for this network
         val bitcoinCoin = wallet.bitcoinCoins.find { it.network == network }
         if (bitcoinCoin == null) {
-            logger.e(tag, "Bitcoin not enabled for network $network in wallet: $walletId")
             return@withContext Result.Error("Bitcoin not enabled for $network")
         }
 
@@ -82,7 +71,6 @@ class SendBitcoinUseCase @Inject constructor(
         )
 
         if (encryptedData == null) {
-            logger.e(tag, "No private key found for wallet: $walletId with keyType: $keyType")
             return@withContext Result.Error("No private key found")
         }
 
@@ -92,7 +80,6 @@ class SendBitcoinUseCase @Inject constructor(
             try {
                 keyStoreRepository.decryptWithCipher(cipher, encryptedHex.decodeHex())
             } catch (e: Exception) {
-                logger.e(tag, "Failed to decrypt with provided cipher: ${e.message}")
                 return@withContext Result.Error("Decryption failed")
             }
         } else {
@@ -109,7 +96,6 @@ class SendBitcoinUseCase @Inject constructor(
                         throwable = HardwareAuthRequiredException(null)
                     )
                 }
-                logger.e(tag, "Failed to decrypt private key: ${e.message}")
                 return@withContext Result.Error("Failed to decrypt private key")
             }
         }
@@ -117,7 +103,6 @@ class SendBitcoinUseCase @Inject constructor(
         val ecKey = try {
             ECKey.fromPrivate(privateKeyBytes)
         } catch (e: Exception) {
-            logger.e(tag, "Failed to parse private key: ${e.message}")
             return@withContext Result.Error("Invalid private key format")
         } finally {
             privateKeyBytes.fill(0)
@@ -129,7 +114,6 @@ class SendBitcoinUseCase @Inject constructor(
             BitcoinNetwork.Testnet -> TestNet3Params.get()
         }
         if (LegacyAddress.fromKey(networkParams, ecKey).toString() != bitcoinCoin.address) {
-            logger.e(tag, "Private key does not match wallet address")
             return@withContext Result.Error("Private key does not match wallet address")
         }
 
@@ -153,7 +137,6 @@ class SendBitcoinUseCase @Inject constructor(
             }
 
             is Result.Error -> {
-                logger.e(tag, "Failed to create signed transaction: ${signResult.message}")
                 Result.Error("Failed to create signed transaction: ${signResult.message}")
             }
 
@@ -212,7 +195,6 @@ class SendBitcoinUseCase @Inject constructor(
                 )
 
                 bitcoinTransactionRepository.saveTransaction(transaction)
-                logger.d(tag, "Transaction saved after successful broadcast: ${transaction.id}")
 
                 Result.Success(
                     SendBitcoinResult(
@@ -225,7 +207,6 @@ class SendBitcoinUseCase @Inject constructor(
             }
 
             is Result.Error -> {
-                logger.e(tag, "Failed to broadcast transaction: ${broadcastResult.message}")
                 Result.Error(broadcastResult.message)
             }
 

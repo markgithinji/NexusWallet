@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.ui.walletcreation
 
+import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
@@ -58,6 +59,9 @@ class WalletCreationViewModel @Inject constructor(
     private val _walletName = MutableStateFlow("")
     val walletName: StateFlow<String> = _walletName.asStateFlow()
 
+    // Persistent wallet ID for retries
+    private var pendingWalletId: String? = null
+
     // User entered words for verification
     private val _enteredWords = MutableStateFlow<List<String>>(emptyList())
     val enteredWords: StateFlow<List<String>> = _enteredWords.asStateFlow()
@@ -65,6 +69,9 @@ class WalletCreationViewModel @Inject constructor(
     // Track if mnemonic is generated
     private val _isMnemonicGenerated = MutableStateFlow(false)
     val isMnemonicGenerated: StateFlow<Boolean> = _isMnemonicGenerated.asStateFlow()
+
+    private val _cryptoObject = MutableStateFlow<BiometricPrompt.CryptoObject?>(null)
+    val cryptoObject: StateFlow<BiometricPrompt.CryptoObject?> = _cryptoObject.asStateFlow()
 
     private val _authRequest = MutableStateFlow<Long?>(null)
     val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
@@ -186,7 +193,7 @@ class WalletCreationViewModel @Inject constructor(
         }
     }
 
-    fun createWallet() {
+    fun createWallet(cipher: javax.crypto.Cipher? = null) {
         viewModelScope.launch {
             _uiState.value = WalletCreationUiState.Loading
             try {
@@ -197,22 +204,29 @@ class WalletCreationViewModel @Inject constructor(
                 }
 
                 val name = _walletName.value.ifBlank { "My Wallet" }
+                val walletId = pendingWalletId ?: "wallet_${System.currentTimeMillis()}".also { pendingWalletId = it }
 
                 val result = createWalletUseCase(
+                    walletId = walletId,
                     mnemonic = mnemonicList,
                     name = name,
                     selectedNetworks = _selectedNetworks.value,
-                    selectedTokens = _selectedTokens.value
+                    selectedTokens = _selectedTokens.value,
+                    cipher = cipher
                 )
 
                 when (result) {
                     is Result.Success -> {
+                        pendingWalletId = null
+                        _cryptoObject.value = null
+                        _authRequest.value = null
                         _uiState.value = WalletCreationUiState.WalletCreated(result.data)
                     }
 
                     is Result.Error -> {
                         val authException = result.throwable as? HardwareAuthRequiredException
                         if (authException != null) {
+                            _cryptoObject.value = authException.cryptoObject
                             _authRequest.value = System.currentTimeMillis()
                             _uiState.value = WalletCreationUiState.Idle
                         } else {
@@ -230,9 +244,14 @@ class WalletCreationViewModel @Inject constructor(
         }
     }
 
-    fun completeCreateAfterBiometric() {
+    fun completeCreateAfterBiometric(result: BiometricPrompt.AuthenticationResult? = null) {
+        _cryptoObject.value = null
         _authRequest.value = null
-        createWallet()
+        viewModelScope.launch {
+            // Small delay to ensure TEE session is fully registered on physical hardware
+            kotlinx.coroutines.delay(300)
+            createWallet()
+        }
     }
 
     fun reset() {
@@ -249,5 +268,6 @@ class WalletCreationViewModel @Inject constructor(
         _walletName.value = ""
         _enteredWords.value = emptyList()
         _isMnemonicGenerated.value = false
+        pendingWalletId = null
     }
 }

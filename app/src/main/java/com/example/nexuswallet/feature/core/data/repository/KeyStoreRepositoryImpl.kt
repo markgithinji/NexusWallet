@@ -41,7 +41,7 @@ class KeyStoreRepositoryImpl @Inject constructor(
 
                 val iv = cipher.iv
                 val encrypted = cipher.doFinal(plaintext)
-
+                
                 Pair(encrypted, iv)
             }
         }
@@ -74,11 +74,23 @@ class KeyStoreRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getEncryptionCipher(): Cipher {
+        val cipher = Cipher.getInstance(TRANSFORMATION)
+        cipher.init(Cipher.ENCRYPT_MODE, getSecretKey())
+        return cipher
+    }
+
     override fun getDecryptionCipher(iv: ByteArray): Cipher {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
         cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
         return cipher
+    }
+
+    override fun encryptWithCipher(cipher: Cipher, plaintext: ByteArray): Pair<ByteArray, ByteArray> {
+        val encrypted = cipher.doFinal(plaintext)
+        val iv = cipher.iv
+        return Pair(encrypted, iv)
     }
 
     override fun decryptWithCipher(cipher: Cipher, encryptedData: ByteArray): ByteArray {
@@ -115,15 +127,14 @@ class KeyStoreRepositoryImpl @Inject constructor(
             builder.setUserAuthenticationRequired(true)
             builder.setInvalidatedByBiometricEnrollment(true)
 
-            // Use a short validity duration (10 seconds) instead of 0 (per-use).
+            // Use a 5-second validity duration.
             // This allows batch operations like Wallet Creation to succeed with one touch,
-            // while still requiring biometrics for every spend session.
+            // while minimizing the hardware's "unlocked" window.
             @Suppress("DEPRECATION")
-            builder.setUserAuthenticationValidityDurationSeconds(10)
+            builder.setUserAuthenticationValidityDurationSeconds(5)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                // For modern Android, we can specify BIOMETRIC_STRONG
-                builder.setUserAuthenticationParameters(10, KeyProperties.AUTH_BIOMETRIC_STRONG)
+                builder.setUserAuthenticationParameters(5, KeyProperties.AUTH_BIOMETRIC_STRONG)
             }
         }
 
@@ -141,7 +152,7 @@ class KeyStoreRepositoryImpl @Inject constructor(
 
     companion object {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        private const val KEY_ALIAS = "nexus_wallet_master_key_v2"
+        private const val KEY_ALIAS = "nexus_wallet_master_key_v5"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val KEY_SIZE = 256
         private const val GCM_TAG_LENGTH = 128

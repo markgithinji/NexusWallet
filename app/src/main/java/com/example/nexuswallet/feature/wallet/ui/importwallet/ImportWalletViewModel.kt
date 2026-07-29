@@ -54,6 +54,11 @@ class ImportWalletViewModel @Inject constructor(
     private val _authRequest = MutableStateFlow<Long?>(null)
     val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
 
+    private var pendingWalletId: String? = null
+
+    private val _cryptoObject = MutableStateFlow<BiometricPrompt.CryptoObject?>(null)
+    val cryptoObject: StateFlow<BiometricPrompt.CryptoObject?> = _cryptoObject.asStateFlow()
+
     fun updateWord(index: Int, word: String) {
         _mnemonicWords.update { current ->
             current.toMutableList().apply {
@@ -101,7 +106,7 @@ class ImportWalletViewModel @Inject constructor(
         }
     }
 
-    fun importWallet() {
+    fun importWallet(cipher: javax.crypto.Cipher? = null) {
         val words = _mnemonicWords.value
         if (words.any { it.isBlank() }) {
             _uiState.value = WalletCreationUiState.Error("Please fill in all 12 words")
@@ -122,21 +127,28 @@ class ImportWalletViewModel @Inject constructor(
             _uiState.value = WalletCreationUiState.Loading
             
             val name = _walletName.value.ifBlank { "Imported Wallet" }
-            
+            val walletId = pendingWalletId ?: "wallet_${System.currentTimeMillis()}".also { pendingWalletId = it }
+
             val result = createWalletUseCase(
+                walletId = walletId,
                 mnemonic = words,
                 name = name,
                 selectedNetworks = _selectedNetworks.value,
-                selectedTokens = _selectedTokens.value
+                selectedTokens = _selectedTokens.value,
+                cipher = cipher
             )
 
             when (result) {
                 is Result.Success -> {
+                    pendingWalletId = null
+                    _cryptoObject.value = null
+                    _authRequest.value = null
                     _uiState.value = WalletCreationUiState.WalletCreated(result.data)
                 }
                 is Result.Error -> {
                     val authException = result.throwable as? HardwareAuthRequiredException
                     if (authException != null) {
+                        _cryptoObject.value = authException.cryptoObject
                         _authRequest.value = System.currentTimeMillis()
                         _uiState.value = WalletCreationUiState.Idle
                     } else {
@@ -150,8 +162,13 @@ class ImportWalletViewModel @Inject constructor(
         }
     }
 
-    fun completeImportAfterBiometric() {
+    fun completeImportAfterBiometric(result: BiometricPrompt.AuthenticationResult? = null) {
+        _cryptoObject.value = null
         _authRequest.value = null
-        importWallet()
+        viewModelScope.launch {
+            // Small delay to ensure TEE session is fully registered on physical hardware
+            kotlinx.coroutines.delay(300)
+            importWallet()
+        }
     }
 }
