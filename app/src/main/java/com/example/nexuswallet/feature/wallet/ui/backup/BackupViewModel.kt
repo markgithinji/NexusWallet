@@ -30,6 +30,9 @@ class BackupViewModel @Inject constructor(
     private val _cryptoObject = MutableStateFlow<BiometricPrompt.CryptoObject?>(null)
     val cryptoObject: StateFlow<BiometricPrompt.CryptoObject?> = _cryptoObject.asStateFlow()
 
+    private val _authRequest = MutableStateFlow<Long?>(null)
+    val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
+
     fun loadMnemonic(walletId: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -46,8 +49,9 @@ class BackupViewModel @Inject constructor(
                 is Result.Error -> {
                     val authException = result.throwable as? HardwareAuthRequiredException
                     if (authException != null) {
-                        android.util.Log.d("BackupFlow", "2. Auth Required! Exposing cryptoObject to UI")
+                        android.util.Log.d("BackupFlow", "2. Auth Required! Signaling UI")
                         _cryptoObject.value = authException.cryptoObject
+                        _authRequest.value = System.currentTimeMillis()
                     } else {
                         android.util.Log.e("BackupFlow", "2. Error: ${result.message}")
                         _errorMessage.value = result.message
@@ -59,16 +63,17 @@ class BackupViewModel @Inject constructor(
         }
     }
 
-    fun onBiometricSuccess(walletId: String, result: BiometricPrompt.AuthenticationResult) {
-        val cipher = result.cryptoObject?.cipher ?: return
-        android.util.Log.d("BackupFlow", "3. Biometric Success! Retrying decryption with unlocked cipher")
+    fun onBiometricSuccess(walletId: String, result: BiometricPrompt.AuthenticationResult? = null) {
+        val cipher = result?.cryptoObject?.cipher
+        _cryptoObject.value = null
+        _authRequest.value = null
+        android.util.Log.d("BackupFlow", "3. Biometric Success! Retrying decryption")
         viewModelScope.launch {
             _isLoading.value = true
             when (val decryptResult = getMnemonicUseCase(walletId, cipher)) {
                 is Result.Success -> {
                     android.util.Log.d("BackupFlow", "4. Decryption successful after biometric scan")
                     _mnemonic.value = decryptResult.data
-                    _cryptoObject.value = null
                 }
                 is Result.Error -> {
                     android.util.Log.e("BackupFlow", "4. Decryption failed after biometric scan: ${decryptResult.message}")

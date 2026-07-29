@@ -31,12 +31,22 @@ class GetMnemonicUseCase @Inject constructor(
                 try {
                     keyStoreRepository.decrypt(encryptedMnemonicHex.decodeHex(), iv)
                 } catch (e: Exception) {
-                    val isAuthRequired = e is UserNotAuthenticatedException || e.cause is UserNotAuthenticatedException
+                    val isAuthRequired = e is UserNotAuthenticatedException ||
+                            e.cause is UserNotAuthenticatedException ||
+                            e is javax.crypto.IllegalBlockSizeException && e.message?.contains("user not authenticated", true) == true
+
                     if (isAuthRequired) {
-                        val decryptionCipher = keyStoreRepository.getDecryptionCipher(iv)
+                        val authCipher = try {
+                            keyStoreRepository.getDecryptionCipher(iv)
+                        } catch (authEx: Exception) {
+                            null
+                        }
+                        
+                        val cryptoObject = authCipher?.let { BiometricPrompt.CryptoObject(it) }
+                        
                         return Result.Error(
                             message = "Authentication required",
-                            throwable = HardwareAuthRequiredException(BiometricPrompt.CryptoObject(decryptionCipher))
+                            throwable = HardwareAuthRequiredException(cryptoObject)
                         )
                     }
                     throw e

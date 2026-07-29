@@ -57,6 +57,7 @@ fun BackupScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
     val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
+    val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val activity = LocalActivity.current as? AppCompatActivity
@@ -96,9 +97,13 @@ fun BackupScreen(
         viewModel.loadMnemonic(walletId)
     }
 
-    LaunchedEffect(cryptoObject) {
-        cryptoObject?.let {
-            biometricPrompt?.authenticate(promptInfo, it)
+    LaunchedEffect(authRequest) {
+        if (authRequest != null) {
+            if (cryptoObject != null) {
+                biometricPrompt?.authenticate(promptInfo, cryptoObject!!)
+            } else {
+                biometricPrompt?.authenticate(promptInfo)
+            }
         }
     }
 
