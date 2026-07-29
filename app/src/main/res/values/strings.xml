@@ -130,12 +130,12 @@
 
     <!-- Welcome Screen -->
     <string name="welcome_secure_crypto_wallet">Secure Crypto Wallet</string>
-    <string name="welcome_desc">Store, manage, and exchange cryptocurrencies securely with industry-standard encryption</string>
-    <string name="features">Features</string>
-    <string name="feature_bip39">BIP39 Secure Recovery Phrase</string>
-    <string name="feature_biometric">Biometric Authentication</string>
-    <string name="feature_keystore">Android KeyStore Encryption</string>
-    <string name="feature_multichain">Multi-Chain Support</string>
+    <string name="welcome_desc">Your secure gateway to the decentralized world.</string>
+    <string name="features">Core Security</string>
+    <string name="feature_bip39">Secure Backup</string>
+    <string name="feature_biometric">Biometrics</string>
+    <string name="feature_keystore">Hardware Vault</string>
+    <string name="feature_multichain">Multi-Chain</string>
     <string name="create_new_wallet">Create New Wallet</string>
     <string name="import_existing_wallet">Import Existing Wallet</string>
     <string name="skip_for_now">Skip for Now</string>
