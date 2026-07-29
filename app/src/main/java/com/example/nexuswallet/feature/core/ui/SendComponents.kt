@@ -959,7 +959,7 @@ fun SendBottomBar(
         modifier = modifier
             .fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp
+        shadowElevation = 0.dp
     ) {
         Column(
             modifier = Modifier.padding(16.dp)

@@ -1026,7 +1026,7 @@ fun TransactionBottomBar(
             .fillMaxWidth()
             .navigationBarsPadding(),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp
+        shadowElevation = 0.dp
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
