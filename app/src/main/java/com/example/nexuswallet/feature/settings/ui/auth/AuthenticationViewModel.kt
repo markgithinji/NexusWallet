@@ -1,11 +1,11 @@
-package com.example.nexuswallet.feature.authentication.ui
+package com.example.nexuswallet.feature.settings.ui.auth
 
 import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.authentication.domain.model.AuthType
-import com.example.nexuswallet.feature.authentication.domain.usecase.RecordAuthenticationUseCase
-import com.example.nexuswallet.feature.authentication.domain.usecase.VerifyPinUseCase
+import com.example.nexuswallet.feature.settings.domain.model.AuthType
+import com.example.nexuswallet.feature.settings.domain.usecase.RecordAuthenticationUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.VerifyPinUseCase
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.settings.domain.usecase.IsBiometricEnabledUseCase

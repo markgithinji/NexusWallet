@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.authentication.domain.usecase
+package com.example.nexuswallet.feature.settings.domain.usecase
 
 import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.core.util.Result

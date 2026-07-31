@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.authentication.ui
+package com.example.nexuswallet.feature.settings.ui.auth
 
 import android.hardware.biometrics.BiometricPrompt.BIOMETRIC_ERROR_CANCELED
 import android.hardware.biometrics.BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED
@@ -62,7 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.nexuswallet.feature.authentication.domain.model.AuthType
+import com.example.nexuswallet.feature.settings.domain.model.AuthType
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.ui.theme.warning
 

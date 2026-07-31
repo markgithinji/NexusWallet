@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.settings.ui
+package com.example.nexuswallet.feature.settings.ui.security
 
 import com.example.nexuswallet.feature.settings.domain.model.AuthMethod
 

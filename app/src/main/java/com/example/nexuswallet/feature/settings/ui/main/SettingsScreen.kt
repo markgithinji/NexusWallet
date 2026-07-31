@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.settings.ui
+package com.example.nexuswallet.feature.settings.ui.main
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

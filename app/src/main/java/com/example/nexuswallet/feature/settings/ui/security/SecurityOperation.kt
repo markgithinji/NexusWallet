@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.settings.ui
+package com.example.nexuswallet.feature.settings.ui.security
 
 sealed class SecurityOperation {
     object IDLE : SecurityOperation()

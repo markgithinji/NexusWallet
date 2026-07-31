@@ -1,18 +1,11 @@
 package com.example.nexuswallet.feature.settings.domain.di
 
-
 import com.example.nexuswallet.feature.core.data.util.PinHasher
 import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.settings.domain.usecase.ClearAllSecurityDataUseCase
-import com.example.nexuswallet.feature.settings.domain.usecase.ClearPinUseCase
-import com.example.nexuswallet.feature.settings.domain.usecase.GetAuthStatusUseCase
-import com.example.nexuswallet.feature.settings.domain.usecase.IsBiometricEnabledUseCase
-import com.example.nexuswallet.feature.settings.domain.usecase.IsPinSetUseCase
-import com.example.nexuswallet.feature.settings.domain.usecase.SetBiometricEnabledUseCase
-import com.example.nexuswallet.feature.settings.domain.usecase.SetPinUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.*
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -109,6 +102,32 @@ object SettingsDomainModule {
             securityRepository = securityRepository,
             vaultRepository = vaultRepository,
             keyStoreRepository = keyStoreRepository,
+            logger = logger
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideVerifyPinUseCase(
+        securityRepository: SecurityRepository,
+        pinHasher: PinHasher,
+        logger: Logger
+    ): VerifyPinUseCase {
+        return VerifyPinUseCase(
+            securityRepository = securityRepository,
+            pinHasher = pinHasher,
+            logger = logger
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideRecordAuthenticationUseCase(
+        securityRepository: SecurityRepository,
+        logger: Logger
+    ): RecordAuthenticationUseCase {
+        return RecordAuthenticationUseCase(
+            securityRepository = securityRepository,
             logger = logger
         )
     }

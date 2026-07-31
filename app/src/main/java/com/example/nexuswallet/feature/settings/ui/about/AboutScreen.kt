@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.settings.ui
+package com.example.nexuswallet.feature.settings.ui.about
 
 import android.content.Context
 import android.content.Intent

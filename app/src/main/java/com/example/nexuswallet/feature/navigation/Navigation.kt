@@ -13,7 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import com.example.nexuswallet.feature.authentication.ui.AuthenticationRequiredScreen
+import com.example.nexuswallet.feature.settings.ui.auth.AuthenticationRequiredScreen
 import com.example.nexuswallet.feature.bitcoin.ui.send.BitcoinSendScreen
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.ethereum.ui.EthereumSendScreen
@@ -22,9 +22,9 @@ import com.example.nexuswallet.feature.market.ui.TokenDetailScreen
 import com.example.nexuswallet.feature.navigation.navtype.AuthTargetNavType
 import com.example.nexuswallet.feature.navigation.navtype.CoinNavType
 import com.example.nexuswallet.feature.navigation.navtype.NetworkNavType
-import com.example.nexuswallet.feature.settings.ui.AboutScreen
-import com.example.nexuswallet.feature.settings.ui.SecuritySettingsScreen
-import com.example.nexuswallet.feature.settings.ui.SettingsScreen
+import com.example.nexuswallet.feature.settings.ui.about.AboutScreen
+import com.example.nexuswallet.feature.settings.ui.security.SecuritySettingsScreen
+import com.example.nexuswallet.feature.settings.ui.main.SettingsScreen
 import com.example.nexuswallet.feature.solana.ui.SolanaSendScreen
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin

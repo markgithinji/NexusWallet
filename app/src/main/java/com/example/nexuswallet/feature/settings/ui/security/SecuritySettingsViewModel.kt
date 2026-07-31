@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.settings.ui
+package com.example.nexuswallet.feature.settings.ui.security
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
