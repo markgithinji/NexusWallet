@@ -36,6 +36,8 @@ import com.example.nexuswallet.ui.theme.warning
 import androidx.compose.ui.res.stringResource
 import com.example.nexuswallet.R
 
+import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SecuritySettingsScreen(
@@ -77,7 +79,10 @@ fun SecuritySettingsScreen(
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
             when (val state = uiState) {
-                is Result.Loading -> SecurityLoadingContent(padding)
+                is Result.Loading -> FullScreenLoading(
+                    modifier = Modifier.padding(padding),
+                    message = stringResource(R.string.loading)
+                )
                 is Result.Error -> SecurityErrorContent(
                     message = state.message,
                     onRetry = viewModel::retry,
@@ -131,18 +136,6 @@ private fun SecurityTopBar(onNavigateUp: () -> Unit) {
             containerColor = MaterialTheme.colorScheme.surface
         )
     )
-}
-
-@Composable
-private fun SecurityLoadingContent(padding: PaddingValues) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-    }
 }
 
 @Composable
@@ -637,22 +630,23 @@ private fun SecurityOperationOverlay(operationState: SecurityOperation) {
                 .background(Color.Black.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center
         ) {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                elevation = CardDefaults.cardElevation(0.dp)
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = Color.White,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier.padding(horizontal = 40.dp, vertical = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     CircularProgressIndicator(
                         color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 2.dp
+                        strokeWidth = 3.dp,
+                        modifier = Modifier.size(40.dp)
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
                     Text(
                         text = when (operationState) {
                             SecurityOperation.BACKING_UP -> stringResource(R.string.creating_backup)
@@ -660,7 +654,9 @@ private fun SecurityOperationOverlay(operationState: SecurityOperation) {
                             SecurityOperation.UPDATING -> stringResource(R.string.updating)
                         },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
                     )
                 }
             }

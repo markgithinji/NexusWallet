@@ -87,6 +87,7 @@ import com.example.nexuswallet.feature.core.util.formatPrice
 import com.example.nexuswallet.feature.core.util.formatTwoDecimals
 import com.example.nexuswallet.feature.market.domain.model.Token
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
+import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
 import com.example.nexuswallet.ui.theme.success
 
 
@@ -496,18 +497,10 @@ fun MarketList(
 
         if (isLoadingMore) {
             item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(32.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 3.dp
-                    )
-                }
+                InlineLoading(
+                    modifier = Modifier.padding(vertical = 16.dp),
+                    message = stringResource(R.string.loading)
+                )
             }
         }
 

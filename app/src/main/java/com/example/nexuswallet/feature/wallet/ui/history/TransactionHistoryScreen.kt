@@ -17,6 +17,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
+import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.TransactionItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,7 +60,10 @@ fun TransactionHistoryScreen(
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
             if (uiState.isLoading && uiState.transactions.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                FullScreenLoading(
+                    modifier = Modifier.padding(padding),
+                    message = stringResource(R.string.loading_transactions)
+                )
             } else if (!uiState.isLoading && uiState.transactions.isEmpty()) {
                 Text(
                     text = stringResource(R.string.no_transactions),
@@ -95,6 +99,7 @@ fun TransactionHistoryScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(2.dp)
+                        .padding(top = padding.calculateTopPadding())
                         .align(Alignment.TopCenter)
                 )
             }
