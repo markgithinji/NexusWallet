@@ -25,7 +25,7 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceU
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -50,7 +50,7 @@ class WalletDetailViewModel @Inject constructor(
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
     private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
     private val formatBalanceUseCase: FormatBalanceUseCase,
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val securityRepository: SecurityRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
@@ -70,7 +70,7 @@ class WalletDetailViewModel @Inject constructor(
 
     private fun observeSelectedCurrency() {
         viewModelScope.launch {
-            securityPreferencesRepository.observeSelectedCurrency().collect { currency ->
+            securityRepository.observeSelectedCurrency().collect { currency ->
                 val previousCurrency = _uiState.value.selectedCurrency
                 _uiState.update { it.copy(selectedCurrency = currency) }
                 

@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.navigation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.settings.domain.usecase.IsBiometricEnabledUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.IsPinSetUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
@@ -20,7 +20,7 @@ import javax.inject.Inject
 class NavigationViewModel @Inject constructor(
     private val isPinSetUseCase: IsPinSetUseCase,
     private val isBiometricEnabledUseCase: IsBiometricEnabledUseCase,
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val securityRepository: SecurityRepository,
     private val walletRepository: WalletRepository
 ) : ViewModel() {
 
@@ -74,7 +74,7 @@ class NavigationViewModel @Inject constructor(
 
     private fun observePrivacyMode() {
         viewModelScope.launch {
-            securityPreferencesRepository.observePrivacyModeEnabled().collect { isEnabled ->
+            securityRepository.observePrivacyModeEnabled().collect { isEnabled ->
                 _isPrivacyModeEnabled.value = isEnabled
             }
         }
@@ -82,7 +82,7 @@ class NavigationViewModel @Inject constructor(
 
     private fun observeTransactionSecurity() {
         viewModelScope.launch {
-            securityPreferencesRepository.observeRequireAuthForSend().collect { isEnabled ->
+            securityRepository.observeRequireAuthForSend().collect { isEnabled ->
                 _isRequireAuthForSendEnabled.value = isEnabled
             }
         }

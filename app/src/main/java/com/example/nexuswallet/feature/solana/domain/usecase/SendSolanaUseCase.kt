@@ -1,13 +1,13 @@
 package com.example.nexuswallet.feature.solana.domain.usecase
 
 import android.security.keystore.UserNotAuthenticatedException
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
@@ -35,7 +35,7 @@ class SendSolanaUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
     private val solanaTransactionRepository: SolanaTransactionRepository,
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val vaultRepository: VaultRepository,
     private val keyStoreRepository: KeyStoreRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -77,7 +77,7 @@ class SendSolanaUseCase @Inject constructor(
             SolanaNetwork.Devnet -> KEY_SOLANA_DEVNET
         }
 
-        val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
+        val encryptedData = vaultRepository.getEncryptedPrivateKey(
             walletId = walletId,
             keyType = keyType
         )

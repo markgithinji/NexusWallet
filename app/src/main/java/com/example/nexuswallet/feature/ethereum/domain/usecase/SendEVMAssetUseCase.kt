@@ -1,13 +1,13 @@
 package com.example.nexuswallet.feature.ethereum.domain.usecase
 
 import android.security.keystore.UserNotAuthenticatedException
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
 import com.example.nexuswallet.feature.core.util.decodeHex
@@ -34,7 +34,7 @@ class SendEVMAssetUseCase @Inject constructor(
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
     private val getFeeEstimateUseCase: GetFeeEstimateUseCase,
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val vaultRepository: VaultRepository,
     private val keyStoreRepository: KeyStoreRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -65,7 +65,7 @@ class SendEVMAssetUseCase @Inject constructor(
         }
 
         // 1. Get encrypted private key
-        val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
+        val encryptedData = vaultRepository.getEncryptedPrivateKey(
             walletId = walletId,
             keyType = KEY_ETHEREUM_MAIN
         ) ?: run {

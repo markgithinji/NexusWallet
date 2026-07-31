@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.authentication.data.util
+package com.example.nexuswallet.feature.core.data.util
 
 import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex

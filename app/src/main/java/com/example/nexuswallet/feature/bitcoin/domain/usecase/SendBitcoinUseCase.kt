@@ -1,7 +1,6 @@
 package com.example.nexuswallet.feature.bitcoin.domain.usecase
 
 import android.security.keystore.UserNotAuthenticatedException
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.bitcoin.domain.model.SendBitcoinResult
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
@@ -10,6 +9,7 @@ import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_MAINNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_TESTNET
@@ -37,7 +37,7 @@ class SendBitcoinUseCase @Inject constructor(
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val keyStoreRepository: KeyStoreRepository,
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val vaultRepository: VaultRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
 
@@ -65,7 +65,7 @@ class SendBitcoinUseCase @Inject constructor(
         }
 
         // Get encrypted private key
-        val encryptedData = securityPreferencesRepository.getEncryptedPrivateKey(
+        val encryptedData = vaultRepository.getEncryptedPrivateKey(
             walletId = walletId,
             keyType = keyType
         )

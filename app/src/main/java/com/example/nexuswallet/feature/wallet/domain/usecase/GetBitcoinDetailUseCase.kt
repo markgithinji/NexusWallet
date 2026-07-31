@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.core.util.Result
@@ -10,6 +9,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.BitcoinDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -23,7 +23,7 @@ class GetBitcoinDetailUseCase @Inject constructor(
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val syncBitcoinBalanceUseCase: SyncBitcoinBalanceUseCase,
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val securityRepository: SecurityRepository,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -80,7 +80,7 @@ class GetBitcoinDetailUseCase @Inject constructor(
 
         // 3.5. Sync fresh balance
         try {
-            val currency = securityPreferencesRepository.getSelectedCurrency()
+            val currency = securityRepository.getSelectedCurrency()
             val pricesResult = getSimplePricesUseCase(listOf(bitcoinCoin.symbol), currency)
             val price = if (pricesResult is Result.Success) pricesResult.data[bitcoinCoin.symbol] ?: 0.0 else 0.0
 

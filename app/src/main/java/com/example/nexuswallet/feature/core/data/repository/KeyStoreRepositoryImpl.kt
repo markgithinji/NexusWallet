@@ -7,7 +7,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import com.example.nexuswallet.feature.authentication.data.util.safeKeyStoreCall
+import com.example.nexuswallet.feature.core.data.util.safeKeyStoreCall
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher

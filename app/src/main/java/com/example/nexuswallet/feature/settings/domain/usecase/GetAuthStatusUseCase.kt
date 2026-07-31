@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.settings.domain.usecase
 
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.settings.domain.model.AuthMethod
@@ -10,14 +10,14 @@ import javax.inject.Singleton
 
 @Singleton
 class GetAuthStatusUseCase @Inject constructor(
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val securityRepository: SecurityRepository,
     private val logger: Logger
 ) {
     suspend operator fun invoke(): Result<AuthStatus> {
-        val pinSet = securityPreferencesRepository.getPinHash() != null
-        val biometricEnabled = securityPreferencesRepository.isBiometricEnabled()
-        val privacyModeEnabled = securityPreferencesRepository.isPrivacyModeEnabled()
-        val requireAuthForSend = securityPreferencesRepository.isRequireAuthForSend()
+        val pinSet = securityRepository.getPinHash() != null
+        val biometricEnabled = securityRepository.isBiometricEnabled()
+        val privacyModeEnabled = securityRepository.isPrivacyModeEnabled()
+        val requireAuthForSend = securityRepository.isRequireAuthForSend()
 
         val availableMethods = buildList {
             if (pinSet) add(AuthMethod.PIN)

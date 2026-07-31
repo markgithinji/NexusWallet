@@ -1,10 +1,10 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import android.security.keystore.UserNotAuthenticatedException
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.domain.di.DefaultDispatcher
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.Slip10
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_MAINNET
@@ -45,7 +45,7 @@ import javax.inject.Singleton
 class CreateWalletUseCase @Inject constructor(
     private val walletDataSource: WalletDataSource,
     private val keyStoreRepository: KeyStoreRepository,
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val vaultRepository: VaultRepository,
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher
 ) {
 
@@ -117,7 +117,7 @@ class CreateWalletUseCase @Inject constructor(
             val (encryptedMnemonic, mnemonicIv) = keyStoreRepository.encrypt(mnemonicBytes)
             mnemonicBytes.fill(0)
 
-            securityPreferencesRepository.storeEncryptedMnemonic(
+            vaultRepository.storeEncryptedMnemonic(
                 walletId = walletId,
                 encryptedMnemonic = encryptedMnemonic.toHex(),
                 iv = mnemonicIv
@@ -133,7 +133,7 @@ class CreateWalletUseCase @Inject constructor(
                 val (encryptedKey, keyIv) = keyStoreRepository.encrypt(rawKey)
                 rawKey.fill(0)
 
-                securityPreferencesRepository.storeEncryptedPrivateKey(
+                vaultRepository.storeEncryptedPrivateKey(
                     walletId = walletId,
                     keyType = keyType,
                     encryptedKey = encryptedKey.toHex(),
@@ -146,7 +146,7 @@ class CreateWalletUseCase @Inject constructor(
                 val (encryptedKey, keyIv) = keyStoreRepository.encrypt(rawKey)
                 rawKey.fill(0)
 
-                securityPreferencesRepository.storeEncryptedPrivateKey(
+                vaultRepository.storeEncryptedPrivateKey(
                     walletId = walletId,
                     keyType = KEY_ETHEREUM_MAIN,
                     encryptedKey = encryptedKey.toHex(),
@@ -164,7 +164,7 @@ class CreateWalletUseCase @Inject constructor(
                 val (encryptedKey, keyIv) = keyStoreRepository.encrypt(rawKey)
                 rawKey.fill(0)
 
-                securityPreferencesRepository.storeEncryptedPrivateKey(
+                vaultRepository.storeEncryptedPrivateKey(
                     walletId = walletId,
                     keyType = keyType,
                     encryptedKey = encryptedKey.toHex(),

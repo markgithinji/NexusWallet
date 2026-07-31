@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
@@ -10,6 +9,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.SolanaDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -22,7 +22,7 @@ class GetSolanaDetailUseCase @Inject constructor(
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
     private val syncSolanaBalanceUseCase: SyncSolanaBalanceUseCase,
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val securityRepository: SecurityRepository,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -93,7 +93,7 @@ class GetSolanaDetailUseCase @Inject constructor(
 
         // 4.5. Sync fresh balance
         try {
-            val currency = securityPreferencesRepository.getSelectedCurrency()
+            val currency = securityRepository.getSelectedCurrency()
             val pricesResult = getSimplePricesUseCase(listOf(solanaCoin.symbol), currency)
             val price = if (pricesResult is Result.Success) pricesResult.data[solanaCoin.symbol] ?: 0.0 else 0.0
 

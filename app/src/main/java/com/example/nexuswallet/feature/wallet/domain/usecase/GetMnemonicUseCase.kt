@@ -2,8 +2,8 @@ package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import android.security.keystore.UserNotAuthenticatedException
 import androidx.biometric.BiometricPrompt
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.decodeHex
@@ -14,7 +14,7 @@ import javax.inject.Singleton
 
 @Singleton
 class GetMnemonicUseCase @Inject constructor(
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val vaultRepository: VaultRepository,
     private val keyStoreRepository: KeyStoreRepository,
     private val logger: Logger
 ) {
@@ -22,7 +22,7 @@ class GetMnemonicUseCase @Inject constructor(
 
     suspend operator fun invoke(walletId: String, cipher: Cipher? = null): Result<List<String>> {
         return try {
-            val (encryptedMnemonicHex, iv) = securityPreferencesRepository.getEncryptedMnemonic(walletId) 
+            val (encryptedMnemonicHex, iv) = vaultRepository.getEncryptedMnemonic(walletId)
                 ?: return Result.Error("No encrypted mnemonic found for wallet: $walletId")
             
             val decryptedBytes = if (cipher != null) {

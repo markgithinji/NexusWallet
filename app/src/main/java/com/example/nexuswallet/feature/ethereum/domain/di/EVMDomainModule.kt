@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.ethereum.domain.di
 
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.ethereum.domain.usecase.GetEVMWalletUseCase
@@ -90,7 +90,7 @@ object EVMDomainModule {
         evmBlockchainRepository: EVMBlockchainRepository,
         evmTransactionRepository: EVMTransactionRepository,
         getFeeEstimateUseCase: GetFeeEstimateUseCase,
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        vaultRepository: VaultRepository,
         keyStoreRepository: KeyStoreRepository,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
@@ -100,9 +100,8 @@ object EVMDomainModule {
             evmBlockchainRepository = evmBlockchainRepository,
             evmTransactionRepository = evmTransactionRepository,
             getFeeEstimateUseCase = getFeeEstimateUseCase,
-            securityPreferencesRepository = securityPreferencesRepository,
+            vaultRepository = vaultRepository,
             keyStoreRepository = keyStoreRepository,
-            logger = logger,
             ioDispatcher = ioDispatcher
         )
     }

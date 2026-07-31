@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.authentication.domain.di
 
-import com.example.nexuswallet.feature.authentication.data.util.PinHasher
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.core.data.util.PinHasher
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.authentication.domain.usecase.RecordAuthenticationUseCase
 import com.example.nexuswallet.feature.authentication.domain.usecase.VerifyPinUseCase
 import com.example.nexuswallet.feature.logging.Logger
@@ -18,12 +18,12 @@ object AuthenticationDomainModule {
     @Provides
     @Singleton
     fun provideVerifyPinUseCase(
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        securityRepository: SecurityRepository,
         pinHasher: PinHasher,
         logger: Logger
     ): VerifyPinUseCase {
         return VerifyPinUseCase(
-            securityPreferencesRepository = securityPreferencesRepository,
+            securityRepository = securityRepository,
             pinHasher = pinHasher,
             logger = logger
         )
@@ -32,11 +32,11 @@ object AuthenticationDomainModule {
     @Provides
     @Singleton
     fun provideRecordAuthenticationUseCase(
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        securityRepository: SecurityRepository,
         logger: Logger
     ): RecordAuthenticationUseCase {
         return RecordAuthenticationUseCase(
-            securityPreferencesRepository = securityPreferencesRepository,
+            securityRepository = securityRepository,
             logger = logger
         )
     }

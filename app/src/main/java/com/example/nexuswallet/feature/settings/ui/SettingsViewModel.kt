@@ -2,8 +2,8 @@ package com.example.nexuswallet.feature.settings.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -13,17 +13,17 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val securityPreferencesRepository: SecurityPreferencesRepository
+    private val securityRepository: SecurityRepository
 ) : ViewModel() {
 
-    val selectedCurrency: StateFlow<String> = securityPreferencesRepository.observeSelectedCurrency()
+    val selectedCurrency: StateFlow<String> = securityRepository.observeSelectedCurrency()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = "USD"
         )
 
-    val themeMode: StateFlow<ThemeMode> = securityPreferencesRepository.observeThemeMode()
+    val themeMode: StateFlow<ThemeMode> = securityRepository.observeThemeMode()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -32,13 +32,13 @@ class SettingsViewModel @Inject constructor(
 
     fun setSelectedCurrency(currencyCode: String) {
         viewModelScope.launch {
-            securityPreferencesRepository.setSelectedCurrency(currencyCode)
+            securityRepository.setSelectedCurrency(currencyCode)
         }
     }
 
     fun setThemeMode(themeMode: ThemeMode) {
         viewModelScope.launch {
-            securityPreferencesRepository.setThemeMode(themeMode)
+            securityRepository.setThemeMode(themeMode)
         }
     }
 }

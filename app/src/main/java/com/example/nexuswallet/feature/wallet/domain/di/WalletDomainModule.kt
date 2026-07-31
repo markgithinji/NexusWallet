@@ -1,9 +1,10 @@
 package com.example.nexuswallet.feature.wallet.domain.di
 
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
@@ -108,7 +109,7 @@ object WalletDomainModule {
     fun provideCreateWalletUseCase(
         walletDataSource: WalletDataSource,
         keyStoreRepository: KeyStoreRepository,
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        vaultRepository: VaultRepository,
         @DefaultDispatcher defaultDispatcher: CoroutineDispatcher,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
@@ -116,7 +117,7 @@ object WalletDomainModule {
         return CreateWalletUseCase(
             walletDataSource = walletDataSource,
             keyStoreRepository = keyStoreRepository,
-            securityPreferencesRepository = securityPreferencesRepository,
+            vaultRepository = vaultRepository,
             logger = logger,
             defaultDispatcher = defaultDispatcher
         )
@@ -136,7 +137,7 @@ object WalletDomainModule {
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
         syncBitcoinBalanceUseCase: SyncBitcoinBalanceUseCase,
         getSimplePricesUseCase: GetSimplePricesUseCase,
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        securityRepository: SecurityRepository,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetBitcoinDetailUseCase {
@@ -146,7 +147,7 @@ object WalletDomainModule {
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
             syncBitcoinBalanceUseCase = syncBitcoinBalanceUseCase,
             getSimplePricesUseCase = getSimplePricesUseCase,
-            securityPreferencesRepository = securityPreferencesRepository,
+            securityRepository = securityRepository,
             logger = logger,
             ioDispatcher = ioDispatcher
         )
@@ -160,7 +161,7 @@ object WalletDomainModule {
         evmBlockchainRepository: EVMBlockchainRepository,
         syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
         getSimplePricesUseCase: GetSimplePricesUseCase,
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        securityRepository: SecurityRepository,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetEthereumDetailUseCase {
@@ -170,7 +171,7 @@ object WalletDomainModule {
             evmBlockchainRepository = evmBlockchainRepository,
             syncEVMBalancesUseCase = syncEVMBalancesUseCase,
             getSimplePricesUseCase = getSimplePricesUseCase,
-            securityPreferencesRepository = securityPreferencesRepository,
+            securityRepository = securityRepository,
             logger = logger,
             ioDispatcher = ioDispatcher
         )
@@ -184,7 +185,7 @@ object WalletDomainModule {
         solanaBlockchainRepository: SolanaBlockchainRepository,
         syncSolanaBalanceUseCase: SyncSolanaBalanceUseCase,
         getSimplePricesUseCase: GetSimplePricesUseCase,
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        securityRepository: SecurityRepository,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger
     ): GetSolanaDetailUseCase {
@@ -194,7 +195,7 @@ object WalletDomainModule {
             solanaBlockchainRepository = solanaBlockchainRepository,
             syncSolanaBalanceUseCase = syncSolanaBalanceUseCase,
             getSimplePricesUseCase = getSimplePricesUseCase,
-            securityPreferencesRepository = securityPreferencesRepository,
+            securityRepository = securityRepository,
             logger = logger,
             ioDispatcher = ioDispatcher
         )

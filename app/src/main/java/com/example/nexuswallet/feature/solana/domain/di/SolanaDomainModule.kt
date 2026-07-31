@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.solana.domain.di
 
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
@@ -42,18 +42,16 @@ object SolanaUseDomainModule {
         walletRepository: WalletRepository,
         solanaBlockchainRepository: SolanaBlockchainRepository,
         solanaTransactionRepository: SolanaTransactionRepository,
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        vaultRepository: VaultRepository,
         keyStoreRepository: KeyStoreRepository,
-        @IoDispatcher ioDispatcher: CoroutineDispatcher,
-        logger: Logger
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): SendSolanaUseCase {
         return SendSolanaUseCase(
             walletRepository = walletRepository,
             solanaBlockchainRepository = solanaBlockchainRepository,
             solanaTransactionRepository = solanaTransactionRepository,
-            securityPreferencesRepository = securityPreferencesRepository,
+            vaultRepository = vaultRepository,
             keyStoreRepository = keyStoreRepository,
-            logger = logger,
             ioDispatcher = ioDispatcher
         )
     }

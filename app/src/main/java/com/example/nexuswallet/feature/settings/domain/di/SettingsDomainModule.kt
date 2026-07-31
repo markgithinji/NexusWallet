@@ -1,9 +1,10 @@
 package com.example.nexuswallet.feature.settings.domain.di
 
 
-import com.example.nexuswallet.feature.authentication.data.util.PinHasher
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.core.data.util.PinHasher
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
+import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.settings.domain.usecase.ClearAllSecurityDataUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.ClearPinUseCase
@@ -25,12 +26,12 @@ object SettingsDomainModule {
     @Provides
     @Singleton
     fun provideSetPinUseCase(
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        securityRepository: SecurityRepository,
         pinHasher: PinHasher,
         logger: Logger
     ): SetPinUseCase {
         return SetPinUseCase(
-            securityPreferencesRepository = securityPreferencesRepository,
+            securityRepository = securityRepository,
             pinHasher = pinHasher,
             logger = logger
         )
@@ -39,11 +40,11 @@ object SettingsDomainModule {
     @Provides
     @Singleton
     fun provideIsPinSetUseCase(
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        securityRepository: SecurityRepository,
         logger: Logger
     ): IsPinSetUseCase {
         return IsPinSetUseCase(
-            securityPreferencesRepository = securityPreferencesRepository,
+            securityRepository = securityRepository,
             logger = logger
         )
     }
@@ -51,11 +52,11 @@ object SettingsDomainModule {
     @Provides
     @Singleton
     fun provideClearPinUseCase(
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        securityRepository: SecurityRepository,
         logger: Logger
     ): ClearPinUseCase {
         return ClearPinUseCase(
-            securityPreferencesRepository = securityPreferencesRepository,
+            securityRepository = securityRepository,
             logger = logger
         )
     }
@@ -63,11 +64,11 @@ object SettingsDomainModule {
     @Provides
     @Singleton
     fun provideSetBiometricEnabledUseCase(
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        securityRepository: SecurityRepository,
         logger: Logger
     ): SetBiometricEnabledUseCase {
         return SetBiometricEnabledUseCase(
-            securityPreferencesRepository = securityPreferencesRepository,
+            securityRepository = securityRepository,
             logger = logger
         )
     }
@@ -75,11 +76,11 @@ object SettingsDomainModule {
     @Provides
     @Singleton
     fun provideIsBiometricEnabledUseCase(
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        securityRepository: SecurityRepository,
         logger: Logger
     ): IsBiometricEnabledUseCase {
         return IsBiometricEnabledUseCase(
-            securityPreferencesRepository = securityPreferencesRepository,
+            securityRepository = securityRepository,
             logger = logger
         )
     }
@@ -87,11 +88,11 @@ object SettingsDomainModule {
     @Provides
     @Singleton
     fun provideGetAuthStatusUseCase(
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        securityRepository: SecurityRepository,
         logger: Logger
     ): GetAuthStatusUseCase {
         return GetAuthStatusUseCase(
-            securityPreferencesRepository = securityPreferencesRepository,
+            securityRepository = securityRepository,
             logger = logger
         )
     }
@@ -99,12 +100,14 @@ object SettingsDomainModule {
     @Provides
     @Singleton
     fun provideClearAllSecurityDataUseCase(
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        securityRepository: SecurityRepository,
+        vaultRepository: VaultRepository,
         keyStoreRepository: KeyStoreRepository,
         logger: Logger
     ): ClearAllSecurityDataUseCase {
         return ClearAllSecurityDataUseCase(
-            securityPreferencesRepository = securityPreferencesRepository,
+            securityRepository = securityRepository,
+            vaultRepository = vaultRepository,
             keyStoreRepository = keyStoreRepository,
             logger = logger
         )

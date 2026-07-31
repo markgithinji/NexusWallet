@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.wallet.ui.walletdashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
@@ -33,7 +33,7 @@ class WalletDashboardViewModel @Inject constructor(
     private val syncSolanaBalanceUseCase: SyncSolanaBalanceUseCase,
     private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
-    private val securityPreferencesRepository: SecurityPreferencesRepository
+    private val securityRepository: SecurityRepository
 ) : ViewModel() {
 
     // State
@@ -91,7 +91,7 @@ class WalletDashboardViewModel @Inject constructor(
 
     private fun observePrivacyMode() {
         viewModelScope.launch {
-            securityPreferencesRepository.observePrivacyModeEnabled().collect { isEnabled ->
+            securityRepository.observePrivacyModeEnabled().collect { isEnabled ->
                 _isPrivacyModeEnabled.value = isEnabled
             }
         }
@@ -99,7 +99,7 @@ class WalletDashboardViewModel @Inject constructor(
 
     private fun observeSelectedCurrency() {
         viewModelScope.launch {
-            securityPreferencesRepository.observeSelectedCurrency().collect { currency ->
+            securityRepository.observeSelectedCurrency().collect { currency ->
                 val previousCurrency = _selectedCurrency.value
                 _selectedCurrency.value = currency
                 if (previousCurrency != currency) {

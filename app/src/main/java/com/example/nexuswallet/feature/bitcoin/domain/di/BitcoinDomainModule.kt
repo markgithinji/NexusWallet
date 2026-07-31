@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.bitcoin.domain.di
 
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
@@ -59,7 +59,7 @@ object BitcoinDomainModule {
         bitcoinBlockchainRepository: BitcoinBlockchainRepository,
         bitcoinTransactionRepository: BitcoinTransactionRepository,
         keyStoreRepository: KeyStoreRepository,
-        securityPreferencesRepository: SecurityPreferencesRepository,
+        vaultRepository: VaultRepository,
         @IoDispatcher ioDispatcher: CoroutineDispatcher,
         logger: Logger,
     ): SendBitcoinUseCase {
@@ -68,7 +68,7 @@ object BitcoinDomainModule {
             bitcoinBlockchainRepository = bitcoinBlockchainRepository,
             bitcoinTransactionRepository = bitcoinTransactionRepository,
             keyStoreRepository = keyStoreRepository,
-            securityPreferencesRepository = securityPreferencesRepository,
+            vaultRepository = vaultRepository,
             logger = logger,
             ioDispatcher = ioDispatcher
         )

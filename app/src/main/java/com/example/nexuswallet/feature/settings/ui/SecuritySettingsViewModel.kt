@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.settings.domain.usecase.ClearAllSecurityDataUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.ClearPinUseCase
@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 class SecuritySettingsViewModel @Inject constructor(
     private val getAuthStatusUseCase: GetAuthStatusUseCase,
     private val setBiometricEnabledUseCase: SetBiometricEnabledUseCase,
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val securityRepository: SecurityRepository,
     private val setPinUseCase: SetPinUseCase,
     private val clearPinUseCase: ClearPinUseCase,
     private val clearAllSecurityDataUseCase: ClearAllSecurityDataUseCase
@@ -99,7 +99,7 @@ class SecuritySettingsViewModel @Inject constructor(
     fun setPrivacyModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
             try {
-                securityPreferencesRepository.setPrivacyModeEnabled(enabled)
+                securityRepository.setPrivacyModeEnabled(enabled)
                 refreshAuthStatus()
             } catch (e: Exception) {
                 _uiEffect.emit(SecurityUiEffect.ShowSnackbar(e.message ?: "Failed to update privacy mode"))
@@ -110,7 +110,7 @@ class SecuritySettingsViewModel @Inject constructor(
     fun setRequireAuthForSend(enabled: Boolean) {
         viewModelScope.launch {
             try {
-                securityPreferencesRepository.setRequireAuthForSend(enabled)
+                securityRepository.setRequireAuthForSend(enabled)
                 refreshAuthStatus()
             } catch (e: Exception) {
                 _uiEffect.emit(SecurityUiEffect.ShowSnackbar(e.message ?: "Failed to update security preference"))

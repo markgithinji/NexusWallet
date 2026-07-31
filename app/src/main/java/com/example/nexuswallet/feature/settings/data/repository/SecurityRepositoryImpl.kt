@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.authentication.data.repository
+package com.example.nexuswallet.feature.settings.data.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -6,12 +6,10 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.example.nexuswallet.feature.authentication.data.util.safeEdit
-import com.example.nexuswallet.feature.authentication.data.util.safeGet
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
-import com.example.nexuswallet.feature.core.util.decodeHex
-import com.example.nexuswallet.feature.core.util.toHex
+import com.example.nexuswallet.feature.core.data.util.safeEdit
+import com.example.nexuswallet.feature.core.data.util.safeGet
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -19,101 +17,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SecurityPreferencesRepositoryImpl @Inject constructor(
+class SecurityRepositoryImpl @Inject constructor(
     private val dataStore: DataStore<Preferences>
-) : SecurityPreferencesRepository {
-
-    override suspend fun storeEncryptedMnemonic(
-        walletId: String,
-        encryptedMnemonic: String,
-        iv: ByteArray
-    ) {
-        val key = stringPreferencesKey("${ENCRYPTED_MNEMONIC_KEY.name}_${walletId.lowercase()}")
-        val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_${walletId.lowercase()}")
-
-        safeEdit {
-            dataStore.edit { preferences ->
-                preferences[key] = encryptedMnemonic
-                preferences[ivKey] = iv.toHex()
-            }
-        }
-    }
-
-    override suspend fun getEncryptedMnemonic(walletId: String): Pair<String, ByteArray>? {
-        val key = stringPreferencesKey("${ENCRYPTED_MNEMONIC_KEY.name}_${walletId.lowercase()}")
-        val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_${walletId.lowercase()}")
-
-        return safeGet {
-            val preferences = dataStore.data.first()
-            val encrypted = preferences[key]
-            val ivHex = preferences[ivKey]
-
-            if ((encrypted != null) && (ivHex != null)) {
-                Pair(encrypted, ivHex.decodeHex())
-            } else {
-                null
-            }
-        }
-    }
-
-    override suspend fun storeEncryptedPrivateKey(
-        walletId: String,
-        keyType: String,
-        encryptedKey: String,
-        iv: ByteArray
-    ) {
-        val keyName = "${ENCRYPTED_PRIVATE_KEY_KEY.name}_${walletId.lowercase()}_${keyType.lowercase()}"
-        val ivKeyName = "${INITIALIZATION_VECTOR_KEY.name}_${walletId.lowercase()}_${keyType.lowercase()}"
-        
-        val key = stringPreferencesKey(keyName)
-        val ivKey = stringPreferencesKey(ivKeyName)
-
-        safeEdit {
-            dataStore.edit { preferences ->
-                preferences[key] = encryptedKey
-                preferences[ivKey] = iv.toHex()
-            }
-        }
-    }
-
-    override suspend fun getEncryptedPrivateKey(
-        walletId: String,
-        keyType: String
-    ): Pair<String, ByteArray>? {
-        val keyName = "${ENCRYPTED_PRIVATE_KEY_KEY.name}_${walletId.lowercase()}_${keyType.lowercase()}"
-        val ivKeyName = "${INITIALIZATION_VECTOR_KEY.name}_${walletId.lowercase()}_${keyType.lowercase()}"
-        
-        return safeGet {
-            val preferences = dataStore.data.first()
-            val key = stringPreferencesKey(keyName)
-            val ivKey = stringPreferencesKey(ivKeyName)
-            val encrypted = preferences[key]
-            val ivHex = preferences[ivKey]
-
-            if ((encrypted != null) && (ivHex != null)) {
-                Pair(encrypted, ivHex.decodeHex())
-            } else {
-                null
-            }
-        }
-    }
-
-    override suspend fun getEncryptedBackup(walletId: String): Pair<String, ByteArray>? {
-        val backupKey = stringPreferencesKey("${ENCRYPTED_BACKUP_KEY.name}_${walletId.lowercase()}")
-        val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_backup_${walletId.lowercase()}")
-
-        return safeGet {
-            val preferences = dataStore.data.first()
-            val encrypted = preferences[backupKey]
-            val ivHex = preferences[ivKey]
-
-            if ((encrypted != null) && (ivHex != null)) {
-                Pair(encrypted, ivHex.decodeHex())
-            } else {
-                null
-            }
-        }
-    }
+) : SecurityRepository {
 
     override suspend fun storePinHash(pinHash: String) {
         safeEdit {
@@ -143,14 +49,6 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             val preferences = dataStore.data.first()
             preferences[BIOMETRIC_ENABLED_KEY] ?: false
         } ?: false
-    }
-
-    override suspend fun clearAll() {
-        safeEdit {
-            dataStore.edit { preferences ->
-                preferences.clear()
-            }
-        }
     }
 
     override suspend fun clearPinHash() {
@@ -284,11 +182,15 @@ class SecurityPreferencesRepositoryImpl @Inject constructor(
             }
         }
 
+    override suspend fun clearAll() {
+        safeEdit {
+            dataStore.edit { preferences ->
+                preferences.clear()
+            }
+        }
+    }
+
     companion object {
-        private val ENCRYPTED_MNEMONIC_KEY = stringPreferencesKey("encrypted_mnemonic")
-        private val ENCRYPTED_PRIVATE_KEY_KEY = stringPreferencesKey("encrypted_private_key")
-        private val ENCRYPTED_BACKUP_KEY = stringPreferencesKey("encrypted_backup")
-        private val INITIALIZATION_VECTOR_KEY = stringPreferencesKey("initialization_vector")
         private val BIOMETRIC_ENABLED_KEY = booleanPreferencesKey("biometric_enabled")
         private val PIN_HASH_KEY = stringPreferencesKey("pin_hash")
         private val LAST_AUTH_TIME_KEY = longPreferencesKey("last_authentication_time")

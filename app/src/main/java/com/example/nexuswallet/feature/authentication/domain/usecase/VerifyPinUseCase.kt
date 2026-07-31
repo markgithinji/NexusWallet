@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.authentication.domain.usecase
 
-import com.example.nexuswallet.feature.authentication.data.util.PinHasher
-import com.example.nexuswallet.feature.authentication.domain.repository.SecurityPreferencesRepository
+import com.example.nexuswallet.feature.core.data.util.PinHasher
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
 import javax.inject.Inject
@@ -9,7 +9,7 @@ import javax.inject.Singleton
 
 @Singleton
 class VerifyPinUseCase @Inject constructor(
-    private val securityPreferencesRepository: SecurityPreferencesRepository,
+    private val securityRepository: SecurityRepository,
     private val pinHasher: PinHasher,
     private val logger: Logger
 ) {
@@ -18,7 +18,7 @@ class VerifyPinUseCase @Inject constructor(
     suspend operator fun invoke(pin: String): Result<Boolean> {
         val startTime = System.currentTimeMillis()
 
-        val storedHash = securityPreferencesRepository.getPinHash()
+        val storedHash = securityRepository.getPinHash()
         if (storedHash == null) {
             logger.d(tag, "No PIN set")
             return Result.Success(false)
