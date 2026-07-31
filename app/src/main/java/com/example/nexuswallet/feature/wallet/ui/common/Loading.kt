@@ -24,10 +24,11 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun FullScreenLoading(
+    modifier: Modifier = Modifier,
     message: String = "Loading..."
 ) {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Card(

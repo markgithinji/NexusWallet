@@ -137,6 +137,7 @@ fun MarketScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = scaffoldPadding.calculateTopPadding())
+                    .padding(bottom = padding.calculateBottomPadding())
             ) {
                 // Show disconnected banner if WebSocket is down and we have data
                 if (!isWebSocketConnected && tokens.isNotEmpty()) {
@@ -711,9 +712,11 @@ fun ShimmerPlaceholder(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun EmptySearchResult() {
+fun EmptySearchResult(
+    modifier: Modifier = Modifier
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(24.dp),
         contentAlignment = Alignment.Center
@@ -859,9 +862,13 @@ fun EmptySearchResult() {
 }
 
 @Composable
-fun ErrorView(message: String, onRetry: () -> Unit) {
+fun ErrorView(
+    message: String, 
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Card(

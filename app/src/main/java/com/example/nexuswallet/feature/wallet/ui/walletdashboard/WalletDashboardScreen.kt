@@ -176,11 +176,19 @@ fun WalletDashboardScreen(
         ) {
             when (val state = uiState) {
                 is Result.Loading -> {
-                    FullScreenLoading(message = stringResource(R.string.loading_wallets))
+                    FullScreenLoading(
+                        modifier = Modifier
+                            .padding(top = scaffoldPadding.calculateTopPadding())
+                            .padding(bottom = padding.calculateBottomPadding()),
+                        message = stringResource(R.string.loading_wallets)
+                    )
                 }
 
                 is Result.Error -> {
                     EmptyWalletsContent(
+                        modifier = Modifier
+                            .padding(top = scaffoldPadding.calculateTopPadding())
+                            .padding(bottom = padding.calculateBottomPadding()),
                         onCreateWallet = onNavigateToCreateWallet,
                         onImportWallet = onNavigateToImportWallet,
                         isError = true,
@@ -194,6 +202,9 @@ fun WalletDashboardScreen(
                 is Result.Success -> {
                     if (state.data.isEmpty()) {
                         EmptyWalletsContent(
+                            modifier = Modifier
+                                .padding(top = scaffoldPadding.calculateTopPadding())
+                                .padding(bottom = padding.calculateBottomPadding()),
                             onCreateWallet = onNavigateToCreateWallet,
                             onImportWallet = onNavigateToImportWallet
                         )
@@ -975,12 +986,13 @@ fun PortfolioStatItem(
 fun EmptyWalletsContent(
     onCreateWallet: () -> Unit,
     onImportWallet: () -> Unit,
+    modifier: Modifier = Modifier,
     isError: Boolean = false,
     errorMessage: String? = null,
     onRetry: (() -> Unit)? = null
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(24.dp),
         contentAlignment = Alignment.Center
