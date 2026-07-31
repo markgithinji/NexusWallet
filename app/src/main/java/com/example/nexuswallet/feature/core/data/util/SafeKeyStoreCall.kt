@@ -1,27 +1,42 @@
 package com.example.nexuswallet.feature.core.data.util
 
-import java.security.KeyStoreException
+import android.security.keystore.UserNotAuthenticatedException
+import androidx.biometric.BiometricPrompt
+import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
+import com.example.nexuswallet.feature.core.util.Result
+import javax.crypto.IllegalBlockSizeException
 
-inline fun <T> safeKeyStoreCall(block: () -> T): T {
+/**
+ * Safely executes a KeyStore operation and maps security exceptions to [Result].
+ * Specifically handles [UserNotAuthenticatedException] by returning a [Result.Error] 
+ * containing a [HardwareAuthRequiredException].
+ * 
+ * @param onAuthRequired Optional block to provide a [BiometricPrompt.CryptoObject] if authentication is needed.
+ */
+inline fun <T> safeKeyStoreCall(
+    crossinline onAuthRequired: () -> BiometricPrompt.CryptoObject? = { null },
+    block: () -> T
+): Result<T> {
     return try {
-        block()
+        Result.Success(block())
     } catch (e: Exception) {
-        val isAuthRequired = e is android.security.keystore.UserNotAuthenticatedException ||
-                e.cause is android.security.keystore.UserNotAuthenticatedException ||
-                (e is javax.crypto.IllegalBlockSizeException && e.message?.contains("user not authenticated", true) == true) ||
+        val isAuthRequired = e is UserNotAuthenticatedException ||
+                e.cause is UserNotAuthenticatedException ||
+                (e is IllegalBlockSizeException && e.message?.contains("user not authenticated", true) == true) ||
                 (e.cause?.message?.contains("user not authenticated", true) == true)
 
         if (isAuthRequired) {
-            // Rethrow the specific auth exception so UseCases can trigger biometrics
-            throw (e as? android.security.keystore.UserNotAuthenticatedException) 
-                ?: (e.cause as? android.security.keystore.UserNotAuthenticatedException)
-                ?: android.security.keystore.UserNotAuthenticatedException()
+            Result.Error(
+                message = "Authentication required",
+                throwable = HardwareAuthRequiredException(onAuthRequired())
+            )
+        } else {
+            val message = when (e) {
+                is java.security.KeyStoreException -> "KeyStore hardware error"
+                is EncryptionException -> e.message ?: "Security operation failed"
+                else -> e.message ?: "Encryption/Decryption failed"
+            }
+            Result.Error(message, e)
         }
-
-        // For all other actual errors, wrap in our custom exception
-        if (e is java.security.KeyStoreException) {
-            throw EncryptionException("KeyStore hardware error", e)
-        }
-        throw EncryptionException("Encryption/Decryption failed", e)
     }
 }

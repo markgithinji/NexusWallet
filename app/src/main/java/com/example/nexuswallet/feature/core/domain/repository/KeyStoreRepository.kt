@@ -1,10 +1,11 @@
 package com.example.nexuswallet.feature.core.domain.repository
 
+import com.example.nexuswallet.feature.core.util.Result
 import javax.crypto.Cipher
 
 interface KeyStoreRepository {
-    suspend fun encrypt(plaintext: ByteArray): Pair<ByteArray, ByteArray>
-    suspend fun decrypt(encryptedData: ByteArray, iv: ByteArray): ByteArray
+    suspend fun encrypt(plaintext: ByteArray): Result<Pair<ByteArray, ByteArray>>
+    suspend fun decrypt(encryptedData: ByteArray, iv: ByteArray): Result<ByteArray>
     fun isKeyStoreAvailable(): Boolean
     fun clearKey()
 
@@ -23,10 +24,10 @@ interface KeyStoreRepository {
     /**
      * Encrypt data using an already initialized and (potentially) unlocked Cipher.
      */
-    fun encryptWithCipher(cipher: Cipher, plaintext: ByteArray): Pair<ByteArray, ByteArray>
+    fun encryptWithCipher(cipher: Cipher, plaintext: ByteArray): Result<Pair<ByteArray, ByteArray>>
 
     /**
      * Decrypt data using an already initialized and (potentially) unlocked Cipher.
      */
-    fun decryptWithCipher(cipher: Cipher, encryptedData: ByteArray): ByteArray
+    fun decryptWithCipher(cipher: Cipher, encryptedData: ByteArray): Result<ByteArray>
 }

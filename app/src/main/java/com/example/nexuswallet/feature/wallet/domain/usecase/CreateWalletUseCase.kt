@@ -1,8 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
-import android.security.keystore.UserNotAuthenticatedException
 import com.example.nexuswallet.feature.core.domain.di.DefaultDispatcher
-import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.util.Result
@@ -12,7 +10,6 @@ import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_TES
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
-import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
@@ -114,7 +111,18 @@ class CreateWalletUseCase @Inject constructor(
         try {
             // Secure mnemonic
             val mnemonicBytes = mnemonicToByteArray(mnemonic)
-            val (encryptedMnemonic, mnemonicIv) = keyStoreRepository.encrypt(mnemonicBytes)
+            val encryptionResult = if (cipher != null) {
+                keyStoreRepository.encryptWithCipher(cipher, mnemonicBytes)
+            } else {
+                keyStoreRepository.encrypt(mnemonicBytes)
+            }
+            
+            if (encryptionResult is Result.Error) {
+                rawPrivateKeys.values.forEach { it.fill(0) }
+                return@withContext encryptionResult
+            }
+            
+            val (encryptedMnemonic, mnemonicIv) = (encryptionResult as Result.Success).data
             mnemonicBytes.fill(0)
 
             vaultRepository.storeEncryptedMnemonic(
@@ -130,7 +138,16 @@ class CreateWalletUseCase @Inject constructor(
                     BitcoinNetwork.Mainnet -> KEY_BITCOIN_MAINNET
                     BitcoinNetwork.Testnet -> KEY_BITCOIN_TESTNET
                 }
-                val (encryptedKey, keyIv) = keyStoreRepository.encrypt(rawKey)
+                
+                // We use encrypt() here because the 5s validity window from the first encryption
+                // should still be open. Repository handles hardware errors.
+                val keyResult = keyStoreRepository.encrypt(rawKey)
+                if (keyResult is Result.Error) {
+                    // Propagate the hardware error
+                    throw Exception("Failed to encrypt key: ${keyResult.message}")
+                }
+                
+                val (encryptedKey, keyIv) = (keyResult as Result.Success).data
                 rawKey.fill(0)
 
                 vaultRepository.storeEncryptedPrivateKey(
@@ -143,7 +160,12 @@ class CreateWalletUseCase @Inject constructor(
 
             // Store Ethereum key
             rawPrivateKeys["ETHEREUM"]?.let { rawKey ->
-                val (encryptedKey, keyIv) = keyStoreRepository.encrypt(rawKey)
+                val keyResult = keyStoreRepository.encrypt(rawKey)
+                if (keyResult is Result.Error) {
+                    throw Exception("Failed to encrypt ETH key: ${keyResult.message}")
+                }
+                
+                val (encryptedKey, keyIv) = (keyResult as Result.Success).data
                 rawKey.fill(0)
 
                 vaultRepository.storeEncryptedPrivateKey(
@@ -161,7 +183,13 @@ class CreateWalletUseCase @Inject constructor(
                     SolanaNetwork.Mainnet -> KEY_SOLANA_MAINNET
                     SolanaNetwork.Devnet -> KEY_SOLANA_DEVNET
                 }
-                val (encryptedKey, keyIv) = keyStoreRepository.encrypt(rawKey)
+                
+                val keyResult = keyStoreRepository.encrypt(rawKey)
+                if (keyResult is Result.Error) {
+                    throw Exception("Failed to encrypt SOL key: ${keyResult.message}")
+                }
+                
+                val (encryptedKey, keyIv) = (keyResult as Result.Success).data
                 rawKey.fill(0)
 
                 vaultRepository.storeEncryptedPrivateKey(
@@ -173,16 +201,7 @@ class CreateWalletUseCase @Inject constructor(
             }
         } catch (e: Exception) {
             rawPrivateKeys.values.forEach { it.fill(0) }
-            val isAuthRequired = e is UserNotAuthenticatedException ||
-                    e.cause is UserNotAuthenticatedException ||
-                    e is javax.crypto.IllegalBlockSizeException && e.message?.contains("user not authenticated", true) == true
-
-            if (isAuthRequired) {
-                return@withContext Result.Error(
-                    message = "Authentication required to secure wallet",
-                    throwable = HardwareAuthRequiredException(null)
-                )
-            }
+            // Repository should have handled the mapping, but we catch top-level failures here
             return@withContext Result.Error("Failed to secure wallet: ${e.message}")
         } finally {
             rawPrivateKeys.values.forEach { it.fill(0) }

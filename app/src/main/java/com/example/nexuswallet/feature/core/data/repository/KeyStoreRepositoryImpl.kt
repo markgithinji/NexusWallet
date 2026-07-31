@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.core.data.repository
 
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricPrompt
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -9,7 +10,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.example.nexuswallet.feature.core.data.util.safeKeyStoreCall
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
-import com.example.nexuswallet.feature.core.util.toHex
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -33,9 +34,11 @@ class KeyStoreRepositoryImpl @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : KeyStoreRepository {
 
-    override suspend fun encrypt(plaintext: ByteArray): Pair<ByteArray, ByteArray> =
+    override suspend fun encrypt(plaintext: ByteArray): Result<Pair<ByteArray, ByteArray>> =
         withContext(ioDispatcher) {
-            safeKeyStoreCall {
+            safeKeyStoreCall(
+                onAuthRequired = { BiometricPrompt.CryptoObject(getEncryptionCipher()) }
+            ) {
                 val cipher = Cipher.getInstance(TRANSFORMATION)
                 cipher.init(Cipher.ENCRYPT_MODE, getSecretKey())
 
@@ -46,9 +49,11 @@ class KeyStoreRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun decrypt(encryptedData: ByteArray, iv: ByteArray): ByteArray =
+    override suspend fun decrypt(encryptedData: ByteArray, iv: ByteArray): Result<ByteArray> =
         withContext(ioDispatcher) {
-            safeKeyStoreCall {
+            safeKeyStoreCall(
+                onAuthRequired = { BiometricPrompt.CryptoObject(getDecryptionCipher(iv)) }
+            ) {
                 val cipher = Cipher.getInstance(TRANSFORMATION)
                 val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
                 cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
@@ -87,14 +92,18 @@ class KeyStoreRepositoryImpl @Inject constructor(
         return cipher
     }
 
-    override fun encryptWithCipher(cipher: Cipher, plaintext: ByteArray): Pair<ByteArray, ByteArray> {
-        val encrypted = cipher.doFinal(plaintext)
-        val iv = cipher.iv
-        return Pair(encrypted, iv)
+    override fun encryptWithCipher(cipher: Cipher, plaintext: ByteArray): Result<Pair<ByteArray, ByteArray>> {
+        return safeKeyStoreCall {
+            val encrypted = cipher.doFinal(plaintext)
+            val iv = cipher.iv
+            Pair(encrypted, iv)
+        }
     }
 
-    override fun decryptWithCipher(cipher: Cipher, encryptedData: ByteArray): ByteArray {
-        return cipher.doFinal(encryptedData)
+    override fun decryptWithCipher(cipher: Cipher, encryptedData: ByteArray): Result<ByteArray> {
+        return safeKeyStoreCall {
+            cipher.doFinal(encryptedData)
+        }
     }
 
     /**

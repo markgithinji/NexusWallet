@@ -1,8 +1,6 @@
 package com.example.nexuswallet.feature.solana.domain.usecase
 
-import android.security.keystore.UserNotAuthenticatedException
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
-import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.model.BroadcastResult
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
@@ -88,29 +86,18 @@ class SendSolanaUseCase @Inject constructor(
 
         val (encryptedHex, iv) = encryptedData
 
-        val privateKeyBytes = if (cipher != null) {
-            try {
-                keyStoreRepository.decryptWithCipher(cipher, encryptedHex.decodeHex())
-            } catch (e: Exception) {
-                return@withContext Result.Error("Decryption failed")
-            }
+        // Decrypt private key
+        val decryptionResult = if (cipher != null) {
+            keyStoreRepository.decryptWithCipher(cipher, encryptedHex.decodeHex())
         } else {
-            try {
-                keyStoreRepository.decrypt(encryptedHex.decodeHex(), iv)
-            } catch (e: Exception) {
-                val isAuthRequired = e is UserNotAuthenticatedException || 
-                                     e.cause is UserNotAuthenticatedException ||
-                                     e is javax.crypto.IllegalBlockSizeException && e.message?.contains("user not authenticated", true) == true
-
-                if (isAuthRequired) {
-                    return@withContext Result.Error(
-                        message = "Authentication required",
-                        throwable = HardwareAuthRequiredException(null)
-                    )
-                }
-                return@withContext Result.Error("Failed to decrypt private key")
-            }
+            keyStoreRepository.decrypt(encryptedHex.decodeHex(), iv)
         }
+
+        if (decryptionResult is Result.Error) {
+            return@withContext decryptionResult
+        }
+
+        val privateKeyBytes = (decryptionResult as Result.Success).data
 
         try {
             val keypair = createSolanaKeypair(privateKeyBytes)
