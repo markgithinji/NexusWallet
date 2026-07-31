@@ -11,12 +11,15 @@ class RecordAuthenticationUseCase @Inject constructor(
     private val securityRepository: SecurityRepository,
     private val logger: Logger
 ) {
-    private val tag = "RecordAuth"
 
     suspend operator fun invoke(): Result<Unit> {
         val timestamp = System.currentTimeMillis()
         securityRepository.saveLastAuthenticationTime(timestamp)
-        logger.d(tag, "Authentication recorded | timestamp=$timestamp")
+        logger.d(TAG, "Authentication recorded | timestamp=$timestamp")
         return Result.Success(Unit)
+    }
+
+    companion object {
+        private const val TAG = "RecordAuth"
     }
 }

@@ -13,14 +13,13 @@ class VerifyPinUseCase @Inject constructor(
     private val pinHasher: PinHasher,
     private val logger: Logger
 ) {
-    private val tag = "VerifyPin"
 
     suspend operator fun invoke(pin: String): Result<Boolean> {
         val startTime = System.currentTimeMillis()
 
         val storedHash = securityRepository.getPinHash()
         if (storedHash == null) {
-            logger.d(tag, "No PIN set")
+            logger.d(TAG, "No PIN set")
             return Result.Success(false)
         }
 
@@ -28,11 +27,15 @@ class VerifyPinUseCase @Inject constructor(
         val duration = System.currentTimeMillis() - startTime
 
         if (isValid) {
-            logger.d(tag, "PIN verified | duration=${duration}ms")
+            logger.d(TAG, "PIN verified | duration=${duration}ms")
             return Result.Success(true)
         } else {
-            logger.w(tag, "PIN verification failed | duration=${duration}ms")
+            logger.w(TAG, "PIN verification failed | duration=${duration}ms")
             return Result.Success(false)
         }
+    }
+
+    companion object {
+        private const val TAG = "VerifyPin"
     }
 }

@@ -22,8 +22,6 @@ class GetFeeEstimateUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "GetFeeEstimateUC"
-
     suspend operator fun invoke(
         feeLevel: FeeLevel,
         network: EthereumNetwork,
@@ -33,7 +31,7 @@ class GetFeeEstimateUseCase @Inject constructor(
         amount: BigInteger? = null,
         tokenContract: String? = null
     ): Result<EVMFeeEstimate> {
-        logger.d(tag, "Getting fee estimate for $feeLevel on ${network.name} (isToken=$isToken)")
+        logger.d(TAG, "Getting fee estimate for $feeLevel on ${network.name} (isToken=$isToken)")
 
         // 1. Get gas limit - try dynamic estimation if we have data
         val gasLimitResult = if (fromAddress != null && toAddress != null && amount != null) {
@@ -148,7 +146,7 @@ class GetFeeEstimateUseCase @Inject constructor(
             }
 
             is Result.Error -> {
-                logger.e(tag, "Failed to get gas price: ${gasPriceResult.message}")
+                logger.e(TAG, "Failed to get gas price: ${gasPriceResult.message}")
                 Result.Error(gasPriceResult.message, gasPriceResult.throwable)
             }
 
@@ -157,6 +155,7 @@ class GetFeeEstimateUseCase @Inject constructor(
     }
 
     companion object {
+        private const val TAG = "GetFeeEstimateUC"
         private const val ESTIMATED_TIME_SLOW = 120
         private const val ESTIMATED_TIME_NORMAL = 60
         private const val ESTIMATED_TIME_FAST = 30

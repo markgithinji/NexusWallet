@@ -19,7 +19,11 @@ class ClearAllSecurityDataUseCase @Inject constructor(
         securityRepository.clearAll()
         vaultRepository.clearVault()
         keyStoreRepository.clearKey()
-        logger.d("ClearAllSecurityDataUseCase", "Successfully cleared all security data")
+        logger.d(TAG, "Successfully cleared all security data")
         return Result.Success(Unit)
+    }
+
+    companion object {
+        private const val TAG = "ClearAllSecurityDataUC"
     }
 }

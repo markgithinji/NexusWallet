@@ -20,7 +20,6 @@ class SyncSolanaBalanceUseCase @Inject constructor(
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    private val tag = "SyncSolanaBalanceUC"
 
     suspend operator fun invoke(
         walletId: String,
@@ -50,12 +49,12 @@ class SyncSolanaBalanceUseCase @Inject constructor(
                 if (saveToCache) {
                     balanceDataSource.saveSolanaBalance(walletId, coin.network, solanaBalanceDomain)
                 }
-                logger.d(tag, "Solana ${coin.network.name} balance updated: $solBalance SOL")
+                logger.d(TAG, "Solana ${coin.network.name} balance updated: $solBalance SOL")
                 Pair(solanaBalanceDomain, emptyList())
             }
 
             is Result.Error -> {
-                logger.e(tag, "Failed to sync Solana: ${solBalanceResult.message}")
+                logger.e(TAG, "Failed to sync Solana: ${solBalanceResult.message}")
                 Pair(null, listOf(ChainSyncError(coin.network, solBalanceResult.message, coin.symbol)))
             }
 
@@ -64,5 +63,9 @@ class SyncSolanaBalanceUseCase @Inject constructor(
                 listOf(ChainSyncError(coin.network, "Unknown error syncing Solana", coin.symbol))
             )
         }
+    }
+
+    companion object {
+        private const val TAG = "SyncSolanaBalanceUC"
     }
 }

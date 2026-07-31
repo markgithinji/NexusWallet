@@ -13,7 +13,11 @@ class SetBiometricEnabledUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(enabled: Boolean): Result<Unit> {
         securityRepository.setBiometricEnabled(enabled)
-        logger.d("SetBiometricEnabledUseCase", "Biometric enabled set to: $enabled")
+        logger.d(TAG, "Biometric enabled set to: $enabled")
         return Result.Success(Unit)
+    }
+
+    companion object {
+        private const val TAG = "SetBiometricEnabledUC"
     }
 }

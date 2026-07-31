@@ -21,11 +21,15 @@ class SetPinUseCase @Inject constructor(
         val success = securityRepository.getPinHash() == pinHash
         
         return if (success) {
-            logger.d("SetPinUseCase", "PIN set successfully")
+            logger.d(TAG, "PIN set successfully")
             Result.Success(true)
         } else {
-            logger.e("SetPinUseCase", "PIN hash verification failed")
+            logger.e(TAG, "PIN hash verification failed")
             Result.Error("Failed to verify PIN storage")
         }
+    }
+
+    companion object {
+        private const val TAG = "SetPinUC"
     }
 }

@@ -34,15 +34,13 @@ class GetEthereumDetailUseCase @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
-    private val tag = "GetEthereumDetailUC"
-
     suspend operator fun invoke(
         walletId: String,
         token: EVMToken
     ): Result<EthereumDetailResult> = withContext(ioDispatcher) {
         val network = token.network
 
-        logger.d(tag, "Getting ${token.symbol} details for wallet: $walletId, network: ${network.name}")
+        logger.d(TAG, "Getting ${token.symbol} details for wallet: $walletId, network: ${network.name}")
 
         // 1. Get wallet
         val wallet = walletRepository.getWallet(walletId)
@@ -57,10 +55,10 @@ class GetEthereumDetailUseCase @Inject constructor(
 
         val isEth = verifiedToken is NativeETH
 
-        logger.d(tag, "Found token: ${verifiedToken.symbol} with address: ${verifiedToken.address.take(8)}... on ${network.name}")
+        logger.d(TAG, "Found token: ${verifiedToken.symbol} with address: ${verifiedToken.address.take(8)}... on ${network.name}")
 
         // 3. Fetch fresh native transactions
-        logger.d(tag, "Fetching native transactions from blockchain for ${network.name}...")
+        logger.d(TAG, "Fetching native transactions from blockchain for ${network.name}...")
         val nativeTxResult = evmBlockchainRepository.getNativeTransactions(
             address = verifiedToken.address,
             network = network,
@@ -73,17 +71,17 @@ class GetEthereumDetailUseCase @Inject constructor(
                 nativeTxResult.data.forEach { tx ->
                     evmTransactionRepository.saveTransaction(tx)
                 }
-                logger.d(tag, "Synced ${nativeTxResult.data.size} native transactions for ${network.name}")
+                logger.d(TAG, "Synced ${nativeTxResult.data.size} native transactions for ${network.name}")
             }
             is Result.Error -> {
-                logger.e(tag, "Failed to fetch native transactions: ${nativeTxResult.message}")
+                logger.e(TAG, "Failed to fetch native transactions: ${nativeTxResult.message}")
             }
             Result.Loading -> {}
         }
 
         // 4. Fetch fresh token transactions (if not native ETH)
         if (!isEth) {
-            logger.d(tag, "Fetching token transactions from blockchain for ${network.name}...")
+            logger.d(TAG, "Fetching token transactions from blockchain for ${network.name}...")
             val tokenTxResult = evmBlockchainRepository.getTokenTransactions(
                 address = verifiedToken.address,
                 tokenContract = verifiedToken.contractAddress,
@@ -97,10 +95,10 @@ class GetEthereumDetailUseCase @Inject constructor(
                     tokenTxResult.data.forEach { tx ->
                         evmTransactionRepository.saveTransaction(tx)
                     }
-                    logger.d(tag, "Synced ${tokenTxResult.data.size} token transactions for ${network.name}")
+                    logger.d(TAG, "Synced ${tokenTxResult.data.size} token transactions for ${network.name}")
                 }
                 is Result.Error -> {
-                    logger.e(tag, "Failed to fetch token transactions: ${tokenTxResult.message}")
+                    logger.e(TAG, "Failed to fetch token transactions: ${tokenTxResult.message}")
                 }
                 Result.Loading -> {}
             }
@@ -113,9 +111,9 @@ class GetEthereumDetailUseCase @Inject constructor(
             val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
             
             syncEVMBalancesUseCase(walletId, wallet.evmTokens, prices)
-            logger.d(tag, "Synced balances for wallet: $walletId")
+            logger.d(TAG, "Synced balances for wallet: $walletId")
         } catch (e: Exception) {
-            logger.e(tag, "Failed to sync balances", e)
+            logger.e(TAG, "Failed to sync balances", e)
         }
 
         // 5. Get balance (Already synced)
@@ -134,11 +132,11 @@ class GetEthereumDetailUseCase @Inject constructor(
                 }?.balanceDecimal?.toBigDecimalOrNull()
             }?.stripTrailingZeros()?.toPlainString()
 
-            logger.d(tag, "ETH gas balance for ${network.name}: $ethGasBalance")
+            logger.d(TAG, "ETH gas balance for ${network.name}: $ethGasBalance")
         }
 
         // 7. Get raw transactions from local DB
-        logger.d(tag, "Querying transactions from local DB for ${network.name}...")
+        logger.d(TAG, "Querying transactions from local DB for ${network.name}...")
         val allTxs = evmTransactionRepository.getTransactionsSync(walletId)
         val filteredTxs = when {
             isEth -> {
@@ -154,7 +152,7 @@ class GetEthereumDetailUseCase @Inject constructor(
             }
         }
 
-        logger.d(tag, "Retrieved ${filteredTxs.size} filtered transactions from DB")
+        logger.d(TAG, "Retrieved ${filteredTxs.size} filtered transactions from DB")
 
         // Format balance based on token type
         val balanceFormatted = when {
@@ -191,7 +189,11 @@ class GetEthereumDetailUseCase @Inject constructor(
             chainId = network.chainId
         )
 
-        logger.d(tag, "=== GetEthereumDetailUseCase completed successfully with ${filteredTxs.size} raw transactions on ${network.name} ===")
+        logger.d(TAG, "=== GetEthereumDetailUseCase completed successfully with ${filteredTxs.size} raw transactions on ${network.name} ===")
         Result.Success(result)
+    }
+
+    companion object {
+        private const val TAG = "GetEthereumDetailUC"
     }
 }

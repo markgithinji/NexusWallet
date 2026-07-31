@@ -13,11 +13,13 @@ class GetPendingTransactionsUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "GetPendingTxUC"
-
     suspend operator fun invoke(): Result<List<EVMTransaction>> {
         val transactions = evmTransactionRepository.getPendingTransactions()
-        logger.d(tag, "Found ${transactions.size} pending transactions")
+        logger.d(TAG, "Found ${transactions.size} pending transactions")
         return Result.Success(transactions)
+    }
+
+    companion object {
+        private const val TAG = "GetPendingTxUC"
     }
 }

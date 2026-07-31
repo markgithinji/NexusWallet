@@ -27,8 +27,6 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
-    private val tag = "PrepareBitcoinUC"
-
     suspend operator fun invoke(
         walletId: String,
         toAddress: String,
@@ -37,21 +35,21 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
         network: BitcoinNetwork
     ): Result<PreparedBitcoinTransaction> = withContext(ioDispatcher) {
         logger.d(
-            tag,
+            TAG,
             "Preparing transaction: ${amount.toPlainString()} BTC to ${toAddress.take(8)}... | walletId=$walletId | network=$network"
         )
 
         // Get wallet
         val wallet = walletRepository.getWallet(walletId)
         if (wallet == null) {
-            logger.e(tag, "Wallet not found: $walletId")
+            logger.e(TAG, "Wallet not found: $walletId")
             return@withContext Result.Error("Wallet not found")
         }
 
         // Get the specific Bitcoin coin for this network
         val bitcoinCoin = wallet.bitcoinCoins.find { it.network == network }
         if (bitcoinCoin == null) {
-            logger.e(tag, "Bitcoin not enabled for network $network in wallet: $walletId")
+            logger.e(TAG, "Bitcoin not enabled for network $network in wallet: $walletId")
             return@withContext Result.Error("Bitcoin not enabled for $network")
         }
 
@@ -61,7 +59,7 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
         val allUtxos = when (utxosResult) {
             is Result.Success -> utxosResult.data
             is Result.Error -> {
-                logger.e(tag, "Failed to fetch UTXOs: ${utxosResult.message}")
+                logger.e(TAG, "Failed to fetch UTXOs: ${utxosResult.message}")
                 return@withContext Result.Error("Failed to fetch UTXOs: ${utxosResult.message}")
             }
 
@@ -69,7 +67,7 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
         }
 
         if (allUtxos.isEmpty()) {
-            logger.e(tag, "No UTXOs found for address: ${bitcoinCoin.address}")
+            logger.e(TAG, "No UTXOs found for address: ${bitcoinCoin.address}")
             return@withContext Result.Error("No UTXOs found. Your balance might be zero.")
         }
 
@@ -116,7 +114,7 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
             }
 
             is Result.Error -> {
-                logger.e(tag, "Failed to get fee estimate: ${feeResult.message}")
+                logger.e(TAG, "Failed to get fee estimate: ${feeResult.message}")
                 Result.Error("Failed to get fee estimate: ${feeResult.message}")
             }
 
@@ -141,7 +139,7 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
         // Generate a transaction ID
         val transactionId = "btc_tx_${System.currentTimeMillis()}"
 
-        logger.d(tag, "Transaction prepared with $inputCount inputs: $transactionId")
+        logger.d(TAG, "Transaction prepared with $inputCount inputs: $transactionId")
 
         // Return prepared transaction info with data needed for later signing
         return Result.Success(
@@ -161,5 +159,9 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
                 utxoCount = inputCount
             )
         )
+    }
+
+    companion object {
+        private const val TAG = "PrepareBitcoinUC"
     }
 }

@@ -15,16 +15,14 @@ class GetBitcoinWalletUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "GetBitcoinWalletUC"
-
     suspend operator fun invoke(
         walletId: String,
         network: BitcoinNetwork?
     ): Result<BitcoinWalletInfo> {
-        logger.d(tag, "Looking up Bitcoin wallet: $walletId")
+        logger.d(TAG, "Looking up Bitcoin wallet: $walletId")
 
         val wallet = walletRepository.getWallet(walletId) ?: run {
-            logger.e(tag, "Wallet not found: $walletId")
+            logger.e(TAG, "Wallet not found: $walletId")
             return Result.Error("Wallet not found")
         }
 
@@ -38,12 +36,12 @@ class GetBitcoinWalletUseCase @Inject constructor(
 
         if (bitcoinCoin == null) {
             val networkMsg = network?.let { " for $it" } ?: ""
-            logger.e(tag, "Bitcoin not enabled$networkMsg for wallet: ${wallet.name}")
+            logger.e(TAG, "Bitcoin not enabled$networkMsg for wallet: ${wallet.name}")
             return Result.Error("Bitcoin not enabled${networkMsg} for this wallet")
         }
 
         logger.d(
-            tag,
+            TAG,
             "Found wallet: ${wallet.name} | Address: ${bitcoinCoin.address.take(8)}... | Network: ${bitcoinCoin.network}"
         )
 
@@ -55,5 +53,9 @@ class GetBitcoinWalletUseCase @Inject constructor(
                 network = bitcoinCoin.network
             )
         )
+    }
+
+    companion object {
+        private const val TAG = "GetBitcoinWalletUC"
     }
 }

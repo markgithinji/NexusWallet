@@ -44,6 +44,7 @@ object SolanaUseDomainModule {
         solanaTransactionRepository: SolanaTransactionRepository,
         vaultRepository: VaultRepository,
         keyStoreRepository: KeyStoreRepository,
+        logger: Logger,
         @IoDispatcher ioDispatcher: CoroutineDispatcher
     ): SendSolanaUseCase {
         return SendSolanaUseCase(
@@ -52,6 +53,7 @@ object SolanaUseDomainModule {
             solanaTransactionRepository = solanaTransactionRepository,
             vaultRepository = vaultRepository,
             keyStoreRepository = keyStoreRepository,
+            logger = logger,
             ioDispatcher = ioDispatcher
         )
     }

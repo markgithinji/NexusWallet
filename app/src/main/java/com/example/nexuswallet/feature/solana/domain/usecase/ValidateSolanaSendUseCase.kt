@@ -13,8 +13,6 @@ class ValidateSolanaSendUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "ValidateSolanaSendUC"
-
     operator fun invoke(
         toAddress: String,
         amountValue: BigDecimal,
@@ -25,7 +23,7 @@ class ValidateSolanaSendUseCase @Inject constructor(
 
         // Validate address is not empty
         if (toAddress.isBlank()) {
-            logger.w(tag, "Address is empty")
+            logger.w(TAG, "Address is empty")
             return SendValidationResult(
                 isValid = false,
                 addressError = "Please enter a recipient address"
@@ -40,7 +38,7 @@ class ValidateSolanaSendUseCase @Inject constructor(
 
         // Validate not sending to self
         if (toAddress == walletAddress) {
-            logger.w(tag, "Attempted self-send")
+            logger.w(TAG, "Attempted self-send")
             return SendValidationResult(
                 isValid = false,
                 selfSendError = "Cannot send to yourself"
@@ -49,7 +47,7 @@ class ValidateSolanaSendUseCase @Inject constructor(
 
         // Validate amount > 0
         if (amountValue <= BigDecimal.ZERO) {
-            logger.w(tag, "Invalid amount: $amountValue")
+            logger.w(TAG, "Invalid amount: $amountValue")
             return SendValidationResult(
                 isValid = false,
                 amountError = "Amount must be greater than zero"
@@ -62,7 +60,7 @@ class ValidateSolanaSendUseCase @Inject constructor(
 
         // Check against user's actual balance
         if (totalRequired > balance) {
-            logger.w(tag, "Insufficient balance: have $balance SOL, need $totalRequired SOL")
+            logger.w(TAG, "Insufficient balance: have $balance SOL, need $totalRequired SOL")
             return SendValidationResult(
                 isValid = false,
                 balanceError = "Insufficient balance. You have ${balance.setScale(9).stripTrailingZeros().toPlainString()} SOL but need ${
@@ -84,11 +82,15 @@ class ValidateSolanaSendUseCase @Inject constructor(
             // If we get here, the address is valid
             SendValidationResult(isValid = true)
         } catch (e: Exception) {
-            logger.w(tag, "Invalid Solana address: $address", e)
+            logger.w(TAG, "Invalid Solana address: $address", e)
             SendValidationResult(
                 isValid = false,
                 addressError = "Invalid Solana address format"
             )
         }
+    }
+
+    companion object {
+        private const val TAG = "ValidateSolanaSendUC"
     }
 }

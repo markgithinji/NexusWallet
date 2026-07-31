@@ -20,7 +20,6 @@ class SyncBitcoinBalanceUseCase @Inject constructor(
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    private val tag = "SyncBitcoinBalanceUC"
 
     suspend operator fun invoke(
         walletId: String,
@@ -50,12 +49,12 @@ class SyncBitcoinBalanceUseCase @Inject constructor(
                 if (saveToCache) {
                     balanceDataSource.saveBitcoinBalance(walletId, coin.network, btcBalanceDomain)
                 }
-                logger.d(tag, "Bitcoin ${coin.network.name} balance updated: $btcBalance BTC")
+                logger.d(TAG, "Bitcoin ${coin.network.name} balance updated: $btcBalance BTC")
                 Pair(btcBalanceDomain, emptyList())
             }
 
             is Result.Error -> {
-                logger.e(tag, "Failed to sync Bitcoin: ${balanceResult.message}")
+                logger.e(TAG, "Failed to sync Bitcoin: ${balanceResult.message}")
                 Pair(null, listOf(ChainSyncError(coin.network, balanceResult.message, coin.symbol)))
             }
 
@@ -64,5 +63,9 @@ class SyncBitcoinBalanceUseCase @Inject constructor(
                 listOf(ChainSyncError(coin.network, "Unknown error syncing Bitcoin", coin.symbol))
             )
         }
+    }
+
+    companion object {
+        private const val TAG = "SyncBitcoinBalanceUC"
     }
 }

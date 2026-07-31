@@ -14,25 +14,23 @@ class GetEVMWalletUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "GetEthereumWalletUC"
-
     suspend operator fun invoke(walletId: String): Result<EthereumWalletInfo> {
-        logger.d(tag, "Looking up Ethereum wallet: $walletId")
+        logger.d(TAG, "Looking up Ethereum wallet: $walletId")
 
         val wallet = walletRepository.getWallet(walletId) ?: run {
-            logger.e(tag, "Wallet not found: $walletId")
+            logger.e(TAG, "Wallet not found: $walletId")
             return Result.Error("Wallet not found")
         }
 
         // Find the first NativeETH token
         val nativeEth = wallet.evmTokens.filterIsInstance<NativeETH>().firstOrNull()
         if (nativeEth == null) {
-            logger.e(tag, "Ethereum not enabled for wallet: ${wallet.name}")
+            logger.e(TAG, "Ethereum not enabled for wallet: ${wallet.name}")
             return Result.Error("Ethereum not enabled for this wallet")
         }
 
         logger.d(
-            tag,
+            TAG,
             "Found wallet: ${wallet.name}, Address: ${nativeEth.address.take(8)}..., Network: ${nativeEth.network.name}"
         )
 
@@ -44,5 +42,9 @@ class GetEVMWalletUseCase @Inject constructor(
                 network = nativeEth.network
             )
         )
+    }
+
+    companion object {
+        private const val TAG = "GetEthereumWalletUC"
     }
 }

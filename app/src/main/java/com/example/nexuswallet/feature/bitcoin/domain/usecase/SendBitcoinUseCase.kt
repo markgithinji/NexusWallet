@@ -12,6 +12,7 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_MAINNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_TESTNET
 import com.example.nexuswallet.feature.core.util.decodeHex
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
@@ -36,6 +37,7 @@ class SendBitcoinUseCase @Inject constructor(
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val keyStoreRepository: KeyStoreRepository,
     private val vaultRepository: VaultRepository,
+    private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
 
@@ -45,14 +47,18 @@ class SendBitcoinUseCase @Inject constructor(
         network: BitcoinNetwork,
         cipher: Cipher? = null
     ): Result<SendBitcoinResult> = withContext(ioDispatcher) {
+        logger.d(TAG, "Starting Bitcoin send | walletId=$walletId, network=$network, target=${preparedTransaction.toAddress.take(8)}...")
+
         // Get wallet
         val wallet = walletRepository.getWallet(walletId) ?: run {
+            logger.e(TAG, "Wallet not found | walletId=$walletId")
             return@withContext Result.Error("Wallet not found")
         }
 
         // Get the specific Bitcoin coin for this network
         val bitcoinCoin = wallet.bitcoinCoins.find { it.network == network }
         if (bitcoinCoin == null) {
+            logger.e(TAG, "Bitcoin not enabled for network $network in wallet: $walletId")
             return@withContext Result.Error("Bitcoin not enabled for $network")
         }
 
@@ -69,6 +75,7 @@ class SendBitcoinUseCase @Inject constructor(
         )
 
         if (encryptedData == null) {
+            logger.e(TAG, "No private key found in vault | walletId=$walletId, keyType=$keyType")
             return@withContext Result.Error("No private key found")
         }
 
@@ -76,12 +83,15 @@ class SendBitcoinUseCase @Inject constructor(
 
         // Decrypt private key
         val decryptionResult = if (cipher != null) {
+            logger.d(TAG, "Decrypting private key using provided cipher")
             keyStoreRepository.decryptWithCipher(cipher, encryptedHex.decodeHex())
         } else {
+            logger.d(TAG, "Decrypting private key using stored IV")
             keyStoreRepository.decrypt(encryptedHex.decodeHex(), iv)
         }
 
         if (decryptionResult is Result.Error) {
+            logger.e(TAG, "Decryption failed | error=${decryptionResult.message}")
             return@withContext decryptionResult
         }
 
@@ -89,6 +99,7 @@ class SendBitcoinUseCase @Inject constructor(
         val ecKey = try {
             ECKey.fromPrivate(privateKeyBytes)
         } catch (e: Exception) {
+            logger.e(TAG, "Invalid private key format after decryption")
             return@withContext Result.Error("Invalid private key format")
         } finally {
             privateKeyBytes.fill(0)
@@ -100,10 +111,12 @@ class SendBitcoinUseCase @Inject constructor(
             BitcoinNetwork.Testnet -> TestNet3Params.get()
         }
         if (LegacyAddress.fromKey(networkParams, ecKey).toString() != bitcoinCoin.address) {
+            logger.e(TAG, "Private key mismatch | derivedAddress does not match stored address")
             return@withContext Result.Error("Private key does not match wallet address")
         }
 
         // Create and sign transaction using prepared data
+        logger.d(TAG, "Signing transaction | amount=${preparedTransaction.amountSatoshis} satoshis")
         when (val signResult = bitcoinBlockchainRepository.createAndSignTransaction(
             fromKey = ecKey,
             toAddress = preparedTransaction.toAddress,
@@ -113,6 +126,7 @@ class SendBitcoinUseCase @Inject constructor(
         )) {
             is Result.Success -> {
                 val signedTx = signResult.data
+                logger.d(TAG, "Transaction signed successfully | txId=${signedTx.txId}")
 
                 broadcastAndSaveTransaction(
                     signedTx = signedTx,
@@ -123,6 +137,7 @@ class SendBitcoinUseCase @Inject constructor(
             }
 
             is Result.Error -> {
+                logger.e(TAG, "Signing failed | error=${signResult.message}")
                 Result.Error("Failed to create signed transaction: ${signResult.message}")
             }
 
@@ -139,11 +154,14 @@ class SendBitcoinUseCase @Inject constructor(
         val signedHex = Utils.HEX.encode(signedTx.bitcoinSerialize())
         val txId = signedTx.txId.toString()
 
+        logger.d(TAG, "Broadcasting transaction | txId=$txId")
         return when (val broadcastResult = bitcoinBlockchainRepository.broadcastTransaction(
             signedHex = signedHex,
             network = network
         )) {
             is Result.Success -> {
+                logger.d(TAG, "Broadcast successful | txHash=${broadcastResult.data}")
+                
                 // Calculate BTC amounts
                 val btcAmount = BigDecimal(preparedTx.amountSatoshis).divide(
                     BigDecimal(100_000_000),
@@ -181,6 +199,7 @@ class SendBitcoinUseCase @Inject constructor(
                 )
 
                 bitcoinTransactionRepository.saveTransaction(transaction)
+                logger.d(TAG, "Transaction record saved to database")
 
                 Result.Success(
                     SendBitcoinResult(
@@ -193,10 +212,18 @@ class SendBitcoinUseCase @Inject constructor(
             }
 
             is Result.Error -> {
+                logger.e(TAG, "Broadcast failed | error=${broadcastResult.message}")
                 Result.Error(broadcastResult.message)
             }
 
-            else -> Result.Error("Unknown broadcast error")
+            else -> {
+                logger.e(TAG, "Unknown broadcast error occurred")
+                Result.Error("Unknown broadcast error")
+            }
         }
+    }
+
+    companion object {
+        private const val TAG = "SendBitcoinUC"
     }
 }

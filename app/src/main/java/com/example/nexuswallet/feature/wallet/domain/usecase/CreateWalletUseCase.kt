@@ -12,6 +12,7 @@ import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVN
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
 import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
@@ -43,6 +44,7 @@ class CreateWalletUseCase @Inject constructor(
     private val walletDataSource: WalletDataSource,
     private val keyStoreRepository: KeyStoreRepository,
     private val vaultRepository: VaultRepository,
+    private val logger: Logger,
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher
 ) {
 
@@ -54,6 +56,8 @@ class CreateWalletUseCase @Inject constructor(
         selectedTokens: Map<EthereumNetwork, Set<EVMTokenType>>,
         cipher: javax.crypto.Cipher? = null
     ): Result<Wallet> = withContext(defaultDispatcher) {
+        logger.d(TAG, "Starting wallet creation | walletId=$walletId, name=$name")
+        
         val rawPrivateKeys = mutableMapOf<String, ByteArray>()
 
         val bitcoinCoins = mutableListOf<BitcoinCoin>()
@@ -69,7 +73,11 @@ class CreateWalletUseCase @Inject constructor(
                 deriveBitcoinPrivateKey(mnemonic, network)?.let { rawKeys ->
                     rawPrivateKeys[network.name] = rawKeys
                 }
-            } ?: return@withContext Result.Error("Failed to create Bitcoin ${network.name} coin")
+                logger.d(TAG, "Bitcoin ${network.name} coin derived")
+            } ?: run {
+                logger.e(TAG, "Failed to create Bitcoin ${network.name} coin")
+                return@withContext Result.Error("Failed to create Bitcoin ${network.name} coin")
+            }
         }
 
         // Process Ethereum networks
@@ -87,7 +95,11 @@ class CreateWalletUseCase @Inject constructor(
                         else -> {}
                     }
                 }
-            } ?: return@withContext Result.Error("Failed to create Ethereum ${network.name} coin")
+                logger.d(TAG, "Ethereum ${network.name} coin and tokens derived")
+            } ?: run {
+                logger.e(TAG, "Failed to create Ethereum ${network.name} coin")
+                return@withContext Result.Error("Failed to create Ethereum ${network.name} coin")
+            }
         }
         
         if (evmTokens.isNotEmpty()) {
@@ -104,20 +116,28 @@ class CreateWalletUseCase @Inject constructor(
                 deriveSolanaPrivateKey(mnemonic, coin.derivationPath)?.let { rawKeys ->
                     rawPrivateKeys[network.name] = rawKeys
                 }
-            } ?: return@withContext Result.Error("Failed to create Solana ${network.name} coin")
+                logger.d(TAG, "Solana ${network.name} coin derived")
+            } ?: run {
+                logger.e(TAG, "Failed to create Solana ${network.name} coin")
+                return@withContext Result.Error("Failed to create Solana ${network.name} coin")
+            }
         }
 
         // 2. Encryption Batch (Hardware Sensitive)
         try {
+            logger.d(TAG, "Securing wallet mnemonic and private keys")
             // Secure mnemonic
             val mnemonicBytes = mnemonicToByteArray(mnemonic)
             val encryptionResult = if (cipher != null) {
+                logger.d(TAG, "Encrypting mnemonic using provided cipher")
                 keyStoreRepository.encryptWithCipher(cipher, mnemonicBytes)
             } else {
+                logger.d(TAG, "Encrypting mnemonic using fresh cipher")
                 keyStoreRepository.encrypt(mnemonicBytes)
             }
             
             if (encryptionResult is Result.Error) {
+                logger.e(TAG, "Mnemonic encryption failed | error=${encryptionResult.message}")
                 rawPrivateKeys.values.forEach { it.fill(0) }
                 return@withContext encryptionResult
             }
@@ -130,6 +150,7 @@ class CreateWalletUseCase @Inject constructor(
                 encryptedMnemonic = encryptedMnemonic.toHex(),
                 iv = mnemonicIv
             )
+            logger.d(TAG, "Mnemonic secured in vault")
 
             // Store Bitcoin keys
             bitcoinCoins.forEach { coin ->
@@ -139,11 +160,9 @@ class CreateWalletUseCase @Inject constructor(
                     BitcoinNetwork.Testnet -> KEY_BITCOIN_TESTNET
                 }
                 
-                // We use encrypt() here because the 5s validity window from the first encryption
-                // should still be open. Repository handles hardware errors.
                 val keyResult = keyStoreRepository.encrypt(rawKey)
                 if (keyResult is Result.Error) {
-                    // Propagate the hardware error
+                    logger.e(TAG, "Bitcoin key encryption failed | network=${coin.network}, error=${keyResult.message}")
                     throw Exception("Failed to encrypt key: ${keyResult.message}")
                 }
                 
@@ -156,12 +175,14 @@ class CreateWalletUseCase @Inject constructor(
                     encryptedKey = encryptedKey.toHex(),
                     iv = keyIv
                 )
+                logger.d(TAG, "Bitcoin ${coin.network.name} private key secured")
             }
 
             // Store Ethereum key
             rawPrivateKeys["ETHEREUM"]?.let { rawKey ->
                 val keyResult = keyStoreRepository.encrypt(rawKey)
                 if (keyResult is Result.Error) {
+                    logger.e(TAG, "Ethereum key encryption failed | error=${keyResult.message}")
                     throw Exception("Failed to encrypt ETH key: ${keyResult.message}")
                 }
                 
@@ -174,6 +195,7 @@ class CreateWalletUseCase @Inject constructor(
                     encryptedKey = encryptedKey.toHex(),
                     iv = keyIv
                 )
+                logger.d(TAG, "Ethereum private key secured")
             }
 
             // Store Solana keys
@@ -186,6 +208,7 @@ class CreateWalletUseCase @Inject constructor(
                 
                 val keyResult = keyStoreRepository.encrypt(rawKey)
                 if (keyResult is Result.Error) {
+                    logger.e(TAG, "Solana key encryption failed | network=${coin.network}, error=${keyResult.message}")
                     throw Exception("Failed to encrypt SOL key: ${keyResult.message}")
                 }
                 
@@ -198,10 +221,11 @@ class CreateWalletUseCase @Inject constructor(
                     encryptedKey = encryptedKey.toHex(),
                     iv = keyIv
                 )
+                logger.d(TAG, "Solana ${coin.network.name} private key secured")
             }
         } catch (e: Exception) {
+            logger.e(TAG, "Encryption batch failed | error=${e.message}")
             rawPrivateKeys.values.forEach { it.fill(0) }
-            // Repository should have handled the mapping, but we catch top-level failures here
             return@withContext Result.Error("Failed to secure wallet: ${e.message}")
         } finally {
             rawPrivateKeys.values.forEach { it.fill(0) }
@@ -222,10 +246,13 @@ class CreateWalletUseCase @Inject constructor(
         // Save wallet to database
         try {
             walletDataSource.saveWallet(wallet)
+            logger.d(TAG, "Wallet metadata saved to database")
         } catch (e: Exception) {
+            logger.e(TAG, "Failed to save wallet metadata | error=${e.message}")
             return@withContext Result.Error("Failed to save wallet: ${e.message}", e)
         }
 
+        logger.d(TAG, "Wallet creation completed successfully")
         Result.Success(wallet)
     }
 
@@ -257,9 +284,12 @@ class CreateWalletUseCase @Inject constructor(
             publicKey = wallet.watchingKey.pubKey.toString(),
             network = network,
             xpub = xpub
-        )
+        ).also {
+            logger.d(TAG, "Bitcoin ${network.name} address generated: ${address.take(8)}...")
+        }
 
     } catch (e: Exception) {
+        logger.e(TAG, "Bitcoin address generation failed | network=${network.name}, error=${e.message}")
         null
     }
 
@@ -276,8 +306,11 @@ class CreateWalletUseCase @Inject constructor(
                 address = credentials.address,
                 publicKey = credentials.ecKeyPair.publicKey.toString(16),
                 network = network
-            )
+            ).also {
+                logger.d(TAG, "Ethereum ${network.name} address generated: ${it.address.take(8)}...")
+            }
         } catch (e: Exception) {
+            logger.e(TAG, "Ethereum address generation failed | network=${network.name}, error=${e.message}")
             null
         }
     }
@@ -321,8 +354,11 @@ class CreateWalletUseCase @Inject constructor(
                 network = network,
                 derivationPath = derivationPath,
                 splTokens = emptyList()
-            )
+            ).also {
+                logger.d(TAG, "Solana ${network.name} address generated: ${it.address.take(8)}...")
+            }
         } catch (e: Exception) {
+            logger.e(TAG, "Solana address generation failed | network=${network.name}, error=${e.message}")
             null
         }
     }
@@ -348,6 +384,7 @@ class CreateWalletUseCase @Inject constructor(
             val key = wallet.currentReceiveKey()
             key.privKeyBytes
         } catch (e: Exception) {
+            logger.e(TAG, "Bitcoin private key derivation failed | network=${network.name}, error=${e.message}")
             null
         } finally {
             if (originalContext != null) {
@@ -384,6 +421,7 @@ class CreateWalletUseCase @Inject constructor(
                 privateKey
             }
         } catch (e: Exception) {
+            logger.e(TAG, "Ethereum private key derivation failed | error=${e.message}")
             null
         }
     }
@@ -423,6 +461,7 @@ class CreateWalletUseCase @Inject constructor(
 
             secretKey
         } catch (e: Exception) {
+            logger.e(TAG, "Solana private key derivation failed | error=${e.message}")
             null
         }
     }
@@ -450,6 +489,7 @@ class CreateWalletUseCase @Inject constructor(
     }
 
     companion object {
+        private const val TAG = "CreateWalletUC"
         private const val HARDENED_BIT = 0x80000000
         private const val ETHEREUM_DERIVATION_PATH = "m/44'/60'/0'/0/0"
         private const val SOLANA_MAINNET_DERIVATION_PATH = "m/44'/501'/0'/0'"

@@ -12,13 +12,15 @@ class ValidateSolanaAddressUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "ValidateSolanaUC"
-
     operator fun invoke(address: String): Result<Boolean> {
         val result = solanaBlockchainRepository.validateAddress(address)
         if (result is Result.Success && !result.data) {
-            logger.d(tag, "Invalid address: $address")
+            logger.d(TAG, "Invalid address: $address")
         }
         return result
+    }
+
+    companion object {
+        private const val TAG = "ValidateSolanaUC"
     }
 }

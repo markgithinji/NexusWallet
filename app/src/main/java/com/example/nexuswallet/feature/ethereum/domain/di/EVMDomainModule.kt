@@ -102,6 +102,7 @@ object EVMDomainModule {
             getFeeEstimateUseCase = getFeeEstimateUseCase,
             vaultRepository = vaultRepository,
             keyStoreRepository = keyStoreRepository,
+            logger = logger,
             ioDispatcher = ioDispatcher
         )
     }

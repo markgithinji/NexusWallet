@@ -43,8 +43,6 @@ class GetAllTransactionsUseCase @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
-    private val tag = "GetAllTransactionsUC"
-
     /**
      * Returns a reactive stream of transactions.
      * 1. Emits cached data immediately from DB.
@@ -76,7 +74,7 @@ class GetAllTransactionsUseCase @Inject constructor(
             try {
                 syncTransactions(walletId)
             } catch (e: Exception) {
-                logger.e(tag, "Background sync failed", e)
+                logger.e(TAG, "Background sync failed", e)
             }
         }
     }
@@ -110,7 +108,7 @@ class GetAllTransactionsUseCase @Inject constructor(
                 )
             }
         } catch (e: Exception) {
-            logger.e(tag, "Error syncing Bitcoin for ${coin.network}", e)
+            logger.e(TAG, "Error syncing Bitcoin for ${coin.network}", e)
         }
     }
 
@@ -143,7 +141,7 @@ class GetAllTransactionsUseCase @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            logger.e(tag, "Error syncing EVM for ${token.network}", e)
+            logger.e(TAG, "Error syncing EVM for ${token.network}", e)
         }
     }
 
@@ -165,8 +163,11 @@ class GetAllTransactionsUseCase @Inject constructor(
                 )
             }
         } catch (e: Exception) {
-            logger.e(tag, "Error syncing Solana for ${coin.network}", e)
+            logger.e(TAG, "Error syncing Solana for ${coin.network}", e)
         }
     }
 
+    companion object {
+        private const val TAG = "GetAllTransactionsUC"
+    }
 }

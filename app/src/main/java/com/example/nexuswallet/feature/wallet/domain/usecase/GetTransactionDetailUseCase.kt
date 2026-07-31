@@ -31,15 +31,13 @@ class GetTransactionDetailUseCase @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
-    private val tag = "GetTransactionDetailUC"
-
     suspend operator fun invoke(
         walletId: String,
         transactionId: String,
         coin: Coin
     ): Result<TransactionDetail> = withContext(ioDispatcher) {
         logger.d(
-            tag,
+            TAG,
             "Getting ${coin.symbol} transaction detail: $transactionId for wallet: $walletId"
         )
 
@@ -69,7 +67,7 @@ class GetTransactionDetailUseCase @Inject constructor(
             }
 
             if (!isValidTransaction) {
-                logger.e(tag, "Transaction type mismatch for coin ${coin.symbol}")
+                logger.e(TAG, "Transaction type mismatch for coin ${coin.symbol}")
                 return@withContext Result.Error("Transaction does not match the selected coin")
             }
 
@@ -83,7 +81,7 @@ class GetTransactionDetailUseCase @Inject constructor(
             Result.Success(detail)
 
         } catch (e: Exception) {
-            logger.e(tag, "Error getting transaction detail", e)
+            logger.e(TAG, "Error getting transaction detail", e)
             Result.Error(e.message ?: "Unknown error")
         }
     }
@@ -199,5 +197,9 @@ class GetTransactionDetailUseCase @Inject constructor(
             tokenDecimals = (coin as? EVMToken)?.decimals ?: 18,
             tokenContract = tx.tokenContract
         )
+    }
+
+    companion object {
+        private const val TAG = "GetTransactionDetailUC"
     }
 }

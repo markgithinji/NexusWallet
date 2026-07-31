@@ -14,17 +14,19 @@ class GetSolanaBalanceUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "GetSolanaBalanceUC"
-
     suspend operator fun invoke(
         address: String,
         network: SolanaNetwork
     ): Result<BigDecimal> {
-        logger.d(tag, "Fetching balance for $address on $network")
+        logger.d(TAG, "Fetching balance for $address on $network")
         val result = solanaBlockchainRepository.getBalance(address, network)
         if (result is Result.Error) {
-            logger.e(tag, "Failed to get balance on $network: ${result.message}")
+            logger.e(TAG, "Failed to get balance on $network: ${result.message}")
         }
         return result
+    }
+
+    companion object {
+        private const val TAG = "GetSolanaBalanceUC"
     }
 }

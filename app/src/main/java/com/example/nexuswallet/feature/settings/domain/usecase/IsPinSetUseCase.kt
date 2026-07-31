@@ -19,9 +19,13 @@ class IsPinSetUseCase @Inject constructor(
         securityRepository.observePinHash()
             .map { pinHash -> pinHash != null }
             .onStart {
-                logger.d("IsPinSetUseCase", "Starting PIN set flow")
+                logger.d(TAG, "Starting PIN set flow")
             }
             .onEach { isSet ->
-                logger.d("IsPinSetUseCase", "PIN set: $isSet")
+                logger.d(TAG, "PIN set: $isSet")
             }
+
+    companion object {
+        private const val TAG = "IsPinSetUC"
+    }
 }

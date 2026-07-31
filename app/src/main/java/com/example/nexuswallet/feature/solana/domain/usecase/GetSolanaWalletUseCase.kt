@@ -15,14 +15,12 @@ class GetSolanaWalletUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "GetSolanaWalletUC"
-
     suspend operator fun invoke(
         walletId: String,
         network: SolanaNetwork?
     ): Result<SolanaWalletInfo> {
         val wallet = walletRepository.getWallet(walletId) ?: run {
-            logger.e(tag, "Wallet not found: $walletId")
+            logger.e(TAG, "Wallet not found: $walletId")
             return Result.Error("Wallet not found")
         }
 
@@ -36,12 +34,12 @@ class GetSolanaWalletUseCase @Inject constructor(
 
         if (solanaCoin == null) {
             val networkMsg = network?.let { " for $it" } ?: ""
-            logger.e(tag, "Solana not enabled$networkMsg for wallet: ${wallet.name}")
+            logger.e(TAG, "Solana not enabled$networkMsg for wallet: ${wallet.name}")
             return Result.Error("Solana not enabled${networkMsg} for this wallet")
         }
 
         logger.d(
-            tag,
+            TAG,
             "Loaded wallet: ${wallet.name}, address: ${solanaCoin.address.take(8)}..., network: ${solanaCoin.network}"
         )
 
@@ -53,5 +51,9 @@ class GetSolanaWalletUseCase @Inject constructor(
                 network = solanaCoin.network
             )
         )
+    }
+
+    companion object {
+        private const val TAG = "GetSolanaWalletUC"
     }
 }

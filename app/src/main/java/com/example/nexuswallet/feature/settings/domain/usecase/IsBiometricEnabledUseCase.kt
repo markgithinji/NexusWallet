@@ -17,9 +17,13 @@ class IsBiometricEnabledUseCase @Inject constructor(
     operator fun invoke(): Flow<Boolean> =
         securityRepository.observeBiometricEnabled()
             .onStart {
-                logger.d("IsBiometricEnabledUseCase", "Starting biometric enabled flow")
+                logger.d(TAG, "Starting biometric enabled flow")
             }
             .onEach { isEnabled ->
-                logger.d("IsBiometricEnabledUseCase", "Biometric enabled: $isEnabled")
+                logger.d(TAG, "Biometric enabled: $isEnabled")
             }
+
+    companion object {
+        private const val TAG = "IsBiometricEnabledUC"
+    }
 }

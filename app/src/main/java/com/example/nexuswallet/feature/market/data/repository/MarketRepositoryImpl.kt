@@ -2,7 +2,6 @@ package com.example.nexuswallet.feature.market.data.repository
 
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.SafeApiCall
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.market.data.model.toChartData
 import com.example.nexuswallet.feature.market.data.model.toNewsArticle
 import com.example.nexuswallet.feature.market.data.model.toTokenDetail
@@ -19,11 +18,8 @@ import javax.inject.Singleton
 @Singleton
 class MarketRepositoryImpl @Inject constructor(
     private val coinGeckoApi: CoinGeckoApi,
-    private val coinStatsApi: CoinStatsApi,
-    private val logger: Logger
+    private val coinStatsApi: CoinStatsApi
 ) : MarketRepository {
-
-    private val tag = "MarketRepo"
 
     override suspend fun getLatestPricePercentages(): Result<Map<String, Double>> {
         return SafeApiCall.make {
@@ -66,7 +62,7 @@ class MarketRepositoryImpl @Inject constructor(
     override suspend fun getCoinNews(coinNameOrSymbol: String): Result<List<NewsArticle>> {
         val coinId = resolveCoinId(coinNameOrSymbol)
 
-        val result = SafeApiCall.make {
+        return SafeApiCall.make {
             val response = coinStatsApi.getNews(
                 coinId = coinId,
                 type = "latest",
@@ -80,12 +76,6 @@ class MarketRepositoryImpl @Inject constructor(
                 }
                 .map { it.toNewsArticle() }
         }
-
-        if (result is Result.Error) {
-            logger.e(tag, "Error fetching news from API: ${result.message}", result.throwable)
-        }
-
-        return result
     }
 
     override suspend fun getSimplePrices(

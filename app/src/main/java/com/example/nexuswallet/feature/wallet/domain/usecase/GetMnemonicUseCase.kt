@@ -15,7 +15,6 @@ class GetMnemonicUseCase @Inject constructor(
     private val keyStoreRepository: KeyStoreRepository,
     private val logger: Logger
 ) {
-    private val tag = "GetMnemonicUC"
 
     suspend operator fun invoke(walletId: String, cipher: Cipher? = null): Result<List<String>> {
         val (encryptedMnemonicHex, iv) = vaultRepository.getEncryptedMnemonic(walletId)
@@ -36,10 +35,14 @@ class GetMnemonicUseCase @Inject constructor(
             val mnemonicString = String(decryptedBytes, Charsets.UTF_8)
             Result.Success(mnemonicString.split(" "))
         } catch (e: Exception) {
-            logger.e(tag, "Failed to parse mnemonic for wallet: $walletId", e)
+            logger.e(TAG, "Failed to parse mnemonic for wallet: $walletId", e)
             Result.Error("Failed to parse mnemonic: ${e.message}")
         } finally {
             decryptedBytes.fill(0)
         }
+    }
+
+    companion object {
+        private const val TAG = "GetMnemonicUC"
     }
 }

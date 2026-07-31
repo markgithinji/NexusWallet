@@ -20,7 +20,6 @@ class SyncEVMBalancesUseCase @Inject constructor(
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    private val tag = "SyncEVMBalancesUC"
 
     suspend operator fun invoke(
         walletId: String,
@@ -71,11 +70,11 @@ class SyncEVMBalancesUseCase @Inject constructor(
                         )
                     )
 
-                    logger.d(tag, "${token.symbol} on ${token.network.name} balance updated: $balance")
+                    logger.d(TAG, "${token.symbol} on ${token.network.name} balance updated: $balance")
                 }
 
                 is Result.Error -> {
-                    logger.e(tag, "Failed to sync ${token.symbol} on ${token.network.name}: ${balanceResult.message}")
+                    logger.e(TAG, "Failed to sync ${token.symbol} on ${token.network.name}: ${balanceResult.message}")
                     chainErrors.add(ChainSyncError(token.network, balanceResult.message, token.symbol))
                 }
 
@@ -88,9 +87,13 @@ class SyncEVMBalancesUseCase @Inject constructor(
         // Save all EVM balances that succeeded
         if (saveToCache && evmBalances.isNotEmpty()) {
             balanceDataSource.saveEVMBalances(walletId, evmBalances)
-            logger.d(tag, "Saved ${evmBalances.size} EVM balances for wallet $walletId")
+            logger.d(TAG, "Saved ${evmBalances.size} EVM balances for wallet $walletId")
         }
 
         Pair(evmBalances, chainErrors)
+    }
+
+    companion object {
+        private const val TAG = "SyncEVMBalancesUC"
     }
 }

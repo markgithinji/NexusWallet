@@ -17,8 +17,6 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "ValidateBitcoinTxUC"
-
     operator fun invoke(
         walletId: String,
         wallet: Wallet?,
@@ -31,7 +29,7 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
 
         // Validate wallet exists
         if (wallet == null) {
-            logger.w(tag, "Wallet not found: $walletId")
+            logger.w(TAG, "Wallet not found: $walletId")
             return SendValidationResult(
                 isValid = false,
                 addressError = "Wallet not found"
@@ -41,7 +39,7 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
         // Validate Bitcoin is enabled for this network
         val bitcoinCoin = wallet.bitcoinCoins.find { it.network == network }
         if (bitcoinCoin == null) {
-            logger.w(tag, "Bitcoin not enabled for $network in wallet: ${wallet.name}")
+            logger.w(TAG, "Bitcoin not enabled for $network in wallet: ${wallet.name}")
             return SendValidationResult(
                 isValid = false,
                 addressError = "Bitcoin not enabled for $network"
@@ -50,7 +48,7 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
 
         // Validate address is not empty
         if (toAddress.isBlank()) {
-            logger.w(tag, "Address is empty")
+            logger.w(TAG, "Address is empty")
             return SendValidationResult(
                 isValid = false,
                 addressError = "Please enter a recipient address"
@@ -64,10 +62,10 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
                 BitcoinNetwork.Testnet -> TestNet3Params.get()
             }
             Address.fromString(params, toAddress)
-            logger.d(tag, "Valid $network address: ${toAddress.take(8)}...")
+            logger.d(TAG, "Valid $network address: ${toAddress.take(8)}...")
             true
         } catch (e: Exception) {
-            logger.e(tag, "Invalid $network address: ${toAddress.take(8)}...")
+            logger.e(TAG, "Invalid $network address: ${toAddress.take(8)}...")
             false
         }
 
@@ -80,7 +78,7 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
 
         // Validate not sending to self
         if (toAddress == bitcoinCoin.address) {
-            logger.w(tag, "Attempted self-send")
+            logger.w(TAG, "Attempted self-send")
             return SendValidationResult(
                 isValid = false,
                 selfSendError = "Cannot send to yourself"
@@ -89,7 +87,7 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
 
         // Validate amount > 0
         if (amount <= BigDecimal.ZERO) {
-            logger.w(tag, "Invalid amount: $amount")
+            logger.w(TAG, "Invalid amount: $amount")
             return SendValidationResult(
                 isValid = false,
                 amountError = "Amount must be greater than zero"
@@ -107,7 +105,7 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
 
         // Check against user's actual balance
         if (totalRequired > balance) {
-            logger.w(tag, "Insufficient balance: have $balance BTC, need $totalRequired BTC")
+            logger.w(TAG, "Insufficient balance: have $balance BTC, need $totalRequired BTC")
             return SendValidationResult(
                 isValid = false,
                 balanceError = "Insufficient balance. You have ${balance.setScale(8).stripTrailingZeros().toPlainString()} BTC but need ${
@@ -118,5 +116,9 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
 
         // All validations passed
         return SendValidationResult(isValid = true)
+    }
+
+    companion object {
+        private const val TAG = "ValidateBitcoinTxUC"
     }
 }

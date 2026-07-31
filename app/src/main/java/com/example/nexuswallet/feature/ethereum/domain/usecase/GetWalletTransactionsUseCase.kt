@@ -16,19 +16,21 @@ class GetWalletTransactionsUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "GetWalletTxUC"
-
     operator fun invoke(walletId: String): Flow<Result<List<EVMTransaction>>> {
-        logger.d(tag, "Subscribing to transactions flow for wallet: $walletId")
+        logger.d(TAG, "Subscribing to transactions flow for wallet: $walletId")
 
         return evmTransactionRepository.getTransactions(walletId)
             .map { transactions ->
-                logger.d(tag, "Emitting ${transactions.size} transactions for wallet: $walletId")
+                logger.d(TAG, "Emitting ${transactions.size} transactions for wallet: $walletId")
                 Result.Success(transactions) as Result<List<EVMTransaction>>
             }
             .catch { e ->
-                logger.e(tag, "Error loading transactions for wallet $walletId: ${e.message}")
+                logger.e(TAG, "Error loading transactions for wallet $walletId: ${e.message}")
                 emit(Result.Error("Failed to load transactions: ${e.message}"))
             }
+    }
+
+    companion object {
+        private const val TAG = "GetWalletTxUC"
     }
 }

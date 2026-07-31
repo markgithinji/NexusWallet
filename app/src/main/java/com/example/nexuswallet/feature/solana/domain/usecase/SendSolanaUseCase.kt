@@ -10,6 +10,7 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
 import com.example.nexuswallet.feature.core.util.decodeHex
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.domain.model.SendSolanaResult
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
@@ -35,6 +36,7 @@ class SendSolanaUseCase @Inject constructor(
     private val solanaTransactionRepository: SolanaTransactionRepository,
     private val vaultRepository: VaultRepository,
     private val keyStoreRepository: KeyStoreRepository,
+    private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
@@ -47,7 +49,10 @@ class SendSolanaUseCase @Inject constructor(
         note: String?,
         cipher: Cipher? = null
     ): Result<SendSolanaResult> = withContext(ioDispatcher) {
+        logger.d(TAG, "Starting Solana send | walletId=$walletId, amount=$amount SOL, target=${toAddress.take(8)}...")
+
         val wallet = walletRepository.getWallet(walletId) ?: run {
+            logger.e(TAG, "Wallet not found | walletId=$walletId")
             return@withContext Result.Error("Wallet not found")
         }
 
@@ -57,15 +62,19 @@ class SendSolanaUseCase @Inject constructor(
         }
 
         if (solanaCoin == null) {
+            logger.e(TAG, "Solana mismatch | address ${coin.address.take(8)}... not enabled for ${coin.network.name}")
             return@withContext Result.Error("Solana not enabled for ${coin.network.name}")
         }
 
         // 1. Get fee estimate
+        logger.d(TAG, "Step 1: Requesting fee estimate | network=${coin.network.name}")
         val feeResult = solanaBlockchainRepository.getFeeEstimate(feeLevel, coin.network)
         if (feeResult is Result.Error) {
+            logger.e(TAG, "Fee estimation failed | error=${feeResult.message}")
             return@withContext Result.Error(feeResult.message)
         }
         val feeEstimate = (feeResult as Result.Success).data
+        logger.d(TAG, "Fee estimate received | totalFee=${feeEstimate.feeSol} SOL")
 
         val lamports = amount.multiply(BigDecimal(LAMPORTS_PER_SOL)).toLong()
 
@@ -81,19 +90,23 @@ class SendSolanaUseCase @Inject constructor(
         )
 
         if (encryptedData == null) {
+            logger.e(TAG, "No private key found in vault | keyType=$keyType")
             return@withContext Result.Error("No private key found. Make sure Solana is enabled in your wallet.")
         }
 
         val (encryptedHex, iv) = encryptedData
 
-        // Decrypt private key
+        // Decrypt private key (Repository now handles safe calls and mapping hardware errors)
         val decryptionResult = if (cipher != null) {
+            logger.d(TAG, "Decrypting private key using provided cipher")
             keyStoreRepository.decryptWithCipher(cipher, encryptedHex.decodeHex())
         } else {
+            logger.d(TAG, "Decrypting private key using stored IV")
             keyStoreRepository.decrypt(encryptedHex.decodeHex(), iv)
         }
 
         if (decryptionResult is Result.Error) {
+            logger.e(TAG, "Decryption failed | error=${decryptionResult.message}")
             return@withContext decryptionResult
         }
 
@@ -101,14 +114,19 @@ class SendSolanaUseCase @Inject constructor(
 
         try {
             val keypair = createSolanaKeypair(privateKeyBytes)
-                ?: return@withContext Result.Error("Invalid private key format")
+                ?: run {
+                    logger.e(TAG, "Invalid private key format after decryption")
+                    return@withContext Result.Error("Invalid private key format")
+                }
 
             val derivedAddress = keypair.publicKey.toString()
             if (derivedAddress != solanaCoin.address) {
+                logger.e(TAG, "Private key mismatch | derivedAddress=$derivedAddress != storedAddress=${solanaCoin.address}")
                 return@withContext Result.Error("Private key doesn't match wallet")
             }
 
             // 3. Create and sign transaction
+            logger.d(TAG, "Step 3: Creating and signing transaction locally")
             val signedTxResult = solanaBlockchainRepository.createAndSignTransaction(
                 fromKeypair = keypair,
                 toAddress = toAddress,
@@ -119,15 +137,19 @@ class SendSolanaUseCase @Inject constructor(
             )
 
             if (signedTxResult is Result.Error) {
+                logger.e(TAG, "Signing failed | error=${signedTxResult.message}")
                 return@withContext Result.Error(signedTxResult.message)
             }
             val signedTx = (signedTxResult as Result.Success).data
+            logger.d(TAG, "Transaction signed successfully | signature=${signedTx.signature.take(8)}...")
 
             // 4. Broadcast transaction
+            logger.d(TAG, "Step 4: Broadcasting transaction to ${coin.network.name}")
             val broadcastResult = broadcastTransaction(signedTx, coin.network)
 
             // 5. save transaction after successful broadcast
             if (broadcastResult.success) {
+                logger.d(TAG, "Broadcast successful | Saving transaction record")
                 val transaction = createTransactionRecord(
                     walletId = walletId,
                     toAddress = toAddress,
@@ -140,6 +162,8 @@ class SendSolanaUseCase @Inject constructor(
                 )
 
                 solanaTransactionRepository.saveTransaction(transaction)
+            } else {
+                logger.e(TAG, "Broadcast failed | error=${broadcastResult.error}")
             }
 
             val sendResult = SendSolanaResult(
@@ -232,7 +256,8 @@ class SendSolanaUseCase @Inject constructor(
         null
     }
 
-    companion object{
+    companion object {
+        private const val TAG = "SendSolanaUC"
         private const val KEYPAIR_64_BYTES = 64
         private const val KEYPAIR_32_BYTES = 32
     }

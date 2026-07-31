@@ -13,7 +13,11 @@ class ClearPinUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(): Result<Unit> {
         securityRepository.clearPinHash()
-        logger.d("ClearPinUseCase", "PIN cleared successfully")
+        logger.d(TAG, "PIN cleared successfully")
         return Result.Success(Unit)
+    }
+
+    companion object {
+        private const val TAG = "ClearPinUC"
     }
 }

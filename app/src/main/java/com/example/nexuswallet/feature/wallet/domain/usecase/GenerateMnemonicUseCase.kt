@@ -12,10 +12,8 @@ class GenerateMnemonicUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "GenerateMnemonicUC"
-
     operator fun invoke(wordCount: Int): List<String> {
-        logger.d(tag, "Generating mnemonic with word count: $wordCount")
+        logger.d(TAG, "Generating mnemonic with word count: $wordCount")
 
         val strength = when (wordCount) {
             WORDS_12 -> STRENGTH_128
@@ -24,7 +22,7 @@ class GenerateMnemonicUseCase @Inject constructor(
             WORDS_21 -> STRENGTH_224
             WORDS_24 -> STRENGTH_256
             else -> {
-                logger.w(tag, "Invalid word count: $wordCount, defaulting to 12 words")
+                logger.w(TAG, "Invalid word count: $wordCount, defaulting to 12 words")
                 DEFAULT_STRENGTH
             }
         }
@@ -34,21 +32,23 @@ class GenerateMnemonicUseCase @Inject constructor(
 
         return try {
             val mnemonic = MnemonicUtils.generateMnemonic(entropy).split(" ")
-            logger.d(tag, "Successfully generated ${mnemonic.size} word mnemonic")
+            logger.d(TAG, "Successfully generated ${mnemonic.size} word mnemonic")
             mnemonic
         } catch (e: Exception) {
             logger.e(
-                tag,
+                TAG,
                 "Failed to generate mnemonic with MnemonicUtils, falling back to MnemonicCode",
                 e
             )
             val mnemonic = MnemonicCode.INSTANCE.toMnemonic(entropy)
-            logger.d(tag, "Successfully generated ${mnemonic.size} word mnemonic using fallback")
+            logger.d(TAG, "Successfully generated ${mnemonic.size} word mnemonic using fallback")
             mnemonic
         }
     }
 
     companion object {
+        private const val TAG = "GenerateMnemonicUC"
+
         // Word count constants
         private const val WORDS_12 = 12
         private const val WORDS_15 = 15

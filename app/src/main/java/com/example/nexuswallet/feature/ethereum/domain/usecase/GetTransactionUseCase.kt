@@ -13,16 +13,18 @@ class GetTransactionUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "GetTransactionUC"
-
     suspend operator fun invoke(transactionId: String): Result<EVMTransaction> {
         val transaction = evmTransactionRepository.getTransaction(transactionId)
         return if (transaction != null) {
-            logger.d(tag, "Transaction found: $transactionId")
+            logger.d(TAG, "Transaction found: $transactionId")
             Result.Success(transaction)
         } else {
-            logger.w(tag, "Transaction not found: $transactionId")
+            logger.w(TAG, "Transaction not found: $transactionId")
             Result.Error("Transaction not found")
         }
+    }
+
+    companion object {
+        private const val TAG = "GetTransactionUC"
     }
 }

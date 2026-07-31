@@ -15,8 +15,6 @@ class GetBitcoinFeeEstimateUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "GetBitcoinFeeUC"
-
     suspend operator fun invoke(
         feeLevel: FeeLevel,
         inputCount: Int,
@@ -24,9 +22,13 @@ class GetBitcoinFeeEstimateUseCase @Inject constructor(
         network: BitcoinNetwork
     ): Result<BitcoinFeeEstimate> {
         logger.d(
-            tag,
+            TAG,
             "Getting fee estimate for $feeLevel ($network) with $inputCount inputs, $outputCount outputs"
         )
         return bitcoinBlockchainRepository.getFeeEstimate(feeLevel, inputCount, outputCount, network)
+    }
+
+    companion object {
+        private const val TAG = "GetBitcoinFeeUC"
     }
 }

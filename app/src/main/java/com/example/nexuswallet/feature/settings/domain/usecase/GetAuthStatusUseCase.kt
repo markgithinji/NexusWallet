@@ -34,9 +34,13 @@ class GetAuthStatusUseCase @Inject constructor(
         )
 
         logger.d(
-            "GetAuthStatusUseCase",
+            TAG,
             "Auth status retrieved: PIN set=$pinSet, Biometric enabled=$biometricEnabled, Privacy mode=$privacyModeEnabled, Require Auth for Send=$requireAuthForSend"
         )
         return Result.Success(authStatus)
+    }
+
+    companion object {
+        private const val TAG = "GetAuthStatusUC"
     }
 }

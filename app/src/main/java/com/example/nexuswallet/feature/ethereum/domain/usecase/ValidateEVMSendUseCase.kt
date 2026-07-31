@@ -16,8 +16,6 @@ class ValidateEVMSendUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    private val tag = "ValidateEVMSendUC"
-
     operator fun invoke(
         toAddress: String,
         amountValue: BigDecimal,
@@ -30,7 +28,7 @@ class ValidateEVMSendUseCase @Inject constructor(
 
         // Validate address is not empty
         if (toAddress.isBlank()) {
-            logger.w(tag, "Address is empty")
+            logger.w(TAG, "Address is empty")
             return SendValidationResult(
                 isValid = false,
                 addressError = "Please enter a recipient address"
@@ -39,7 +37,7 @@ class ValidateEVMSendUseCase @Inject constructor(
 
         // Validate address format
         if (!isValidEthereumAddress(toAddress)) {
-            logger.w(tag, "Invalid Ethereum address format: $toAddress")
+            logger.w(TAG, "Invalid Ethereum address format: $toAddress")
             return SendValidationResult(
                 isValid = false,
                 addressError = "Invalid Ethereum address format"
@@ -48,7 +46,7 @@ class ValidateEVMSendUseCase @Inject constructor(
 
         // Validate not sending to self
         if (toAddress.equals(fromAddress, ignoreCase = true)) {
-            logger.w(tag, "Attempted self-send")
+            logger.w(TAG, "Attempted self-send")
             return SendValidationResult(
                 isValid = false,
                 selfSendError = "Cannot send to yourself"
@@ -57,7 +55,7 @@ class ValidateEVMSendUseCase @Inject constructor(
 
         // Validate amount > 0
         if (amountValue <= BigDecimal.ZERO) {
-            logger.w(tag, "Invalid amount: $amountValue")
+            logger.w(TAG, "Invalid amount: $amountValue")
             return SendValidationResult(
                 isValid = false,
                 amountError = "Amount must be greater than zero"
@@ -78,7 +76,7 @@ class ValidateEVMSendUseCase @Inject constructor(
         if (token !is NativeETH) {
             // For token transfers, need enough token balance AND enough ETH for gas
             if (amountValue > tokenBalance) {
-                logger.w(tag, "Insufficient token balance")
+                logger.w(TAG, "Insufficient token balance")
                 return SendValidationResult(
                     isValid = false,
                     balanceError = "Insufficient ${token.symbol} balance"
@@ -86,7 +84,7 @@ class ValidateEVMSendUseCase @Inject constructor(
             }
 
             if (ethBalance < feeEth) {
-                logger.w(tag, "Insufficient ETH for gas")
+                logger.w(TAG, "Insufficient ETH for gas")
                 val formattedFee = feeEth.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
                 return SendValidationResult(
                     isValid = false,
@@ -97,7 +95,7 @@ class ValidateEVMSendUseCase @Inject constructor(
             // For ETH transfers, total amount + fee must be <= balance
             val totalRequired = amountValue + feeEth
             if (totalRequired > ethBalance) {
-                logger.w(tag, "Insufficient ETH balance")
+                logger.w(TAG, "Insufficient ETH balance")
                 val formattedBalance = ethBalance.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
                 val formattedRequired = totalRequired.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
                 return SendValidationResult(
@@ -118,5 +116,9 @@ class ValidateEVMSendUseCase @Inject constructor(
         } catch (e: Exception) {
             false
         }
+    }
+
+    companion object {
+        private const val TAG = "ValidateEVMSendUC"
     }
 }
