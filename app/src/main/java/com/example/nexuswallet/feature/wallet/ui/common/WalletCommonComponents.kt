@@ -325,14 +325,15 @@ fun AssetSummaryCard(
 fun AssetChip(text: String, color: Color) {
     Surface(
         color = color.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.3f))
+        shape = RoundedCornerShape(6.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.25f))
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.ExtraBold,
             color = color
         )
     }

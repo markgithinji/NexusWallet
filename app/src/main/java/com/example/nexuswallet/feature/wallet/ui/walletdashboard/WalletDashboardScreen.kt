@@ -10,6 +10,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -55,6 +56,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -91,6 +93,7 @@ import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
+import com.example.nexuswallet.feature.wallet.ui.common.AssetChip
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
 import com.example.nexuswallet.ui.theme.bitcoinLight
@@ -248,64 +251,106 @@ fun DashboardTopBar(
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                Surface(
+                    modifier = Modifier.size(36.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
                 Text(
                     text = stringResource(R.string.wallets_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    letterSpacing = (-0.5).sp
                 )
             }
         },
         actions = {
             Box {
-                IconButton(
-                    onClick = { showMenu = true }
+                Surface(
+                    onClick = { showMenu = true },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.size(40.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Add,
-                        contentDescription = stringResource(R.string.create_wallet),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.Add,
+                            contentDescription = stringResource(R.string.create_wallet),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false },
-                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                    modifier = Modifier
+                        .width(200.dp)
+                        .background(MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp),
+                    offset = androidx.compose.ui.unit.DpOffset(x = (-16).dp, y = 8.dp)
                 ) {
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.create_new_wallet)) },
+                        text = { 
+                            Text(
+                                stringResource(R.string.create_new_wallet),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            ) 
+                        },
                         onClick = {
                             showMenu = false
                             onCreateWallet()
                         },
                         leadingIcon = {
-                            Icon(Icons.Outlined.Add, contentDescription = null)
+                            Icon(
+                                Icons.Outlined.Add, 
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.import_existing_wallet)) },
+                        text = { 
+                            Text(
+                                stringResource(R.string.import_existing_wallet),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            ) 
+                        },
                         onClick = {
                             showMenu = false
                             onImportWallet()
                         },
                         leadingIcon = {
-                            Icon(Icons.Outlined.Shield, contentDescription = null)
+                            Icon(
+                                Icons.Outlined.Shield, 
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
                         }
                     )
                 }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            scrolledContainerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.background,
+            scrolledContainerColor = MaterialTheme.colorScheme.background
         )
     )
 }
@@ -428,42 +473,43 @@ fun WalletCard(
         total
     } ?: 0.0
 
-    Card(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(0.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isExpanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) 
+                    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)
+        ),
+        onClick = onWalletClick
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    onWalletClick()
-                }
+            modifier = Modifier.fillMaxWidth()
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp),
+                    .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.AccountBalanceWallet,
-                        contentDescription = stringResource(R.string.wallet_icon),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -479,7 +525,7 @@ fun WalletCard(
                         Text(
                             text = wallet.name,
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -490,58 +536,50 @@ fun WalletCard(
                             text = if (isPrivacyModeEnabled) "****" else totalUsdValue.formatCurrency(
                                 selectedCurrency
                             ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary,
                             maxLines = 1
                         )
                     }
 
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     FlowRow(
-                        modifier = Modifier.padding(top = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        maxItemsInEachRow = Int.MAX_VALUE
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         wallet.bitcoinCoins.forEach { coin ->
-                            CoinBadge(
-                                text = if (coin.network.isTestnet) "${coin.symbol} ${
-                                    stringResource(
-                                        R.string.test_suffix
-                                    )
-                                }" else coin.symbol,
-                                color = bitcoinLight,
+                            AssetChip(
+                                text = coin.symbol + if (coin.network.isTestnet) " (Test)" else "",
+                                color = bitcoinLight
                             )
                         }
 
                         wallet.solanaCoins.forEach { coin ->
-                            CoinBadge(
-                                text = if (coin.network.isTestnet) "${coin.symbol} ${
-                                    stringResource(
-                                        R.string.dev_suffix
-                                    )
-                                }" else coin.symbol,
-                                color = solanaLight,
+                            AssetChip(
+                                text = coin.symbol + if (coin.network.isTestnet) " (Dev)" else "",
+                                color = solanaLight
                             )
                         }
 
-                        val visibleTokens = wallet.evmTokens.take(5)
+                        val visibleTokens = wallet.evmTokens.take(3)
                         visibleTokens.forEach { token ->
-                            CoinBadge(
+                            AssetChip(
                                 text = token.symbol,
                                 color = when (token.evmTokenType) {
                                     EVMTokenType.NATIVE -> ethereumLight
                                     EVMTokenType.USDC -> usdcLight
                                     EVMTokenType.USDT -> Color(0xFF26A17B)
-                                },
+                                }
                             )
                         }
 
-                        val remainingCount = wallet.evmTokens.size - 5
+                        val remainingCount = wallet.evmTokens.size - 3
                         if (remainingCount > 0) {
-                            CoinBadge(
+                            AssetChip(
                                 text = "+$remainingCount",
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -551,15 +589,20 @@ fun WalletCard(
                     onClick = {
                         isExpanded = !isExpanded
                     },
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(32.dp)
+                        .background(
+                            if (isExpanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                            else Color.Transparent,
+                            CircleShape
+                        )
                 ) {
                     Icon(
                         imageVector = if (isExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                        contentDescription = if (isExpanded) stringResource(R.string.collapse) else stringResource(
-                            R.string.expand
-                        ),
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = if (isExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -594,12 +637,12 @@ fun WalletExpandedContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         HorizontalDivider(
-            modifier = Modifier.padding(bottom = 12.dp),
+            modifier = Modifier.padding(bottom = 16.dp),
             thickness = 1.dp,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
         )
 
         // Bitcoin coins
@@ -608,7 +651,8 @@ fun WalletExpandedContent(
 
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.bitcoin),
-                symbol = "${coin.name}${if (coin.network.isTestnet) " ${stringResource(R.string.testnet_suffix)}" else ""}",
+                symbol = coin.name,
+                networkName = if (coin.network.isTestnet) stringResource(R.string.testnet_suffix) else null,
                 amount = if (btcBalance != null)
                     "${
                         NumberFormat.getNumberInstance(Locale.US)
@@ -618,8 +662,7 @@ fun WalletExpandedContent(
                 usdValue = btcBalance?.usdValue ?: 0.0,
                 color = bitcoinLight,
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
-                selectedCurrency = selectedCurrency,
-                showZeroBalance = true
+                selectedCurrency = selectedCurrency
             )
         }
 
@@ -629,7 +672,8 @@ fun WalletExpandedContent(
 
             SimpleBalanceRow(
                 icon = painterResource(id = R.drawable.solana),
-                symbol = "${coin.name}${if (coin.network.isTestnet) " ${stringResource(R.string.devnet_suffix)}" else ""}",
+                symbol = coin.name,
+                networkName = if (coin.network.isTestnet) stringResource(R.string.devnet_suffix) else null,
                 amount = if (solBalance != null)
                     "${
                         NumberFormat.getNumberInstance(Locale.US)
@@ -639,24 +683,25 @@ fun WalletExpandedContent(
                 usdValue = solBalance?.usdValue ?: 0.0,
                 color = solanaLight,
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
-                selectedCurrency = selectedCurrency,
-                showZeroBalance = true
+                selectedCurrency = selectedCurrency
             )
         }
 
-        // Group EVM tokens by tokenType
-        val nativeTokens = wallet.evmTokens.filter { it.evmTokenType == EVMTokenType.NATIVE }
-        val usdcTokens = wallet.evmTokens.filter { it.evmTokenType == EVMTokenType.USDC }
-        val usdtTokens = wallet.evmTokens.filter { it.evmTokenType == EVMTokenType.USDT }
-
-        // Native ETH tokens
-        nativeTokens.forEach { token ->
+        // Group EVM tokens
+        wallet.evmTokens.forEach { token ->
             val tokenBalance = balance?.evmBalances?.find {
-                it.network == token.network && it.evmTokenType == EVMTokenType.NATIVE
+                it.network == token.network && it.evmTokenType == token.evmTokenType
             }
+            val (color, iconRes) = when (token.evmTokenType) {
+                EVMTokenType.NATIVE -> ethereumLight to R.drawable.ethereum
+                EVMTokenType.USDC -> usdcLight to R.drawable.usdc
+                EVMTokenType.USDT -> Color(0xFF26A17B) to R.drawable.tether
+            }
+
             SimpleBalanceRow(
-                icon = painterResource(id = R.drawable.ethereum),
-                symbol = "${token.name}${if (token.network.isTestnet) " (${token.network.name})" else ""}",
+                icon = painterResource(id = iconRes),
+                symbol = token.name,
+                networkName = if (token.network.isTestnet) "(${token.network.name})" else null,
                 amount = if (tokenBalance != null)
                     "${
                         NumberFormat.getNumberInstance(Locale.US)
@@ -664,98 +709,42 @@ fun WalletExpandedContent(
                     } ${token.symbol}"
                 else "0 ${token.symbol}",
                 usdValue = tokenBalance?.usdValue ?: 0.0,
-                color = ethereumLight,
+                color = color,
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
-                selectedCurrency = selectedCurrency,
-                showZeroBalance = true
+                selectedCurrency = selectedCurrency
             )
         }
 
-        // USDC tokens
-        usdcTokens.forEach { token ->
-            val tokenBalance = balance?.evmBalances?.find {
-                it.network == token.network && it.evmTokenType == EVMTokenType.USDC
-            }
-            SimpleBalanceRow(
-                icon = painterResource(id = R.drawable.usdc),
-                symbol = "${token.name}${if (token.network.isTestnet) " (${token.network.name})" else ""}",
-                amount = if (tokenBalance != null)
-                    "${
-                        NumberFormat.getNumberInstance(Locale.US)
-                            .format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)
-                    } ${token.symbol}"
-                else "0 ${token.symbol}",
-                usdValue = tokenBalance?.usdValue ?: 0.0,
-                color = usdcLight,
-                isPrivacyModeEnabled = isPrivacyModeEnabled,
-                selectedCurrency = selectedCurrency,
-                showZeroBalance = true
-            )
-        }
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // USDT tokens
-        usdtTokens.forEach { token ->
-            val tokenBalance = balance?.evmBalances?.find {
-                it.network == token.network && it.evmTokenType == EVMTokenType.USDT
-            }
-            SimpleBalanceRow(
-                icon = painterResource(id = R.drawable.tether),
-                symbol = "${token.name}${if (token.network.isTestnet) " (${token.network.name})" else ""}",
-                amount = if (tokenBalance != null)
-                    "${
-                        NumberFormat.getNumberInstance(Locale.US)
-                            .format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)
-                    } ${token.symbol}"
-                else "0 ${token.symbol}",
-                usdValue = tokenBalance?.usdValue ?: 0.0,
-                color = Color(0xFF26A17B),
-                isPrivacyModeEnabled = isPrivacyModeEnabled,
-                selectedCurrency = selectedCurrency,
-                showZeroBalance = true
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Delete button
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            TextButton(
-                onClick = onRename
+            OutlinedButton(
+                onClick = onRename,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Edit,
-                    contentDescription = stringResource(R.string.rename_wallet),
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    stringResource(R.string.rename_wallet),
-                    style = MaterialTheme.typography.labelLarge
-                )
+                Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.rename_wallet))
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
-
-            TextButton(
+            Button(
                 onClick = onDelete,
-                colors = ButtonDefaults.textButtonColors(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
                     contentColor = MaterialTheme.colorScheme.error
-                )
+                ),
+                elevation = null
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Delete,
-                    contentDescription = stringResource(R.string.delete),
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    stringResource(R.string.delete_wallet),
-                    style = MaterialTheme.typography.labelLarge
-                )
+                Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.delete_wallet))
             }
         }
     }
@@ -765,79 +754,62 @@ fun WalletExpandedContent(
 fun SimpleBalanceRow(
     icon: Any,
     symbol: String,
+    networkName: String?,
     amount: String,
     usdValue: Double,
     color: Color,
     isPrivacyModeEnabled: Boolean,
-    selectedCurrency: String,
-    showZeroBalance: Boolean = false
+    selectedCurrency: String
 ) {
-    if (!showZeroBalance && usdValue <= 0) return
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.weight(1f)
+        Surface(
+            modifier = Modifier.size(28.dp),
+            shape = CircleShape,
+            color = color.copy(alpha = 0.1f)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(20.dp)
-                    .clip(CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(contentAlignment = Alignment.Center) {
                 when (icon) {
-                    is ImageVector -> {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = color,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    is Painter -> {
-                        Icon(
-                            painter = icon,
-                            contentDescription = null,
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                    is ImageVector -> Icon(icon, null, tint = color, modifier = Modifier.size(16.dp))
+                    is Painter -> Icon(icon, null, tint = Color.Unspecified, modifier = Modifier.size(16.dp))
                 }
             }
+        }
 
-            Column {
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = symbol,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = if (isPrivacyModeEnabled) "****" else amount,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (usdValue > 0)
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
+                if (networkName != null) {
+                    Text(
+                        text = " $networkName",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
             }
+            Text(
+                text = if (isPrivacyModeEnabled) "****" else amount,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         Text(
             text = if (isPrivacyModeEnabled) "****" else usdValue.formatCurrency(selectedCurrency),
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (usdValue > 0) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (usdValue > 0)
-                MaterialTheme.colorScheme.onSurface
-            else
-                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            fontWeight = FontWeight.SemiBold,
+            color = if (usdValue > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
     }
 }
@@ -880,109 +852,122 @@ fun AnimatedPortfolioHeader(
         }
     }
 
-    val gradient = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-        )
-    )
-
-    Box(
+    Surface(
         modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(gradient)
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.primary,
+        tonalElevation = 8.dp,
+        shadowElevation = 4.dp
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.secondary
+                        )
+                    )
+                )
         ) {
-
-            Text(
-                text = stringResource(R.string.total_portfolio),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Animated Value
-            Text(
-                text = if (isPrivacyModeEnabled) "****" else animatedValue.value.toDouble()
-                    .formatCurrency(selectedCurrency),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontSize = if (isTablet) 36.sp else 28.sp
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(20.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
             ) {
-
-                // Wallet count
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.AccountBalanceWallet,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                    )
                     Text(
-                        text = walletCount.toString(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        text = stringResource(R.string.total_portfolio),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.SemiBold
                     )
+                    
+                    Surface(
+                        color = Color.White.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.TrendingUp,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Text(
+                                text = "+2.4%",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
                 }
 
-                // Growth (static for now)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.TrendingUp,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                    )
-                    Text(
-                        text = "+2.4%",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
+                Spacer(modifier = Modifier.height(4.dp))
 
-                // Security
+                Text(
+                    text = if (isPrivacyModeEnabled) "****" else animatedValue.value.toDouble()
+                        .formatCurrency(selectedCurrency),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    letterSpacing = (-0.5).sp
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Shield,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                    PortfolioStatItem(
+                        icon = Icons.Outlined.AccountBalanceWallet,
+                        label = "$walletCount Wallets"
                     )
-                    Text(
-                        text = stringResource(R.string.secure),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary
+                    PortfolioStatItem(
+                        icon = Icons.Outlined.Shield,
+                        label = stringResource(R.string.secure)
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+fun PortfolioStatItem(
+    icon: ImageVector,
+    label: String
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier
+            .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onPrimary
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimary
+        )
     }
 }
 
@@ -1000,46 +985,51 @@ fun EmptyWalletsContent(
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            elevation = CardDefaults.cardElevation(0.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
+        Surface(
+            shape = RoundedCornerShape(32.dp),
+            color = Color.White,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)),
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight()
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(32.dp)
             ) {
-                Icon(
-                    imageVector = if (isError) Icons.Outlined.Error else Icons.Outlined.AccountBalanceWallet,
-                    contentDescription = if (isError) stringResource(R.string.error) else stringResource(
-                        R.string.no_wallets_yet
-                    ),
-                    modifier = Modifier.size(56.dp),
-                    tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Surface(
+                    modifier = Modifier.size(80.dp),
+                    shape = CircleShape,
+                    color = if (isError) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
+                            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (isError) Icons.Outlined.Error else Icons.Outlined.AccountBalanceWallet,
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp),
+                            tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
                     text = if (isError) stringResource(R.string.something_went_wrong) else stringResource(
                         R.string.no_wallets_yet
                     ),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
+                    textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
                     text = if (isError && errorMessage != null)
@@ -1048,48 +1038,58 @@ fun EmptyWalletsContent(
                         stringResource(R.string.failed_to_load_wallets)
                     else
                         stringResource(R.string.create_first_wallet_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
+                    lineHeight = 24.sp
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
                 if (isError) {
                     Button(
                         onClick = onRetry ?: {},
-                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
                         Text(
                             stringResource(R.string.try_again),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onPrimary
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 } else {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Button(
                             onClick = onCreateWallet,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp)
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            Text(stringResource(R.string.create_new_wallet))
+                            Text(
+                                stringResource(R.string.create_new_wallet),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
 
                         OutlinedButton(
                             onClick = onImportWallet,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp)
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
-                            Text(stringResource(R.string.import_existing_wallet))
+                            Text(
+                                stringResource(R.string.import_existing_wallet),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 }
