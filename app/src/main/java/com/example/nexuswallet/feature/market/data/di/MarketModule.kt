@@ -120,13 +120,11 @@ object MarketModule {
     @Singleton
     fun provideMarketRepository(
         coinGeckoApi: CoinGeckoApi,
-        coinStatsApi: CoinStatsApi,
-        logger: Logger
+        coinStatsApi: CoinStatsApi
     ): MarketRepository {
         return MarketRepositoryImpl(
             coinGeckoApi,
-            coinStatsApi,
-            logger
+            coinStatsApi
         )
     }
 }

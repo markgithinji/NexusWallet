@@ -37,7 +37,7 @@ class KeyStoreRepositoryImpl @Inject constructor(
     override suspend fun encrypt(plaintext: ByteArray): Result<Pair<ByteArray, ByteArray>> =
         withContext(ioDispatcher) {
             safeKeyStoreCall(
-                onAuthRequired = { BiometricPrompt.CryptoObject(getEncryptionCipher()) }
+                onAuthRequired = { null } // Use duration-bound auth
             ) {
                 val cipher = Cipher.getInstance(TRANSFORMATION)
                 cipher.init(Cipher.ENCRYPT_MODE, getSecretKey())
@@ -52,7 +52,7 @@ class KeyStoreRepositoryImpl @Inject constructor(
     override suspend fun decrypt(encryptedData: ByteArray, iv: ByteArray): Result<ByteArray> =
         withContext(ioDispatcher) {
             safeKeyStoreCall(
-                onAuthRequired = { BiometricPrompt.CryptoObject(getDecryptionCipher(iv)) }
+                onAuthRequired = { null } // Use duration-bound auth
             ) {
                 val cipher = Cipher.getInstance(TRANSFORMATION)
                 val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
@@ -93,7 +93,9 @@ class KeyStoreRepositoryImpl @Inject constructor(
     }
 
     override fun encryptWithCipher(cipher: Cipher, plaintext: ByteArray): Result<Pair<ByteArray, ByteArray>> {
-        return safeKeyStoreCall {
+        return safeKeyStoreCall(
+            onAuthRequired = { BiometricPrompt.CryptoObject(cipher) }
+        ) {
             val encrypted = cipher.doFinal(plaintext)
             val iv = cipher.iv
             Pair(encrypted, iv)
@@ -101,7 +103,9 @@ class KeyStoreRepositoryImpl @Inject constructor(
     }
 
     override fun decryptWithCipher(cipher: Cipher, encryptedData: ByteArray): Result<ByteArray> {
-        return safeKeyStoreCall {
+        return safeKeyStoreCall(
+            onAuthRequired = { BiometricPrompt.CryptoObject(cipher) }
+        ) {
             cipher.doFinal(encryptedData)
         }
     }

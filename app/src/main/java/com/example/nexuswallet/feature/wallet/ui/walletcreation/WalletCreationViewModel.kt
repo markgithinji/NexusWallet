@@ -13,6 +13,7 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.CreateWalletUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GenerateMnemonicUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.ValidateMnemonicUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -245,12 +246,13 @@ class WalletCreationViewModel @Inject constructor(
     }
 
     fun completeCreateAfterBiometric(result: BiometricPrompt.AuthenticationResult? = null) {
+        val cipher = result?.cryptoObject?.cipher
         _cryptoObject.value = null
         _authRequest.value = null
         viewModelScope.launch {
             // Small delay to ensure TEE session is fully registered on physical hardware
-            kotlinx.coroutines.delay(300)
-            createWallet()
+            delay(300)
+            createWallet(cipher)
         }
     }
 
