@@ -4,50 +4,37 @@ import androidx.activity.compose.LocalActivity
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Dashboard
-import androidx.compose.material.icons.outlined.Token
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,8 +49,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
-import com.example.nexuswallet.feature.wallet.ui.common.ErrorScreen
-import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
+import com.example.nexuswallet.feature.wallet.ui.common.*
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -131,10 +117,8 @@ fun WalletCreationScreen(
         }
     }
 
-    // Track if user has seen the mnemonic warning
     var hasSeenSecurityWarning by remember { mutableStateOf(false) }
 
-    // Handle navigation when wallet is created
     LaunchedEffect(uiState) {
         if (uiState is WalletCreationUiState.WalletCreated) {
             onNavigateToMain()
@@ -169,6 +153,14 @@ fun WalletCreationScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    } else {
+                        IconButton(onClick = onNavigateUp) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                stringResource(R.string.back),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -190,7 +182,16 @@ fun WalletCreationScreen(
             return@Scaffold
         }
 
+        val steps = listOf(
+            stringResource(R.string.step_networks),
+            stringResource(R.string.step_backup),
+            stringResource(R.string.step_verify),
+            stringResource(R.string.step_name),
+            stringResource(R.string.step_complete)
+        )
+
         WalletCreationStepper(
+            steps = steps,
             currentStep = currentStep,
             padding = padding,
             content = {
@@ -283,17 +284,11 @@ fun WalletCreationScreen(
 
 @Composable
 fun WalletCreationStepper(
+    steps: List<String>,
     currentStep: Int,
     padding: PaddingValues,
     content: @Composable () -> Unit
 ) {
-    val steps = listOf(
-        stringResource(R.string.step_networks),
-        stringResource(R.string.step_backup),
-        stringResource(R.string.step_verify),
-        stringResource(R.string.step_name),
-        stringResource(R.string.step_complete)
-    )
     val stepDescriptions = when (currentStep) {
         0 -> stringResource(R.string.step_networks_desc)
         1 -> stringResource(R.string.step_backup_desc)
@@ -309,67 +304,92 @@ fun WalletCreationStepper(
             .padding(padding)
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 2.dp,
+            shadowElevation = 2.dp
         ) {
-            Text(
-                text = stringResource(R.string.step_x_of_y, currentStep + 1, steps.size),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Medium
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = steps[currentStep.coerceIn(steps.indices)],
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = stringResource(R.string.step_x_of_y, currentStep + 1, steps.size),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
 
-            Spacer(modifier = Modifier.height(4.dp))
+                    Box(contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            progress = { (currentStep + 1) / steps.size.toFloat() },
+                            modifier = Modifier.size(48.dp),
+                            strokeWidth = 4.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                        )
+                        Text(
+                            text = "${((currentStep + 1) * 100 / steps.size)}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
 
-            Text(
-                text = stepDescriptions,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+                Spacer(modifier = Modifier.height(12.dp))
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            steps.forEachIndexed { index, step ->
-                StepIndicator(
-                    stepNumber = index + 1,
-                    stepName = step,
-                    isActive = index == currentStep,
-                    isCompleted = index < currentStep,
-                    isNext = index == currentStep + 1
+                Text(
+                    text = stepDescriptions,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 20.sp
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    steps.indices.forEach { index ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(
+                                    when {
+                                        index == currentStep -> MaterialTheme.colorScheme.primary
+                                        index < currentStep -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                        else -> MaterialTheme.colorScheme.surfaceVariant
+                                    }
+                                )
+                        )
+                    }
+                }
             }
         }
-
-        LinearProgressIndicator(
-            progress = { (currentStep + 1) / steps.size.toFloat() },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-                .height(4.dp),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            drawStopIndicator = {}
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        HorizontalDivider(
-            modifier = Modifier.fillMaxWidth(),
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-        )
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
         ) {
             content()
         }
@@ -390,713 +410,209 @@ fun NetworkSelectionStep(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
     ) {
-        // ============ BITCOIN SECTION ============
-        Text(
-            text = stringResource(R.string.bitcoin),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = bitcoinLight,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        // Bitcoin Mainnet
-        NetworkToggleCard(
-            iconRes = R.drawable.bitcoin,
-            color = bitcoinLight,
-            network = BitcoinNetwork.Mainnet,
-            coinName = stringResource(R.string.bitcoin_name),
-            coinSymbol = stringResource(R.string.bitcoin_symbol),
-            isSelected = selectedNetworks.contains(BitcoinNetwork.Mainnet),
-            onSelectedChange = { isSelected ->
-                onNetworkToggle(BitcoinNetwork.Mainnet, isSelected)
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                SectionHeader(
+                    title = stringResource(R.string.bitcoin),
+                    color = bitcoinLight
+                )
             }
-        )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Bitcoin Testnet
-        NetworkToggleCard(
-            iconRes = R.drawable.bitcoin,
-            color = bitcoinLight.copy(alpha = 0.7f),
-            network = BitcoinNetwork.Testnet,
-            coinName = stringResource(R.string.bitcoin_name),
-            coinSymbol = stringResource(R.string.bitcoin_symbol),
-            isSelected = selectedNetworks.contains(BitcoinNetwork.Testnet),
-            onSelectedChange = { isSelected ->
-                onNetworkToggle(BitcoinNetwork.Testnet, isSelected)
+            item {
+                NetworkToggleCard(
+                    iconRes = R.drawable.bitcoin,
+                    color = bitcoinLight,
+                    network = BitcoinNetwork.Mainnet,
+                    coinName = stringResource(R.string.bitcoin_name),
+                    coinSymbol = stringResource(R.string.bitcoin_symbol),
+                    isSelected = selectedNetworks.contains(BitcoinNetwork.Mainnet),
+                    onSelectedChange = { onNetworkToggle(BitcoinNetwork.Mainnet, it) }
+                )
             }
-        )
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // ============ ETHEREUM SECTION ============
-        Text(
-            text = stringResource(R.string.ethereum),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = ethereumLight,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        // Ethereum Mainnet (includes Native ETH)
-        NetworkToggleCard(
-            iconRes = R.drawable.ethereum,
-            color = ethereumLight,
-            network = EthereumNetwork.Mainnet,
-            coinName = stringResource(R.string.ethereum_name),
-            coinSymbol = stringResource(R.string.ethereum_symbol),
-            isSelected = selectedNetworks.contains(EthereumNetwork.Mainnet),
-            onSelectedChange = { isSelected ->
-                onNetworkToggle(EthereumNetwork.Mainnet, isSelected)
+            item {
+                NetworkToggleCard(
+                    iconRes = R.drawable.bitcoin,
+                    color = bitcoinLight.copy(alpha = 0.7f),
+                    network = BitcoinNetwork.Testnet,
+                    coinName = stringResource(R.string.bitcoin_name),
+                    coinSymbol = stringResource(R.string.bitcoin_symbol),
+                    isSelected = selectedNetworks.contains(BitcoinNetwork.Testnet),
+                    onSelectedChange = { onNetworkToggle(BitcoinNetwork.Testnet, it) }
+                )
             }
-        )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Ethereum Sepolia
-        NetworkToggleCard(
-            iconRes = R.drawable.ethereum,
-            color = ethereumLight.copy(alpha = 0.7f),
-            network = EthereumNetwork.Sepolia,
-            coinName = stringResource(R.string.ethereum_name),
-            coinSymbol = stringResource(R.string.ethereum_symbol),
-            isSelected = selectedNetworks.contains(EthereumNetwork.Sepolia),
-            onSelectedChange = { isSelected ->
-                onNetworkToggle(EthereumNetwork.Sepolia, isSelected)
+            item {
+                Spacer(modifier = Modifier.height(12.dp))
+                SectionHeader(
+                    title = stringResource(R.string.ethereum),
+                    color = ethereumLight
+                )
             }
-        )
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // ============ SOLANA SECTION ============
-        Text(
-            text = stringResource(R.string.solana),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = solanaLight,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        // Solana Mainnet
-        NetworkToggleCard(
-            iconRes = R.drawable.solana,
-            color = solanaLight,
-            network = SolanaNetwork.Mainnet,
-            coinName = stringResource(R.string.solana_name),
-            coinSymbol = stringResource(R.string.solana_symbol),
-            isSelected = selectedNetworks.contains(SolanaNetwork.Mainnet),
-            onSelectedChange = { isSelected ->
-                onNetworkToggle(SolanaNetwork.Mainnet, isSelected)
+            item {
+                NetworkToggleCard(
+                    iconRes = R.drawable.ethereum,
+                    color = ethereumLight,
+                    network = EthereumNetwork.Mainnet,
+                    coinName = stringResource(R.string.ethereum_name),
+                    coinSymbol = stringResource(R.string.ethereum_symbol),
+                    isSelected = selectedNetworks.contains(EthereumNetwork.Mainnet),
+                    onSelectedChange = { onNetworkToggle(EthereumNetwork.Mainnet, it) }
+                )
             }
-        )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Solana Devnet
-        NetworkToggleCard(
-            iconRes = R.drawable.solana,
-            color = solanaLight.copy(alpha = 0.7f),
-            network = SolanaNetwork.Devnet,
-            coinName = stringResource(R.string.solana_name),
-            coinSymbol = stringResource(R.string.solana_symbol),
-            isSelected = selectedNetworks.contains(SolanaNetwork.Devnet),
-            onSelectedChange = { isSelected ->
-                onNetworkToggle(SolanaNetwork.Devnet, isSelected)
+            item {
+                NetworkToggleCard(
+                    iconRes = R.drawable.ethereum,
+                    color = ethereumLight.copy(alpha = 0.7f),
+                    network = EthereumNetwork.Sepolia,
+                    coinName = stringResource(R.string.ethereum_name),
+                    coinSymbol = stringResource(R.string.ethereum_symbol),
+                    isSelected = selectedNetworks.contains(EthereumNetwork.Sepolia),
+                    onSelectedChange = { onNetworkToggle(EthereumNetwork.Sepolia, it) }
+                )
             }
-        )
 
-        Spacer(modifier = Modifier.height(24.dp))
+            item {
+                Spacer(modifier = Modifier.height(12.dp))
+                SectionHeader(
+                    title = stringResource(R.string.solana),
+                    color = solanaLight
+                )
+            }
 
-        // ============ TOKENS SECTION ============
-        // Only show tokens if Ethereum network is selected
-        if (selectedNetworks.any { it is EthereumNetwork }) {
-            Text(
-                text = stringResource(R.string.tokens),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            item {
+                NetworkToggleCard(
+                    iconRes = R.drawable.solana,
+                    color = solanaLight,
+                    network = SolanaNetwork.Mainnet,
+                    coinName = stringResource(R.string.solana_name),
+                    coinSymbol = stringResource(R.string.solana_symbol),
+                    isSelected = selectedNetworks.contains(SolanaNetwork.Mainnet),
+                    onSelectedChange = { onNetworkToggle(SolanaNetwork.Mainnet, it) }
+                )
+            }
 
-            // USDC on Ethereum Mainnet
-            TokenToggleCard(
-                iconRes = R.drawable.usdc,
-                color = usdcLight,
-                network = EthereumNetwork.Mainnet,
-                evmTokenType = EVMTokenType.USDC,
-                tokenName = stringResource(R.string.usdc_name),
-                tokenSymbol = stringResource(R.string.usdc_symbol),
-                isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(EVMTokenType.USDC) == true,
-                networkEnabled = selectedNetworks.contains(EthereumNetwork.Mainnet),
-                onSelectedChange = { isSelected ->
-                    onTokenToggle(EthereumNetwork.Mainnet, EVMTokenType.USDC, isSelected)
+            item {
+                NetworkToggleCard(
+                    iconRes = R.drawable.solana,
+                    color = solanaLight.copy(alpha = 0.7f),
+                    network = SolanaNetwork.Devnet,
+                    coinName = stringResource(R.string.solana_name),
+                    coinSymbol = stringResource(R.string.solana_symbol),
+                    isSelected = selectedNetworks.contains(SolanaNetwork.Devnet),
+                    onSelectedChange = { onNetworkToggle(SolanaNetwork.Devnet, it) }
+                )
+            }
+
+            if (selectedNetworks.any { it is EthereumNetwork }) {
+                item {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SectionHeader(
+                        title = stringResource(R.string.tokens),
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
-            )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // USDC on Ethereum Sepolia
-            TokenToggleCard(
-                iconRes = R.drawable.usdc,
-                color = usdcLight.copy(alpha = 0.7f),
-                network = EthereumNetwork.Sepolia,
-                evmTokenType = EVMTokenType.USDC,
-                tokenName = stringResource(R.string.usdc_name),
-                tokenSymbol = stringResource(R.string.usdc_symbol),
-                isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(EVMTokenType.USDC) == true,
-                networkEnabled = selectedNetworks.contains(EthereumNetwork.Sepolia),
-                onSelectedChange = { isSelected ->
-                    onTokenToggle(EthereumNetwork.Sepolia, EVMTokenType.USDC, isSelected)
+                item {
+                    TokenToggleCard(
+                        iconRes = R.drawable.usdc,
+                        color = usdcLight,
+                        network = EthereumNetwork.Mainnet,
+                        evmTokenType = EVMTokenType.USDC,
+                        tokenName = stringResource(R.string.usdc_name),
+                        tokenSymbol = stringResource(R.string.usdc_symbol),
+                        isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(EVMTokenType.USDC) == true,
+                        networkEnabled = selectedNetworks.contains(EthereumNetwork.Mainnet),
+                        onSelectedChange = { onTokenToggle(EthereumNetwork.Mainnet, EVMTokenType.USDC, it) }
+                    )
                 }
-            )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // USDT on Ethereum Mainnet
-            TokenToggleCard(
-                iconRes = R.drawable.tether,
-                color = usdtLight,
-                network = EthereumNetwork.Mainnet,
-                evmTokenType = EVMTokenType.USDT,
-                tokenName = stringResource(R.string.usdt_name),
-                tokenSymbol = stringResource(R.string.usdt_symbol),
-                isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(EVMTokenType.USDT) == true,
-                networkEnabled = selectedNetworks.contains(EthereumNetwork.Mainnet),
-                onSelectedChange = { isSelected ->
-                    onTokenToggle(EthereumNetwork.Mainnet, EVMTokenType.USDT, isSelected)
+                item {
+                    TokenToggleCard(
+                        iconRes = R.drawable.usdc,
+                        color = usdcLight.copy(alpha = 0.7f),
+                        network = EthereumNetwork.Sepolia,
+                        evmTokenType = EVMTokenType.USDC,
+                        tokenName = stringResource(R.string.usdc_name),
+                        tokenSymbol = stringResource(R.string.usdc_symbol),
+                        isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(EVMTokenType.USDC) == true,
+                        networkEnabled = selectedNetworks.contains(EthereumNetwork.Sepolia),
+                        onSelectedChange = { onTokenToggle(EthereumNetwork.Sepolia, EVMTokenType.USDC, it) }
+                    )
                 }
-            )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // USDT on Ethereum Sepolia
-            TokenToggleCard(
-                iconRes = R.drawable.tether,
-                color = usdtLight.copy(alpha = 0.7f),
-                network = EthereumNetwork.Sepolia,
-                evmTokenType = EVMTokenType.USDT,
-                tokenName = stringResource(R.string.usdt_name),
-                tokenSymbol = stringResource(R.string.usdt_symbol),
-                isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(EVMTokenType.USDT) == true,
-                networkEnabled = selectedNetworks.contains(EthereumNetwork.Sepolia),
-                onSelectedChange = { isSelected ->
-                    onTokenToggle(EthereumNetwork.Sepolia, EVMTokenType.USDT, isSelected)
+                item {
+                    TokenToggleCard(
+                        iconRes = R.drawable.tether,
+                        color = usdtLight,
+                        network = EthereumNetwork.Mainnet,
+                        evmTokenType = EVMTokenType.USDT,
+                        tokenName = stringResource(R.string.usdt_name),
+                        tokenSymbol = stringResource(R.string.usdt_symbol),
+                        isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(EVMTokenType.USDT) == true,
+                        networkEnabled = selectedNetworks.contains(EthereumNetwork.Mainnet),
+                        onSelectedChange = { onTokenToggle(EthereumNetwork.Mainnet, EVMTokenType.USDT, it) }
+                    )
                 }
-            )
+
+                item {
+                    TokenToggleCard(
+                        iconRes = R.drawable.tether,
+                        color = usdtLight.copy(alpha = 0.7f),
+                        network = EthereumNetwork.Sepolia,
+                        evmTokenType = EVMTokenType.USDT,
+                        tokenName = stringResource(R.string.usdt_name),
+                        tokenSymbol = stringResource(R.string.usdt_symbol),
+                        isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(EVMTokenType.USDT) == true,
+                        networkEnabled = selectedNetworks.contains(EthereumNetwork.Sepolia),
+                        onSelectedChange = { onTokenToggle(EthereumNetwork.Sepolia, EVMTokenType.USDT, it) }
+                    )
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                AssetSummaryCard(
+                    hasSelections = hasSelections,
+                    selectedNetworks = selectedNetworks,
+                    selectedTokens = selectedTokens
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Summary Card
-        Card(
+        Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+            tonalElevation = 8.dp,
+            shadowElevation = 8.dp
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
+            Button(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onNext()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                enabled = hasSelections,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
                 Text(
-                    text = stringResource(R.string.selected_assets),
+                    text = stringResource(R.string.continue_button),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (!hasSelections) {
-                    Text(
-                        text = stringResource(R.string.no_assets_selected),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                } else {
-                    // Show selected networks
-                    selectedNetworks.forEach { network ->
-                        val (coinName, coinSymbol) = when (network) {
-                            is BitcoinNetwork -> stringResource(R.string.bitcoin_name) to stringResource(
-                                R.string.bitcoin_symbol
-                            )
-
-                            is EthereumNetwork -> stringResource(R.string.ethereum_name) to stringResource(
-                                R.string.ethereum_symbol
-                            )
-
-                            is SolanaNetwork -> stringResource(R.string.solana_name) to stringResource(
-                                R.string.solana_symbol
-                            )
-                        }
-                        val suffixRes =
-                            if (network is SolanaNetwork) R.string.devnet_suffix else R.string.testnet_suffix
-                        val networkType =
-                            if (network.isTestnet) " ${stringResource(suffixRes)}" else ""
-                        Text(
-                            text = "• $coinName$networkType - $coinSymbol",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(vertical = 2.dp)
-                        )
-                    }
-
-                    // Show selected tokens (excluding NATIVE which is handled by network selection)
-                    selectedTokens.forEach { (network, tokenTypes) ->
-                        tokenTypes
-                            .filter { it != EVMTokenType.NATIVE } // Filter out NATIVE tokens
-                            .forEach { tokenType ->
-                                val (tokenName, tokenSymbol) = when (tokenType) {
-                                    EVMTokenType.USDC -> stringResource(R.string.usdc_name) to stringResource(
-                                        R.string.usdc_symbol
-                                    )
-
-                                    EVMTokenType.USDT -> stringResource(R.string.usdt_name) to stringResource(
-                                        R.string.usdt_symbol
-                                    )
-
-                                    EVMTokenType.NATIVE -> stringResource(R.string.ethereum_name) to stringResource(
-                                        R.string.ethereum_symbol
-                                    ) // Won't be shown due to filter
-                                }
-                                val suffixRes =
-                                    if (false) R.string.devnet_suffix else R.string.testnet_suffix
-                                val networkType =
-                                    if (network.isTestnet) " ${stringResource(suffixRes)}" else ""
-                                Text(
-                                    text = "• $tokenName ($tokenSymbol) on Ethereum$networkType",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(vertical = 2.dp)
-                                )
-                            }
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onNext()
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            enabled = hasSelections,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        ) {
-            Text(stringResource(R.string.continue_button))
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-}
-
-@Composable
-fun TokenToggleCard(
-    iconRes: Int,
-    color: Color,
-    network: EthereumNetwork,
-    evmTokenType: EVMTokenType,
-    tokenName: String,
-    tokenSymbol: String,
-    isSelected: Boolean,
-    networkEnabled: Boolean,
-    onSelectedChange: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .then(
-                if (networkEnabled) {
-                    Modifier.clickable { onSelectedChange(!isSelected) }
-                } else {
-                    Modifier
-                }
-            ),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected && networkEnabled) color.copy(alpha = 0.05f)
-            else MaterialTheme.colorScheme.surface
-        ),
-        border = if (isSelected && networkEnabled) BorderStroke(1.dp, color)
-        else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier.size(48.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = tokenName,
-                    tint = if (networkEnabled) Color.Unspecified else Color.Unspecified.copy(alpha = 0.5f),
-                    modifier = Modifier.size(36.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = tokenName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSelected && networkEnabled) color
-                    else if (!networkEnabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    else MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "$tokenSymbol on ${network.name}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (!networkEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                        alpha = 0.5f
-                    )
-                    else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            if (!networkEnabled) {
-                // Show disabled state
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = "Network not enabled",
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                }
-            } else {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = onSelectedChange,
-                    colors = CustomCheckboxDefaults.colors(
-                        checkedBackgroundColor = color,
-                        checkedBorderColor = color,
-                        uncheckedBorderColor = MaterialTheme.colorScheme.outline,
-                        checkedIconColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun NetworkToggleCard(
-    iconRes: Int,
-    color: Color,
-    network: Network,
-    coinName: String,
-    coinSymbol: String,
-    isSelected: Boolean,
-    onSelectedChange: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { onSelectedChange(!isSelected) },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) color.copy(alpha = 0.05f)
-            else MaterialTheme.colorScheme.surface
-        ),
-        border = if (isSelected) BorderStroke(1.dp, color) else BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier.size(48.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = coinName,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(36.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = coinName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "$coinSymbol • ${network.name}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Checkbox(
-                checked = isSelected,
-                onCheckedChange = onSelectedChange,
-                colors = CustomCheckboxDefaults.colors(
-                    checkedBackgroundColor = color,
-                    checkedBorderColor = color,
-                    uncheckedBorderColor = MaterialTheme.colorScheme.outline,
-                    checkedIconColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        }
-    }
-}
-
-@Composable
-fun StepIndicator(
-    stepNumber: Int,
-    stepName: String,
-    isActive: Boolean,
-    isCompleted: Boolean,
-    isNext: Boolean = false
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(50.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(
-                    color = when {
-                        isCompleted -> MaterialTheme.colorScheme.primary
-                        isActive -> MaterialTheme.colorScheme.primaryContainer
-                        isNext -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                        else -> MaterialTheme.colorScheme.surfaceVariant
-                    }
-                )
-                .border(
-                    width = if (isActive) 2.dp else 0.dp,
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isCompleted) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Completed",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(18.dp)
-                )
-            } else {
-                Text(
-                    text = stepNumber.toString(),
-                    color = when {
-                        isActive -> MaterialTheme.colorScheme.onPrimaryContainer
-                        isNext -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
                     fontWeight = FontWeight.Bold
                 )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = stepName,
-            style = MaterialTheme.typography.labelSmall,
-            color = when {
-                isActive || isCompleted -> MaterialTheme.colorScheme.primary
-                isNext -> MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-fun SecurityWarningDialog(
-    onAccept: () -> Unit,
-    onCancel: () -> Unit
-) {
-    val haptic = LocalHapticFeedback.current
-    Dialog(
-        onDismissRequest = onCancel,
-    ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp)
-            ) {
-                // Warning Icon
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
-                        .align(Alignment.CenterHorizontally),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Security Warning",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Title
-                Text(
-                    text = stringResource(R.string.security_warning_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Warning Message
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.05f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.recovery_phrase_warning),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                            fontWeight = FontWeight.Medium
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Key points as chips
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            listOf(
-                                stringResource(R.string.never_share),
-                                stringResource(R.string.never_store_digitally),
-                                stringResource(R.string.write_on_paper)
-                            ).forEach { point ->
-                                Card(
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-                                    )
-                                ) {
-                                    Text(
-                                        text = point,
-                                        modifier = Modifier.padding(
-                                            horizontal = 12.dp,
-                                            vertical = 6.dp
-                                        ),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onErrorContainer,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Cancel button
-                    OutlinedButton(
-                        onClick = onCancel,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                    ) {
-                        Text(
-                            stringResource(R.string.cancel),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    // Accept button
-                    Button(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onAccept()
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError
-                        )
-                    ) {
-                        Text(
-                            stringResource(R.string.i_understand),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
             }
         }
     }
@@ -1112,305 +628,131 @@ fun MnemonicDisplayStep(
     var hasWrittenDown by remember { mutableStateOf(false) }
     var hasStoredSafely by remember { mutableStateOf(false) }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Header
-        item {
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp)
-            ) {
-                // Critical warning
+    Column(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = "Warning",
-                                tint = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
                             Text(
                                 text = stringResource(R.string.critical_security_step),
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                                 fontWeight = FontWeight.Bold
                             )
+                            Text(
+                                text = stringResource(R.string.mnemonic_warning_desc),
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = stringResource(R.string.mnemonic_warning_desc),
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
                     }
                 }
             }
-        }
 
-        // Mnemonic Grid
-        item {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .heightIn(min = 300.dp, max = 400.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(mnemonic) { word ->
-                    MnemonicDisplayChip(
-                        word = word,
-                        index = mnemonic.indexOf(word) + 1
-                    )
-                }
-            }
-        }
-
-        // Safety Tips
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.safety_checklist_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    SafetyChecklistItem(
-                        text = stringResource(R.string.write_on_paper_not_digital),
-                        checked = true
-                    )
-                    SafetyChecklistItem(
-                        text = stringResource(R.string.store_in_secure_location),
-                        checked = true
-                    )
-                    SafetyChecklistItem(
-                        text = stringResource(R.string.never_share_with_anyone),
-                        checked = true
-                    )
-                    SafetyChecklistItem(
-                        text = stringResource(R.string.keep_away_from_elements),
-                        checked = true
-                    )
-                }
-            }
-        }
-
-        // Confirmation checkboxes
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                // Written down checkbox
-                Card(
+            item {
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (hasWrittenDown)
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
-                        else
-                            MaterialTheme.colorScheme.surface
-                    ),
-                    border = if (hasWrittenDown)
-                        BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-                    else
-                        BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                            .clickable { hasWrittenDown = !hasWrittenDown },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(
-                                    if (hasWrittenDown)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        Color.Transparent
-                                )
-                                .border(
-                                    width = 2.dp,
-                                    color = if (hasWrittenDown)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.outline,
-                                    shape = RoundedCornerShape(6.dp)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (hasWrittenDown) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Checked",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(16.dp)
-                                )
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        val chunks = mnemonic.chunked(3)
+                        chunks.forEach { chunk ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                chunk.forEach { word ->
+                                    MnemonicDisplayChip(
+                                        word = word,
+                                        index = mnemonic.indexOf(word) + 1,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                repeat(3 - chunk.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
                             }
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Text(
-                            text = stringResource(R.string.written_down_confirmation),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (hasWrittenDown)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
                     }
                 }
+            }
+
+            item {
+                Text(
+                    text = stringResource(R.string.safety_checklist_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Stored safely checkbox
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (hasStoredSafely)
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
-                        else
-                            MaterialTheme.colorScheme.surface
-                    ),
-                    border = if (hasStoredSafely)
-                        BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-                    else
-                        BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                            .clickable { hasStoredSafely = !hasStoredSafely },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Custom checkbox
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(
-                                    if (hasStoredSafely)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        Color.Transparent
-                                )
-                                .border(
-                                    width = 2.dp,
-                                    color = if (hasStoredSafely)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.outline,
-                                    shape = RoundedCornerShape(6.dp)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (hasStoredSafely) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Checked",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Text(
-                            text = stringResource(R.string.stored_safely_confirmation),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (hasStoredSafely)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    SafetyConfirmationItem(
+                        text = stringResource(R.string.written_down_confirmation),
+                        checked = hasWrittenDown,
+                        onCheckedChange = { hasWrittenDown = it }
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    SafetyConfirmationItem(
+                        text = stringResource(R.string.stored_safely_confirmation),
+                        checked = hasStoredSafely,
+                        onCheckedChange = { hasStoredSafely = it }
+                    )
                 }
             }
         }
 
-        item {
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-    }
-
-    // Fixed buttons at bottom
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                            MaterialTheme.colorScheme.surface
-                        ),
-                        startY = 0f,
-                        endY = 100f
-                    )
-                )
-                .padding(16.dp)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            tonalElevation = 8.dp,
+            shadowElevation = 8.dp
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedButton(
                     onClick = onBack,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Text(stringResource(R.string.back))
                 }
@@ -1420,82 +762,19 @@ fun MnemonicDisplayStep(
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onNext()
                     },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    enabled = hasWrittenDown && hasStoredSafely,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    enabled = hasWrittenDown && hasStoredSafely
                 ) {
-                    Text(stringResource(R.string.backed_it_up))
+                    Text(
+                        text = stringResource(R.string.backed_it_up),
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
-    }
-}
-
-@Composable
-fun MnemonicDisplayChip(
-    word: String,
-    index: Int
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1.2f),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "$index.",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = word,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun SafetyChecklistItem(text: String, checked: Boolean) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 4.dp)
-    ) {
-        Icon(
-            imageVector = if (checked) Icons.Default.CheckCircle else Icons.Default.Circle,
-            contentDescription = if (checked) "Checked" else "Unchecked",
-            tint = if (checked) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }
 
@@ -1510,130 +789,176 @@ fun MnemonicVerificationStep(
 ) {
     val shuffledWords = remember { mnemonic.shuffled() }
     var verificationError by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .verticalScroll(rememberScrollState())
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        Text(
-            text = stringResource(R.string.mnemonic_verification_title),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    val borderColor by animateColorAsState(
+        targetValue = if (verificationError) MaterialTheme.colorScheme.error 
+                     else MaterialTheme.colorScheme.outlineVariant,
+        label = "verification_border"
+    )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Selected words container
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
-            shape = RoundedCornerShape(12.dp)
+    Column(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp)
-            ) {
+            item {
                 Text(
-                    text = stringResource(
-                        R.string.selected_words,
-                        enteredWords.size,
-                        mnemonic.size
-                    ),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = stringResource(R.string.mnemonic_verification_title),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 24.sp
                 )
+            }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (enteredWords.isEmpty()) {
-                    // Compact empty state
-                    Text(
-                        text = stringResource(R.string.no_words_selected),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                } else {
-                    // FlowRow for selected words
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+            item {
+                Column(modifier = Modifier.animateContentSize()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        enteredWords.forEachIndexed { index, word ->
-                            SimpleSelectedChip(
-                                word = word,
-                                index = index + 1,
-                                onRemove = { onRemoveWord(index) }
+                        Text(
+                            text = stringResource(R.string.selected_words, enteredWords.size, mnemonic.size),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                        
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = enteredWords.isNotEmpty(),
+                            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandHorizontally(),
+                            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkHorizontally()
+                        ) {
+                            TextButton(
+                                onClick = { 
+                                    repeat(enteredWords.size) { onRemoveWord(0) }
+                                    verificationError = false
+                                },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                modifier = Modifier.height(36.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.clear_all),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 160.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(1.dp, borderColor)
+                    ) {
+                        androidx.compose.animation.AnimatedContent(
+                            targetState = enteredWords.isEmpty(),
+                            label = "words_container_content",
+                            transitionSpec = {
+                                androidx.compose.animation.fadeIn() togetherWith androidx.compose.animation.fadeOut()
+                            }
+                        ) { isEmpty ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
+                                if (isEmpty) {
+                                    Text(
+                                        text = stringResource(R.string.no_words_selected),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        modifier = Modifier.align(Alignment.Center)
+                                    )
+                                } else {
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        enteredWords.forEachIndexed { index, word ->
+                                            SimpleSelectedChip(
+                                                word = word,
+                                                index = index + 1,
+                                                onRemove = { 
+                                                    onRemoveWord(index)
+                                                    verificationError = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = verificationError,
+                        enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp, start = 8.dp, end = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Error,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.wrong_order_error),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Available words section
-        Text(
-            text = stringResource(R.string.available_words),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Available words container
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp)
-            ) {
-                // Get remaining words
-                val remainingWords = shuffledWords.filter { word -> !enteredWords.contains(word) }
-
-                if (remainingWords.isEmpty()) {
-                    // Compact success state
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Success",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.all_words_selected),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                } else {
-                    // FlowRow for available words
+            item {
+                Column(modifier = Modifier.animateContentSize()) {
+                    Text(
+                        text = stringResource(R.string.available_words),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        remainingWords.forEach { word ->
+                        shuffledWords.forEach { word ->
+                            val usageCount = enteredWords.count { it == word }
+                            val totalCount = mnemonic.count { it == word }
+                            val isUsed = usageCount >= totalCount
+                            
                             SimpleWordChip(
                                 word = word,
-                                onClick = { onAddWord(word) }
+                                isEnabled = !isUsed,
+                                onClick = { 
+                                    onAddWord(word)
+                                    verificationError = false
+                                }
                             )
                         }
                     }
@@ -1641,136 +966,35 @@ fun MnemonicVerificationStep(
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Error message
-        if (verificationError) {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Error,
-                        contentDescription = "Error",
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.wrong_order_error),
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        val haptic = LocalHapticFeedback.current
-        Button(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                if (enteredWords.size == mnemonic.size && enteredWords == mnemonic) {
-                    verificationError = false
-                    onVerify()
-                } else {
-                    verificationError = true
-                }
-            },
+        Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            enabled = enteredWords.size == mnemonic.size,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
+            tonalElevation = 8.dp,
+            shadowElevation = 8.dp
         ) {
-            Text(stringResource(R.string.verify_continue))
+            Button(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (enteredWords == mnemonic) {
+                        verificationError = false
+                        onVerify()
+                    } else {
+                        verificationError = true
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                enabled = enteredWords.size == mnemonic.size
+            ) {
+                Text(
+                    text = stringResource(R.string.verify_continue),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
-    }
-}
-
-@Composable
-fun SimpleSelectedChip(
-    word: String,
-    index: Int,
-    onRemove: () -> Unit
-) {
-    val haptic = LocalHapticFeedback.current
-    Card(
-        onClick = {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            onRemove()
-        },
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "$index.",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = word,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Remove",
-                modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
-    }
-}
-
-@Composable
-fun SimpleWordChip(
-    word: String,
-    onClick: () -> Unit
-) {
-    val haptic = LocalHapticFeedback.current
-    Card(
-        onClick = {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            onClick()
-        },
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Text(
-            text = word,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }
 
@@ -1784,37 +1008,50 @@ fun WalletNameStep(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        NexusTextField(
-            value = walletName,
-            onValueChange = onNameChange,
-            label = stringResource(R.string.wallet_name_label),
-            placeholder = stringResource(R.string.wallet_name_placeholder)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = stringResource(R.string.wallet_name_tip),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        Button(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onCreate()
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            enabled = walletName.isNotBlank(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
-            Text(stringResource(R.string.create_wallet))
+            NexusTextField(
+                value = walletName,
+                onValueChange = onNameChange,
+                label = stringResource(R.string.wallet_name_label),
+                placeholder = stringResource(R.string.wallet_name_placeholder)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = stringResource(R.string.wallet_name_tip),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            tonalElevation = 8.dp,
+            shadowElevation = 8.dp
+        ) {
+            Button(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onCreate()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                enabled = walletName.isNotBlank()
+            ) {
+                Text(
+                    text = stringResource(R.string.create_wallet),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
         }
     }
 }
@@ -1824,405 +1061,162 @@ fun WalletSuccessStep(
     wallet: Wallet,
     onFinish: () -> Unit
 ) {
-    // Calculate total assets correctly
     val totalAssets = wallet.bitcoinCoins.size +
             wallet.solanaCoins.size +
             wallet.evmTokens.size +
             wallet.solanaCoins.flatMap { it.splTokens }.size
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Success icon
-        Box(
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .size(100.dp)
-                .clip(RoundedCornerShape(50.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
+                .weight(1f)
+                .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = "Success",
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
+            Spacer(modifier = Modifier.height(48.dp))
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Text(
-            text = stringResource(R.string.wallet_created_success),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = stringResource(R.string.wallet_details),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Success",
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.primary
                 )
+            }
 
-                Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+            Text(
+                text = stringResource(R.string.wallet_created_success),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp)
                 ) {
                     Text(
-                        stringResource(R.string.name_label),
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = stringResource(R.string.wallet_details),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    DetailRow(label = stringResource(R.string.name_label), value = wallet.name)
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     Text(
-                        wallet.name,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
+                        stringResource(R.string.enabled_assets),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold
                     )
-                }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    stringResource(R.string.enabled_assets),
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Bitcoin Coins with icons
-                wallet.bitcoinCoins.forEach { coin ->
-                    val networkSuffix = if (coin.network.isTestnet) " (Testnet)" else ""
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.bitcoin),
-                            contentDescription = stringResource(R.string.bitcoin_name),
-                            modifier = Modifier.size(20.dp),
-                            tint = Color.Unspecified
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "${coin.name}$networkSuffix",
-                            color = bitcoinLight,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-
-                // Solana Coins with icons
-                wallet.solanaCoins.forEach { coin ->
-                    val networkSuffix = if (coin.network.isTestnet) " (Devnet)" else ""
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.solana),
-                            contentDescription = stringResource(R.string.solana_name),
-                            modifier = Modifier.size(20.dp),
-                            tint = Color.Unspecified
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "${coin.name}$networkSuffix",
-                            color = solanaLight,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    // Show SPL tokens if any
-                    if (coin.splTokens.isNotEmpty()) {
-                        coin.splTokens.take(3).forEach { token ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(
-                                    start = 28.dp,
-                                    top = 2.dp,
-                                    bottom = 2.dp
-                                )
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Token,
-                                        contentDescription = token.symbol,
-                                        modifier = Modifier.size(10.dp),
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "${token.symbol} (SPL)",
-                                    color = MaterialTheme.colorScheme.primary,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
-                        if (coin.splTokens.size > 3) {
-                            Text(
-                                text = "  • +${coin.splTokens.size - 3} more",
-                                modifier = Modifier.padding(start = 28.dp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                }
-
-                // EVM Tokens with icons
-                wallet.evmTokens.forEach { token ->
-                    val (color, iconRes) = when (token) {
-                        is NativeETH -> Pair(ethereumLight, R.drawable.ethereum)
-                        is USDCToken -> Pair(usdcLight, R.drawable.usdc)
-                        is USDTToken -> Pair(usdtLight, R.drawable.tether)
-                    }
-
-                    val networkSuffix = if (token.network.isTestnet) " (Testnet)" else ""
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = iconRes),
-                            contentDescription = token.symbol,
-                            modifier = Modifier.size(20.dp),
-                            tint = Color.Unspecified
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "${token.name}$networkSuffix",
-                            color = color,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-
-                // Primary Address (first available)
-                val primaryAddress = wallet.evmTokens.firstOrNull()?.address
-                    ?: wallet.bitcoinCoins.firstOrNull()?.address
-                    ?: wallet.solanaCoins.firstOrNull()?.address
-
-                if (primaryAddress != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    HorizontalDivider(
-                        Modifier,
-                        DividerDefaults.Thickness,
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                    )
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.AccountBalanceWallet,
-                            contentDescription = stringResource(R.string.address_label),
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            stringResource(R.string.primary_address),
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                    wallet.bitcoinCoins.forEach { coin ->
+                        AssetDetailItem(
+                            iconRes = R.drawable.bitcoin,
+                            name = coin.name,
+                            color = bitcoinLight,
+                            isTestnet = coin.network.isTestnet
                         )
                     }
-                    Text(
-                        text = primaryAddress,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(start = 24.dp)
-                    )
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(
-                    Modifier,
-                    DividerDefaults.Thickness,
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                    wallet.solanaCoins.forEach { coin ->
+                        AssetDetailItem(
+                            iconRes = R.drawable.solana,
+                            name = coin.name,
+                            color = solanaLight,
+                            isTestnet = coin.network.isTestnet
+                        )
+                    }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                    wallet.evmTokens.forEach { token ->
+                        val (color, iconRes) = when (token) {
+                            is NativeETH -> Pair(ethereumLight, R.drawable.ethereum)
+                            is USDCToken -> Pair(usdcLight, R.drawable.usdc)
+                            is USDTToken -> Pair(usdtLight, R.drawable.tether)
+                        }
+                        AssetDetailItem(
+                            iconRes = iconRes,
+                            name = token.name,
+                            color = color,
+                            isTestnet = token.network.isTestnet
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.AccountBalanceWallet,
-                            contentDescription = stringResource(R.string.total_assets),
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = stringResource(R.string.total_assets),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Text(
+                            text = totalAssets.toString(),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
-                    Text(
-                        text = "$totalAssets",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
                 }
             }
+            
+            Spacer(modifier = Modifier.height(32.dp))
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Button(
-            onClick = onFinish,
-            modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .padding(bottom = 32.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            tonalElevation = 8.dp,
+            shadowElevation = 8.dp
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Dashboard,
-                contentDescription = "Dashboard icon",
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(stringResource(R.string.go_to_dashboard))
+            Button(
+                onClick = onFinish,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(Icons.Outlined.Dashboard, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.go_to_dashboard),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
         }
     }
-}
-
-@Composable
-fun Checkbox(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    colors: CustomCheckboxColors = CustomCheckboxDefaults.colors()
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val backgroundColor by animateColorAsState(
-        targetValue = when {
-            !enabled -> colors.disabledBackgroundColor
-            checked -> colors.checkedBackgroundColor
-            else -> colors.uncheckedBackgroundColor
-        },
-        label = "checkbox_bg"
-    )
-
-    val borderColor by animateColorAsState(
-        targetValue = when {
-            !enabled -> colors.disabledBorderColor
-            checked -> colors.checkedBorderColor
-            else -> colors.uncheckedBorderColor
-        },
-        label = "checkbox_border"
-    )
-
-    val iconTintColor by animateColorAsState(
-        targetValue = when {
-            !enabled -> colors.disabledIconColor
-            else -> colors.checkedIconColor
-        },
-        label = "checkbox_icon"
-    )
-
-    Box(
-        modifier = modifier
-            .size(24.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(backgroundColor)
-            .border(
-                width = 2.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(6.dp)
-            )
-            .clickable(
-                enabled = enabled,
-                interactionSource = interactionSource,
-                indication = ripple(bounded = true)
-            ) { onCheckedChange(!checked) },
-        contentAlignment = Alignment.Center
-    ) {
-        if (checked) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = "Checked",
-                tint = iconTintColor,
-                modifier = Modifier.size(16.dp)
-            )
-        }
-    }
-}
-
-data class CustomCheckboxColors(
-    val checkedBackgroundColor: Color,
-    val uncheckedBackgroundColor: Color,
-    val disabledBackgroundColor: Color,
-    val checkedBorderColor: Color,
-    val uncheckedBorderColor: Color,
-    val disabledBorderColor: Color,
-    val checkedIconColor: Color,
-    val disabledIconColor: Color
-)
-
-object CustomCheckboxDefaults {
-    @Composable
-    fun colors(
-        checkedBackgroundColor: Color = MaterialTheme.colorScheme.primary,
-        uncheckedBackgroundColor: Color = Color.Transparent,
-        disabledBackgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        checkedBorderColor: Color = MaterialTheme.colorScheme.primary,
-        uncheckedBorderColor: Color = MaterialTheme.colorScheme.outline,
-        disabledBorderColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-        checkedIconColor: Color = MaterialTheme.colorScheme.onPrimary,
-        disabledIconColor: Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-    ) = CustomCheckboxColors(
-        checkedBackgroundColor = checkedBackgroundColor,
-        uncheckedBackgroundColor = uncheckedBackgroundColor,
-        disabledBackgroundColor = disabledBackgroundColor,
-        checkedBorderColor = checkedBorderColor,
-        uncheckedBorderColor = uncheckedBorderColor,
-        disabledBorderColor = disabledBorderColor,
-        checkedIconColor = checkedIconColor,
-        disabledIconColor = disabledIconColor
-    )
 }

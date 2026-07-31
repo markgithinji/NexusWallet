@@ -394,4 +394,5 @@
     <string name="view_on_explorer">View on %1$s Explorer</string>
     <string name="transaction_cannot_be_sent">Transaction cannot be sent:</string>
     <string name="done_button">Done</string>
+    <string name="clear_all">Clear All</string>
 </resources>
