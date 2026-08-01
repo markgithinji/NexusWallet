@@ -204,9 +204,14 @@ class MarketViewModel @Inject constructor(
     private fun updateTokensWithLiveData(updatesMap: Map<String, TokenPriceUpdate>) {
         val updatedTokens = allTokensCache.map { token ->
             val update = updatesMap[token.id]
-            if (update != null) {
+            if (update != null && token.currentPrice > 0) {
+                // Estimate new market cap based on price movement to keep ranking accurate
+                val priceRatio = update.price / token.currentPrice
+                val newMarketCap = token.marketCap * priceRatio
+                
                 token.copy(
                     currentPrice = update.price,
+                    marketCap = newMarketCap,
                     priceChange24h = update.priceChange24h,
                     priceChangePercentage24h = update.priceChangePercentage24h
                 )
@@ -222,7 +227,8 @@ class MarketViewModel @Inject constructor(
     }
 
     private fun applySearchFilter(query: String) {
-        val tokens = allTokensCache
+        // Ensure tokens are always ordered by market cap (real-time value)
+        val tokens = allTokensCache.sortedByDescending { it.marketCap }
 
         _filteredTokens.value = if (query.isBlank()) {
             tokens

@@ -206,9 +206,9 @@ class BinanceWebSocketImpl @Inject constructor(
         private const val BASE_RECONNECT_DELAY_MS = 3000L
         private const val MAX_RECONNECT_DELAY_MS = 30000L
 
-        // Map Binance symbols to token IDs - Top 50+ coins
+        // Map Binance symbols to token IDs - Top 60+ coins
         private val symbolMapping = mapOf(
-            // Top 10
+            // Top Tier
             "BTCUSDT" to "bitcoin",
             "ETHUSDT" to "ethereum",
             "BNBUSDT" to "binancecoin",
@@ -216,58 +216,66 @@ class BinanceWebSocketImpl @Inject constructor(
             "XRPUSDT" to "ripple",
             "ADAUSDT" to "cardano",
             "DOGEUSDT" to "dogecoin",
+            "TRXUSDT" to "tron",
             "DOTUSDT" to "polkadot",
             "MATICUSDT" to "matic-network",
+            "POLUSDT" to "polygon-ecosystem-token",
             "SHIBUSDT" to "shiba-inu",
-
-            // Layer 1s
             "AVAXUSDT" to "avalanche-2",
-            "TRXUSDT" to "tron",
             "LINKUSDT" to "chainlink",
-            "WBTCUSDT" to "wrapped-bitcoin",
-            "LEOUSDT" to "leo-token",
+            "SUIUSDT" to "sui",
             "TONUSDT" to "the-open-network",
-            "DAIUSDT" to "dai",
-            "XLMUSDT" to "stellar",
-            "ATOMUSDT" to "cosmos",
-            "ICPUSDT" to "internet-computer",
-
-            // DeFi & L2s
-            "ETCUSDT" to "ethereum-classic",
-            "FILUSDT" to "filecoin",
-            "APTUSDT" to "aptos",
-            "IMXUSDT" to "immutable-x",
+            "STETHUSDT" to "lido-staked-ether",
             "NEARUSDT" to "near",
-            "OPUSDT" to "optimism",
-            "ARBUSDT" to "arbitrum",
-            "LDOUSDT" to "lido-dao",
-            "AAVEUSDT" to "aave",
-            "MKRUSDT" to "maker",
-
-            // Meme coins
+            "WBTCUSDT" to "wrapped-bitcoin",
+            "DAIUSDT" to "dai",
+            "LTCUSDT" to "litecoin",
+            "BCHUSDT" to "bitcoin-cash",
+            "XLMUSDT" to "stellar",
+            "ICPUSDT" to "internet-computer",
+            "APTUSDT" to "aptos",
             "PEPEUSDT" to "pepe",
-            "WIFUSDT" to "dogwifcoin",
+            "ETCUSDT" to "ethereum-classic",
+            "KASUSDT" to "kaspa",
+            "STXUSDT" to "blockstack",
+            "RENDERUSDT" to "render-token",
+            "FILUSDT" to "filecoin",
+            "ARBUSDT" to "arbitrum",
+            "VETUSDT" to "vechain",
+            "OPUSDT" to "optimism",
+            "RUNEUSDT" to "thorchain",
+            "AAVEUSDT" to "aave",
+            "HBARUSDT" to "hedera-hashgraph",
+            "INJUSDT" to "injective-protocol",
+            "TAOUSDT" to "bittensor",
+            "FETUSDT" to "fetch-ai",
+            "TIAUSDT" to "celestia",
+            "MNTUSDT" to "mantle",
+            "SEIUSDT" to "sei-network",
+            "JUPUSDT" to "jupiter-exchange-solana",
             "FLOKIUSDT" to "floki",
             "BONKUSDT" to "bonk",
-
-            // Exchange tokens
-            "CROUSDT" to "crypto-com-chain",
-            "OKBUSDT" to "okb",
-            "GTUSDT" to "gatechain-token",
-
-            // More popular coins
-            "VETUSDT" to "vechain",
+            "WIFUSDT" to "dogwifcoin",
+            "IMXUSDT" to "immutable-x",
+            "LDOUSDT" to "lido-dao",
+            "UNIUSDT" to "uniswap",
+            "GRTUSDT" to "the-graph",
+            "THETAUSDT" to "theta-token",
+            "MKRUSDT" to "maker",
+            "PYTHUSDT" to "pyth-network",
+            "GALAUSDT" to "gala",
+            "FTMUSDT" to "fantom",
+            "FLOWUSDT" to "flow",
             "QNTUSDT" to "quant",
             "EGLDUSDT" to "elrond",
-            "THETAUSDT" to "theta-token",
-            "FTMUSDT" to "fantom",
+            "BEAMUSDT" to "beam-2",
+            "AXSUSDT" to "axie-infinity",
             "SANDUSDT" to "the-sandbox",
             "MANAUSDT" to "decentraland",
-            "AXSUSDT" to "axie-infinity",
-            "KLAYUSDT" to "klaytn",
-            "HNTUSDT" to "helium",
-            "ZECUSDT" to "zcash",
-            "DASHUSDT" to "dash"
+            "ENAUSDT" to "ethena",
+            "WLDUSDT" to "worldcoin-org",
+            "ONDOUSDT" to "ondo-finance",
+            "BGBUSDT" to "bitget-token"
         )
     }
 }
