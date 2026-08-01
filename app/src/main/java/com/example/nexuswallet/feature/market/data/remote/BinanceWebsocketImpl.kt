@@ -174,11 +174,11 @@ class BinanceWebSocketImpl @Inject constructor(
                 val connectedCount = states.count { it }
                 val totalCount = states.size
 
-                // Can add connection quality monitoring here if needed
+                // TODO: Can add connection quality monitoring here if needed
                 // For example, emit connection stats or trigger reconnection if too many batches are down
                 if (connectedCount < totalCount && connectedCount > 0) {
-                    // Partial connection - some batches are down
-                    // Could trigger reconnection for disconnected batches here
+                    // Partial connection ie. some batches are down
+                    // TODO: Trigger reconnection for disconnected batches here
                 }
             }
         }

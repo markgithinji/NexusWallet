@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.clickableSingle
 import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
@@ -576,7 +577,7 @@ fun SPLTokenRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .clickableSingle { onClick() }
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -696,7 +697,7 @@ private fun CoinDetailTransactionsContainer(
                     TransactionItem(
                         transaction = transaction,
                         modifier = Modifier
-                            .clickable { onTransactionClick(transaction) }
+                            .clickableSingle { onTransactionClick(transaction) }
                     )
 
                     if (index < 2) {

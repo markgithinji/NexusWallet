@@ -88,6 +88,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.NexusTextField
+import com.example.nexuswallet.feature.core.ui.clickableSingle
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
@@ -487,7 +488,8 @@ fun WalletCard(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .animateContentSize(),
+            .animateContentSize()
+            .clickableSingle { onWalletClick() },
         shape = RoundedCornerShape(24.dp),
         color = Color.White,
         tonalElevation = 0.dp,
@@ -496,8 +498,7 @@ fun WalletCard(
             width = 1.dp,
             color = if (isExpanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) 
                     else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)
-        ),
-        onClick = onWalletClick
+        )
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()

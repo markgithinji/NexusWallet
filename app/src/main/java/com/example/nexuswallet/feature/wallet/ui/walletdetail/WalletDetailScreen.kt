@@ -81,6 +81,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.NexusTextField
+import com.example.nexuswallet.feature.core.ui.clickableSingle
 import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
@@ -545,7 +546,7 @@ fun AssetCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 1.dp)
-            .clickable { onClick() },
+            .clickableSingle { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -929,7 +930,7 @@ fun TransactionsContainer(
                         TransactionItem(
                             transaction = displayInfo,
                             modifier = Modifier
-                                .clickable {
+                                .clickableSingle {
                                     onTransactionClick(displayInfo)
                                 }
                         )
@@ -1055,7 +1056,7 @@ fun QuickActionItem(
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(color.copy(alpha = 0.1f))
-                .clickable { onClick() },
+                .clickableSingle { onClick() },
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -1301,7 +1302,7 @@ private fun AssetSelectionRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .clickableSingle { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
