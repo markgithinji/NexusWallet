@@ -15,6 +15,9 @@ import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GWEI_TO_WEI
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.USDT_GAS_LIMIT
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.WEI_PER_ETH
 import com.example.nexuswallet.feature.ethereum.data.remote.Web3jFactory
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import kotlinx.coroutines.CoroutineDispatcher
@@ -501,14 +504,16 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
                     BigInteger.valueOf(GAS_LIMIT_STANDARD)
                 } else {
                     // Check if it's USDT for specific default
-                    // Note: We don't have EVMTokenType here, but we can check if it's a known USDT contract if needed
-                    // For now use a safe default
-                    BigInteger.valueOf(DEFAULT_TOKEN_GAS_LIMIT)
+                    if (tokenContract.equals(network.usdtContractAddress, ignoreCase = true)) {
+                        BigInteger.valueOf(USDT_GAS_LIMIT)
+                    } else {
+                        BigInteger.valueOf(DEFAULT_TOKEN_GAS_LIMIT)
+                    }
                 }
             } else {
                 val estimated = response.amountUsed
-                // Add 10% buffer
-                estimated.multiply(BigInteger.valueOf(110)).divide(BigInteger.valueOf(100))
+                // Add 15% buffer instead of 10% for better reliability on L2s or volatile gas
+                estimated.multiply(BigInteger.valueOf(115)).divide(BigInteger.valueOf(100))
             }
         }
     }
@@ -521,13 +526,11 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
     }
 
     companion object {
-        private const val WEI_PER_ETH = "1000000000000000000"
         private const val ETH_DECIMALS = 18
-        private const val GWEI_TO_WEI = 1_000_000_000L
 
         // Price multipliers
         private val SLOW_PRICE_MULTIPLIER = BigDecimal("0.9")
-        private val FAST_PRICE_MULTIPLIER = BigDecimal("1.2")
+        private val FAST_PRICE_MULTIPLIER = BigDecimal("1.25") // Increased for faster confirmation
 
         // Cache TTL (30 seconds)
         private const val GAS_PRICE_CACHE_TTL_MS = 30000L

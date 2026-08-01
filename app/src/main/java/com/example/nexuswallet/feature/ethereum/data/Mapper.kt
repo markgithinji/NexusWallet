@@ -10,14 +10,13 @@ import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GWEI_TO_WEI
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.WEI_PER_ETH
 import com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import java.math.BigDecimal
 import java.math.RoundingMode
-
-private const val WEI_PER_ETH = "1000000000000000000"
-private const val WEI_PER_GWEI = 1_000_000_000L
 
 /**
  * Maps native ETH transaction response to domain model
@@ -37,7 +36,7 @@ fun EtherscanTransactionDto.toNativeETHTransaction(
 
     val gasPriceWei = gasPrice.toBigDecimalOrNull() ?: BigDecimal.ZERO
     val gasPriceGwei = gasPriceWei.divide(
-        BigDecimal(WEI_PER_GWEI),
+        BigDecimal(GWEI_TO_WEI),
         6,
         RoundingMode.HALF_UP
     )
@@ -51,13 +50,18 @@ fun EtherscanTransactionDto.toNativeETHTransaction(
     )
 
     val isIncoming = to.equals(walletAddress, ignoreCase = true)
+    val status = when {
+        isError == "1" -> TransactionStatus.FAILED
+        receiptStatus == "0" -> TransactionStatus.FAILED
+        else -> TransactionStatus.SUCCESS
+    }
 
     return NativeETHTransaction(
         id = hash,
         walletId = walletId,
         fromAddress = from,
         toAddress = to,
-        status = TransactionStatus.SUCCESS,
+        status = status,
         timestamp = timestamp.toLongOrNull()?.times(1000) ?: System.currentTimeMillis(),
         note = null,
         feeLevel = FeeLevel.NORMAL,
@@ -112,6 +116,18 @@ fun TokenTransactionResponse.toTokenTransaction(
 
     val isIncoming = to.equals(walletAddress, ignoreCase = true)
 
+    val status = when {
+        // Etherscan uses isError="1" for internal failures
+        // For ERC-20 transfers, txreceipt_status might not always be present or reliable 
+        // depending on the network, but usually status="1" is success.
+        // If it's 0, it failed.
+        // For token transfers, we also check if 'value' is actually zero if it was meant to be a transfer
+        // but here we just follow the status code.
+        (this as? EtherscanTransactionDto)?.receiptStatus == "0" -> TransactionStatus.FAILED
+        (this as? EtherscanTransactionDto)?.isError == "1" -> TransactionStatus.FAILED
+        else -> TransactionStatus.SUCCESS
+    }
+
     // Calculate gas fee
     val gasPriceWei = gasPrice.toBigDecimalOrNull() ?: BigDecimal.ZERO
     val gasUsedValue = gasUsed.toLongOrNull() ?: 0L
@@ -129,7 +145,7 @@ fun TokenTransactionResponse.toTokenTransaction(
         walletId = walletId,
         fromAddress = from,
         toAddress = to,
-        status = TransactionStatus.SUCCESS,
+        status = status,
         timestamp = timeStamp.toLongOrNull()?.times(1000) ?: System.currentTimeMillis(),
         note = "${evmTokenType.displayName} (${evmTokenType.symbol})${if (network.isTestnet) " - Testnet" else ""}",
         feeLevel = FeeLevel.NORMAL,
@@ -142,7 +158,7 @@ fun TokenTransactionResponse.toTokenTransaction(
         amountWei = value,
         gasPriceWei = gasPrice,
         gasPriceGwei = gasPriceWei.divide(
-            BigDecimal(WEI_PER_GWEI),
+            BigDecimal(GWEI_TO_WEI),
             6,
             RoundingMode.HALF_UP
         ).toPlainString(),
