@@ -14,13 +14,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -30,31 +28,12 @@ class MarketViewModel @Inject constructor(
     private val coinGeckoRepository: CoinGeckoRepository,
     private val webSocketRepository: WebSocketRepository
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<Result<List<Token>>>(Result.Loading)
-    val uiState: StateFlow<Result<List<Token>>> = _uiState.asStateFlow()
-
-    // Filtered tokens (with search applied)
-    private val _filteredTokens = MutableStateFlow<List<Token>>(emptyList())
-    val filteredTokens: StateFlow<List<Token>> = _filteredTokens.asStateFlow()
-
-    // WebSocket connection state
-    private val _connectionState = MutableStateFlow(ConnectionState.CONNECTING)
     
-    val isWebSocketConnected: StateFlow<Boolean> = _connectionState.map { state ->
-        // We consider it "Connected" (or at least don't show the error banner) 
-        // while it's in the process of connecting.
-        state == ConnectionState.CONNECTED || state == ConnectionState.CONNECTING
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
-
-    // Search query
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+    private val _uiState = MutableStateFlow(MarketUiState(isLoading = true))
+    val uiState: StateFlow<MarketUiState> = _uiState.asStateFlow()
 
     private var webSocketCollectorJob: Job? = null
     private var connectionStateJob: Job? = null
-
-    private val _isLoadingMore = MutableStateFlow(false)
-    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
 
     private var currentPage = 1
     private val perPage = 100
@@ -75,8 +54,10 @@ class MarketViewModel @Inject constructor(
     @OptIn(FlowPreview::class)
     private fun setupSearchDebounce() {
         viewModelScope.launch {
-            _searchQuery
-                .debounce(searchDebounceTime)
+            _uiState
+                .map { it.searchQuery }
+                .distinctUntilChanged()
+                .debounce<String>(searchDebounceTime)
                 .collect { query ->
                     applySearchFilter(query)
                 }
@@ -85,7 +66,7 @@ class MarketViewModel @Inject constructor(
 
     private fun loadInitialData() {
         viewModelScope.launch {
-            _uiState.value = Result.Loading
+            _uiState.update { it.copy(isLoading = true, error = null) }
             isInitialDataLoaded = false
             allTokensCache = emptyList()
 
@@ -97,27 +78,38 @@ class MarketViewModel @Inject constructor(
                     val firstPage = result.data
                     allTokensCache = firstPage.distinctBy { it.id }
                     isInitialDataLoaded = true
-                    // Update filtered tokens before setting success state to avoid empty state flash
-                    applySearchFilter(_searchQuery.value)
-                    _uiState.value = Result.Success(allTokensCache)
+                    
                     currentPage = 2
+                    
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            tokens = allTokensCache
+                        )
+                    }
+                    applySearchFilter(_uiState.value.searchQuery)
 
                     // Load next pages in background
                     loadRemainingPages()
                 }
 
                 is Result.Error -> {
-                    _uiState.value = Result.Error(result.message, result.throwable)
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false, 
+                            error = result.message
+                        ) 
+                    }
                 }
 
-                Result.Loading -> {} // Already handled
+                Result.Loading -> {}
             }
         }
     }
 
     private fun loadRemainingPages() {
         viewModelScope.launch {
-            _isLoadingMore.value = true
+            _uiState.update { it.copy(isLoadingMore = true) }
 
             // Load pages 2 and 3
             val remainingPagesJobs = (currentPage..3).map { page ->
@@ -129,12 +121,12 @@ class MarketViewModel @Inject constructor(
             // Wait for all pages to complete
             remainingPagesJobs.awaitAll()
 
-            _isLoadingMore.value = false
+            _uiState.update { it.copy(isLoadingMore = false) }
         }
     }
 
     private suspend fun loadPage(page: Int) {
-        if (page > 3) return // Working with 300 coins (3 pages of 100)
+        if (page > 3) return
 
         when (val result = coinGeckoRepository.getTopCryptocurrencies(
             perPage = perPage,
@@ -143,48 +135,40 @@ class MarketViewModel @Inject constructor(
             is Result.Success -> {
                 val tokens = result.data
                 if (tokens.isNotEmpty()) {
-                    // Filter out tokens that are already in the cache to avoid duplicates
                     val existingIds = allTokensCache.map { it.id }.toSet()
                     val newTokens = tokens.filter { it.id !in existingIds }
 
                     if (newTokens.isNotEmpty()) {
                         allTokensCache = (allTokensCache + newTokens).distinctBy { it.id }
-                        // Update filtered tokens before setting success state
-                        applySearchFilter(_searchQuery.value)
-                        _uiState.value = Result.Success(allTokensCache)
+                        _uiState.update { it.copy(tokens = allTokensCache) }
+                        applySearchFilter(_uiState.value.searchQuery)
                     }
 
-                    // Always advance currentPage if we've successfully processed this page
                     if (page >= currentPage) {
                         currentPage = page + 1
                     }
                 }
             }
 
-            is Result.Error -> {
-                // Error silently handled
-            }
-
+            is Result.Error -> {}
             Result.Loading -> {}
         }
     }
 
     fun loadNextPage() {
-        if (_isLoadingMore.value || currentPage > 3) return
+        if (_uiState.value.isLoadingMore || currentPage > 3) return
 
         viewModelScope.launch {
-            _isLoadingMore.value = true
+            _uiState.update { it.copy(isLoadingMore = true) }
             loadPage(currentPage)
-            _isLoadingMore.value = false
+            _uiState.update { it.copy(isLoadingMore = false) }
         }
     }
 
     private fun setupWebSocketObservers() {
-        // Cancel existing collectors
         webSocketCollectorJob?.cancel()
         connectionStateJob?.cancel()
 
-        // Collect full token updates (price + percentage)
         webSocketCollectorJob = viewModelScope.launch {
             webSocketRepository.getTokenUpdates().collect { updatesMap ->
                 if (isInitialDataLoaded) {
@@ -193,10 +177,9 @@ class MarketViewModel @Inject constructor(
             }
         }
 
-        // Collect connection state
         connectionStateJob = viewModelScope.launch {
             webSocketRepository.getConnectionState().collect { state ->
-                _connectionState.value = state
+                _uiState.update { it.copy(connectionState = state) }
             }
         }
     }
@@ -205,7 +188,6 @@ class MarketViewModel @Inject constructor(
         val updatedTokens = allTokensCache.map { token ->
             val update = updatesMap[token.id]
             if (update != null && token.currentPrice > 0) {
-                // Estimate new market cap based on price movement to keep ranking accurate
                 val priceRatio = update.price / token.currentPrice
                 val newMarketCap = token.marketCap * priceRatio
                 
@@ -221,16 +203,15 @@ class MarketViewModel @Inject constructor(
         }
 
         allTokensCache = updatedTokens
-        // Update filtered tokens before setting success state
-        applySearchFilter(_searchQuery.value)
-        _uiState.value = Result.Success(updatedTokens)
+        _uiState.update { it.copy(tokens = updatedTokens) }
+        applySearchFilter(_uiState.value.searchQuery)
     }
 
     private fun applySearchFilter(query: String) {
         // Ensure tokens are always ordered by market cap (real-time value)
         val tokens = allTokensCache.sortedByDescending { it.marketCap }
 
-        _filteredTokens.value = if (query.isBlank()) {
+        val filtered = if (query.isBlank()) {
             tokens
         } else {
             tokens.filter { token ->
@@ -238,14 +219,16 @@ class MarketViewModel @Inject constructor(
                         token.symbol.contains(query, ignoreCase = true)
             }
         }
+        
+        _uiState.update { it.copy(filteredTokens = filtered) }
     }
 
     fun updateSearchQuery(query: String) {
-        _searchQuery.value = query
+        _uiState.update { it.copy(searchQuery = query) }
     }
 
     fun clearSearch() {
-        _searchQuery.value = ""
+        _uiState.update { it.copy(searchQuery = "") }
     }
 
     fun refreshData() {
@@ -253,19 +236,15 @@ class MarketViewModel @Inject constructor(
     }
 
     fun retryWebSocket() {
-        // Only reconnect if disconnected
-        val currentState = _connectionState.value
-        if (currentState == ConnectionState.DISCONNECTED || currentState == ConnectionState.ERROR) {
+        val state = _uiState.value.connectionState
+        if (state == ConnectionState.DISCONNECTED || state == ConnectionState.ERROR) {
             viewModelScope.launch {
-                // Cancel existing collectors
                 webSocketCollectorJob?.cancel()
                 connectionStateJob?.cancel()
 
-                // Disconnect and reconnect
                 webSocketRepository.disconnect()
                 webSocketRepository.reconnect()
 
-                // Re-setup observers
                 setupWebSocketObservers()
             }
         }

@@ -47,7 +47,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -82,9 +81,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import com.example.nexuswallet.R
-import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.formatPrice
 import com.example.nexuswallet.feature.core.util.formatTwoDecimals
+import com.example.nexuswallet.feature.market.domain.model.ConnectionState
 import com.example.nexuswallet.feature.market.domain.model.Token
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
@@ -99,15 +98,15 @@ fun MarketScreen(
     viewModel: MarketViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val tokens by viewModel.filteredTokens.collectAsStateWithLifecycle(initialValue = emptyList())
-    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val isWebSocketConnected by viewModel.isWebSocketConnected.collectAsStateWithLifecycle()
-    val isLoadingMore by viewModel.isLoadingMore.collectAsStateWithLifecycle()
+    val tokens = uiState.filteredTokens
+    val searchQuery = uiState.searchQuery
+    val connectionState = uiState.connectionState
+    val isLoadingMore = uiState.isLoadingMore
 
     var isRefreshing by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uiState) {
-        if (uiState is Result.Success && isRefreshing) {
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading && isRefreshing) {
             isRefreshing = false
         }
     }
@@ -123,7 +122,7 @@ fun MarketScreen(
     Scaffold(
         topBar = {
             MarketTopBar(
-                isWebSocketConnected = isWebSocketConnected,
+                connectionState = connectionState,
                 coinCount = tokens.size
             )
         },
@@ -140,8 +139,11 @@ fun MarketScreen(
                     .padding(top = scaffoldPadding.calculateTopPadding())
                     .padding(bottom = padding.calculateBottomPadding())
             ) {
-                // Show disconnected banner if WebSocket is down and we have data
-                if (!isWebSocketConnected && tokens.isNotEmpty()) {
+                // Show disconnected banner if WebSocket is in error/disconnected state and we have data
+                val showBanner = connectionState == ConnectionState.ERROR ||
+                        connectionState == ConnectionState.DISCONNECTED
+
+                if (showBanner && tokens.isNotEmpty()) {
                     DisconnectedBanner(
                         onRetry = { viewModel.retryWebSocket() },
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -165,61 +167,30 @@ fun MarketScreen(
                         end = 16.dp
                     )
 
-                    when (uiState) {
-                        Result.Loading -> {
-                            if (tokens.isEmpty()) {
-                                FullScreenLoading(message = stringResource(R.string.loading_market_data))
-                            } else {
-                                MarketList(
-                                    tokens = tokens,
-                                    isLoadingMore = isLoadingMore,
-                                    onTokenClick = { token ->
-                                        onNavigateToTokenDetail(token.id)
-                                    },
-                                    onLoadMore = { viewModel.loadNextPage() },
-                                    contentPadding = mergedPadding
-                                )
+                    if (uiState.isLoading && tokens.isEmpty()) {
+                        FullScreenLoading(message = stringResource(R.string.loading_market_data))
+                    } else if (uiState.error != null && tokens.isEmpty()) {
+                        ErrorView(
+                            message = uiState.error!!,
+                            onRetry = {
+                                isRefreshing = true
+                                viewModel.refreshData()
                             }
-                        }
-
-                        is Result.Error -> {
-                            if (tokens.isEmpty()) {
-                                ErrorView(
-                                    message = (uiState as Result.Error).message,
-                                    onRetry = {
-                                        isRefreshing = true
-                                        viewModel.refreshData()
-                                    }
-                                )
-                            } else {
-                                // Show data with error banner at top
-                                MarketList(
-                                    tokens = tokens,
-                                    isLoadingMore = isLoadingMore,
-                                    onTokenClick = { token ->
-                                        onNavigateToTokenDetail(token.id)
-                                    },
-                                    onLoadMore = { viewModel.loadNextPage() },
-                                    contentPadding = mergedPadding
-                                )
-                            }
-                        }
-
-                        is Result.Success -> {
-                            // Only show empty result state if we have a search query
-                            if (tokens.isEmpty() && !isLoadingMore && searchQuery.isNotBlank()) {
-                                EmptySearchResult()
-                            } else {
-                                MarketList(
-                                    tokens = tokens,
-                                    isLoadingMore = isLoadingMore,
-                                    onTokenClick = { token ->
-                                        onNavigateToTokenDetail(token.id)
-                                    },
-                                    onLoadMore = { viewModel.loadNextPage() },
-                                    contentPadding = mergedPadding
-                                )
-                            }
+                        )
+                    } else {
+                        // Only show empty result state if we have a search query
+                        if (tokens.isEmpty() && !isLoadingMore && searchQuery.isNotBlank()) {
+                            EmptySearchResult()
+                        } else {
+                            MarketList(
+                                tokens = tokens,
+                                isLoadingMore = isLoadingMore,
+                                onTokenClick = { token ->
+                                    onNavigateToTokenDetail(token.id)
+                                },
+                                onLoadMore = { viewModel.loadNextPage() },
+                                contentPadding = mergedPadding
+                            )
                         }
                     }
                 }
@@ -290,7 +261,7 @@ fun DisconnectedBanner(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MarketTopBar(
-    isWebSocketConnected: Boolean,
+    connectionState: ConnectionState,
     coinCount: Int
 ) {
     TopAppBar(
@@ -321,7 +292,7 @@ fun MarketTopBar(
             ) {
                 // Live connection indicator
                 ConnectionStatus(
-                    isConnected = isWebSocketConnected
+                    state = connectionState
                 )
 
                 // Coin count badge
@@ -339,8 +310,23 @@ fun MarketTopBar(
 
 @Composable
 fun ConnectionStatus(
-    isConnected: Boolean
+    state: ConnectionState
 ) {
+    val isConnected = state == ConnectionState.CONNECTED
+    val isConnecting = state == ConnectionState.CONNECTING
+
+    val color = when (state) {
+        ConnectionState.CONNECTED -> MaterialTheme.colorScheme.success
+        ConnectionState.CONNECTING -> MaterialTheme.colorScheme.outline
+        else -> MaterialTheme.colorScheme.error
+    }
+
+    val statusText = when (state) {
+        ConnectionState.CONNECTED -> stringResource(R.string.status_live)
+        ConnectionState.CONNECTING -> "CONNECTING"
+        else -> stringResource(R.string.status_offline)
+    }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -350,14 +336,9 @@ fun ConnectionStatus(
             modifier = Modifier
                 .size(8.dp)
                 .clip(CircleShape)
-                .background(
-                    color = if (isConnected)
-                        MaterialTheme.colorScheme.success
-                    else
-                        MaterialTheme.colorScheme.error
-                )
+                .background(color = color)
                 .then(
-                    if (isConnected) {
+                    if (isConnected || isConnecting) {
                         Modifier.graphicsLayer {
                             alpha = 0.8f
                         }
@@ -368,13 +349,10 @@ fun ConnectionStatus(
         )
 
         Text(
-            text = if (isConnected) stringResource(R.string.status_live) else stringResource(R.string.status_offline),
+            text = statusText,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Medium,
-            color = if (isConnected)
-                MaterialTheme.colorScheme.success
-            else
-                MaterialTheme.colorScheme.error,
+            color = color,
             letterSpacing = 0.5.sp
         )
     }
@@ -856,7 +834,7 @@ fun EmptySearchResult(
 
 @Composable
 fun ErrorView(
-    message: String, 
+    message: String,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
