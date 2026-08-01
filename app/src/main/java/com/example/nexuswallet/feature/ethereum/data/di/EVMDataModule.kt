@@ -7,7 +7,7 @@ import com.example.nexuswallet.feature.ethereum.data.repository.EVMBlockchainRep
 import com.example.nexuswallet.feature.ethereum.data.repository.EVMTransactionRepositoryImpl
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
-import com.example.nexuswallet.feature.ethereum.util.Web3jFactory
+import com.example.nexuswallet.feature.ethereum.data.remote.Web3jFactory
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import dagger.Module

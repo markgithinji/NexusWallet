@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.ethereum.util
+package com.example.nexuswallet.feature.ethereum.data.remote
 
 import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
@@ -8,7 +8,6 @@ import org.web3j.protocol.http.HttpService
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
-
 
 @Singleton
 class Web3jFactory @Inject constructor(
