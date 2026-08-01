@@ -1086,32 +1086,6 @@ fun MaxAmountDialog(
                 }
             }
         },
-        icon = {
-            Surface(
-                modifier = Modifier.size(64.dp),
-                shape = CircleShape,
-                color = if (isInsufficient) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
-                        else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = if (isInsufficient) Icons.Outlined.Error else Icons.Outlined.FlashOn,
-                        contentDescription = null,
-                        modifier = Modifier.size(32.dp),
-                        tint = if (isInsufficient) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        },
-        title = {
-            Text(
-                text = stringResource(R.string.send_maximum),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -1140,14 +1114,19 @@ fun MaxAmountDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    stringResource(R.string.available_label),
+                                    text = stringResource(R.string.available_label),
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f)
                                 )
                                 Text(
-                                    "${balance.stripTrailingZeros().toPlainString()} $tokenSymbol",
+                                    text = "${balance.stripTrailingZeros().toPlainString()} $tokenSymbol",
                                     style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.End,
+                                    modifier = Modifier.weight(2f)
                                 )
                             }
                             
@@ -1158,12 +1137,13 @@ fun MaxAmountDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    stringResource(R.string.network_fee_label),
+                                    text = stringResource(R.string.network_fee_label),
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f)
                                 )
                                 Text(
-                                    "- ${fee.stripTrailingZeros().toPlainString()} ${
+                                    text = "- ${fee.stripTrailingZeros().toPlainString()} ${
                                         when (coin) {
                                             is BitcoinCoin -> "BTC"
                                             is SolanaCoin -> "SOL"
@@ -1171,7 +1151,11 @@ fun MaxAmountDialog(
                                         }
                                     }",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.error
+                                    color = MaterialTheme.colorScheme.error,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.End,
+                                    modifier = Modifier.weight(2f)
                                 )
                             }
                             
@@ -1186,22 +1170,32 @@ fun MaxAmountDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    stringResource(R.string.maximum_send_label),
+                                    text = stringResource(R.string.maximum_send_label),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f)
                                 )
-                                Column(horizontalAlignment = Alignment.End) {
+                                Column(
+                                    horizontalAlignment = Alignment.End,
+                                    modifier = Modifier.weight(2f)
+                                ) {
                                     Text(
-                                        "${maxAmount.stripTrailingZeros().toPlainString()} $tokenSymbol",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.primary
+                                        text = "${maxAmount.stripTrailingZeros().toPlainString()} $tokenSymbol",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.End
                                     )
                                     val maxAmountUsd = maxAmount.toDouble() * fiatRate
                                     Text(
-                                        "≈ $${String.format(Locale.US, "%.2f", maxAmountUsd)} USD",
+                                        text = "≈ $${String.format(Locale.US, "%.2f", maxAmountUsd)} USD",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.End
                                     )
                                 }
                             }
