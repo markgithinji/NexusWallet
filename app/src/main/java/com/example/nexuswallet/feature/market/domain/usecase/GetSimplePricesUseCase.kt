@@ -7,7 +7,7 @@ import javax.inject.Inject
 class GetSimplePricesUseCase @Inject constructor(
     private val marketRepository: MarketRepository
 ) {
-    // Map wallet symbols to CoinGecko IDs (Business logic for asset identification)
+    // Map wallet symbols to CoinGecko IDs (asset identification)
     private val symbolToId = mapOf(
         "BTC" to "bitcoin",
         "ETH" to "ethereum",

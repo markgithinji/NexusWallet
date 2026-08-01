@@ -340,6 +340,8 @@
     <string name="authentication_required_to_view">Biometric authentication is required to decrypt and view your recovery phrase.</string>
     <string name="authentication_required">Authentication Required</string>
     <string name="unlock_vault">Unlock Vault</string>
+    <string name="auth_canceled">Authentication canceled</string>
+    <string name="auth_failed">Authentication failed. Please try again.</string>
 
     <!-- Import Wallet Screen -->
     <string name="select_networks_to_import">Select Networks to Import</string>

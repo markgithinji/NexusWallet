@@ -77,4 +77,8 @@ class BackupViewModel @Inject constructor(
             _isLoading.value = false
         }
     }
+
+    fun setErrorMessage(message: String) {
+        _errorMessage.value = message
+    }
 }

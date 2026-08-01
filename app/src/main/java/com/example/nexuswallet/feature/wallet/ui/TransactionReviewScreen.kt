@@ -170,7 +170,18 @@ fun TransactionReviewScreen(
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    sendError = errString.toString()
+                    // Map common cancellation codes to a more descriptive internal message or null
+                    sendError = when (errorCode) {
+                        BiometricPrompt.ERROR_USER_CANCELED,
+                        BiometricPrompt.ERROR_NEGATIVE_BUTTON -> {
+                            context.getString(R.string.auth_canceled)
+                        }
+                        BiometricPrompt.ERROR_LOCKOUT,
+                        BiometricPrompt.ERROR_LOCKOUT_PERMANENT -> {
+                            errString.toString() // Keep system message for lockouts
+                        }
+                        else -> errString.toString()
+                    }
                     isSending = false
                 }
 

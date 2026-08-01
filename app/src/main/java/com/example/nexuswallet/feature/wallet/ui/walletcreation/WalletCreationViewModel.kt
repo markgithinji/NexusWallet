@@ -256,6 +256,10 @@ class WalletCreationViewModel @Inject constructor(
         }
     }
 
+    fun setErrorMessage(message: String) {
+        _uiState.value = WalletCreationUiState.Error(message)
+    }
+
     fun reset() {
         _uiState.value = WalletCreationUiState.Idle
         _currentStep.value = 0

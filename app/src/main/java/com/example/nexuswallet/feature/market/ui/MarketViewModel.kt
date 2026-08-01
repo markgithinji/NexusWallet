@@ -162,7 +162,7 @@ class MarketViewModel @Inject constructor(
             }
 
             is Result.Error -> {
-                // Error silently handled - UI will show error state if needed
+                // Error silently handled
             }
 
             Result.Loading -> {}

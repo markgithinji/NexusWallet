@@ -171,4 +171,8 @@ class ImportWalletViewModel @Inject constructor(
             importWallet()
         }
     }
+
+    fun setErrorMessage(message: String) {
+        _uiState.value = WalletCreationUiState.Error(message)
+    }
 }

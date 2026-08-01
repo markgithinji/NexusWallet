@@ -71,7 +71,11 @@ fun BackupScreen(
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    // Handle error if needed
+                    if (errorCode != BiometricPrompt.ERROR_USER_CANCELED &&
+                        errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON
+                    ) {
+                        viewModel.setErrorMessage(errString.toString())
+                    }
                 }
             }
         )
