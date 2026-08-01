@@ -627,12 +627,12 @@ private fun SecurityOperationOverlay(operationState: SecurityOperation) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f)),
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center
         ) {
             Surface(
                 shape = RoundedCornerShape(28.dp),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))

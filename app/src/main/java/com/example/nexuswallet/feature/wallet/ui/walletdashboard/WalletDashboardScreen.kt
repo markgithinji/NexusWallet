@@ -240,7 +240,7 @@ fun WalletDashboardScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.3f))
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f))
                         .clickable(enabled = false) {},
                     contentAlignment = Alignment.Center
                 ) {
@@ -491,7 +491,7 @@ fun WalletCard(
             .animateContentSize()
             .clickableSingle { onWalletClick() },
         shape = RoundedCornerShape(24.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
         border = BorderStroke(
@@ -901,7 +901,7 @@ fun AnimatedPortfolioHeader(
                     )
                     
                     Surface(
-                        color = Color.White.copy(alpha = 0.2f),
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Row(
@@ -965,7 +965,7 @@ fun PortfolioStatItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier
-            .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Icon(
@@ -1000,7 +1000,7 @@ fun EmptyWalletsContent(
     ) {
         Surface(
             shape = RoundedCornerShape(32.dp),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp,
             shadowElevation = 0.dp,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)),

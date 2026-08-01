@@ -556,7 +556,7 @@ fun TransactionReviewContent(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 shape = RoundedCornerShape(16.dp),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
             ) {
                 Row(

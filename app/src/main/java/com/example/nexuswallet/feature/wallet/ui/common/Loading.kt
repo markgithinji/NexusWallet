@@ -40,7 +40,7 @@ fun FullScreenLoading(
     ) {
         Surface(
             shape = RoundedCornerShape(28.dp),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp,
             shadowElevation = 0.dp,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
@@ -80,7 +80,7 @@ fun InlineLoading(
         modifier = modifier
             .fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))

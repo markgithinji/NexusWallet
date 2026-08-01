@@ -71,7 +71,6 @@ import com.example.nexuswallet.feature.market.domain.model.ChartDuration
 import com.example.nexuswallet.feature.market.domain.model.NewsArticle
 import com.example.nexuswallet.feature.market.domain.model.TokenDetail
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
-import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
 import com.example.nexuswallet.feature.wallet.ui.common.shimmer
 import com.example.nexuswallet.ui.theme.success
 import java.time.Duration
