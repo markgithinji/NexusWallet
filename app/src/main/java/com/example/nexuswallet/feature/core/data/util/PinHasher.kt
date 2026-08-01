@@ -2,7 +2,6 @@ package com.example.nexuswallet.feature.core.data.util
 
 import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex
-import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
@@ -24,31 +23,21 @@ class PinHasher @Inject constructor() {
 
     /**
      * Verifies an input PIN against a stored hash string.
-     * Supports both new PBKDF2 hashes (3 parts) and legacy SHA-256 hashes (2 parts).
+     * Only supports PBKDF2 hashes (3 parts).
      */
     fun verifyPin(inputPin: String, storedHash: String): Boolean {
         val parts = storedHash.split(":")
-        return when (parts.size) {
-            3 -> {
-                // New PBKDF2 format: <hash>:<salt>:<iterations>
-                val storedHashBytes = parts[0].decodeHex()
-                val salt = parts[1].decodeHex()
-                val iterations = parts[2].toInt()
-                val inputHashBytes = pbkdf2(inputPin.toCharArray(), salt, iterations)
-                constantTimeAreEqual(storedHashBytes, inputHashBytes)
-            }
-            2 -> {
-                // Legacy SHA-256 format: <hash>:<salt>
-                val storedHashPart = parts[0]
-                val saltHex = parts[1]
-                val inputHash = MessageDigest.getInstance("SHA-256")
-                    .digest("$inputPin$saltHex".toByteArray())
-                    .toHex()
-                // Legacy didn't use constant time, but we can't easily change stored format now
-                // for the SHA-256 check itself, but we can compare the result string/bytes safely.
-                storedHashPart == inputHash
-            }
-            else -> false
+        if (parts.size != 3) return false
+
+        return try {
+            // PBKDF2 format: <hash>:<salt>:<iterations>
+            val storedHashBytes = parts[0].decodeHex()
+            val salt = parts[1].decodeHex()
+            val iterations = parts[2].toInt()
+            val inputHashBytes = pbkdf2(inputPin.toCharArray(), salt, iterations)
+            constantTimeAreEqual(storedHashBytes, inputHashBytes)
+        } catch (e: Exception) {
+            false
         }
     }
 
