@@ -30,7 +30,22 @@ import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,7 +53,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -48,9 +62,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.nexuswallet.feature.settings.domain.model.AuthType
-import com.example.nexuswallet.feature.core.util.Result
+import androidx.lifecycle.repeatOnLifecycle
 import com.example.nexuswallet.ui.theme.warning
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
@@ -66,7 +80,6 @@ fun AuthenticationRequiredScreen(
     val activity = LocalActivity.current as? AppCompatActivity
     val context = LocalContext.current
 
-    val authenticationResult by viewModel.authenticationResult.collectAsStateWithLifecycle()
     val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
     val showPinDialog by viewModel.showPinDialog.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
@@ -157,18 +170,14 @@ fun AuthenticationRequiredScreen(
         )
     }
 
-    LaunchedEffect(authenticationResult) {
-        when (val result = authenticationResult) {
-            is Result.Success<AuthType> -> {
-                onAuthenticated()
-                viewModel.clearState()
+    LaunchedEffect(Unit) {
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is AuthUiEffect.Authenticated -> {
+                    onAuthenticated()
+                    viewModel.clearState()
+                }
             }
-
-            is Result.Error -> {
-                viewModel.setErrorMessage(result.message)
-            }
-
-            else -> {}
         }
     }
 }

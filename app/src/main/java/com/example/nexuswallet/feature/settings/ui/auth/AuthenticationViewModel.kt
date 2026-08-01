@@ -11,14 +11,21 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.settings.domain.usecase.IsBiometricEnabledUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.IsPinSetUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+sealed interface AuthUiEffect {
+    data object Authenticated : AuthUiEffect
+}
 
 @HiltViewModel
 class AuthenticationViewModel @Inject constructor(
@@ -28,8 +35,8 @@ class AuthenticationViewModel @Inject constructor(
     private val isBiometricEnabledUseCase: IsBiometricEnabledUseCase
 ) : ViewModel() {
 
-    private val _authenticationResult = MutableStateFlow<Result<AuthType>?>(null)
-    val authenticationResult: StateFlow<Result<AuthType>?> = _authenticationResult.asStateFlow()
+    private val _uiEffect = MutableSharedFlow<AuthUiEffect>()
+    val uiEffect: SharedFlow<AuthUiEffect> = _uiEffect.asSharedFlow()
 
     private val _cryptoObject = MutableStateFlow<BiometricPrompt.CryptoObject?>(null)
     val cryptoObject: StateFlow<BiometricPrompt.CryptoObject?> = _cryptoObject.asStateFlow()
@@ -86,7 +93,7 @@ class AuthenticationViewModel @Inject constructor(
                 is Result.Success -> {
                     if (verifyResult.data) {
                         recordAuthenticationUseCase()
-                        _authenticationResult.value = Result.Success(AuthType.PIN)
+                        _uiEffect.emit(AuthUiEffect.Authenticated)
                         _showPinDialog.value = false
                     } else {
                         _errorMessage.value = "Incorrect PIN"
@@ -108,7 +115,7 @@ class AuthenticationViewModel @Inject constructor(
     fun onBiometricSuccess(result: BiometricPrompt.AuthenticationResult) {
         viewModelScope.launch {
             recordAuthenticationUseCase()
-            _authenticationResult.value = Result.Success(AuthType.BIOMETRIC)
+            _uiEffect.emit(AuthUiEffect.Authenticated)
         }
     }
 
@@ -118,11 +125,9 @@ class AuthenticationViewModel @Inject constructor(
 
     fun cancelPinEntry() {
         _showPinDialog.value = false
-        _authenticationResult.value = null
     }
 
     fun clearState() {
-        _authenticationResult.value = null
         _errorMessage.value = null
     }
 }
