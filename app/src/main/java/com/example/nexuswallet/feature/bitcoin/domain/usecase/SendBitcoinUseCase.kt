@@ -12,6 +12,7 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_MAINNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_TESTNET
 import com.example.nexuswallet.feature.core.util.decodeHex
+import com.example.nexuswallet.feature.core.util.use
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
@@ -96,13 +97,13 @@ class SendBitcoinUseCase @Inject constructor(
         }
 
         val privateKeyBytes = (decryptionResult as Result.Success).data
-        val ecKey = try {
-            ECKey.fromPrivate(privateKeyBytes)
-        } catch (e: Exception) {
-            logger.e(TAG, "Invalid private key format after decryption")
-            return@withContext Result.Error("Invalid private key format")
-        } finally {
-            privateKeyBytes.fill(0)
+        val ecKey = privateKeyBytes.use {
+            try {
+                ECKey.fromPrivate(it)
+            } catch (e: Exception) {
+                logger.e(TAG, "Invalid private key format after decryption")
+                return@withContext Result.Error("Invalid private key format")
+            }
         }
 
         // Verify key matches address

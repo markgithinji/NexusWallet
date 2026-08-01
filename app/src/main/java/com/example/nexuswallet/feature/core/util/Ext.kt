@@ -13,3 +13,14 @@ fun String.decodeHex(): ByteArray {
 }
 
 fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
+
+/**
+ * Performs the given [block] on this [ByteArray] and then wipes its content.
+ */
+inline fun <T> ByteArray.use(block: (ByteArray) -> T): T {
+    try {
+        return block(this)
+    } finally {
+        fill(0)
+    }
+}

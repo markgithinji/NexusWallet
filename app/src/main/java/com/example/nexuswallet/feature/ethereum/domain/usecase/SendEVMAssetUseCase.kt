@@ -9,6 +9,7 @@ import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
 import com.example.nexuswallet.feature.core.util.decodeHex
+import com.example.nexuswallet.feature.core.util.use
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
 import com.example.nexuswallet.feature.ethereum.domain.model.SendEVMResult
@@ -81,7 +82,49 @@ class SendEVMAssetUseCase @Inject constructor(
 
         val (encryptedHex, iv) = encryptedData
 
-        // 1b. Decrypt private key
+        // 2. Get nonce
+        logger.d(TAG, "Fetching nonce for address=${token.address}")
+        val nonceResult = evmBlockchainRepository.getNonce(
+            token.address,
+            token.network
+        )
+
+        if (nonceResult !is Result.Success) {
+            val message = (nonceResult as? Result.Error)?.message ?: "Failed to get nonce"
+            logger.e(TAG, "Failed to get nonce | error=$message")
+            return@withContext Result.Error(message)
+        }
+        val nonce = nonceResult.data
+        logger.d(TAG, "Nonce retrieved: $nonce")
+
+        // 4. Get fee estimate (includes EIP-1559 logic)
+        val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
+
+        logger.d(TAG, "Requesting fee estimate | network=${token.network.name}")
+        val feeEstimateResult = getFeeEstimateUseCase(
+            feeLevel = feeLevel,
+            network = token.network,
+            isToken = token.evmTokenType != EVMTokenType.NATIVE,
+            fromAddress = token.address,
+            toAddress = toAddress,
+            amount = amountInWei,
+            tokenContract = if (token.evmTokenType == EVMTokenType.NATIVE) null else token.contractAddress
+        )
+
+        if (feeEstimateResult !is Result.Success) {
+            val message =
+                (feeEstimateResult as? Result.Error)?.message ?: "Failed to get fee estimate"
+            logger.e(TAG, "Fee estimation failed | error=$message")
+            return@withContext Result.Error(message)
+        }
+        val feeEstimate = feeEstimateResult.data
+
+        val gasLimit = BigInteger.valueOf(feeEstimate.gasLimit)
+        val totalFeeWei = BigInteger(feeEstimate.totalFeeWei)
+        val totalFeeEth = feeEstimate.totalFeeEth
+        logger.d(TAG, "Fee estimate received | totalFee=$totalFeeEth ETH, isEIP1559=${feeEstimate.isEIP1559}")
+
+        // 5. Decrypt private key
         val decryptionResult = if (cipher != null) {
             logger.d(TAG, "Decrypting private key using provided cipher")
             keyStoreRepository.decryptWithCipher(cipher, encryptedHex.decodeHex())
@@ -97,56 +140,14 @@ class SendEVMAssetUseCase @Inject constructor(
 
         val privateKeyBytes = (decryptionResult as Result.Success).data
 
-        try {
-            // 2. Get nonce
-            logger.d(TAG, "Fetching nonce for address=${token.address}")
-            val nonceResult = evmBlockchainRepository.getNonce(
-                token.address,
-                token.network
-            )
-
-            if (nonceResult !is Result.Success) {
-                val message = (nonceResult as? Result.Error)?.message ?: "Failed to get nonce"
-                logger.e(TAG, "Failed to get nonce | error=$message")
-                return@withContext Result.Error(message)
-            }
-            val nonce = nonceResult.data
-            logger.d(TAG, "Nonce retrieved: $nonce")
-
-            // 4. Get fee estimate (includes EIP-1559 logic)
-            val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
-
-            logger.d(TAG, "Requesting fee estimate | network=${token.network.name}")
-            val feeEstimateResult = getFeeEstimateUseCase(
-                feeLevel = feeLevel,
-                network = token.network,
-                isToken = token.evmTokenType != EVMTokenType.NATIVE,
-                fromAddress = token.address,
-                toAddress = toAddress,
-                amount = amountInWei,
-                tokenContract = if (token.evmTokenType == EVMTokenType.NATIVE) null else token.contractAddress
-            )
-
-            if (feeEstimateResult !is Result.Success) {
-                val message =
-                    (feeEstimateResult as? Result.Error)?.message ?: "Failed to get fee estimate"
-                logger.e(TAG, "Fee estimation failed | error=$message")
-                return@withContext Result.Error(message)
-            }
-            val feeEstimate = feeEstimateResult.data
-
-            val gasLimit = BigInteger.valueOf(feeEstimate.gasLimit)
-            val totalFeeWei = BigInteger(feeEstimate.totalFeeWei)
-            val totalFeeEth = feeEstimate.totalFeeEth
-            logger.d(TAG, "Fee estimate received | totalFee=$totalFeeEth ETH, isEIP1559=${feeEstimate.isEIP1559}")
-
-            // 6. Create and sign transaction
-            logger.d(TAG, "Creating and signing transaction")
-            val createResult = when (token.evmTokenType) {
+        // 6. Create and sign transaction
+        logger.d(TAG, "Creating and signing transaction")
+        val createResult = privateKeyBytes.use { keyBytes ->
+            when (token.evmTokenType) {
                 EVMTokenType.NATIVE -> if (feeEstimate.isEIP1559) {
                     evmBlockchainRepository.createAndSignNative1559Transaction(
                         fromAddress = token.address,
-                        fromPrivateKey = privateKeyBytes,
+                        fromPrivateKey = keyBytes,
                         toAddress = toAddress,
                         amountWei = amountInWei,
                         maxPriorityFeePerGas = BigDecimal(feeEstimate.maxPriorityFeeGwei!!)
@@ -160,7 +161,7 @@ class SendEVMAssetUseCase @Inject constructor(
                 } else {
                     evmBlockchainRepository.createAndSignNativeTransaction(
                         fromAddress = token.address,
-                        fromPrivateKey = privateKeyBytes,
+                        fromPrivateKey = keyBytes,
                         toAddress = toAddress,
                         amountWei = amountInWei,
                         gasPriceWei = BigInteger(feeEstimate.gasPriceWei),
@@ -174,7 +175,7 @@ class SendEVMAssetUseCase @Inject constructor(
                 EVMTokenType.USDC, EVMTokenType.USDT -> if (feeEstimate.isEIP1559) {
                     evmBlockchainRepository.createAndSignToken1559Transaction(
                         fromAddress = token.address,
-                        fromPrivateKey = privateKeyBytes,
+                        fromPrivateKey = keyBytes,
                         toAddress = toAddress,
                         amount = amountInWei,
                         tokenContract = token.contractAddress,
@@ -191,7 +192,7 @@ class SendEVMAssetUseCase @Inject constructor(
                 } else {
                     evmBlockchainRepository.createAndSignTokenTransaction(
                         fromAddress = token.address,
-                        fromPrivateKey = privateKeyBytes,
+                        fromPrivateKey = keyBytes,
                         toAddress = toAddress,
                         amount = amountInWei,
                         tokenContract = token.contractAddress,
@@ -205,122 +206,120 @@ class SendEVMAssetUseCase @Inject constructor(
                     )
                 }
             }
+        }
 
-            if (createResult !is Result.Success) {
-                val message =
-                    (createResult as? Result.Error)?.message ?: "Failed to create transaction"
-                logger.e(TAG, "Transaction creation failed | error=$message")
-                return@withContext Result.Error(message)
-            }
-            val (_, signedHex, txHash) = createResult.data
-            logger.d(TAG, "Transaction created and signed locally | offlineHash=$txHash")
+        if (createResult !is Result.Success) {
+            val message =
+                (createResult as? Result.Error)?.message ?: "Failed to create transaction"
+            logger.e(TAG, "Transaction creation failed | error=$message")
+            return@withContext Result.Error(message)
+        }
+        val (_, signedHex, txHash) = createResult.data
+        logger.d(TAG, "Transaction created and signed locally | offlineHash=$txHash")
 
-            val gasPriceGwei = feeEstimate.gasPriceGwei
-            val gasPriceWei = feeEstimate.gasPriceWei
+        val gasPriceGwei = feeEstimate.gasPriceGwei
+        val gasPriceWei = feeEstimate.gasPriceWei
 
-            // 6. Broadcast transaction
-            logger.d(TAG, "Broadcasting transaction to ${token.network.name}")
-            val broadcastResult = evmBlockchainRepository.broadcastTransaction(
-                signedHex,
-                token.network
-            )
+        // 6. Broadcast transaction
+        logger.d(TAG, "Broadcasting transaction to ${token.network.name}")
+        val broadcastResult = evmBlockchainRepository.broadcastTransaction(
+            signedHex,
+            token.network
+        )
 
-            when (broadcastResult) {
-                is Result.Success -> {
-                    val broadcastData = broadcastResult.data
-                    val finalTxHash = broadcastData.hash ?: txHash
-                    logger.d(TAG, "Broadcast completed | success=${broadcastData.success}, hash=$finalTxHash")
+        when (broadcastResult) {
+            is Result.Success -> {
+                val broadcastData = broadcastResult.data
+                val finalTxHash = broadcastData.hash ?: txHash
+                logger.d(TAG, "Broadcast completed | success=${broadcastData.success}, hash=$finalTxHash")
 
-                    // 7. Save transaction after successful broadcast
-                    if (broadcastData.success) {
-                        val transaction = when (token.evmTokenType) {
-                            EVMTokenType.NATIVE -> NativeETHTransaction(
-                                id = finalTxHash,
-                                walletId = walletId,
-                                fromAddress = token.address,
-                                toAddress = toAddress,
-                                status = TransactionStatus.PENDING,
-                                timestamp = System.currentTimeMillis(),
-                                note = note,
-                                feeLevel = feeLevel,
-                                network = token.network,
-                                isIncoming = false,
-                                txHash = finalTxHash,
-                                amount = amount.toPlainString(),
-                                fee = totalFeeEth,
-                                symbol = token.symbol,
-                                amountWei = amountInWei.toString(),
-                                amountEth = amount.toPlainString(),
-                                gasPriceWei = gasPriceWei,
-                                gasPriceGwei = gasPriceGwei,
-                                gasLimit = gasLimit.toLong(),
-                                feeWei = totalFeeWei.toString(),
-                                feeEth = totalFeeEth,
-                                nonce = nonce.toInt(),
-                                chainId = token.network.chainId.toLong(),
-                                signedHex = signedHex,
-                                transactionType = EVMTransactionType.NATIVE_ETH,
-                                evmTokenType = token.evmTokenType,
-                                data = ""
-                            )
+                // 7. Save transaction after successful broadcast
+                if (broadcastData.success) {
+                    val transaction = when (token.evmTokenType) {
+                        EVMTokenType.NATIVE -> NativeETHTransaction(
+                            id = finalTxHash,
+                            walletId = walletId,
+                            fromAddress = token.address,
+                            toAddress = toAddress,
+                            status = TransactionStatus.PENDING,
+                            timestamp = System.currentTimeMillis(),
+                            note = note,
+                            feeLevel = feeLevel,
+                            network = token.network,
+                            isIncoming = false,
+                            txHash = finalTxHash,
+                            amount = amount.toPlainString(),
+                            fee = totalFeeEth,
+                            symbol = token.symbol,
+                            amountWei = amountInWei.toString(),
+                            amountEth = amount.toPlainString(),
+                            gasPriceWei = gasPriceWei,
+                            gasPriceGwei = gasPriceGwei,
+                            gasLimit = gasLimit.toLong(),
+                            feeWei = totalFeeWei.toString(),
+                            feeEth = totalFeeEth,
+                            nonce = nonce.toInt(),
+                            chainId = token.network.chainId.toLong(),
+                            signedHex = signedHex,
+                            transactionType = EVMTransactionType.NATIVE_ETH,
+                            evmTokenType = token.evmTokenType,
+                            data = ""
+                        )
 
-                            EVMTokenType.USDC, EVMTokenType.USDT -> TokenTransaction(
-                                id = finalTxHash,
-                                walletId = walletId,
-                                fromAddress = token.address,
-                                toAddress = toAddress,
-                                status = TransactionStatus.PENDING,
-                                timestamp = System.currentTimeMillis(),
-                                note = note,
-                                feeLevel = feeLevel,
-                                network = token.network,
-                                isIncoming = false,
-                                txHash = finalTxHash,
-                                amount = amount.toPlainString(),
-                                fee = totalFeeEth,
-                                symbol = token.symbol,
-                                amountWei = amountInWei.toString(),
-                                gasPriceWei = gasPriceWei,
-                                gasPriceGwei = gasPriceGwei,
-                                gasLimit = gasLimit.toLong(),
-                                feeWei = totalFeeWei.toString(),
-                                feeEth = totalFeeEth,
-                                nonce = nonce.toInt(),
-                                chainId = token.network.chainId.toLong(),
-                                signedHex = signedHex,
-                                transactionType = EVMTransactionType.TOKEN,
-                                evmTokenType = token.evmTokenType,
-                                tokenContract = token.contractAddress,
-                                data = ""
-                            )
-                        }
-
-                        evmTransactionRepository.saveTransaction(transaction)
-                        logger.d(TAG, "Transaction record saved to database")
+                        EVMTokenType.USDC, EVMTokenType.USDT -> TokenTransaction(
+                            id = finalTxHash,
+                            walletId = walletId,
+                            fromAddress = token.address,
+                            toAddress = toAddress,
+                            status = TransactionStatus.PENDING,
+                            timestamp = System.currentTimeMillis(),
+                            note = note,
+                            feeLevel = feeLevel,
+                            network = token.network,
+                            isIncoming = false,
+                            txHash = finalTxHash,
+                            amount = amount.toPlainString(),
+                            fee = totalFeeEth,
+                            symbol = token.symbol,
+                            amountWei = amountInWei.toString(),
+                            gasPriceWei = gasPriceWei,
+                            gasPriceGwei = gasPriceGwei,
+                            gasLimit = gasLimit.toLong(),
+                            feeWei = totalFeeWei.toString(),
+                            feeEth = totalFeeEth,
+                            nonce = nonce.toInt(),
+                            chainId = token.network.chainId.toLong(),
+                            signedHex = signedHex,
+                            transactionType = EVMTransactionType.TOKEN,
+                            evmTokenType = token.evmTokenType,
+                            tokenContract = token.contractAddress,
+                            data = ""
+                        )
                     }
 
-                    val sendResult = SendEVMResult(
-                        transactionId = finalTxHash,
-                        txHash = finalTxHash,
-                        success = broadcastData.success,
-                        error = broadcastData.error
-                    )
-
-                    Result.Success(sendResult)
+                    evmTransactionRepository.saveTransaction(transaction)
+                    logger.d(TAG, "Transaction record saved to database")
                 }
 
-                is Result.Error -> {
-                    logger.e(TAG, "Broadcast failed | error=${broadcastResult.message}")
-                    Result.Error(broadcastResult.message, broadcastResult.throwable)
-                }
+                val sendResult = SendEVMResult(
+                    transactionId = finalTxHash,
+                    txHash = finalTxHash,
+                    success = broadcastData.success,
+                    error = broadcastData.error
+                )
 
-                Result.Loading -> {
-                    logger.e(TAG, "Broadcast timed out")
-                    Result.Error("Broadcast timeout")
-                }
+                Result.Success(sendResult)
             }
-        } finally {
-            privateKeyBytes.fill(0)
+
+            is Result.Error -> {
+                logger.e(TAG, "Broadcast failed | error=${broadcastResult.message}")
+                Result.Error(broadcastResult.message, broadcastResult.throwable)
+            }
+
+            Result.Loading -> {
+                logger.e(TAG, "Broadcast timed out")
+                Result.Error("Broadcast timeout")
+            }
         }
     }
 

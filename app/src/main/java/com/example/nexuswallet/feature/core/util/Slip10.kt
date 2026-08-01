@@ -25,28 +25,29 @@ object Slip10 {
 
         var (privateKey, chainCode) = getMasterKeyFromSeed(seed)
 
-        try {
-            for (i in 1 until parts.size) {
-                val part = parts[i]
-                val hardened = part.endsWith("'")
-                if (!hardened) {
-                    throw IllegalArgumentException("Ed25519 derivation only supports hardened paths (e.g., 44')")
-                }
-
-                val index = part.removeSuffix("'").toLong()
-                val (childPriv, childChain) = deriveChildKey(privateKey, chainCode, index or 0x80000000L)
-
-                // Wipe intermediate keys for security
+        for (i in 1 until parts.size) {
+            val part = parts[i]
+            val hardened = part.endsWith("'")
+            if (!hardened) {
+                // Wipe if we error out
                 privateKey.fill(0)
                 chainCode.fill(0)
-
-                privateKey = childPriv
-                chainCode = childChain
+                throw IllegalArgumentException("Ed25519 derivation only supports hardened paths (e.g., 44')")
             }
-            return privateKey
-        } finally {
-            chainCode.fill(0)
+
+            val index = part.removeSuffix("'").toLong()
+            val (childPriv, childChain) = privateKey.use { pk ->
+                chainCode.use { cc ->
+                    deriveChildKey(pk, cc, index or 0x80000000L)
+                }
+            }
+
+            privateKey = childPriv
+            chainCode = childChain
         }
+        
+        chainCode.fill(0)
+        return privateKey
     }
 
     private fun getMasterKeyFromSeed(seed: ByteArray): Pair<ByteArray, ByteArray> {

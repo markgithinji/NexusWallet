@@ -398,7 +398,7 @@ class EVMSendViewModel @Inject constructor(
         }
     }
 
-    private suspend fun validateInputs(): Boolean {
+    private fun validateInputs(): Boolean {
         val state = _uiState.value
         val token = state.selectedToken ?: return false
 

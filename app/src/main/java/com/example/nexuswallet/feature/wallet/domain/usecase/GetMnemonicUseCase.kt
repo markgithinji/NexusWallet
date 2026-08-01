@@ -4,6 +4,7 @@ import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.decodeHex
+import com.example.nexuswallet.feature.core.util.use
 import com.example.nexuswallet.feature.logging.Logger
 import javax.crypto.Cipher
 import javax.inject.Inject
@@ -31,14 +32,14 @@ class GetMnemonicUseCase @Inject constructor(
         }
 
         val decryptedBytes = (decryptionResult as Result.Success).data
-        return try {
-            val mnemonicString = String(decryptedBytes, Charsets.UTF_8)
-            Result.Success(mnemonicString.split(" "))
-        } catch (e: Exception) {
-            logger.e(TAG, "Failed to parse mnemonic for wallet: $walletId", e)
-            Result.Error("Failed to parse mnemonic: ${e.message}")
-        } finally {
-            decryptedBytes.fill(0)
+        return decryptedBytes.use { bytes ->
+            try {
+                val mnemonicString = String(bytes, Charsets.UTF_8)
+                Result.Success(mnemonicString.split(" "))
+            } catch (e: Exception) {
+                logger.e(TAG, "Failed to parse mnemonic for wallet: $walletId", e)
+                Result.Error("Failed to parse mnemonic: ${e.message}")
+            }
         }
     }
 

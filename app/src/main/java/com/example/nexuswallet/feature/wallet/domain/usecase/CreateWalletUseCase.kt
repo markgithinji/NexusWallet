@@ -5,6 +5,7 @@ import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.Slip10
+import com.example.nexuswallet.feature.core.util.use
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_MAINNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_BITCOIN_TESTNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
@@ -68,82 +69,81 @@ class CreateWalletUseCase @Inject constructor(
         val mnemonicString = mnemonic.joinToString(" ")
         val masterSeed = MnemonicUtils.generateSeed(mnemonicString, "")
 
-        // 1. Pre-derive all addresses and keys
-        // Process Bitcoin networks
-        val bitcoinNetworks = selectedNetworks.filterIsInstance<BitcoinNetwork>()
-        bitcoinNetworks.forEach { network ->
-            createBitcoinCoin(mnemonic, network)?.let { coin ->
-                bitcoinCoins.add(coin)
-                val keyType = if (network == BitcoinNetwork.Mainnet) KEY_BITCOIN_MAINNET else KEY_BITCOIN_TESTNET
-                deriveBitcoinPrivateKey(mnemonic, network)?.let { rawKeys ->
-                    rawPrivateKeys[keyType] = rawKeys
-                }
-                logger.d(TAG, "Bitcoin ${network.name} coin derived")
-            } ?: run {
-                logger.e(TAG, "Failed to create Bitcoin ${network.name} coin")
-                masterSeed.fill(0)
-                return@withContext Result.Error("Failed to create Bitcoin ${network.name} coin")
-            }
-        }
-
-        // Process Ethereum networks
-        val ethereumNetworks = selectedNetworks.filterIsInstance<EthereumNetwork>()
-        ethereumNetworks.forEach { network ->
-            val credentials = deriveEthereumCredentials(masterSeed)
-            val nativeEth = NativeETH(
-                address = credentials.address,
-                publicKey = credentials.ecKeyPair.publicKey.toString(16),
-                network = network
-            ).also {
-                logger.d(TAG, "Ethereum ${network.name} address generated: ${it.address.take(8)}...")
-            }
-            
-            evmTokens.add(nativeEth)
-            
-            // Add tokens
-            val networkTokens = selectedTokens[network] ?: emptySet()
-            networkTokens.forEach { tokenType ->
-                when (tokenType) {
-                    EVMTokenType.USDC -> evmTokens.add(createUSDCToken(nativeEth))
-                    EVMTokenType.USDT -> evmTokens.add(createUSDTToken(nativeEth))
-                    else -> {}
+        masterSeed.use { seed ->
+            // 1. Pre-derive all addresses and keys
+            // Process Bitcoin networks
+            val bitcoinNetworks = selectedNetworks.filterIsInstance<BitcoinNetwork>()
+            bitcoinNetworks.forEach { network ->
+                createBitcoinCoin(mnemonic, network)?.let { coin ->
+                    bitcoinCoins.add(coin)
+                    val keyType = if (network == BitcoinNetwork.Mainnet) KEY_BITCOIN_MAINNET else KEY_BITCOIN_TESTNET
+                    deriveBitcoinPrivateKey(mnemonic, network)?.let { rawKeys ->
+                        rawPrivateKeys[keyType] = rawKeys
+                    }
+                    logger.d(TAG, "Bitcoin ${network.name} coin derived")
+                } ?: run {
+                    logger.e(TAG, "Failed to create Bitcoin ${network.name} coin")
+                    return@withContext Result.Error("Failed to create Bitcoin ${network.name} coin")
                 }
             }
-        }
-        
-        if (evmTokens.isNotEmpty()) {
-            val ethPrivateKey = deriveEthereumPrivateKey(masterSeed)
-            if (ethPrivateKey != null) {
-                rawPrivateKeys[KEY_ETHEREUM_MAIN] = ethPrivateKey
-            }
-        }
 
-        // Process Solana networks
-        val solanaNetworks = selectedNetworks.filterIsInstance<SolanaNetwork>()
-        solanaNetworks.forEach { network ->
-            val derivationPath = if (network == SolanaNetwork.Mainnet) SOLANA_MAINNET_DERIVATION_PATH else SOLANA_DEVNET_DERIVATION_PATH
-            val keypair = deriveSolanaKeypairFromSeed(masterSeed, derivationPath)
-            
-            val coin = SolanaCoin(
-                address = keypair.publicKey.toString(),
-                publicKey = keypair.publicKey.toString(),
-                network = network,
-                derivationPath = derivationPath,
-                splTokens = emptyList()
-            ).also {
-                logger.d(TAG, "Solana ${network.name} address generated: ${it.address.take(8)}...")
+            // Process Ethereum networks
+            val ethereumNetworks = selectedNetworks.filterIsInstance<EthereumNetwork>()
+            ethereumNetworks.forEach { network ->
+                val credentials = deriveEthereumCredentials(seed)
+                val nativeEth = NativeETH(
+                    address = credentials.address,
+                    publicKey = credentials.ecKeyPair.publicKey.toString(16),
+                    network = network
+                ).also {
+                    logger.d(TAG, "Ethereum ${network.name} address generated: ${it.address.take(8)}...")
+                }
+
+                evmTokens.add(nativeEth)
+
+                // Add tokens
+                val networkTokens = selectedTokens[network] ?: emptySet()
+                networkTokens.forEach { tokenType ->
+                    when (tokenType) {
+                        EVMTokenType.USDC -> evmTokens.add(createUSDCToken(nativeEth))
+                        EVMTokenType.USDT -> evmTokens.add(createUSDTToken(nativeEth))
+                        else -> {}
+                    }
+                }
             }
-            
-            solanaCoins.add(coin)
-            
-            val solPrivateKey = deriveSolanaPrivateKey(masterSeed, derivationPath)
-            if (solPrivateKey != null) {
-                val keyType = if (network == SolanaNetwork.Mainnet) KEY_SOLANA_MAINNET else KEY_SOLANA_DEVNET
-                rawPrivateKeys[keyType] = solPrivateKey
+
+            if (evmTokens.isNotEmpty()) {
+                val ethPrivateKey = deriveEthereumPrivateKey(seed)
+                if (ethPrivateKey != null) {
+                    rawPrivateKeys[KEY_ETHEREUM_MAIN] = ethPrivateKey
+                }
+            }
+
+            // Process Solana networks
+            val solanaNetworks = selectedNetworks.filterIsInstance<SolanaNetwork>()
+            solanaNetworks.forEach { network ->
+                val derivationPath = if (network == SolanaNetwork.Mainnet) SOLANA_MAINNET_DERIVATION_PATH else SOLANA_DEVNET_DERIVATION_PATH
+                val keypair = deriveSolanaKeypairFromSeed(seed, derivationPath)
+
+                val coin = SolanaCoin(
+                    address = keypair.publicKey.toString(),
+                    publicKey = keypair.publicKey.toString(),
+                    network = network,
+                    derivationPath = derivationPath,
+                    splTokens = emptyList()
+                ).also {
+                    logger.d(TAG, "Solana ${network.name} address generated: ${it.address.take(8)}...")
+                }
+
+                solanaCoins.add(coin)
+
+                val solPrivateKey = deriveSolanaPrivateKey(seed, derivationPath)
+                if (solPrivateKey != null) {
+                    val keyType = if (network == SolanaNetwork.Mainnet) KEY_SOLANA_MAINNET else KEY_SOLANA_DEVNET
+                    rawPrivateKeys[keyType] = solPrivateKey
+                }
             }
         }
-        
-        masterSeed.fill(0)
 
         // 2. Encryption Batch (Hardware Sensitive)
         try {
@@ -155,30 +155,32 @@ class CreateWalletUseCase @Inject constructor(
             val encryptedPrivateKeys = mutableMapOf<String, Pair<String, ByteArray>>()
             
             // Secure mnemonic
-            val mnemonicBytes = mnemonicToByteArray(mnemonic)
-            val mnemonicResult = if (cipher != null) {
-                keyStoreRepository.encryptWithCipher(cipher, mnemonicBytes)
-            } else {
-                keyStoreRepository.encrypt(mnemonicBytes)
+            val encryptedMnemonicData = mnemonicToByteArray(mnemonic).use { bytes ->
+                val mnemonicResult = if (cipher != null) {
+                    keyStoreRepository.encryptWithCipher(cipher, bytes)
+                } else {
+                    keyStoreRepository.encrypt(bytes)
+                }
+
+                if (mnemonicResult is Result.Error) {
+                    logger.e(TAG, "Mnemonic encryption failed | error=${mnemonicResult.message}")
+                    return@withContext mnemonicResult
+                }
+                (mnemonicResult as Result.Success).data
             }
-            
-            if (mnemonicResult is Result.Error) {
-                logger.e(TAG, "Mnemonic encryption failed | error=${mnemonicResult.message}")
-                return@withContext mnemonicResult
-            }
-            
-            val (encryptedMnemonic, mnemonicIv) = (mnemonicResult as Result.Success).data
-            mnemonicBytes.fill(0)
+
+            val (encryptedMnemonic, mnemonicIv) = encryptedMnemonicData
 
             // Encrypt all pre-derived keys in sequence
             rawPrivateKeys.forEach { (keyType, rawKey) ->
-                val keyResult = keyStoreRepository.encrypt(rawKey)
-                if (keyResult is Result.Error) {
-                    throw Exception("Failed to encrypt $keyType: ${keyResult.message}")
+                rawKey.use { key ->
+                    val keyResult = keyStoreRepository.encrypt(key)
+                    if (keyResult is Result.Error) {
+                        throw Exception("Failed to encrypt $keyType: ${keyResult.message}")
+                    }
+                    val (encryptedData, iv) = (keyResult as Result.Success).data
+                    encryptedPrivateKeys[keyType] = encryptedData.toHex() to iv
                 }
-                val (encryptedData, iv) = (keyResult as Result.Success).data
-                encryptedPrivateKeys[keyType] = encryptedData.toHex() to iv
-                rawKey.fill(0) // Securely wipe as soon as encrypted
             }
 
             // Save all secure data in one atomic Vault operation
@@ -318,9 +320,7 @@ class CreateWalletUseCase @Inject constructor(
 
             // If it has a leading zero (due to BigInteger sign), remove it to get 32 bytes
             if (privateKey.size == 33 && privateKey[0] == 0.toByte()) {
-                val result = privateKey.copyOfRange(1, 33)
-                privateKey.fill(0)
-                result
+                privateKey.use { it.copyOfRange(1, 33) }
             } else {
                 privateKey
             }
@@ -354,14 +354,11 @@ class CreateWalletUseCase @Inject constructor(
 
     private fun deriveSolanaPrivateKey(seed: ByteArray, derivationPath: String): ByteArray? {
         return try {
-            val derivedKey = Slip10.deriveKey(seed, derivationPath)
-
-            // We store the 64-byte secret key (seed + padded space for re-derivation)
-            // to stay consistent with the expected format in SendSolanaUseCase.
-            val secretKey = derivedKey + ByteArray(32)
-            derivedKey.fill(0)
-
-            secretKey
+            Slip10.deriveKey(seed, derivationPath).use { derivedKey ->
+                // We store the 64-byte secret key (seed + padded space for re-derivation)
+                // to stay consistent with the expected format in SendSolanaUseCase.
+                derivedKey + ByteArray(32)
+            }
         } catch (e: Exception) {
             logger.e(TAG, "Solana private key derivation failed | error=${e.message}")
             null

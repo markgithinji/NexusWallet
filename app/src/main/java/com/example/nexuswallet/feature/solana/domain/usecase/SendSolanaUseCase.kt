@@ -10,6 +10,7 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_DEVNET
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_SOLANA_MAINNET
 import com.example.nexuswallet.feature.core.util.decodeHex
+import com.example.nexuswallet.feature.core.util.use
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.data.model.SolanaSignedTransaction
 import com.example.nexuswallet.feature.solana.domain.model.SendSolanaResult
@@ -112,71 +113,68 @@ class SendSolanaUseCase @Inject constructor(
 
         val privateKeyBytes = (decryptionResult as Result.Success).data
 
-        try {
-            val keypair = createSolanaKeypair(privateKeyBytes)
-                ?: run {
-                    logger.e(TAG, "Invalid private key format after decryption")
-                    return@withContext Result.Error("Invalid private key format")
-                }
-
-            val derivedAddress = keypair.publicKey.toString()
-            if (derivedAddress != solanaCoin.address) {
-                logger.e(TAG, "Private key mismatch | derivedAddress=$derivedAddress != storedAddress=${solanaCoin.address}")
-                return@withContext Result.Error("Private key doesn't match wallet")
-            }
-
-            // 3. Create and sign transaction
-            logger.d(TAG, "Step 3: Creating and signing transaction locally")
-            val signedTxResult = solanaBlockchainRepository.createAndSignTransaction(
-                fromKeypair = keypair,
-                toAddress = toAddress,
-                lamports = lamports,
-                network = coin.network,
-                priorityFeeRate = feeEstimate.priorityFeeRate,
-                computeUnitLimit = feeEstimate.computeUnits
-            )
-
-            if (signedTxResult is Result.Error) {
-                logger.e(TAG, "Signing failed | error=${signedTxResult.message}")
-                return@withContext Result.Error(signedTxResult.message)
-            }
-            val signedTx = (signedTxResult as Result.Success).data
-            logger.d(TAG, "Transaction signed successfully | signature=${signedTx.signature.take(8)}...")
-
-            // 4. Broadcast transaction
-            logger.d(TAG, "Step 4: Broadcasting transaction to ${coin.network.name}")
-            val broadcastResult = broadcastTransaction(signedTx, coin.network)
-
-            // 5. save transaction after successful broadcast
-            if (broadcastResult.success) {
-                logger.d(TAG, "Broadcast successful | Saving transaction record")
-                val transaction = createTransactionRecord(
-                    walletId = walletId,
-                    toAddress = toAddress,
-                    amount = amount,
-                    feeLevel = feeLevel,
-                    note = note,
-                    coin = solanaCoin,
-                    feeEstimate = feeEstimate,
-                    signature = signedTx.signature
-                )
-
-                solanaTransactionRepository.saveTransaction(transaction)
-            } else {
-                logger.e(TAG, "Broadcast failed | error=${broadcastResult.error}")
-            }
-
-            val sendResult = SendSolanaResult(
-                transactionId = signedTx.signature,
-                txHash = signedTx.signature,
-                success = broadcastResult.success,
-                error = broadcastResult.error
-            )
-
-            Result.Success(sendResult)
-        } finally {
-            privateKeyBytes.fill(0)
+        val keypair = privateKeyBytes.use {
+            createSolanaKeypair(it)
+        } ?: run {
+            logger.e(TAG, "Invalid private key format after decryption")
+            return@withContext Result.Error("Invalid private key format")
         }
+
+        val derivedAddress = keypair.publicKey.toString()
+        if (derivedAddress != solanaCoin.address) {
+            logger.e(TAG, "Private key mismatch | derivedAddress=$derivedAddress != storedAddress=${solanaCoin.address}")
+            return@withContext Result.Error("Private key doesn't match wallet")
+        }
+
+        // 3. Create and sign transaction
+        logger.d(TAG, "Step 3: Creating and signing transaction locally")
+        val signedTxResult = solanaBlockchainRepository.createAndSignTransaction(
+            fromKeypair = keypair,
+            toAddress = toAddress,
+            lamports = lamports,
+            network = coin.network,
+            priorityFeeRate = feeEstimate.priorityFeeRate,
+            computeUnitLimit = feeEstimate.computeUnits
+        )
+
+        if (signedTxResult is Result.Error) {
+            logger.e(TAG, "Signing failed | error=${signedTxResult.message}")
+            return@withContext Result.Error(signedTxResult.message)
+        }
+        val signedTx = (signedTxResult as Result.Success).data
+        logger.d(TAG, "Transaction signed successfully | signature=${signedTx.signature.take(8)}...")
+
+        // 4. Broadcast transaction
+        logger.d(TAG, "Step 4: Broadcasting transaction to ${coin.network.name}")
+        val broadcastResult = broadcastTransaction(signedTx, coin.network)
+
+        // 5. save transaction after successful broadcast
+        if (broadcastResult.success) {
+            logger.d(TAG, "Broadcast successful | Saving transaction record")
+            val transaction = createTransactionRecord(
+                walletId = walletId,
+                toAddress = toAddress,
+                amount = amount,
+                feeLevel = feeLevel,
+                note = note,
+                coin = solanaCoin,
+                feeEstimate = feeEstimate,
+                signature = signedTx.signature
+            )
+
+            solanaTransactionRepository.saveTransaction(transaction)
+        } else {
+            logger.e(TAG, "Broadcast failed | error=${broadcastResult.error}")
+        }
+
+        val sendResult = SendSolanaResult(
+            transactionId = signedTx.signature,
+            txHash = signedTx.signature,
+            success = broadcastResult.success,
+            error = broadcastResult.error
+        )
+
+        Result.Success(sendResult)
     }
 
     private fun createTransactionRecord(
