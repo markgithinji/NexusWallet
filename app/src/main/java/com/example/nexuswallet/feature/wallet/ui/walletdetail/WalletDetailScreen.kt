@@ -99,6 +99,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.ui.common.ErrorScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.TransactionItem
+import com.example.nexuswallet.feature.wallet.ui.common.shimmer
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -1023,21 +1024,6 @@ fun TransactionLoadingSkeleton() {
         )
     }
 }
-
-@Composable
-fun Modifier.shimmer(): Modifier = this.then(
-    Modifier.background(
-        brush = Brush.linearGradient(
-            colors = listOf(
-                MaterialTheme.colorScheme.surfaceVariant,
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                MaterialTheme.colorScheme.surfaceVariant
-            ),
-            start = Offset.Zero,
-            end = Offset.Infinite
-        )
-    )
-)
 
 @Composable
 fun QuickActionItem(

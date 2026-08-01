@@ -72,6 +72,7 @@ import com.example.nexuswallet.feature.market.domain.model.NewsArticle
 import com.example.nexuswallet.feature.market.domain.model.TokenDetail
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
+import com.example.nexuswallet.feature.wallet.ui.common.shimmer
 import com.example.nexuswallet.ui.theme.success
 import java.time.Duration
 import java.time.Instant
@@ -355,7 +356,7 @@ fun PriceChart(
             ) {
                 when (chartState) {
                     is Result.Loading -> {
-                        InlineLoading(message = stringResource(R.string.loading_chart))
+                        ChartLoadingState()
                     }
 
                     is Result.Error -> {
@@ -505,6 +506,50 @@ fun PriceChart(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChartLoadingState() {
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Line placeholder
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .shimmer()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Open/Change/Close row placeholder
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            repeat(3) {
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .width(40.dp)
+                            .height(12.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .shimmer()
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .shimmer()
+                    )
                 }
             }
         }

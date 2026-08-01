@@ -112,10 +112,6 @@ class AuthenticationViewModel @Inject constructor(
         }
     }
 
-    fun setCryptoObject(cryptoObject: BiometricPrompt.CryptoObject?) {
-        _cryptoObject.value = cryptoObject
-    }
-
     fun setErrorMessage(message: String) {
         _errorMessage.value = message
     }

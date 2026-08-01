@@ -25,7 +25,7 @@ object AuthTargetNavType : NavType<AuthTarget>(isNullableAllowed = false) {
         return runCatching {
             json.decodeFromString<AuthTarget>(value)
         }.getOrElse {
-            // Return a safe default - though ideally this shouldn't happen
+            // Return a safe default, though ideally this shouldn't happen
             AuthTarget.WalletDetail("")
         }
     }

@@ -52,9 +52,12 @@ fun PriceLineChart(
         val height = size.height
 
         val paddingBottom = 60f
+        val paddingTop = 40f
         val paddingLeft = 110f
 
-        val chartHeight = height - paddingBottom
+        val chartBottom = height - paddingBottom
+        val chartTop = paddingTop
+        val usableHeight = chartBottom - chartTop
 
         val stepX =
             if (pricePoints.size > 1)
@@ -65,10 +68,10 @@ fun PriceLineChart(
 
             val x = paddingLeft + (index * stepX)
 
-            val y = chartHeight -
-                    ((point.price - minPrice) / range * chartHeight).toFloat()
+            val y = chartBottom -
+                    ((point.price - minPrice) / range * usableHeight).toFloat()
 
-            Offset(x, y.coerceIn(0f, chartHeight))
+            Offset(x, y.coerceIn(chartTop, chartBottom))
         }
 
         // =========================
@@ -78,16 +81,16 @@ fun PriceLineChart(
         // X-axis line
         drawLine(
             color = axisColor.copy(alpha = 0.5f),
-            start = Offset(paddingLeft, chartHeight),
-            end = Offset(width, chartHeight),
+            start = Offset(paddingLeft, chartBottom),
+            end = Offset(width, chartBottom),
             strokeWidth = 2f
         )
 
         // Y-axis line
         drawLine(
             color = axisColor.copy(alpha = 0.5f),
-            start = Offset(paddingLeft, 0f),
-            end = Offset(paddingLeft, chartHeight),
+            start = Offset(paddingLeft, chartTop - 10f),
+            end = Offset(paddingLeft, chartBottom),
             strokeWidth = 2f
         )
 
@@ -102,7 +105,7 @@ fun PriceLineChart(
 
             val priceValue = minPrice + (priceStep * i)
 
-            val y = chartHeight - (i * (chartHeight / yAxisSteps))
+            val y = chartBottom - (i * (usableHeight / yAxisSteps))
 
             // Grid line
             drawLine(
@@ -144,14 +147,14 @@ fun PriceLineChart(
             val first = points.first()
             val last = points.last()
 
-            moveTo(first.x, chartHeight)
+            moveTo(first.x, chartBottom)
             lineTo(first.x, first.y)
 
             for (i in 1 until points.size) {
                 lineTo(points[i].x, points[i].y)
             }
 
-            lineTo(last.x, chartHeight)
+            lineTo(last.x, chartBottom)
             close()
         }
 
@@ -246,8 +249,8 @@ fun PriceLineChart(
 
                 drawLine(
                     color = axisColor.copy(alpha = 0.5f),
-                    start = Offset(x, chartHeight),
-                    end = Offset(x, chartHeight + 10f),
+                    start = Offset(x, chartBottom),
+                    end = Offset(x, chartBottom + 10f),
                     strokeWidth = 1f
                 )
             }
