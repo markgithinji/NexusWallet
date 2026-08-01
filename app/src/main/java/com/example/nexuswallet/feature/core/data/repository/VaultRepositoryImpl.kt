@@ -93,6 +93,30 @@ class VaultRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun storeSecurityBundle(
+        walletId: String,
+        mnemonic: Pair<String, ByteArray>,
+        privateKeys: Map<String, Pair<String, ByteArray>>
+    ) {
+        safeEdit {
+            dataStore.edit { preferences ->
+                // Store Mnemonic
+                val mKey = stringPreferencesKey("${ENCRYPTED_MNEMONIC_KEY.name}_${walletId.lowercase()}")
+                val mIvKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_${walletId.lowercase()}")
+                preferences[mKey] = mnemonic.first
+                preferences[mIvKey] = mnemonic.second.toHex()
+
+                // Store all Private Keys
+                privateKeys.forEach { (keyType, data) ->
+                    val pkName = "${ENCRYPTED_PRIVATE_KEY_KEY.name}_${walletId.lowercase()}_${keyType.lowercase()}"
+                    val pkIvName = "${INITIALIZATION_VECTOR_KEY.name}_${walletId.lowercase()}_${keyType.lowercase()}"
+                    preferences[stringPreferencesKey(pkName)] = data.first
+                    preferences[stringPreferencesKey(pkIvName)] = data.second.toHex()
+                }
+            }
+        }
+    }
+
     override suspend fun getEncryptedBackup(walletId: String): Pair<String, ByteArray>? {
         val backupKey = stringPreferencesKey("${ENCRYPTED_BACKUP_KEY.name}_${walletId.lowercase()}")
         val ivKey = stringPreferencesKey("${INITIALIZATION_VECTOR_KEY.name}_backup_${walletId.lowercase()}")
