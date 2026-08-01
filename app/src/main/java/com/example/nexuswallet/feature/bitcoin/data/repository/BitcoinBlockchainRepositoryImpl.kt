@@ -24,11 +24,9 @@ import org.bitcoinj.core.Sha256Hash
 import org.bitcoinj.core.Transaction
 import org.bitcoinj.core.TransactionInput
 import org.bitcoinj.core.TransactionOutPoint
-import org.bitcoinj.core.Utils
 import org.bitcoinj.crypto.TransactionSignature
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
-import org.bitcoinj.script.Script
 import org.bitcoinj.script.ScriptBuilder
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -204,23 +202,7 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
 
     /**
      * Creates and signs a Bitcoin transaction in a single atomic operation.
-     *
-     * This method combines transaction creation and signing to minimize the time
-     * the private key spends in memory. The key is only held during this function
-     * call and is not persisted or exposed outside.
-     *
-     * @param fromKey The ECKey containing the private key for signing
-     * @param toAddress The recipient's Bitcoin address
-     * @param satoshis The amount to send in satoshis
-     * @param feeLevel The fee priority level (SLOW, NORMAL, FAST)
-     * @param network The Bitcoin network (Mainnet or Testnet)
-     * @return Result containing the signed Transaction or error
-     *
-     * @implNote Security: This method is intentionally kept as a single operation
-     * to avoid storing private key material in intermediate states. Do not refactor
-     * into separate create/sign steps without implementing secure key handling.
      */
-
     override suspend fun createAndSignTransaction(
         fromKey: ECKey,
         toAddress: String,
@@ -234,11 +216,16 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
                 BitcoinNetwork.Testnet -> TestNet3Params.get()
             }
 
-            val tx = Transaction(networkParams)
-            val outputValue = Coin.valueOf(satoshis)
-            val outputAddress = Address.fromString(networkParams, toAddress)
-            tx.addOutput(outputValue, outputAddress)
+            // 1. Get current fee rates
+            val api = getApiForNetwork(network)
+            val estimates = api.getFeeEstimates()
+            val feePerByte = when (feeLevel) {
+                FeeLevel.SLOW -> estimates[SLOW_TARGET] ?: DEFAULT_SLOW_FEE
+                FeeLevel.NORMAL -> estimates[NORMAL_TARGET] ?: DEFAULT_NORMAL_FEE
+                FeeLevel.FAST -> estimates[FAST_TARGET] ?: DEFAULT_FAST_FEE
+            }
 
+            // 2. Derive sender address and fetch all UTXOs
             val fromAddress = LegacyAddress.fromKey(networkParams, fromKey).toString()
             val allUtxos = when (val allUtxosResult = getUnspentOutputs(fromAddress, network)) {
                 is Result.Success -> allUtxosResult.data
@@ -249,20 +236,39 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
                 return@withContext Result.Error("No UTXOs found for address: $fromAddress")
             }
 
-            val feeSatoshis = when (val feeResult = getFeeEstimate(feeLevel, allUtxos.size, 2, network)) {
-                is Result.Success -> feeResult.data.totalFeeSatoshis
-                else -> DEFAULT_FEE_SATOSHIS
+            // 3. Precise UTXO selection logic: Select iteratively and recalculate fee
+            val selected = mutableListOf<UTXO>()
+            var totalSelectedSatoshis = 0L
+            val sortedUtxos = allUtxos.sortedByDescending { it.value.value }
+            
+            var currentFee = 0L
+            val outputCount = 2 // 1 recipient + 1 change
+
+            for (utxo in sortedUtxos) {
+                selected.add(utxo)
+                totalSelectedSatoshis += utxo.value.value
+                
+                // Recalculate fee for current input count
+                val txSize = calculateTransactionSize(selected.size, outputCount)
+                currentFee = (txSize * feePerByte).toLong()
+                
+                if (totalSelectedSatoshis >= (satoshis + currentFee)) {
+                    break
+                }
             }
 
-            val targetWithFee = satoshis + feeSatoshis
-            val selectedUtxos = selectUtxos(allUtxos, targetWithFee)
-
-            if (selectedUtxos.isEmpty()) {
+            if (totalSelectedSatoshis < (satoshis + currentFee)) {
                 return@withContext Result.Error("Insufficient funds")
             }
 
-            var totalInputValue = Coin.ZERO
-            for (utxo in selectedUtxos) {
+            // 4. Construct the transaction
+            val tx = Transaction(networkParams)
+            val outputValue = Coin.valueOf(satoshis)
+            val outputAddress = Address.fromString(networkParams, toAddress)
+            tx.addOutput(outputValue, outputAddress)
+
+            // Add selected inputs
+            for (utxo in selected) {
                 val input = TransactionInput(
                     networkParams,
                     tx,
@@ -270,20 +276,18 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
                     utxo.outPoint
                 )
                 tx.addInput(input)
-                totalInputValue = totalInputValue.add(utxo.value)
             }
 
-            val targetValue = Coin.valueOf(satoshis)
-            val fee = Coin.valueOf(feeSatoshis)
-            val changeValue = totalInputValue.subtract(targetValue).subtract(fee)
-
-            if (changeValue.isPositive && changeValue.value >= DUST_LIMIT) {
-                tx.addOutput(changeValue, LegacyAddress.fromKey(networkParams, fromKey))
+            // Handle change output
+            val changeValue = totalSelectedSatoshis - satoshis - currentFee
+            if (changeValue >= DUST_LIMIT) {
+                tx.addOutput(Coin.valueOf(changeValue), LegacyAddress.fromKey(networkParams, fromKey))
             }
 
+            // 5. Sign each input
             for (i in 0 until tx.inputs.size) {
                 val input = tx.getInput(i.toLong())
-                val utxo = selectedUtxos[i]
+                val utxo = selected[i]
 
                 val hash = tx.hashForSignature(i, utxo.script, Transaction.SigHash.ALL, false)
                 val sig = fromKey.sign(hash)
@@ -291,10 +295,6 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
 
                 val script = ScriptBuilder.createInputScript(txSig, fromKey)
                 input.scriptSig = script
-            }
-
-            if (tx.inputs.isEmpty()) {
-                return@withContext Result.Error("Transaction has no inputs")
             }
 
             tx.verify()
@@ -305,7 +305,8 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Get UTXOs for an address
+     * Get UTXOs for an address.
+     * Optimized to derive scriptPubKey locally from address, avoiding O(N) network requests.
      */
     override suspend fun getUnspentOutputs(
         address: String,
@@ -324,40 +325,21 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
                 BitcoinNetwork.Testnet -> TestNet3Params.get()
             }
 
-            val result = mutableListOf<UTXO>()
+            // Derive scriptPubKey from the address directly
+            val btcjAddress = Address.fromString(networkParams, address)
+            val scriptPubKey = ScriptBuilder.createOutputScript(btcjAddress)
 
-            for (utxo in utxos) {
-                val scriptHex = getScriptPubKeyFromTransaction(utxo.txid, utxo.vout, network)
-                if (scriptHex != null) {
-                    val bitcoinjUtxo = UTXO(
-                        outPoint = TransactionOutPoint(
-                            networkParams,
-                            utxo.vout.toLong(),
-                            Sha256Hash.wrap(utxo.txid)
-                        ),
-                        value = Coin.valueOf(utxo.value),
-                        script = Script(Utils.HEX.decode(scriptHex))
-                    )
-                    result.add(bitcoinjUtxo)
-                }
+            utxos.map { utxo ->
+                UTXO(
+                    outPoint = TransactionOutPoint(
+                        networkParams,
+                        utxo.vout.toLong(),
+                        Sha256Hash.wrap(utxo.txid)
+                    ),
+                    value = Coin.valueOf(utxo.value),
+                    script = scriptPubKey
+                )
             }
-
-            result
-        }
-    }
-
-    private suspend fun getScriptPubKeyFromTransaction(
-        txid: String,
-        vout: Int,
-        network: BitcoinNetwork
-    ): String? = withContext(ioDispatcher) {
-        val api = getApiForNetwork(network)
-        val tx = api.getTransaction(txid)
-
-        return@withContext if (vout < tx.vout.size) {
-            tx.vout[vout].scriptpubkey
-        } else {
-            null
         }
     }
 
@@ -476,7 +458,6 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
         // Bitcoin constants
         private const val SATOSHIS_PER_BTC = 100_000_000L
         private const val DUST_LIMIT = 546L
-        private const val DEFAULT_FEE_SATOSHIS = 1000L
 
         // Transaction size constants (in bytes)
         private const val BASE_TX_SIZE = 10L
