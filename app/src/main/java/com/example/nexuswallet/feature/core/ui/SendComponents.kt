@@ -81,6 +81,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
@@ -449,6 +450,7 @@ fun SendAddressInput(
                 placeholder = placeholder,
                 isError = toAddress.isNotEmpty() && !isValid,
                 supportingText = errorMessage,
+                reserveSupportingTextSpace = true,
                 trailingIcon = {
                     if (toAddress.isNotEmpty()) {
                         IconButton(
@@ -1041,148 +1043,184 @@ fun MaxAmountDialog(
     }
 
     val maxAmount = balance - fee
+    val isInsufficient = maxAmount <= BigDecimal.ZERO
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = {
-            Text(
-                text = stringResource(R.string.send_maximum),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        },
-        text = {
-            Column {
-                if (maxAmount > BigDecimal.ZERO) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = stringResource(R.string.available_label),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "${balance.stripTrailingZeros().toPlainString()} $tokenSymbol",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = stringResource(R.string.network_fee_label),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "- ${fee.stripTrailingZeros().toPlainString()} ${
-                                when (coin) {
-                                    is BitcoinCoin -> "BTC"
-                                    is SolanaCoin -> "SOL"
-                                    is NativeETH -> "ETH"
-                                    is USDCToken, is USDTToken -> "ETH"
-                                }
-                            }",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.outline,
-                        thickness = 1.dp
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = stringResource(R.string.maximum_send_label),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        val maxAmountUsd = maxAmount.toDouble() * fiatRate
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = "${
-                                    maxAmount.stripTrailingZeros().toPlainString()
-                                } $tokenSymbol",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "≈ $${String.format(Locale.US, "%.2f", maxAmountUsd)} USD",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = stringResource(R.string.send_all_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    Text(
-                        text = stringResource(R.string.insufficient_fee_balance),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        },
         confirmButton = {
-            if (maxAmount > BigDecimal.ZERO) {
-                Button(
-                    onClick = {
+            Button(
+                onClick = {
+                    if (!isInsufficient) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        val formattedAmount = maxAmount
-                            .stripTrailingZeros()
-                            .toPlainString()
-                        onConfirm(formattedAmount)
-                    },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text(
-                        stringResource(R.string.use_maximum),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
+                        onConfirm(maxAmount.stripTrailingZeros().toPlainString())
+                    } else {
+                        onDismiss()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isInsufficient) MaterialTheme.colorScheme.surfaceVariant 
+                                    else MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text(
+                    text = if (isInsufficient) stringResource(R.string.dismiss) 
+                           else stringResource(R.string.use_maximum),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            ) {
-                Text(stringResource(R.string.cancel), style = MaterialTheme.typography.labelLarge)
+            if (!isInsufficient) {
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        stringResource(R.string.cancel),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-        }
+        },
+        icon = {
+            Surface(
+                modifier = Modifier.size(64.dp),
+                shape = CircleShape,
+                color = if (isInsufficient) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
+                        else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (isInsufficient) Icons.Outlined.Error else Icons.Outlined.FlashOn,
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp),
+                        tint = if (isInsufficient) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        },
+        title = {
+            Text(
+                text = stringResource(R.string.send_maximum),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (!isInsufficient) {
+                    Text(
+                        text = stringResource(R.string.send_all_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 20.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    stringResource(R.string.available_label),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    "${balance.stripTrailingZeros().toPlainString()} $tokenSymbol",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    stringResource(R.string.network_fee_label),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    "- ${fee.stripTrailingZeros().toPlainString()} ${
+                                        when (coin) {
+                                            is BitcoinCoin -> "BTC"
+                                            is SolanaCoin -> "SOL"
+                                            else -> "ETH"
+                                        }
+                                    }",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                            
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant
+                            )
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    stringResource(R.string.maximum_send_label),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        "${maxAmount.stripTrailingZeros().toPlainString()} $tokenSymbol",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    val maxAmountUsd = maxAmount.toDouble() * fiatRate
+                                    Text(
+                                        "≈ $${String.format(Locale.US, "%.2f", maxAmountUsd)} USD",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.insufficient_fee_balance),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        },
+        shape = RoundedCornerShape(28.dp),
+        containerColor = Color.White,
+        tonalElevation = 0.dp
     )
 }
 
@@ -1192,42 +1230,44 @@ fun ErrorMessage(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.weight(1f)
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Error,
-                    contentDescription = stringResource(R.string.error),
+                    contentDescription = null,
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(20.dp)
                 )
-                Text(
-                    text = error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
+
+            Text(
+                text = error,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.weight(1f),
+                fontWeight = FontWeight.Medium,
+                lineHeight = 18.sp
+            )
 
             IconButton(
                 onClick = onDismiss,
@@ -1236,7 +1276,7 @@ fun ErrorMessage(
                 Icon(
                     imageVector = Icons.Outlined.Close,
                     contentDescription = stringResource(R.string.dismiss),
-                    tint = MaterialTheme.colorScheme.error,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -1453,28 +1493,19 @@ fun rememberSendErrorState(
     addressFocused: Boolean,
     amountFocused: Boolean
 ): SendErrorState {
-
-    val showAddressError =
-        !addressFocused && addressTouched && validationResult.addressError != null
-    val showSelfSendError =
-        !addressFocused && addressTouched && validationResult.selfSendError != null
+    val showAddressError = !addressFocused && addressTouched && validationResult.addressError != null
+    val showSelfSendError = !addressFocused && addressTouched && validationResult.selfSendError != null
 
     val showAmountError = !amountFocused && amountTouched && validationResult.amountError != null
     val showBalanceError = !amountFocused && amountTouched && validationResult.balanceError != null
     val showGasError = !amountFocused && amountTouched && validationResult.gasError != null
 
     val activeError = when {
-        !addressFocused && !amountFocused -> {
-            when {
-                showSelfSendError -> validationResult.selfSendError
-                showAddressError -> validationResult.addressError
-                showGasError -> validationResult.gasError
-                showAmountError -> validationResult.amountError
-                showBalanceError -> validationResult.balanceError
-                else -> null
-            }
-        }
-
+        showSelfSendError -> validationResult.selfSendError
+        showAddressError -> validationResult.addressError
+        showGasError -> validationResult.gasError
+        showAmountError -> validationResult.amountError
+        showBalanceError -> validationResult.balanceError
         else -> null
     }
 
@@ -1485,17 +1516,13 @@ fun rememberSendErrorState(
         showSelfSendError = showSelfSendError,
         showGasError = showGasError,
         activeError = activeError,
-        addressErrorMessage = when {
-            showSelfSendError -> validationResult.selfSendError
-            showAddressError -> validationResult.addressError
-            else -> null
-        },
-        amountErrorMessage = when {
-            showGasError -> validationResult.gasError
-            showAmountError -> validationResult.amountError
-            showBalanceError -> validationResult.balanceError
-            else -> null
-        }
+        addressErrorMessage = if (showSelfSendError) validationResult.selfSendError 
+                             else if (showAddressError) validationResult.addressError 
+                             else null,
+        amountErrorMessage = if (showGasError) validationResult.gasError 
+                            else if (showAmountError) validationResult.amountError 
+                            else if (showBalanceError) validationResult.balanceError 
+                            else null
     )
 }
 

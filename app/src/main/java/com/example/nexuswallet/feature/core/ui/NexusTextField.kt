@@ -1,6 +1,8 @@
 package com.example.nexuswallet.feature.core.ui
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -23,6 +25,7 @@ fun NexusTextField(
     trailingIcon: @Composable (() -> Unit)? = null,
     isError: Boolean = false,
     supportingText: String? = null,
+    reserveSupportingTextSpace: Boolean = false,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     singleLine: Boolean = true,
@@ -39,7 +42,18 @@ fun NexusTextField(
         leadingIcon = leadingIcon,
         trailingIcon = trailingIcon,
         isError = isError,
-        supportingText = supportingText?.let { { Text(it) } },
+        supportingText = if (supportingText != null || reserveSupportingTextSpace) {
+            {
+                Text(
+                    text = supportingText ?: "",
+                    modifier = Modifier
+                        .heightIn(min = 16.dp)
+                        .animateContentSize()
+                )
+            }
+        } else {
+            null
+        },
         shape = RoundedCornerShape(16.dp),
         singleLine = singleLine,
         maxLines = maxLines,

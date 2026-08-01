@@ -65,6 +65,9 @@ fun BitcoinSendScreen(
     var addressFocused by remember { mutableStateOf(false) }
     var amountFocused by remember { mutableStateOf(false) }
 
+    var addressHasBeenFocused by remember { mutableStateOf(false) }
+    var amountHasBeenFocused by remember { mutableStateOf(false) }
+
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
@@ -153,12 +156,12 @@ fun BitcoinSendScreen(
                 SendAddressInput(
                     toAddress = state.toAddress,
                     onAddressChange = {
-                        addressTouched = true
                         viewModel.handleEvent(BitcoinSendEvent.UpdateAddress(it))
                     },
                     onFocusChange = { isFocused ->
                         addressFocused = isFocused
-                        if (!isFocused && state.toAddress.isNotEmpty()) {
+                        if (isFocused) addressHasBeenFocused = true
+                        if (!isFocused && addressHasBeenFocused) {
                             addressTouched = true
                         }
                     },
@@ -181,12 +184,12 @@ fun BitcoinSendScreen(
                     coin = coin,
                     fiatRate = state.fiatRate,
                     onAmountChange = {
-                        amountTouched = true
                         viewModel.handleEvent(BitcoinSendEvent.UpdateAmount(it))
                     },
                     onFocusChange = { isFocused ->
                         amountFocused = isFocused
-                        if (!isFocused && state.amount.isNotEmpty()) {
+                        if (isFocused) amountHasBeenFocused = true
+                        if (!isFocused && amountHasBeenFocused) {
                             amountTouched = true
                         }
                     },

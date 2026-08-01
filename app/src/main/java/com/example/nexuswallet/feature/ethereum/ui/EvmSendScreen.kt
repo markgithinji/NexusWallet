@@ -83,6 +83,9 @@ fun EthereumSendScreen(
     var addressFocused by remember { mutableStateOf(false) }
     var amountFocused by remember { mutableStateOf(false) }
 
+    var addressHasBeenFocused by remember { mutableStateOf(false) }
+    var amountHasBeenFocused by remember { mutableStateOf(false) }
+
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     // Initialize ViewModel
@@ -247,12 +250,12 @@ fun EthereumSendScreen(
                 SendAddressInput(
                     toAddress = state.toAddress,
                     onAddressChange = {
-                        addressTouched = true
                         viewModel.onEvent(EVMSendEvent.ToAddressChanged(it))
                     },
                     onFocusChange = { isFocused ->
                         addressFocused = isFocused
-                        if (!isFocused && state.toAddress.isNotEmpty()) {
+                        if (isFocused) addressHasBeenFocused = true
+                        if (!isFocused && addressHasBeenFocused) {
                             addressTouched = true
                         }
                     },
@@ -272,12 +275,12 @@ fun EthereumSendScreen(
                     coin = selectedToken ?: coin,
                     fiatRate = state.fiatRate,
                     onAmountChange = {
-                        amountTouched = true
                         viewModel.onEvent(EVMSendEvent.AmountChanged(it))
                     },
                     onFocusChange = { isFocused ->
                         amountFocused = isFocused
-                        if (!isFocused && state.amount.isNotEmpty()) {
+                        if (isFocused) amountHasBeenFocused = true
+                        if (!isFocused && amountHasBeenFocused) {
                             amountTouched = true
                         }
                     },
