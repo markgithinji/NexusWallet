@@ -9,6 +9,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
+import com.example.nexuswallet.MainViewModel
 import com.example.nexuswallet.feature.navigation.navtype.AuthTargetNavType
 import com.example.nexuswallet.feature.navigation.navtype.CoinNavType
 import com.example.nexuswallet.feature.navigation.navtype.NetworkNavType
@@ -23,12 +24,12 @@ fun Navigation(
     canAuthenticate: Boolean
 ) {
     val navController = rememberNavController()
-    val navigationViewModel: NavigationViewModel = hiltViewModel()
+    val mainViewModel: MainViewModel = hiltViewModel()
 
-    val wallets by navigationViewModel.wallets.collectAsStateWithLifecycle()
-    val isWalletsLoading by navigationViewModel.isWalletsLoading.collectAsStateWithLifecycle()
-    val isAuthenticationRequired by navigationViewModel.isAuthenticationRequired.collectAsStateWithLifecycle()
-    val isRequireAuthForSendEnabled by navigationViewModel.isRequireAuthForSendEnabled.collectAsStateWithLifecycle()
+    val wallets by mainViewModel.wallets.collectAsStateWithLifecycle()
+    val isWalletsLoading by mainViewModel.isWalletsLoading.collectAsStateWithLifecycle()
+    val isAuthenticationRequired by mainViewModel.isAuthenticationRequired.collectAsStateWithLifecycle()
+    val isRequireAuthForSendEnabled by mainViewModel.isRequireAuthForSendEnabled.collectAsStateWithLifecycle()
 
     if (isWalletsLoading) {
         FullScreenLoading(message = "Loading wallets...")
