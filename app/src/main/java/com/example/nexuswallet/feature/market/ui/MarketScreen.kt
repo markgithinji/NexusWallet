@@ -104,7 +104,6 @@ fun MarketScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = scaffoldPadding.calculateTopPadding())
-                    .padding(bottom = padding.calculateBottomPadding())
             ) {
                 // Show disconnected banner if WebSocket is in error/disconnected state and we have data
                 val showBanner = connectionState == ConnectionState.ERROR ||
@@ -129,7 +128,7 @@ fun MarketScreen(
                 Box(modifier = Modifier.weight(1f)) {
                     val mergedPadding = PaddingValues(
                         top = 8.dp,
-                        bottom = scaffoldPadding.calculateBottomPadding() + padding.calculateBottomPadding() + 16.dp,
+                        bottom = padding.calculateBottomPadding() + 16.dp,
                         start = 16.dp,
                         end = 16.dp
                     )

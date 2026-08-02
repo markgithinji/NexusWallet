@@ -12,8 +12,6 @@ import com.example.nexuswallet.feature.settings.domain.repository.SecurityReposi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +19,6 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -41,7 +38,7 @@ class MarketViewModel @Inject constructor(
     private var connectionStateJob: Job? = null
 
     private var currentPage = 1
-    private val perPage = 100
+    private val perPage = 250 // Maximize perPage to 250 to get a stable snapshot
     private var allTokensCache = emptyList<Token>()
     
     // Stable order to prevent list items jumping during live updates
@@ -97,7 +94,8 @@ class MarketViewModel @Inject constructor(
             )) {
                 is Result.Success -> {
                     val firstPage = result.data
-                    allTokensCache = firstPage.distinctBy { it.id }
+                    
+                    allTokensCache = firstPage.sortedBy { it.marketCapRank }.distinctBy { it.id }
                     isInitialDataLoaded = true
                     
                     currentPage = 2
@@ -109,11 +107,9 @@ class MarketViewModel @Inject constructor(
                         )
                     }
                     
-                    // Reset stable order on fresh load
-                    stableTokenIds = allTokensCache.sortedByDescending { it.marketCap }.map { it.id }
+                    stableTokenIds = allTokensCache.map { it.id }
                     applySearchFilter(_uiState.value.searchQuery)
 
-                    // Load next pages in background
                     loadRemainingPages()
                 }
 
@@ -135,22 +131,14 @@ class MarketViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
 
-            // Load pages 2 and 3
-            val remainingPagesJobs = (currentPage..3).map { page ->
-                async {
-                    loadPage(page)
-                }
-            }
-
-            // Wait for all pages to complete
-            remainingPagesJobs.awaitAll()
+            loadPage(2)
 
             _uiState.update { it.copy(isLoadingMore = false) }
         }
     }
 
     private suspend fun loadPage(page: Int) {
-        if (page > 3) return
+        if (page > 2) return
 
         when (val result = coinGeckoRepository.getTopCryptocurrencies(
             perPage = perPage,
@@ -159,12 +147,19 @@ class MarketViewModel @Inject constructor(
         )) {
             is Result.Success -> {
                 val tokens = result.data
+                
                 if (tokens.isNotEmpty()) {
                     val existingIds = allTokensCache.map { it.id }.toSet()
+                    
                     val newTokens = tokens.filter { it.id !in existingIds }
 
                     if (newTokens.isNotEmpty()) {
-                        allTokensCache = (allTokensCache + newTokens).distinctBy { it.id }
+                        allTokensCache = (allTokensCache + newTokens)
+                            .distinctBy { it.id }
+                            .sortedBy { it.marketCapRank }
+                        
+                        stableTokenIds = allTokensCache.map { it.id }
+                        
                         _uiState.update { it.copy(tokens = allTokensCache) }
                         applySearchFilter(_uiState.value.searchQuery)
                     }
@@ -175,13 +170,14 @@ class MarketViewModel @Inject constructor(
                 }
             }
 
-            is Result.Error -> {}
+            is Result.Error -> {
+            }
             Result.Loading -> {}
         }
     }
 
     fun loadNextPage() {
-        if (_uiState.value.isLoadingMore || currentPage > 3) return
+        if (_uiState.value.isLoadingMore || currentPage > 2) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }

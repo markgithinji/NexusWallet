@@ -20,14 +20,17 @@ class CoinGeckoRepositoryImpl @Inject constructor(
         page: Int,
         currency: SupportedCurrency
     ): Result<List<Token>> {
+        val currencyCode = currency.code.lowercase()
+        
         return SafeApiCall.make {
-            coinGeckoApi.getMarkets(
-                vsCurrency = currency.code.lowercase(),
+            val response = coinGeckoApi.getMarkets(
+                vsCurrency = currencyCode,
                 order = "market_cap_desc",
                 perPage = perPage,
                 page = page,
                 sparkline = true
-            ).map { it.toToken() }
+            )
+            response.map { it.toToken() }
         }
     }
 }
