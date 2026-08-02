@@ -136,12 +136,16 @@ fun SecuritySettingsScreen(
         }
     )
 
+    val biometricTitle = stringResource(R.string.biometric_authentication)
+    val biometricSubtitle = stringResource(R.string.clear_all_data)
+    val biometricCancel = stringResource(R.string.cancel)
+
     LaunchedEffect(authRequest) {
         if (authRequest != null) {
             val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle(context.getString(R.string.biometric_authentication))
-                .setSubtitle(context.getString(R.string.clear_all_data))
-                .setNegativeButtonText(context.getString(R.string.cancel))
+                .setTitle(biometricTitle)
+                .setSubtitle(biometricSubtitle)
+                .setNegativeButtonText(biometricCancel)
                 .build()
 
             biometricPrompt?.authenticate(promptInfo)

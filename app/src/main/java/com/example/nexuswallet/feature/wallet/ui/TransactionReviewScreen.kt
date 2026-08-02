@@ -179,11 +179,15 @@ fun TransactionReviewScreen(
         }
     )
 
-    val promptInfo = remember {
+    val biometricTitle = stringResource(R.string.biometric_authentication)
+    val biometricSubtitle = stringResource(R.string.confirm_and_send)
+    val biometricCancel = stringResource(R.string.cancel)
+
+    val promptInfo = remember(biometricTitle, biometricSubtitle, biometricCancel) {
         BiometricPrompt.PromptInfo.Builder()
-            .setTitle(context.getString(R.string.biometric_authentication))
-            .setSubtitle(context.getString(R.string.confirm_and_send))
-            .setNegativeButtonText(context.getString(R.string.cancel))
+            .setTitle(biometricTitle)
+            .setSubtitle(biometricSubtitle)
+            .setNegativeButtonText(biometricCancel)
             .build()
     }
 
