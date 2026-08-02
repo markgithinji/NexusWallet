@@ -3,13 +3,12 @@ package com.example.nexuswallet.feature.settings.ui.auth
 import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.settings.domain.model.AuthType
-import com.example.nexuswallet.feature.settings.domain.usecase.RecordAuthenticationUseCase
-import com.example.nexuswallet.feature.settings.domain.usecase.VerifyPinUseCase
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.settings.domain.usecase.IsBiometricEnabledUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.IsPinSetUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.RecordAuthenticationUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.VerifyPinUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,10 +21,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-sealed interface AuthUiEffect {
-    data object Authenticated : AuthUiEffect
-}
 
 @HiltViewModel
 class AuthenticationViewModel @Inject constructor(

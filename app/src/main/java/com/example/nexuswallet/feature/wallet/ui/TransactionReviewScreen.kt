@@ -5,9 +5,9 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
-import androidx.activity.compose.LocalActivity
-import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricPrompt
+import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
+import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -146,51 +146,36 @@ fun TransactionReviewScreen(
     val solAuthRequest by solanaViewModel.authRequest.collectAsStateWithLifecycle()
     val btcAuthRequest by bitcoinReviewViewModel.authRequest.collectAsStateWithLifecycle()
 
-    val activity = LocalActivity.current as? AppCompatActivity
+    val biometricPrompt = rememberBiometricPrompt(
+        onSuccess = { result ->
+            val onSuccess: (String) -> Unit = { hash ->
+                txHash = hash
+                txStatus = context.getString(R.string.transaction_sent)
+                isSending = false
+            }
 
-    val biometricPrompt = remember(activity) {
-        if (activity == null) return@remember null
-        val executor = ContextCompat.getMainExecutor(context)
-        BiometricPrompt(
-            activity,
-            executor,
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    val onSuccess: (String) -> Unit = { hash ->
-                        txHash = hash
-                        txStatus = context.getString(R.string.transaction_sent)
-                        isSending = false
+            when (coin) {
+                is EVMToken -> ethereumViewModel.completeSendAfterBiometric(result, onSuccess)
+                is SolanaCoin -> solanaViewModel.completeSendAfterBiometric(result, onSuccess)
+                is BitcoinCoin -> bitcoinReviewViewModel.completeSendAfterBiometric(result, onSuccess)
+            }
+        },
+        onError = { errorCode, errString ->
+            // Map common cancellation codes to a more descriptive internal message or null
+            sendError = if (isBiometricUserCancel(errorCode)) {
+                context.getString(R.string.auth_canceled)
+            } else {
+                when (errorCode) {
+                    BiometricPrompt.ERROR_LOCKOUT,
+                    BiometricPrompt.ERROR_LOCKOUT_PERMANENT -> {
+                        errString.toString() // Keep system message for lockouts
                     }
-
-                    when (coin) {
-                        is EVMToken -> ethereumViewModel.completeSendAfterBiometric(result, onSuccess)
-                        is SolanaCoin -> solanaViewModel.completeSendAfterBiometric(result, onSuccess)
-                        is BitcoinCoin -> bitcoinReviewViewModel.completeSendAfterBiometric(result, onSuccess)
-                    }
-                }
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    // Map common cancellation codes to a more descriptive internal message or null
-                    sendError = when (errorCode) {
-                        BiometricPrompt.ERROR_USER_CANCELED,
-                        BiometricPrompt.ERROR_NEGATIVE_BUTTON -> {
-                            context.getString(R.string.auth_canceled)
-                        }
-                        BiometricPrompt.ERROR_LOCKOUT,
-                        BiometricPrompt.ERROR_LOCKOUT_PERMANENT -> {
-                            errString.toString() // Keep system message for lockouts
-                        }
-                        else -> errString.toString()
-                    }
-                    isSending = false
-                }
-
-                override fun onAuthenticationFailed() {
-                    // Feedback handled by system dialog
+                    else -> errString.toString()
                 }
             }
-        )
-    }
+            isSending = false
+        }
+    )
 
     val promptInfo = remember {
         BiometricPrompt.PromptInfo.Builder()

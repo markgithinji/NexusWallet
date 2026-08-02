@@ -1,12 +1,10 @@
 package com.example.nexuswallet.feature.settings.ui.auth
 
-import android.hardware.biometrics.BiometricPrompt.BIOMETRIC_ERROR_CANCELED
-import android.hardware.biometrics.BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED
-import androidx.activity.compose.LocalActivity
-import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
+import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
+import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -77,41 +75,25 @@ fun AuthenticationRequiredScreen(
     description: String = "Please authenticate to access this feature",
     viewModel: AuthenticationViewModel = hiltViewModel()
 ) {
-    val activity = LocalActivity.current as? AppCompatActivity
-    val context = LocalContext.current
-
     val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
     val showPinDialog by viewModel.showPinDialog.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
     val isPinAvailable by viewModel.isPinAvailable.collectAsStateWithLifecycle()
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsStateWithLifecycle()
 
-    val biometricPrompt = remember(activity) {
-        if (activity == null) return@remember null
-
-        val executor = ContextCompat.getMainExecutor(context)
-        BiometricPrompt(
-            activity,
-            executor,
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    viewModel.onBiometricSuccess(result)
-                }
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    if (errorCode != BIOMETRIC_ERROR_CANCELED &&
-                        errorCode != BIOMETRIC_ERROR_USER_CANCELED
-                    ) {
-                        viewModel.setErrorMessage(errString.toString())
-                    }
-                }
-
-                override fun onAuthenticationFailed() {
-                    viewModel.setErrorMessage("Authentication failed. Please try again.")
-                }
+    val biometricPrompt = rememberBiometricPrompt(
+        onSuccess = { result ->
+            viewModel.onBiometricSuccess(result)
+        },
+        onError = { errorCode, errString ->
+            if (!isBiometricUserCancel(errorCode)) {
+                viewModel.setErrorMessage(errString.toString())
             }
-        )
-    }
+        },
+        onFailed = {
+            viewModel.setErrorMessage("Authentication failed. Please try again.")
+        }
+    )
 
     val promptInfo = remember {
         BiometricPrompt.PromptInfo.Builder()

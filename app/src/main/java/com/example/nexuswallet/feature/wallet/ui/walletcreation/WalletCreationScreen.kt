@@ -1,8 +1,8 @@
 package com.example.nexuswallet.feature.wallet.ui.walletcreation
 
-import androidx.activity.compose.LocalActivity
-import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricPrompt
+import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
+import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.togetherWith
@@ -74,30 +74,16 @@ fun WalletCreationScreen(
     val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
     val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
 
-    val context = LocalContext.current
-    val activity = LocalActivity.current as? AppCompatActivity
-
-    val biometricPrompt = remember(activity) {
-        if (activity == null) return@remember null
-        val executor = ContextCompat.getMainExecutor(context)
-        BiometricPrompt(
-            activity,
-            executor,
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    viewModel.completeCreateAfterBiometric(result)
-                }
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    if (errorCode != BiometricPrompt.ERROR_USER_CANCELED &&
-                        errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON
-                    ) {
-                        viewModel.setErrorMessage(errString.toString())
-                    }
-                }
+    val biometricPrompt = rememberBiometricPrompt(
+        onSuccess = { result ->
+            viewModel.completeCreateAfterBiometric(result)
+        },
+        onError = { errorCode, errString ->
+            if (!isBiometricUserCancel(errorCode)) {
+                viewModel.setErrorMessage(errString.toString())
             }
-        )
-    }
+        }
+    )
 
     val biometricTitle = stringResource(R.string.biometric_authentication)
     val biometricSubtitle = stringResource(R.string.secure_your_wallet)

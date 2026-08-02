@@ -1,9 +1,9 @@
 package com.example.nexuswallet.feature.wallet.ui.backup
 
-import androidx.activity.compose.LocalActivity
-import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
+import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,7 +38,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
@@ -56,30 +55,16 @@ fun BackupScreen(
     val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
     val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
 
-    val context = LocalContext.current
-    val activity = LocalActivity.current as? AppCompatActivity
-
-    val biometricPrompt = remember(activity) {
-        if (activity == null) return@remember null
-        val executor = ContextCompat.getMainExecutor(context)
-        BiometricPrompt(
-            activity,
-            executor,
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    viewModel.onBiometricSuccess(walletId, result)
-                }
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    if (errorCode != BiometricPrompt.ERROR_USER_CANCELED &&
-                        errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON
-                    ) {
-                        viewModel.setErrorMessage(errString.toString())
-                    }
-                }
+    val biometricPrompt = rememberBiometricPrompt(
+        onSuccess = { result ->
+            viewModel.onBiometricSuccess(walletId, result)
+        },
+        onError = { errorCode, errString ->
+            if (!isBiometricUserCancel(errorCode)) {
+                viewModel.setErrorMessage(errString.toString())
             }
-        )
-    }
+        }
+    )
 
     val biometricTitle = stringResource(R.string.biometric_authentication)
     val biometricSubtitle = stringResource(R.string.reveal_recovery_phrase_subtitle)
