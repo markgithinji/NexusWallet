@@ -9,11 +9,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.settings.domain.usecase.ClearAllSecurityDataUseCase
-import com.example.nexuswallet.feature.settings.domain.usecase.ClearPinUseCase
-import com.example.nexuswallet.feature.settings.domain.usecase.GetAuthStatusUseCase
-import com.example.nexuswallet.feature.settings.domain.usecase.SetBiometricEnabledUseCase
-import com.example.nexuswallet.feature.settings.domain.usecase.SetPinUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -27,7 +23,10 @@ class SecuritySettingsViewModel @Inject constructor(
     private val securityRepository: SecurityRepository,
     private val setPinUseCase: SetPinUseCase,
     private val clearPinUseCase: ClearPinUseCase,
-    private val clearAllSecurityDataUseCase: ClearAllSecurityDataUseCase
+    private val verifyPinUseCase: VerifyPinUseCase,
+    private val clearAllSecurityDataUseCase: ClearAllSecurityDataUseCase,
+    private val createBackupUseCase: CreateBackupUseCase,
+    private val restoreBackupUseCase: RestoreBackupUseCase
 ) : ViewModel() {
 
     // UI State
@@ -45,6 +44,9 @@ class SecuritySettingsViewModel @Inject constructor(
     private val _showPinChangeDialog = MutableStateFlow(false)
     val showPinChangeDialog: StateFlow<Boolean> = _showPinChangeDialog.asStateFlow()
 
+    private val _showPinVerifyDialog = MutableStateFlow(false)
+    val showPinVerifyDialog: StateFlow<Boolean> = _showPinVerifyDialog.asStateFlow()
+
     private val _showClearAllDataDialog = MutableStateFlow(false)
     val showClearAllDataDialog: StateFlow<Boolean> = _showClearAllDataDialog.asStateFlow()
 
@@ -60,6 +62,9 @@ class SecuritySettingsViewModel @Inject constructor(
     // Operation state for loading overlays
     private val _operationState = MutableStateFlow<SecurityOperation>(SecurityOperation.IDLE)
     val operationState: StateFlow<SecurityOperation> = _operationState.asStateFlow()
+
+    private var pinVerifyPurpose: PinVerifyPurpose? = null
+    private var pendingRestoreData: ByteArray? = null
 
     init {
         loadSecurityStatus()
@@ -167,21 +172,91 @@ class SecuritySettingsViewModel @Inject constructor(
         }
     }
 
-    fun createBackup() {
-        viewModelScope.launch {
-            _operationState.value = SecurityOperation.BACKING_UP
-            // TODO: Implement backup logic
-            delay(2000)
-            _operationState.value = SecurityOperation.IDLE
+    private fun checkPinAndProceed(action: () -> Unit) {
+        val state = _uiState.value
+        if (state is Result.Success) {
+            if (state.data.isPinSet) {
+                action()
+            } else {
+                viewModelScope.launch {
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar("Please set a PIN first to secure your backup"))
+                }
+            }
         }
     }
 
-    fun restoreBackup() {
+    fun handleCreateBackupClick() {
+        checkPinAndProceed {
+            pinVerifyPurpose = PinVerifyPurpose.BACKUP
+            _showPinVerifyDialog.value = true
+            _pinSetupError.value = null
+        }
+    }
+
+    fun handleRestoreBackupClick() {
+        checkPinAndProceed {
+            viewModelScope.launch {
+                _uiEffect.emit(SecurityUiEffect.SelectBackupFile)
+            }
+        }
+    }
+
+    fun onBackupFileSelected(data: ByteArray) {
+        pendingRestoreData = data
+        pinVerifyPurpose = PinVerifyPurpose.RESTORE
+        _showPinVerifyDialog.value = true
+        _pinSetupError.value = null
+    }
+
+    fun onPinVerified(pin: String) {
         viewModelScope.launch {
-            _operationState.value = SecurityOperation.RESTORING
-            // TODO: Implement restore logic
-            delay(2000)
+            _pinSetupError.value = null
+            
+            val verifyResult = verifyPinUseCase(pin)
+            if (verifyResult is Result.Success && verifyResult.data) {
+                _showPinVerifyDialog.value = false
+                executeBackupOperation(pin)
+            } else {
+                _pinSetupError.value = "Incorrect PIN"
+            }
+        }
+    }
+
+    private fun executeBackupOperation(pin: String) {
+        viewModelScope.launch {
+            when (pinVerifyPurpose) {
+                PinVerifyPurpose.BACKUP -> {
+                    _operationState.value = SecurityOperation.BACKING_UP
+                    when (val result = createBackupUseCase(pin)) {
+                        is Result.Success -> {
+                            _uiEffect.emit(SecurityUiEffect.SaveBackupFile(
+                                data = result.data,
+                                fileName = "nexus_backup_${System.currentTimeMillis()}.bin"
+                            ))
+                        }
+                        is Result.Error -> _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                        else -> {}
+                    }
+                }
+                PinVerifyPurpose.RESTORE -> {
+                    val data = pendingRestoreData
+                    if (data != null) {
+                        _operationState.value = SecurityOperation.RESTORING
+                        when (val result = restoreBackupUseCase(data, pin)) {
+                            is Result.Success -> {
+                                refreshAuthStatus()
+                                _uiEffect.emit(SecurityUiEffect.ShowSnackbar("Backup restored successfully"))
+                            }
+                            is Result.Error -> _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                            else -> {}
+                        }
+                    }
+                }
+                null -> {}
+            }
             _operationState.value = SecurityOperation.IDLE
+            pinVerifyPurpose = null
+            pendingRestoreData = null
         }
     }
 
@@ -301,6 +376,7 @@ class SecuritySettingsViewModel @Inject constructor(
     fun cancelPinSetup() {
         _showPinSetupDialog.value = false
         _showPinChangeDialog.value = false
+        _showPinVerifyDialog.value = false
         _pinSetupError.value = null
     }
 

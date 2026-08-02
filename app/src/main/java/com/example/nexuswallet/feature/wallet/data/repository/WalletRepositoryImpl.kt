@@ -44,6 +44,10 @@ class WalletRepositoryImpl @Inject constructor(
         walletDataSource.updateWalletName(walletId, newName)
     }
 
+    override suspend fun saveWallet(wallet: Wallet) {
+        walletDataSource.saveWallet(wallet)
+    }
+
     override suspend fun clearAllData() {
         walletDatabase.clearAllTables()
     }

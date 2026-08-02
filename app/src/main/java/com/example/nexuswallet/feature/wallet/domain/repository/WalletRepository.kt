@@ -13,5 +13,6 @@ interface WalletRepository {
     fun observeWalletBalance(walletId: String): Flow<WalletBalance?>
     fun observeAllBalances(): Flow<Map<String, WalletBalance>>
     suspend fun updateWalletName(walletId: String, newName: String)
+    suspend fun saveWallet(wallet: Wallet)
     suspend fun clearAllData()
 }

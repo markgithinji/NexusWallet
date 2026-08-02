@@ -1,6 +1,8 @@
 package com.example.nexuswallet.feature.settings.data.di
 
+import com.example.nexuswallet.feature.settings.data.repository.BackupRepositoryImpl
 import com.example.nexuswallet.feature.settings.data.repository.SecurityRepositoryImpl
+import com.example.nexuswallet.feature.settings.domain.repository.BackupRepository
 import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import dagger.Binds
 import dagger.Module
@@ -17,4 +19,10 @@ abstract class SettingsDataModule {
     abstract fun bindSecurityRepository(
         impl: SecurityRepositoryImpl
     ): SecurityRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindBackupRepository(
+        impl: BackupRepositoryImpl
+    ): BackupRepository
 }

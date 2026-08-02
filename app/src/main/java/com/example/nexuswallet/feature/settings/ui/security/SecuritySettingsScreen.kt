@@ -1,5 +1,8 @@
 package com.example.nexuswallet.feature.settings.ui.security
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -50,8 +53,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,6 +73,7 @@ import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
 import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.settings.ui.auth.PinEntryDialog
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.warning
@@ -83,6 +89,7 @@ fun SecuritySettingsScreen(
     val operationState by viewModel.operationState.collectAsStateWithLifecycle()
     val showPinSetupDialog by viewModel.showPinSetupDialog.collectAsStateWithLifecycle()
     val showPinChangeDialog by viewModel.showPinChangeDialog.collectAsStateWithLifecycle()
+    val showPinVerifyDialog by viewModel.showPinVerifyDialog.collectAsStateWithLifecycle()
     val showClearAllDataDialog by viewModel.showClearAllDataDialog.collectAsStateWithLifecycle()
     val clearAllConfirmationText by viewModel.clearAllConfirmationText.collectAsStateWithLifecycle()
     val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
@@ -91,6 +98,46 @@ fun SecuritySettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    var pendingBackupData by remember { mutableStateOf<ByteArray?>(null) }
+
+    val saveBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        uri?.let {
+            scope.launch {
+                try {
+                    context.contentResolver.openOutputStream(it)?.use { stream ->
+                        pendingBackupData?.let { data -> stream.write(data) }
+                    }
+                    snackbarHostState.showSnackbar("Backup saved successfully")
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("Failed to save backup: ${e.message}")
+                } finally {
+                    pendingBackupData = null
+                }
+            }
+        }
+    }
+
+    val selectBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            scope.launch {
+                try {
+                    val data = context.contentResolver.openInputStream(it)?.use { stream ->
+                        stream.readBytes()
+                    }
+                    if (data != null) {
+                        viewModel.onBackupFileSelected(data)
+                    }
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("Failed to read backup: ${e.message}")
+                }
+            }
+        }
+    }
 
     val biometricPrompt = rememberBiometricPrompt(
         onSuccess = { _ -> viewModel.onClearAllAuthSuccess() },
@@ -121,6 +168,13 @@ fun SecuritySettingsScreen(
                 is SecurityUiEffect.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(effect.message)
                 }
+                is SecurityUiEffect.SaveBackupFile -> {
+                    pendingBackupData = effect.data
+                    saveBackupLauncher.launch(effect.fileName)
+                }
+                SecurityUiEffect.SelectBackupFile -> {
+                    selectBackupLauncher.launch(arrayOf("*/*"))
+                }
             }
         }
     }
@@ -132,6 +186,15 @@ fun SecuritySettingsScreen(
         subtitle = stringResource(R.string.pin_digits_hint, 6),
         errorMessage = pinSetupError,
         onPinSet = viewModel::setNewPin,
+        onDismiss = viewModel::cancelPinSetup
+    )
+
+    // PIN Verification Dialog for Backup/Restore
+    PinEntryDialog(
+        showDialog = showPinVerifyDialog,
+        title = stringResource(R.string.confirm_pin_title),
+        subtitle = stringResource(R.string.confirm_pin_subtitle),
+        onPinEntered = viewModel::onPinVerified,
         onDismiss = viewModel::cancelPinSetup
     )
 
@@ -359,8 +422,8 @@ private fun SecuritySettingsContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         BackupSection(
-            onCreateBackup = viewModel::createBackup,
-            onRestoreBackup = viewModel::restoreBackup,
+            onCreateBackup = viewModel::handleCreateBackupClick,
+            onRestoreBackup = viewModel::handleRestoreBackupClick,
             onDeleteBackup = viewModel::deleteBackup
         )
 
@@ -768,6 +831,7 @@ private fun SecurityOperationOverlay(operationState: SecurityOperation) {
                             SecurityOperation.BACKING_UP -> stringResource(R.string.creating_backup)
                             SecurityOperation.RESTORING -> stringResource(R.string.restoring)
                             SecurityOperation.UPDATING -> stringResource(R.string.updating)
+                            else -> ""
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,

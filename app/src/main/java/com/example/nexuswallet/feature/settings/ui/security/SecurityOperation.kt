@@ -6,3 +6,7 @@ sealed class SecurityOperation {
     object BACKING_UP : SecurityOperation()
     object RESTORING : SecurityOperation()
 }
+
+enum class PinVerifyPurpose {
+    BACKUP, RESTORE
+}
