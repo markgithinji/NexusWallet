@@ -1,5 +1,7 @@
 package com.example.nexuswallet.feature.wallet.data.local.datasource
 
+import androidx.room.withTransaction
+import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.data.local.dao.BitcoinCoinDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.EVMTokenDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.SPLTokenDao
@@ -10,12 +12,14 @@ import com.example.nexuswallet.feature.wallet.data.local.mapper.toEntity
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class WalletDataSourceImpl @Inject constructor(
+    private val walletDatabase: WalletDatabase,
     private val walletDao: WalletDao,
     private val bitcoinCoinDao: BitcoinCoinDao,
     private val solanaCoinDao: SolanaCoinDao,
@@ -24,22 +28,24 @@ class WalletDataSourceImpl @Inject constructor(
 ) : WalletDataSource {
 
     override suspend fun saveWallet(wallet: Wallet) {
-        walletDao.insert(wallet.toEntity())
+        walletDatabase.withTransaction {
+            walletDao.insert(wallet.toEntity())
 
-        wallet.bitcoinCoins.forEach { coin ->
-            bitcoinCoinDao.insert(coin.toEntity(wallet.id))
-        }
-
-        wallet.solanaCoins.forEach { coin ->
-            val solanaCoinEntity = coin.toEntity(wallet.id)
-            solanaCoinDao.insert(solanaCoinEntity)
-            coin.splTokens.forEach { splToken ->
-                splTokenDao.insert(splToken.toEntity(solanaCoinEntity.id))
+            wallet.bitcoinCoins.forEach { coin ->
+                bitcoinCoinDao.insert(coin.toEntity(wallet.id))
             }
-        }
 
-        wallet.evmTokens.forEach { token ->
-            evmTokenDao.insert(token.toEntity(wallet.id))
+            wallet.solanaCoins.forEach { coin ->
+                val solanaCoinEntity = coin.toEntity(wallet.id)
+                solanaCoinDao.insert(solanaCoinEntity)
+                coin.splTokens.forEach { splToken ->
+                    splTokenDao.insert(splToken.toEntity(solanaCoinEntity.id))
+                }
+            }
+
+            wallet.evmTokens.forEach { token ->
+                evmTokenDao.insert(token.toEntity(wallet.id))
+            }
         }
     }
 
@@ -70,29 +76,22 @@ class WalletDataSourceImpl @Inject constructor(
     }
 
     override fun loadAllWallets(): Flow<List<Wallet>> {
-        return walletDao.getAll().map { entities ->
-            entities.map { entity ->
-                val bitcoinCoins = bitcoinCoinDao.getByWalletId(entity.id)
-                    .map { it.toDomain() }
-
-                val solanaCoins = solanaCoinDao.getByWalletId(entity.id)
-                    .map { solanaEntity ->
-                        solanaEntity.toDomain(
-                            splTokens = splTokenDao.getBySolanaCoinId(solanaEntity.id)
-                                .map { splEntity ->
-                                    splEntity.toDomain()
-                                }
-                        )
-                    }
-
-                val evmTokens = evmTokenDao.getByWalletId(entity.id).map { tokenEntity ->
-                    tokenEntity.toDomain()
-                }
-
+        return combine(
+            walletDao.getAll(),
+            bitcoinCoinDao.observeAll(),
+            solanaCoinDao.observeAll(),
+            evmTokenDao.observeAll(),
+            splTokenDao.observeAll()
+        ) { walletEntities, btc, sol, evm, spl ->
+            walletEntities.map { entity ->
                 entity.toDomain(
-                    bitcoinCoins = bitcoinCoins,
-                    solanaCoins = solanaCoins,
-                    evmTokens = evmTokens
+                    bitcoinCoins = btc.filter { it.walletId == entity.id }.map { it.toDomain() },
+                    solanaCoins = sol.filter { it.walletId == entity.id }.map { solEntity ->
+                        solEntity.toDomain(
+                            splTokens = spl.filter { it.solanaCoinId == solEntity.id }.map { it.toDomain() }
+                        )
+                    },
+                    evmTokens = evm.filter { it.walletId == entity.id }.map { it.toDomain() }
                 )
             }
         }

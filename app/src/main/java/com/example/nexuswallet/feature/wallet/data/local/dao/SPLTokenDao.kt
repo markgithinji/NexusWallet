@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.nexuswallet.feature.wallet.data.local.entity.SPLTokenEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SPLTokenDao {
@@ -17,6 +18,9 @@ interface SPLTokenDao {
 
     @Query("SELECT * FROM spl_tokens WHERE solanaCoinId = :solanaCoinId")
     suspend fun getBySolanaCoinId(solanaCoinId: String): List<SPLTokenEntity>
+
+    @Query("SELECT * FROM spl_tokens")
+    fun observeAll(): Flow<List<SPLTokenEntity>>
 
     @Query("SELECT * FROM spl_tokens WHERE id = :tokenId")
     suspend fun getById(tokenId: String): SPLTokenEntity?

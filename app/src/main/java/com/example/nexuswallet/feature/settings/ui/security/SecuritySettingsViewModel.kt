@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
@@ -15,6 +16,12 @@ import com.example.nexuswallet.feature.settings.domain.repository.BackupReposito
 import com.example.nexuswallet.feature.settings.domain.usecase.*
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
+import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
+import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
+import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -32,7 +39,12 @@ class SecuritySettingsViewModel @Inject constructor(
     private val clearAllSecurityDataUseCase: ClearAllSecurityDataUseCase,
     private val createBackupUseCase: CreateBackupUseCase,
     private val restoreBackupUseCase: RestoreBackupUseCase,
-    private val backupRepository: BackupRepository
+    private val backupRepository: BackupRepository,
+    private val walletRepository: WalletRepository,
+    private val syncBitcoinBalanceUseCase: SyncBitcoinBalanceUseCase,
+    private val syncSolanaBalanceUseCase: SyncSolanaBalanceUseCase,
+    private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
+    private val getSimplePricesUseCase: GetSimplePricesUseCase
 ) : ViewModel() {
 
     // UI State
@@ -364,6 +376,12 @@ class SecuritySettingsViewModel @Inject constructor(
                         setPinUseCase(pin)
                     }
                     refreshAuthStatus()
+                    
+                    // Trigger balance sync for restored wallets
+                    launch {
+                        triggerRestoredBalancesSync(bundle, selection)
+                    }
+
                     _uiEffect.emit(SecurityUiEffect.ShowSnackbar("Backup restored successfully"))
                     _uiEffect.emit(SecurityUiEffect.RestoreSuccess)
                 }
@@ -376,6 +394,53 @@ class SecuritySettingsViewModel @Inject constructor(
             _operationState.value = SecurityOperation.IDLE
             _decryptedBundle.value = null
             pendingBackupPin = null
+        }
+    }
+
+    private suspend fun triggerRestoredBalancesSync(bundle: BackupBundle, selection: RestoreSelection) {
+        val selectedWallets = bundle.wallets.filter { selection.selectedWallets.contains(it.id) }
+        if (selectedWallets.isEmpty()) return
+
+        val allSymbols = selectedWallets.flatMap { wallet ->
+            wallet.bitcoinCoins.map { it.symbol } +
+            wallet.solanaCoins.map { it.symbol } +
+            wallet.evmTokens.map { it.symbol }
+        }.distinct()
+
+        val currency = securityRepository.observeSelectedCurrency().first()
+        val pricesResult = getSimplePricesUseCase(allSymbols, currency)
+        val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
+
+        selectedWallets.forEach { wallet ->
+            val btcBalances = mutableMapOf<com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork, com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance>()
+            val solBalances = mutableMapOf<com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork, com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance>()
+            val evmList = mutableListOf<com.example.nexuswallet.feature.wallet.domain.model.EVMBalance>()
+
+            wallet.bitcoinCoins.forEach { coin ->
+                val (balance, _) = syncBitcoinBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
+                balance?.let { btcBalances[coin.network] = it }
+            }
+
+            wallet.solanaCoins.forEach { coin ->
+                val (balance, _) = syncSolanaBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
+                balance?.let { solBalances[coin.network] = it }
+            }
+
+            if (wallet.evmTokens.isNotEmpty()) {
+                val (balances, _) = syncEVMBalancesUseCase(wallet.id, wallet.evmTokens, prices, saveToCache = false)
+                evmList.addAll(balances)
+            }
+
+            if (btcBalances.isNotEmpty() || solBalances.isNotEmpty() || evmList.isNotEmpty()) {
+                val newBalance = WalletBalance(
+                    walletId = wallet.id,
+                    lastUpdated = System.currentTimeMillis(),
+                    bitcoinBalances = btcBalances,
+                    solanaBalances = solBalances,
+                    evmBalances = evmList
+                )
+                walletRepository.saveWalletBalance(newBalance)
+            }
         }
     }
 
