@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.market.data.di
 
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.market.data.remote.BinanceWebSocketImpl
 import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
 import com.example.nexuswallet.feature.market.data.remote.CoinStatsApi
@@ -14,6 +13,7 @@ import com.example.nexuswallet.feature.market.domain.repository.CoinGeckoReposit
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.market.domain.repository.WebSocketRepository
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -29,102 +29,86 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object MarketModule {
+abstract class MarketModule {
 
-    private const val COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3/"
-    private const val COINSTATS_BASE_URL = "https://openapiv1.coinstats.app/"
-
-    @Provides
+    @Binds
     @Singleton
-    fun provideBinanceWebSocket(
-        okHttpClient: OkHttpClient,
-        json: Json,
-        @IoDispatcher ioDispatcher: CoroutineDispatcher
-    ): BinanceWebSocket {
-        return BinanceWebSocketImpl(
-            okHttpClient,
-            json,
-            ioDispatcher
-        )
-    }
+    abstract fun bindCoinGeckoRepository(
+        impl: CoinGeckoRepositoryImpl
+    ): CoinGeckoRepository
 
-    @Provides
+    @Binds
     @Singleton
-    @Named("coingecko_okhttp")
-    fun provideCoinGeckoOkHttpClient(
-        coinGeckoInterceptor: CoinGeckoInterceptor,
-        okHttpClient: OkHttpClient
-    ): OkHttpClient {
-        return okHttpClient.newBuilder()
-            .addInterceptor(coinGeckoInterceptor)
-            .build()
-    }
+    abstract fun bindWebSocketRepository(
+        impl: WebSocketRepositoryImpl
+    ): WebSocketRepository
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideCoinGeckoApi(
-        @Named("coingecko_okhttp") client: OkHttpClient,
-        json: Json
-    ): CoinGeckoApi {
-        return Retrofit.Builder()
-            .baseUrl(COINGECKO_BASE_URL)
-            .client(client)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-            .build()
-            .create(CoinGeckoApi::class.java)
-    }
+    abstract fun bindMarketRepository(
+        impl: MarketRepositoryImpl
+    ): MarketRepository
 
-    @Provides
+    @Binds
     @Singleton
-    @Named("coinstats_okhttp")
-    fun provideCoinStatsOkHttpClient(
-        coinStatsInterceptor: CoinStatsInterceptor,
-        okHttpClient: OkHttpClient
-    ): OkHttpClient {
-        return okHttpClient.newBuilder()
-            .addInterceptor(coinStatsInterceptor)
-            .build()
-    }
+    abstract fun bindBinanceWebSocket(
+        impl: BinanceWebSocketImpl
+    ): BinanceWebSocket
 
-    @Provides
-    @Singleton
-    fun provideCoinStatsApi(
-        @Named("coinstats_okhttp") client: OkHttpClient,
-        json: Json
-    ): CoinStatsApi {
-        return Retrofit.Builder()
-            .baseUrl(COINSTATS_BASE_URL)
-            .client(client)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-            .build()
-            .create(CoinStatsApi::class.java)
-    }
+    companion object {
+        private const val COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3/"
+        private const val COINSTATS_BASE_URL = "https://openapiv1.coinstats.app/"
 
-    @Provides
-    @Singleton
-    fun provideCoinGeckoRepository(
-        coinGeckoApi: CoinGeckoApi
-    ): CoinGeckoRepository {
-        return CoinGeckoRepositoryImpl(coinGeckoApi)
-    }
+        @Provides
+        @Singleton
+        @Named("coingecko_okhttp")
+        fun provideCoinGeckoOkHttpClient(
+            coinGeckoInterceptor: CoinGeckoInterceptor,
+            okHttpClient: OkHttpClient
+        ): OkHttpClient {
+            return okHttpClient.newBuilder()
+                .addInterceptor(coinGeckoInterceptor)
+                .build()
+        }
 
-    @Provides
-    @Singleton
-    fun provideWebSocketRepository(
-        binanceWebSocket: BinanceWebSocket
-    ): WebSocketRepository {
-        return WebSocketRepositoryImpl(binanceWebSocket)
-    }
+        @Provides
+        @Singleton
+        fun provideCoinGeckoApi(
+            @Named("coingecko_okhttp") client: OkHttpClient,
+            json: Json
+        ): CoinGeckoApi {
+            return Retrofit.Builder()
+                .baseUrl(COINGECKO_BASE_URL)
+                .client(client)
+                .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+                .build()
+                .create(CoinGeckoApi::class.java)
+        }
 
-    @Provides
-    @Singleton
-    fun provideMarketRepository(
-        coinGeckoApi: CoinGeckoApi,
-        coinStatsApi: CoinStatsApi
-    ): MarketRepository {
-        return MarketRepositoryImpl(
-            coinGeckoApi,
-            coinStatsApi
-        )
+        @Provides
+        @Singleton
+        @Named("coinstats_okhttp")
+        fun provideCoinStatsOkHttpClient(
+            coinStatsInterceptor: CoinStatsInterceptor,
+            okHttpClient: OkHttpClient
+        ): OkHttpClient {
+            return okHttpClient.newBuilder()
+                .addInterceptor(coinStatsInterceptor)
+                .build()
+        }
+
+        @Provides
+        @Singleton
+        fun provideCoinStatsApi(
+            @Named("coinstats_okhttp") client: OkHttpClient,
+            json: Json
+        ): CoinStatsApi {
+            return Retrofit.Builder()
+                .baseUrl(COINSTATS_BASE_URL)
+                .client(client)
+                .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+                .build()
+                .create(CoinStatsApi::class.java)
+        }
     }
 }

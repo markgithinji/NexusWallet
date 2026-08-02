@@ -8,6 +8,7 @@ import com.example.nexuswallet.feature.solana.data.repository.SolanaTransactionR
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactionRepository
 import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,115 +23,99 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
 import com.example.nexuswallet.BuildConfig
-import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
-import kotlinx.coroutines.CoroutineDispatcher
 
 @Module
 @InstallIn(SingletonComponent::class)
-object SolanaDataModule {
+abstract class SolanaDataModule {
 
-    @Provides
+    @Binds
     @Singleton
-    @Named("helius_api_key")
-    fun provideHeliusApiKey(): String {
-        return BuildConfig.HELIUS_API_KEY
-    }
+    abstract fun bindSolanaBlockchainRepository(
+        impl: SolanaBlockchainRepositoryImpl
+    ): SolanaBlockchainRepository
 
-    @Provides
+    @Binds
     @Singleton
-    @Named("helius_okhttp")
-    fun provideHeliusOkHttpClient(
-        heliusInterceptor: HeliusInterceptor,
-        okHttpClient: OkHttpClient
-    ): OkHttpClient {
-        return okHttpClient.newBuilder()
-            .addInterceptor(heliusInterceptor)
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .build()
-    }
+    abstract fun bindSolanaTransactionRepository(
+        impl: SolanaTransactionRepositoryImpl
+    ): SolanaTransactionRepository
 
-    @Provides
-    @Singleton
-    @Named("helius_rpc_devnet")
-    fun provideHeliusRpcDevnetConnection(
-        @Named("helius_api_key") apiKey: String
-    ): Connection {
-        val url = "https://devnet.helius-rpc.com/?api-key=$apiKey"
-        return Connection(url)
-    }
+    companion object {
+        @Provides
+        @Singleton
+        @Named("helius_api_key")
+        fun provideHeliusApiKey(): String {
+            return BuildConfig.HELIUS_API_KEY
+        }
 
-    @Provides
-    @Singleton
-    @Named("helius_rpc_mainnet")
-    fun provideHeliusRpcMainnetConnection(
-        @Named("helius_api_key") apiKey: String
-    ): Connection {
-        val url = "https://mainnet.helius-rpc.com/?api-key=$apiKey"
-        return Connection(url)
-    }
+        @Provides
+        @Singleton
+        @Named("helius_okhttp")
+        fun provideHeliusOkHttpClient(
+            heliusInterceptor: HeliusInterceptor,
+            okHttpClient: OkHttpClient
+        ): OkHttpClient {
+            return okHttpClient.newBuilder()
+                .addInterceptor(heliusInterceptor)
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .build()
+        }
 
-    @Provides
-    @Singleton
-    @Named("helius_api_devnet")
-    fun provideHeliusDevnetApi(
-        @Named("helius_okhttp") okHttpClient: OkHttpClient,
-        json: Json
-    ): HeliusApi {
-        return Retrofit.Builder()
-            .baseUrl("https://api-devnet.helius-rpc.com/v0/")
-            .client(okHttpClient)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-            .build()
-            .create(HeliusApi::class.java)
-    }
+        @Provides
+        @Singleton
+        @Named("helius_rpc_devnet")
+        fun provideHeliusRpcDevnetConnection(
+            @Named("helius_api_key") apiKey: String
+        ): Connection {
+            val url = "https://devnet.helius-rpc.com/?api-key=$apiKey"
+            return Connection(url)
+        }
 
-    @Provides
-    @Singleton
-    @Named("helius_api_mainnet")
-    fun provideHeliusMainnetApi(
-        @Named("helius_okhttp") okHttpClient: OkHttpClient,
-        json: Json
-    ): HeliusApi {
-        return Retrofit.Builder()
-            .baseUrl("https://api-mainnet.helius-rpc.com/v0/")
-            .client(okHttpClient)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-            .build()
-            .create(HeliusApi::class.java)
-    }
+        @Provides
+        @Singleton
+        @Named("helius_rpc_mainnet")
+        fun provideHeliusRpcMainnetConnection(
+            @Named("helius_api_key") apiKey: String
+        ): Connection {
+            val url = "https://mainnet.helius-rpc.com/?api-key=$apiKey"
+            return Connection(url)
+        }
 
-    @Provides
-    @Singleton
-    fun provideSolanaBlockchainRepository(
-        @Named("helius_rpc_devnet") rpcDevnetConnection: Connection,
-        @Named("helius_rpc_mainnet") rpcMainnetConnection: Connection,
-        @Named("helius_api_devnet") devnetApi: HeliusApi,
-        @Named("helius_api_mainnet") mainnetApi: HeliusApi,
-        @IoDispatcher coroutineDispatcher: CoroutineDispatcher
-    ): SolanaBlockchainRepository {
-        return SolanaBlockchainRepositoryImpl(
-            rpcDevnetConnection = rpcDevnetConnection,
-            rpcMainnetConnection = rpcMainnetConnection,
-            devnetApi = devnetApi,
-            mainnetApi = mainnetApi,
-            ioDispatcher = coroutineDispatcher
-        )
-    }
+        @Provides
+        @Singleton
+        @Named("helius_api_devnet")
+        fun provideHeliusDevnetApi(
+            @Named("helius_okhttp") okHttpClient: OkHttpClient,
+            json: Json
+        ): HeliusApi {
+            return Retrofit.Builder()
+                .baseUrl("https://api-devnet.helius-rpc.com/v0/")
+                .client(okHttpClient)
+                .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+                .build()
+                .create(HeliusApi::class.java)
+        }
 
-    @Provides
-    @Singleton
-    fun provideSolanaTransactionDao(database: WalletDatabase): SolanaTransactionDao {
-        return database.solanaTransactionDao()
-    }
+        @Provides
+        @Singleton
+        @Named("helius_api_mainnet")
+        fun provideHeliusMainnetApi(
+            @Named("helius_okhttp") okHttpClient: OkHttpClient,
+            json: Json
+        ): HeliusApi {
+            return Retrofit.Builder()
+                .baseUrl("https://api-mainnet.helius-rpc.com/v0/")
+                .client(okHttpClient)
+                .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+                .build()
+                .create(HeliusApi::class.java)
+        }
 
-    @Provides
-    @Singleton
-    fun provideSolanaTransactionRepository(
-        solanaTransactionDao: SolanaTransactionDao
-    ): SolanaTransactionRepository {
-        return SolanaTransactionRepositoryImpl(
-            solanaTransactionDao = solanaTransactionDao
-        )
+        @Provides
+        @Singleton
+        fun provideSolanaTransactionDao(database: WalletDatabase): SolanaTransactionDao {
+            return database.solanaTransactionDao()
+        }
     }
 }

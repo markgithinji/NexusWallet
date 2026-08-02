@@ -16,6 +16,7 @@ import com.example.nexuswallet.feature.wallet.data.repository.WalletRepositoryIm
 import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
 import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,114 +26,81 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object WalletDataModule {
+abstract class WalletDataModule {
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideWalletDatabase(@ApplicationContext context: Context): WalletDatabase {
-        return WalletDatabase.getDatabase(context)
-    }
+    abstract fun bindWalletDataSource(
+        impl: WalletDataSourceImpl
+    ): WalletDataSource
 
-    // === Wallet DAOs ===
-    @Provides
+    @Binds
     @Singleton
-    fun provideWalletDao(database: WalletDatabase): WalletDao {
-        return database.walletDao()
-    }
+    abstract fun bindBalanceDataSource(
+        impl: BalanceDataSourceImpl
+    ): BalanceDataSource
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideBitcoinCoinDao(database: WalletDatabase): BitcoinCoinDao {
-        return database.bitcoinCoinDao()
-    }
+    abstract fun bindWalletRepository(
+        impl: WalletRepositoryImpl
+    ): WalletRepository
 
-    @Provides
-    @Singleton
-    fun provideSolanaCoinDao(database: WalletDatabase): SolanaCoinDao {
-        return database.solanaCoinDao()
-    }
+    companion object {
+        @Provides
+        @Singleton
+        fun provideWalletDatabase(@ApplicationContext context: Context): WalletDatabase {
+            return WalletDatabase.getDatabase(context)
+        }
 
-    @Provides
-    @Singleton
-    fun provideSPLTokenDao(database: WalletDatabase): SPLTokenDao {
-        return database.splTokenDao()
-    }
+        // === Wallet DAOs ===
+        @Provides
+        @Singleton
+        fun provideWalletDao(database: WalletDatabase): WalletDao {
+            return database.walletDao()
+        }
 
-    @Provides
-    @Singleton
-    fun provideEVMTokenDao(database: WalletDatabase): EVMTokenDao {
-        return database.evmTokenDao()
-    }
+        @Provides
+        @Singleton
+        fun provideBitcoinCoinDao(database: WalletDatabase): BitcoinCoinDao {
+            return database.bitcoinCoinDao()
+        }
 
-    // === Balance DAOs ===
-    @Provides
-    @Singleton
-    fun provideBitcoinBalanceDao(database: WalletDatabase): BitcoinBalanceDao {
-        return database.bitcoinBalanceDao()
-    }
+        @Provides
+        @Singleton
+        fun provideSolanaCoinDao(database: WalletDatabase): SolanaCoinDao {
+            return database.solanaCoinDao()
+        }
 
-    @Provides
-    @Singleton
-    fun provideSolanaBalanceDao(database: WalletDatabase): SolanaBalanceDao {
-        return database.solanaBalanceDao()
-    }
+        @Provides
+        @Singleton
+        fun provideSPLTokenDao(database: WalletDatabase): SPLTokenDao {
+            return database.splTokenDao()
+        }
 
-    @Provides
-    @Singleton
-    fun provideEVMBalanceDao(database: WalletDatabase): EVMBalanceDao {
-        return database.evmBalanceDao()
-    }
+        @Provides
+        @Singleton
+        fun provideEVMTokenDao(database: WalletDatabase): EVMTokenDao {
+            return database.evmTokenDao()
+        }
 
-    // === Data Sources ===
-    @Provides
-    @Singleton
-    fun provideWalletDataSource(
-        walletDao: WalletDao,
-        bitcoinCoinDao: BitcoinCoinDao,
-        solanaCoinDao: SolanaCoinDao,
-        evmTokenDao: EVMTokenDao,
-        splTokenDao: SPLTokenDao
-    ): WalletDataSource {
-        return WalletDataSourceImpl(
-            walletDao = walletDao,
-            bitcoinCoinDao = bitcoinCoinDao,
-            solanaCoinDao = solanaCoinDao,
-            evmTokenDao = evmTokenDao,
-            splTokenDao = splTokenDao
-        )
-    }
+        // === Balance DAOs ===
+        @Provides
+        @Singleton
+        fun provideBitcoinBalanceDao(database: WalletDatabase): BitcoinBalanceDao {
+            return database.bitcoinBalanceDao()
+        }
 
-    @Provides
-    @Singleton
-    fun provideBalanceDataSource(
-        walletDao: WalletDao,
-        bitcoinCoinDao: BitcoinCoinDao,
-        solanaCoinDao: SolanaCoinDao,
-        bitcoinBalanceDao: BitcoinBalanceDao,
-        solanaBalanceDao: SolanaBalanceDao,
-        evmBalanceDao: EVMBalanceDao
-    ): BalanceDataSource {
-        return BalanceDataSourceImpl(
-            walletDao = walletDao,
-            bitcoinCoinDao = bitcoinCoinDao,
-            solanaCoinDao = solanaCoinDao,
-            bitcoinBalanceDao = bitcoinBalanceDao,
-            solanaBalanceDao = solanaBalanceDao,
-            evmBalanceDao = evmBalanceDao
-        )
-    }
+        @Provides
+        @Singleton
+        fun provideSolanaBalanceDao(database: WalletDatabase): SolanaBalanceDao {
+            return database.solanaBalanceDao()
+        }
 
-    @Provides
-    @Singleton
-    fun provideWalletRepository(
-        walletDataSource: WalletDataSource,
-        balanceDataSource: BalanceDataSource,
-        database: WalletDatabase
-    ): WalletRepository {
-        return WalletRepositoryImpl(
-            walletDataSource = walletDataSource,
-            balanceDataSource = balanceDataSource,
-            walletDatabase = database
-        )
+        @Provides
+        @Singleton
+        fun provideEVMBalanceDao(database: WalletDatabase): EVMBalanceDao {
+            return database.evmBalanceDao()
+        }
     }
 }

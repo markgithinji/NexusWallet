@@ -1,24 +1,20 @@
 package com.example.nexuswallet.feature.settings.data.di
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
 import com.example.nexuswallet.feature.settings.data.repository.SecurityRepositoryImpl
 import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object SettingsDataModule {
+abstract class SettingsDataModule {
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideSecurityRepository(
-        dataStore: DataStore<Preferences>
-    ): SecurityRepository {
-        return SecurityRepositoryImpl(dataStore)
-    }
+    abstract fun bindSecurityRepository(
+        impl: SecurityRepositoryImpl
+    ): SecurityRepository
 }
