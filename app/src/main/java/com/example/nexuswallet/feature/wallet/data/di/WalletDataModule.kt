@@ -126,11 +126,13 @@ object WalletDataModule {
     @Singleton
     fun provideWalletRepository(
         walletDataSource: WalletDataSource,
-        balanceDataSource: BalanceDataSource
+        balanceDataSource: BalanceDataSource,
+        database: WalletDatabase
     ): WalletRepository {
         return WalletRepositoryImpl(
             walletDataSource = walletDataSource,
-            balanceDataSource = balanceDataSource
+            balanceDataSource = balanceDataSource,
+            walletDatabase = database
         )
     }
 }

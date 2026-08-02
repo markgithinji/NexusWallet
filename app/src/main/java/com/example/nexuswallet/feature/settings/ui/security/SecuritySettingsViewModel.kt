@@ -45,6 +45,15 @@ class SecuritySettingsViewModel @Inject constructor(
     private val _showPinChangeDialog = MutableStateFlow(false)
     val showPinChangeDialog: StateFlow<Boolean> = _showPinChangeDialog.asStateFlow()
 
+    private val _showClearAllDataDialog = MutableStateFlow(false)
+    val showClearAllDataDialog: StateFlow<Boolean> = _showClearAllDataDialog.asStateFlow()
+
+    private val _clearAllConfirmationText = MutableStateFlow("")
+    val clearAllConfirmationText: StateFlow<String> = _clearAllConfirmationText.asStateFlow()
+
+    private val _authRequest = MutableStateFlow<Long?>(null)
+    val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
+
     private val _pinSetupError = MutableStateFlow<String?>(null)
     val pinSetupError: StateFlow<String?> = _pinSetupError.asStateFlow()
 
@@ -185,7 +194,36 @@ class SecuritySettingsViewModel @Inject constructor(
         }
     }
 
-    fun clearAllData() {
+    fun requestClearAllData() {
+        _showClearAllDataDialog.value = true
+        _clearAllConfirmationText.value = ""
+    }
+
+    fun onClearAllConfirmationTextChanged(text: String) {
+        _clearAllConfirmationText.value = text
+    }
+
+    fun cancelClearAllData() {
+        _showClearAllDataDialog.value = false
+        _clearAllConfirmationText.value = ""
+    }
+
+    fun confirmClearAllData() {
+        if (_clearAllConfirmationText.value.trim().uppercase() != "DELETE") {
+            return
+        }
+        _showClearAllDataDialog.value = false
+        
+        // Trigger authentication request for the UI
+        _authRequest.value = System.currentTimeMillis()
+    }
+
+    fun onClearAllAuthSuccess() {
+        _authRequest.value = null
+        clearAllData()
+    }
+
+    private fun clearAllData() {
         viewModelScope.launch {
             _operationState.value = SecurityOperation.UPDATING
 

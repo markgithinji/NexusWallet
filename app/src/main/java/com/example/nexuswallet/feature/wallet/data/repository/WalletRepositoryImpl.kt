@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.data.repository
 
+import com.example.nexuswallet.feature.wallet.data.local.WalletDatabase
 import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
@@ -12,7 +13,8 @@ import javax.inject.Singleton
 @Singleton
 class WalletRepositoryImpl @Inject constructor(
     private val walletDataSource: WalletDataSource,
-    private val balanceDataSource: BalanceDataSource
+    private val balanceDataSource: BalanceDataSource,
+    private val walletDatabase: WalletDatabase
 ) : WalletRepository {
 
     override fun observeWallets(): Flow<List<Wallet>> =
@@ -40,5 +42,9 @@ class WalletRepositoryImpl @Inject constructor(
 
     override suspend fun updateWalletName(walletId: String, newName: String) {
         walletDataSource.updateWalletName(walletId, newName)
+    }
+
+    override suspend fun clearAllData() {
+        walletDatabase.clearAllTables()
     }
 }

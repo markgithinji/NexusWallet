@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.settings.ui.security
 
+import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -33,6 +35,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -40,16 +44,19 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -58,10 +65,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
+import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.warning
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,9 +83,37 @@ fun SecuritySettingsScreen(
     val operationState by viewModel.operationState.collectAsStateWithLifecycle()
     val showPinSetupDialog by viewModel.showPinSetupDialog.collectAsStateWithLifecycle()
     val showPinChangeDialog by viewModel.showPinChangeDialog.collectAsStateWithLifecycle()
+    val showClearAllDataDialog by viewModel.showClearAllDataDialog.collectAsStateWithLifecycle()
+    val clearAllConfirmationText by viewModel.clearAllConfirmationText.collectAsStateWithLifecycle()
+    val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
     val pinSetupError by viewModel.pinSetupError.collectAsStateWithLifecycle()
     
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val biometricPrompt = rememberBiometricPrompt(
+        onSuccess = { _ -> viewModel.onClearAllAuthSuccess() },
+        onError = { errorCode, errString ->
+            if (!isBiometricUserCancel(errorCode)) {
+                scope.launch {
+                    snackbarHostState.showSnackbar(errString.toString())
+                }
+            }
+        }
+    )
+
+    LaunchedEffect(authRequest) {
+        if (authRequest != null) {
+            val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                .setTitle(context.getString(R.string.biometric_authentication))
+                .setSubtitle(context.getString(R.string.clear_all_data))
+                .setNegativeButtonText(context.getString(R.string.cancel))
+                .build()
+
+            biometricPrompt?.authenticate(promptInfo)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.uiEffect.collect { effect ->
@@ -96,6 +134,59 @@ fun SecuritySettingsScreen(
         onPinSet = viewModel::setNewPin,
         onDismiss = viewModel::cancelPinSetup
     )
+
+    // Clear All Data Confirmation Dialog
+    if (showClearAllDataDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::cancelClearAllData,
+            title = {
+                Text(
+                    text = stringResource(R.string.clear_all_data_confirmation_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.clear_all_data_confirmation_desc),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = clearAllConfirmationText,
+                        onValueChange = viewModel::onClearAllConfirmationTextChanged,
+                        label = { Text(stringResource(R.string.confirmation_word_placeholder)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.error,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = viewModel::confirmClearAllData,
+                    enabled = clearAllConfirmationText.trim().uppercase() == "DELETE",
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Text(stringResource(R.string.wipe_data_button))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::cancelClearAllData) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
 
     Scaffold(
         topBar = { SecurityTopBar(onNavigateUp = onNavigateUp) },
@@ -276,7 +367,7 @@ private fun SecuritySettingsContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         AdvancedSecuritySection(
-            onClearAllData = viewModel::clearAllData
+            onClearAllData = viewModel::requestClearAllData
         )
     }
 }
