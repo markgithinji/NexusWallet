@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.bitcoin.ui.review
 
-import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
@@ -47,8 +46,8 @@ class BitcoinReviewViewModel @Inject constructor(
     private val _effect = MutableSharedFlow<BitcoinReviewEffect>()
     val effect: SharedFlow<BitcoinReviewEffect> = _effect.asSharedFlow()
 
-    private val _cryptoObject = MutableStateFlow<BiometricPrompt.CryptoObject?>(null)
-    val cryptoObject: StateFlow<BiometricPrompt.CryptoObject?> = _cryptoObject.asStateFlow()
+    private val _cryptoObject = MutableStateFlow<Cipher?>(null)
+    val cryptoObject: StateFlow<Cipher?> = _cryptoObject.asStateFlow()
 
     private val _authRequest = MutableStateFlow<Long?>(null)
     val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
@@ -269,7 +268,7 @@ class BitcoinReviewViewModel @Inject constructor(
                 is Result.Error -> {
                     val authException = result.throwable as? HardwareAuthRequiredException
                     if (authException != null) {
-                        _cryptoObject.value = authException.cryptoObject
+                        _cryptoObject.value = authException.cryptoObject?.cipher
                         _authRequest.value = System.currentTimeMillis()
                         _state.update { it.copy(isLoading = false) }
                     } else {
@@ -288,8 +287,7 @@ class BitcoinReviewViewModel @Inject constructor(
         }
     }
 
-    fun completeSendAfterBiometric(result: BiometricPrompt.AuthenticationResult? = null, onSuccess: (String) -> Unit) {
-        val cipher = result?.cryptoObject?.cipher
+    fun completeSendAfterBiometric(cipher: Cipher? = null, onSuccess: (String) -> Unit) {
         _cryptoObject.value = null
         _authRequest.value = null
         sendTransaction(cipher = cipher, onSuccess = onSuccess)

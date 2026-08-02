@@ -70,7 +70,7 @@ fun ImportWalletScreen(
 
     val biometricPrompt = rememberBiometricPrompt(
         onSuccess = { result ->
-            viewModel.completeImportAfterBiometric(result)
+            viewModel.onBiometricSuccess(result.cryptoObject?.cipher)
         },
         onError = { errorCode, errString ->
             if (!isBiometricUserCancel(errorCode)) {
@@ -94,7 +94,7 @@ fun ImportWalletScreen(
     LaunchedEffect(authRequest) {
         if (authRequest != null) {
             if (cryptoObject != null) {
-                biometricPrompt?.authenticate(promptInfo, cryptoObject!!)
+                biometricPrompt?.authenticate(promptInfo, BiometricPrompt.CryptoObject(cryptoObject!!))
             } else {
                 biometricPrompt?.authenticate(promptInfo)
             }

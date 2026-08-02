@@ -57,7 +57,7 @@ fun BackupScreen(
 
     val biometricPrompt = rememberBiometricPrompt(
         onSuccess = { result ->
-            viewModel.onBiometricSuccess(walletId, result)
+            viewModel.onBiometricSuccess(walletId, result.cryptoObject?.cipher)
         },
         onError = { errorCode, errString ->
             if (!isBiometricUserCancel(errorCode)) {
@@ -86,7 +86,7 @@ fun BackupScreen(
     LaunchedEffect(authRequest) {
         if (authRequest != null) {
             if (cryptoObject != null) {
-                biometricPrompt?.authenticate(promptInfo, cryptoObject!!)
+                biometricPrompt?.authenticate(promptInfo, BiometricPrompt.CryptoObject(cryptoObject!!))
             } else {
                 biometricPrompt?.authenticate(promptInfo)
             }

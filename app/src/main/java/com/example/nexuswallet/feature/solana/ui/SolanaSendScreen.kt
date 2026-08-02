@@ -145,10 +145,10 @@ fun SolanaSendScreen(
                 )
 
                 // Error Banner
-                if (errorState.activeError != null) {
+                if (state.error != null) {
                     ErrorMessage(
-                        error = errorState.activeError,
-                        onDismiss = { viewModel.clearError() }
+                        error = state.error!!,
+                        onDismiss = { viewModel.onEvent(SolanaSendEvent.ClearError) }
                     )
                 }
 

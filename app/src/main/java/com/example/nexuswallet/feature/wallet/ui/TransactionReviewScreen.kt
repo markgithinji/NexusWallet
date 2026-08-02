@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.biometric.BiometricPrompt
+import javax.crypto.Cipher
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
 import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import androidx.compose.animation.AnimatedVisibility
@@ -91,6 +92,7 @@ import com.example.nexuswallet.feature.ethereum.ui.EVMSendEvent
 import com.example.nexuswallet.feature.ethereum.ui.EVMSendViewModel
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.ui.SolanaSendEffect
+import com.example.nexuswallet.feature.solana.ui.SolanaSendEvent
 import com.example.nexuswallet.feature.solana.ui.SolanaSendViewModel
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
@@ -155,9 +157,9 @@ fun TransactionReviewScreen(
             }
 
             when (coin) {
-                is EVMToken -> ethereumViewModel.completeSendAfterBiometric(result, onSuccess)
-                is SolanaCoin -> solanaViewModel.completeSendAfterBiometric(result, onSuccess)
-                is BitcoinCoin -> bitcoinReviewViewModel.completeSendAfterBiometric(result, onSuccess)
+                is EVMToken -> ethereumViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher, onSuccess)
+                is SolanaCoin -> solanaViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher, onSuccess)
+                is BitcoinCoin -> bitcoinReviewViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher, onSuccess)
             }
         },
         onError = { errorCode, errString ->
@@ -201,7 +203,7 @@ fun TransactionReviewScreen(
             }
 
             if (crypto != null) {
-                biometricPrompt?.authenticate(promptInfo, crypto)
+                biometricPrompt?.authenticate(promptInfo, BiometricPrompt.CryptoObject(crypto as javax.crypto.Cipher))
             } else {
                 biometricPrompt?.authenticate(promptInfo)
             }
@@ -316,10 +318,10 @@ fun TransactionReviewScreen(
 
             is SolanaCoin -> {
                 solanaViewModel.init(walletId, coin)
-                solanaViewModel.updateToAddress(toAddress)
-                solanaViewModel.updateAmount(amount)
+                solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(toAddress))
+                solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(amount))
                 feeLevel?.let {
-                    solanaViewModel.updateFeeLevel(FeeLevel.valueOf(it))
+                    solanaViewModel.onEvent(SolanaSendEvent.FeeLevelChanged(FeeLevel.valueOf(it)))
                 }
             }
         }
@@ -1423,4 +1425,3 @@ private fun copyToClipboard(context: Context, address: String) {
     clipboard.setPrimaryClip(clip)
     Toast.makeText(context, context.getString(R.string.address_copied_small), Toast.LENGTH_SHORT).show()
 }
-

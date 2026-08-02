@@ -76,7 +76,7 @@ fun WalletCreationScreen(
 
     val biometricPrompt = rememberBiometricPrompt(
         onSuccess = { result ->
-            viewModel.completeCreateAfterBiometric(result)
+            viewModel.onBiometricSuccess(result.cryptoObject?.cipher)
         },
         onError = { errorCode, errString ->
             if (!isBiometricUserCancel(errorCode)) {
@@ -100,7 +100,7 @@ fun WalletCreationScreen(
     LaunchedEffect(authRequest) {
         if (authRequest != null) {
             if (cryptoObject != null) {
-                biometricPrompt?.authenticate(promptInfo, cryptoObject!!)
+                biometricPrompt?.authenticate(promptInfo, BiometricPrompt.CryptoObject(cryptoObject!!))
             } else {
                 biometricPrompt?.authenticate(promptInfo)
             }

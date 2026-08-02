@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.settings.ui.auth
 
-import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
@@ -20,6 +19,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import javax.crypto.Cipher
 import javax.inject.Inject
 
 @HiltViewModel
@@ -33,9 +33,6 @@ class AuthenticationViewModel @Inject constructor(
     private val _uiEffect = MutableSharedFlow<AuthUiEffect>()
     val uiEffect: SharedFlow<AuthUiEffect> = _uiEffect.asSharedFlow()
 
-    private val _cryptoObject = MutableStateFlow<BiometricPrompt.CryptoObject?>(null)
-    val cryptoObject: StateFlow<BiometricPrompt.CryptoObject?> = _cryptoObject.asStateFlow()
-
     private val _showPinDialog = MutableStateFlow(false)
     val showPinDialog: StateFlow<Boolean> = _showPinDialog.asStateFlow()
 
@@ -47,6 +44,12 @@ class AuthenticationViewModel @Inject constructor(
 
     private val _isBiometricEnabled = MutableStateFlow(false)
     val isBiometricEnabled: StateFlow<Boolean> = _isBiometricEnabled.asStateFlow()
+
+    private val _authRequest = MutableStateFlow<Long?>(null)
+    val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
+
+    private val _cryptoObject = MutableStateFlow<Cipher?>(null)
+    val cryptoObject: StateFlow<Cipher?> = _cryptoObject.asStateFlow()
 
     init {
         observeAuthStatus()
@@ -97,7 +100,8 @@ class AuthenticationViewModel @Inject constructor(
                 is Result.Error -> {
                     val authException = verifyResult.throwable as? HardwareAuthRequiredException
                     if (authException != null) {
-                        _cryptoObject.value = authException.cryptoObject
+                        _cryptoObject.value = authException.cryptoObject?.cipher
+                        _authRequest.value = System.currentTimeMillis()
                     } else {
                         _errorMessage.value = verifyResult.message
                     }
@@ -107,11 +111,17 @@ class AuthenticationViewModel @Inject constructor(
         }
     }
 
-    fun onBiometricSuccess(result: BiometricPrompt.AuthenticationResult) {
+    fun onBiometricSuccess() {
         viewModelScope.launch {
             recordAuthenticationUseCase()
+            _authRequest.value = null
+            _cryptoObject.value = null
             _uiEffect.emit(AuthUiEffect.Authenticated)
         }
+    }
+
+    fun triggerBiometric() {
+        _authRequest.value = System.currentTimeMillis()
     }
 
     fun setErrorMessage(message: String) {
@@ -124,5 +134,7 @@ class AuthenticationViewModel @Inject constructor(
 
     fun clearState() {
         _errorMessage.value = null
+        _authRequest.value = null
+        _cryptoObject.value = null
     }
 }

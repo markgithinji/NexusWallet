@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.ethereum.ui
 
-import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
@@ -53,8 +52,8 @@ class EVMSendViewModel @Inject constructor(
     private val _effect = MutableSharedFlow<EVMSendEffect>()
     val effect: SharedFlow<EVMSendEffect> = _effect.asSharedFlow()
 
-    private val _cryptoObject = MutableStateFlow<BiometricPrompt.CryptoObject?>(null)
-    val cryptoObject: StateFlow<BiometricPrompt.CryptoObject?> = _cryptoObject.asStateFlow()
+    private val _cryptoObject = MutableStateFlow<Cipher?>(null)
+    val cryptoObject: StateFlow<Cipher?> = _cryptoObject.asStateFlow()
 
     private val _authRequest = MutableStateFlow<Long?>(null)
     val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
@@ -490,7 +489,7 @@ class EVMSendViewModel @Inject constructor(
                 is Result.Error -> {
                     val authException = result.throwable as? HardwareAuthRequiredException
                     if (authException != null) {
-                        _cryptoObject.value = authException.cryptoObject
+                        _cryptoObject.value = authException.cryptoObject?.cipher
                         _authRequest.value = System.currentTimeMillis()
                         _uiState.update { it.copy(isLoading = false) }
                     } else {
@@ -509,8 +508,7 @@ class EVMSendViewModel @Inject constructor(
         }
     }
 
-    fun completeSendAfterBiometric(result: BiometricPrompt.AuthenticationResult? = null, onSuccess: (String) -> Unit) {
-        val cipher = result?.cryptoObject?.cipher
+    fun completeSendAfterBiometric(cipher: Cipher? = null, onSuccess: (String) -> Unit) {
         _cryptoObject.value = null
         _authRequest.value = null
         send(cipher = cipher, onSuccess = onSuccess)

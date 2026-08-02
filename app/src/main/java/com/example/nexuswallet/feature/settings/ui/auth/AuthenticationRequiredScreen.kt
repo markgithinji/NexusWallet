@@ -75,15 +75,16 @@ fun AuthenticationRequiredScreen(
     description: String = "Please authenticate to access this feature",
     viewModel: AuthenticationViewModel = hiltViewModel()
 ) {
-    val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
     val showPinDialog by viewModel.showPinDialog.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
     val isPinAvailable by viewModel.isPinAvailable.collectAsStateWithLifecycle()
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsStateWithLifecycle()
+    val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
+    val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
 
     val biometricPrompt = rememberBiometricPrompt(
-        onSuccess = { result ->
-            viewModel.onBiometricSuccess(result)
+        onSuccess = { _ ->
+            viewModel.onBiometricSuccess()
         },
         onError = { errorCode, errString ->
             if (!isBiometricUserCancel(errorCode)) {
@@ -102,6 +103,16 @@ fun AuthenticationRequiredScreen(
             .setAllowedAuthenticators(BIOMETRIC_STRONG or DEVICE_CREDENTIAL)
             .setConfirmationRequired(false)
             .build()
+    }
+
+    LaunchedEffect(authRequest) {
+        if (authRequest != null) {
+            if (cryptoObject != null) {
+                biometricPrompt?.authenticate(promptInfo, BiometricPrompt.CryptoObject(cryptoObject!!))
+            } else {
+                biometricPrompt?.authenticate(promptInfo)
+            }
+        }
     }
 
     if (showPinDialog) {
@@ -136,12 +147,8 @@ fun AuthenticationRequiredScreen(
             isBiometricEnabled = isBiometricEnabled,
             biometricHardwareAvailable = canAuthenticate,
             onBiometricClick = {
-                if (biometricPrompt != null) {
-                    if (cryptoObject != null) {
-                        biometricPrompt.authenticate(promptInfo, cryptoObject!!)
-                    } else {
-                        biometricPrompt.authenticate(promptInfo)
-                    }
+                if (canAuthenticate && isBiometricEnabled) {
+                    viewModel.triggerBiometric()
                 } else {
                     viewModel.setErrorMessage("Biometric authentication not available")
                 }

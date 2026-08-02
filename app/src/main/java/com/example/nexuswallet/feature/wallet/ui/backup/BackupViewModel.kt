@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.wallet.ui.backup
 
-import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
@@ -11,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.crypto.Cipher
 import javax.inject.Inject
 
 @HiltViewModel
@@ -27,8 +27,8 @@ class BackupViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    private val _cryptoObject = MutableStateFlow<BiometricPrompt.CryptoObject?>(null)
-    val cryptoObject: StateFlow<BiometricPrompt.CryptoObject?> = _cryptoObject.asStateFlow()
+    private val _cryptoObject = MutableStateFlow<Cipher?>(null)
+    val cryptoObject: StateFlow<Cipher?> = _cryptoObject.asStateFlow()
 
     private val _authRequest = MutableStateFlow<Long?>(null)
     val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
@@ -47,7 +47,7 @@ class BackupViewModel @Inject constructor(
                 is Result.Error -> {
                     val authException = result.throwable as? HardwareAuthRequiredException
                     if (authException != null) {
-                        _cryptoObject.value = authException.cryptoObject
+                        _cryptoObject.value = authException.cryptoObject?.cipher
                         _authRequest.value = System.currentTimeMillis()
                     } else {
                         _errorMessage.value = result.message
@@ -59,8 +59,7 @@ class BackupViewModel @Inject constructor(
         }
     }
 
-    fun onBiometricSuccess(walletId: String, result: BiometricPrompt.AuthenticationResult? = null) {
-        val cipher = result?.cryptoObject?.cipher
+    fun onBiometricSuccess(walletId: String, cipher: Cipher? = null) {
         _cryptoObject.value = null
         _authRequest.value = null
         viewModelScope.launch {
