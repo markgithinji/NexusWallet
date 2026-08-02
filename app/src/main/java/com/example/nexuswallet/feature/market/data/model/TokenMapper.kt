@@ -13,6 +13,7 @@ import com.example.nexuswallet.feature.market.domain.model.TokenDetail
 import com.example.nexuswallet.feature.market.domain.model.VolumePoint
 import com.example.nexuswallet.feature.market.domain.model.SparklineData
 import com.example.nexuswallet.feature.market.domain.model.Token
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import java.time.Instant
 
 fun CoinGeckoTokenDto.toToken(): Token {
@@ -58,30 +59,31 @@ fun MarketChartDto.toChartData(): ChartData {
 }
 
 
-fun TokenDetailDto.toTokenDetail(): TokenDetail {
+fun TokenDetailDto.toTokenDetail(currency: SupportedCurrency = SupportedCurrency.USD): TokenDetail {
+    val currencyCode = currency.code.lowercase()
     return TokenDetail(
         id = id,
         symbol = symbol,
         name = name,
         image = image.large,
-        currentPrice = market_data.currentPrice["usd"] ?: 0.0,
+        currentPrice = market_data.currentPrice[currencyCode] ?: 0.0,
         priceChange24h = market_data.priceChange24h,
         priceChangePercentage24h = market_data.priceChangePercentage24h,
-        marketCap = market_data.marketCap["usd"] ?: 0.0,
+        marketCap = market_data.marketCap[currencyCode] ?: 0.0,
         marketCapRank = market_data.marketCapRank ?: 0,
         fullyDilutedValuation = null,
-        totalVolume = market_data.totalVolume["usd"] ?: 0.0,
-        high24h = market_data.high24h["usd"] ?: 0.0,
-        low24h = market_data.low24h["usd"] ?: 0.0,
+        totalVolume = market_data.totalVolume[currencyCode] ?: 0.0,
+        high24h = market_data.high24h[currencyCode] ?: 0.0,
+        low24h = market_data.low24h[currencyCode] ?: 0.0,
         circulatingSupply = market_data.circulatingSupply,
         totalSupply = market_data.totalSupply,
         maxSupply = market_data.maxSupply,
-        ath = market_data.ath["usd"] ?: 0.0,
-        athChangePercentage = market_data.athChangePercentage["usd"] ?: 0.0,
-        athDate = market_data.athDate["usd"] ?: "",
-        atl = market_data.atl["usd"] ?: 0.0,
-        atlChangePercentage = market_data.atlChangePercentage["usd"] ?: 0.0,
-        atlDate = market_data.atlDate["usd"] ?: "",
+        ath = market_data.ath[currencyCode] ?: 0.0,
+        athChangePercentage = market_data.athChangePercentage[currencyCode] ?: 0.0,
+        athDate = market_data.athDate[currencyCode] ?: "",
+        atl = market_data.atl[currencyCode] ?: 0.0,
+        atlChangePercentage = market_data.atlChangePercentage[currencyCode] ?: 0.0,
+        atlDate = market_data.atlDate[currencyCode] ?: "",
         sparklineIn7d = market_data.sparkline7DDto?.price,
         description = description?.get("en")
     )

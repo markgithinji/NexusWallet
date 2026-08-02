@@ -63,7 +63,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
+import com.example.nexuswallet.feature.settings.ui.util.getDisplayNameRes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -153,7 +155,7 @@ fun SettingsScreen(
                 // Currency Settings
                 SettingsItem(
                     title = stringResource(R.string.currency_settings),
-                    description = stringResource(R.string.currency_description) + " ($selectedCurrency)",
+                    description = stringResource(R.string.currency_description) + " (${selectedCurrency.code})",
                     icon = Icons.Outlined.CurrencyExchange,
                     onClick = { showCurrencyDialog = true }
                 )
@@ -220,19 +222,11 @@ fun SettingsSection(
 
 @Composable
 fun CurrencySelectionDialog(
-    selectedCurrency: String,
-    onCurrencySelected: (String) -> Unit,
+    selectedCurrency: SupportedCurrency,
+    onCurrencySelected: (SupportedCurrency) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val currencies = listOf(
-        "USD" to stringResource(R.string.currency_usd),
-        "EUR" to stringResource(R.string.currency_eur),
-        "GBP" to stringResource(R.string.currency_gbp),
-        "JPY" to stringResource(R.string.currency_jpy),
-        "AUD" to stringResource(R.string.currency_aud),
-        "CAD" to stringResource(R.string.currency_cad),
-        "KES" to stringResource(R.string.currency_kes)
-    )
+    val currencies = SupportedCurrency.entries
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -249,10 +243,10 @@ fun CurrencySelectionDialog(
                 modifier = Modifier.padding(top = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                currencies.forEach { (code, label) ->
-                    val isSelected = code == selectedCurrency
+                currencies.forEach { currency ->
+                    val isSelected = currency == selectedCurrency
                     Surface(
-                        onClick = { onCurrencySelected(code) },
+                        onClick = { onCurrencySelected(currency) },
                         shape = RoundedCornerShape(12.dp),
                         color = if (isSelected)
                             MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
@@ -267,14 +261,14 @@ fun CurrencySelectionDialog(
                         ) {
                             RadioButton(
                                 selected = isSelected,
-                                onClick = { onCurrencySelected(code) },
+                                onClick = { onCurrencySelected(currency) },
                                 colors = RadioButtonDefaults.colors(
                                     selectedColor = MaterialTheme.colorScheme.primary
                                 )
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = label,
+                                text = stringResource(currency.getDisplayNameRes()),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = if (isSelected)
                                     MaterialTheme.colorScheme.primary

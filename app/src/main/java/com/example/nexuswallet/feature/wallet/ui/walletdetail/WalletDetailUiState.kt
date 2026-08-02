@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.ui.walletdetail
 
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
@@ -15,7 +16,7 @@ data class WalletDetailUiState(
     // Unified assets list
     val assets: List<AssetDisplayInfo> = emptyList(),
     val totalBalanceFormatted: String = "$0.00",
-    val selectedCurrency: String = "USD",
+    val selectedCurrency: SupportedCurrency = SupportedCurrency.USD,
 
     // Granular loading states
     val isLoading: Boolean = false,

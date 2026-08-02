@@ -92,6 +92,7 @@ import com.example.nexuswallet.feature.core.ui.clickableSingle
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.ui.common.AssetChip
@@ -374,7 +375,7 @@ fun DashboardContent(
     totalPortfolio: BigDecimal,
     balances: Map<String, WalletBalance>,
     isPrivacyModeEnabled: Boolean,
-    selectedCurrency: String,
+    selectedCurrency: SupportedCurrency,
     onWalletClick: (Wallet) -> Unit,
     onDeleteWallet: (String) -> Unit,
     onRenameWallet: (Wallet) -> Unit,
@@ -457,7 +458,7 @@ fun WalletCard(
     wallet: Wallet,
     balance: WalletBalance?,
     isPrivacyModeEnabled: Boolean,
-    selectedCurrency: String,
+    selectedCurrency: SupportedCurrency,
     onWalletClick: () -> Unit,
     onDelete: () -> Unit,
     onRename: () -> Unit,
@@ -642,7 +643,7 @@ fun WalletExpandedContent(
     wallet: Wallet,
     balance: WalletBalance?,
     isPrivacyModeEnabled: Boolean,
-    selectedCurrency: String,
+    selectedCurrency: SupportedCurrency,
     onDelete: () -> Unit,
     onRename: () -> Unit
 ) {
@@ -771,7 +772,7 @@ fun SimpleBalanceRow(
     usdValue: Double,
     color: Color,
     isPrivacyModeEnabled: Boolean,
-    selectedCurrency: String
+    selectedCurrency: SupportedCurrency
 ) {
     Row(
         modifier = Modifier
@@ -849,7 +850,7 @@ fun AnimatedPortfolioHeader(
     walletCount: Int,
     isPrivacyModeEnabled: Boolean,
     isTablet: Boolean,
-    selectedCurrency: String
+    selectedCurrency: SupportedCurrency
 ) {
     var previousValue by remember { mutableStateOf(totalPortfolio) }
     val animatedValue = remember { Animatable(previousValue.toFloat()) }

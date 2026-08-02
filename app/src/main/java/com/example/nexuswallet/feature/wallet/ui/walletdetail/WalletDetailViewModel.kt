@@ -2,21 +2,25 @@ package com.example.nexuswallet.feature.wallet.ui.walletdetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.core.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.core.domain.model.Transaction
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
-import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
+import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatBalanceUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDisplayUseCase
@@ -24,8 +28,6 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.GetAllTransactionsU
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
-import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -36,7 +38,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import com.example.nexuswallet.feature.core.util.formatCurrency
 import javax.inject.Inject
 
 @HiltViewModel
@@ -189,7 +190,7 @@ class WalletDetailViewModel @Inject constructor(
                     wallet.solanaCoins.map { it.symbol } +
                     wallet.evmTokens.map { it.symbol }).distinct()
 
-            val pricesResult = getSimplePricesUseCase(symbols, _uiState.value.selectedCurrency)
+            val pricesResult = getSimplePricesUseCase(symbols, _uiState.value.selectedCurrency.code)
             val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
 
             // 2. Sync balances with prices
@@ -298,11 +299,11 @@ class WalletDetailViewModel @Inject constructor(
             wallet = wallet,
             balance = state.balance,
             pricePercentages = state.pricePercentages,
-            currencyCode = state.selectedCurrency
+            currency = state.selectedCurrency
         )
 
         val totalUsd = assets.sumOf { it.usdValue }
-        val totalFormatted = totalUsd.formatCurrency(state.selectedCurrency)
+        val totalFormatted = totalUsd.formatCurrency(state.selectedCurrency.code)
 
         _uiState.update {
             it.copy(

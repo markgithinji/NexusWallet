@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.nexuswallet.feature.core.data.util.safeEdit
 import com.example.nexuswallet.feature.core.data.util.safeGet
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
 import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import kotlinx.coroutines.flow.Flow
@@ -104,19 +105,20 @@ class SecurityRepositoryImpl @Inject constructor(
         } ?: false
     }
 
-    override suspend fun setSelectedCurrency(currencyCode: String) {
+    override suspend fun setSelectedCurrency(currency: SupportedCurrency) {
         safeEdit {
             dataStore.edit { preferences ->
-                preferences[SELECTED_CURRENCY_KEY] = currencyCode
+                preferences[SELECTED_CURRENCY_KEY] = currency.code
             }
         }
     }
 
-    override suspend fun getSelectedCurrency(): String {
-        return safeGet(defaultValue = "USD") {
+    override suspend fun getSelectedCurrency(): SupportedCurrency {
+        return safeGet(defaultValue = SupportedCurrency.USD) {
             val preferences = dataStore.data.first()
-            preferences[SELECTED_CURRENCY_KEY] ?: "USD"
-        } ?: "USD"
+            val code = preferences[SELECTED_CURRENCY_KEY] ?: "USD"
+            SupportedCurrency.fromCode(code)
+        } ?: SupportedCurrency.USD
     }
 
     override suspend fun setThemeMode(themeMode: ThemeMode) {
@@ -163,9 +165,10 @@ class SecurityRepositoryImpl @Inject constructor(
             preferences[REQUIRE_AUTH_FOR_SEND_KEY] ?: false
         }
 
-    override fun observeSelectedCurrency(): Flow<String> =
+    override fun observeSelectedCurrency(): Flow<SupportedCurrency> =
         dataStore.data.map { preferences ->
-            preferences[SELECTED_CURRENCY_KEY] ?: "USD"
+            val code = preferences[SELECTED_CURRENCY_KEY] ?: "USD"
+            SupportedCurrency.fromCode(code)
         }
 
     override fun observeThemeMode(): Flow<ThemeMode> =

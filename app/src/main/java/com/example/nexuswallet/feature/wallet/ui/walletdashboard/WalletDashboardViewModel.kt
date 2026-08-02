@@ -2,9 +2,10 @@ package com.example.nexuswallet.feature.wallet.ui.walletdashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
@@ -76,8 +77,8 @@ class WalletDashboardViewModel @Inject constructor(
     private val _isPrivacyModeEnabled = MutableStateFlow(false)
     val isPrivacyModeEnabled: StateFlow<Boolean> = _isPrivacyModeEnabled.asStateFlow()
 
-    private val _selectedCurrency = MutableStateFlow("USD")
-    val selectedCurrency: StateFlow<String> = _selectedCurrency.asStateFlow()
+    private val _selectedCurrency = MutableStateFlow(SupportedCurrency.USD)
+    val selectedCurrency: StateFlow<SupportedCurrency> = _selectedCurrency.asStateFlow()
 
     // Tracking last refresh time
     private var lastRefreshTime = 0L

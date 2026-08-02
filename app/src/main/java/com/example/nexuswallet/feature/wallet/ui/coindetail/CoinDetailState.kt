@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.ui.coindetail
 
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
@@ -19,4 +20,5 @@ data class CoinDetailState(
     val ethGasBalance: String = "0",
     val evmTokens: List<EVMToken> = emptyList(),
     val splTokens: List<SPLToken> = emptyList(),
+    val selectedCurrency: SupportedCurrency = SupportedCurrency.USD
 )

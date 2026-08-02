@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.core.util
 
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import java.text.NumberFormat
 import java.util.Currency
 import java.util.Locale
@@ -40,6 +41,8 @@ fun Double.formatCurrency(currencyCode: String = "USD"): String {
         format.format(this)
     }
 }
+
+fun Double.formatCurrency(currency: SupportedCurrency): String = formatCurrency(currency.code)
 
 /**
  * Formats a percentage with a sign and two decimals (e.g., +5.23% or -1.10%).

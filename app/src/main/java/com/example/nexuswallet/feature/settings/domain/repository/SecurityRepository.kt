@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.settings.domain.repository
 
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 
@@ -27,9 +28,9 @@ interface SecurityRepository {
     fun observeRequireAuthForSend(): Flow<Boolean>
 
     // General Preferences
-    suspend fun setSelectedCurrency(currencyCode: String)
-    suspend fun getSelectedCurrency(): String
-    fun observeSelectedCurrency(): Flow<String>
+    suspend fun setSelectedCurrency(currency: SupportedCurrency)
+    suspend fun getSelectedCurrency(): SupportedCurrency
+    fun observeSelectedCurrency(): Flow<SupportedCurrency>
 
     suspend fun setThemeMode(themeMode: ThemeMode)
     suspend fun getThemeMode(): ThemeMode

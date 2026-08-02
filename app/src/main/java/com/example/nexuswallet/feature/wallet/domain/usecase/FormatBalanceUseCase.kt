@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.core.util.formatPercent
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
@@ -21,7 +22,7 @@ class FormatBalanceUseCase @Inject constructor() {
         wallet: Wallet,
         balance: WalletBalance?,
         pricePercentages: Map<String, Double>,
-        currencyCode: String = "USD"
+        currency: SupportedCurrency
     ): List<AssetDisplayInfo> {
         val assets = mutableListOf<AssetDisplayInfo>()
 
@@ -42,7 +43,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     balance = coinBalance?.btc ?: "0",
                     balanceFormatted = formatCryptoAmount(coinBalance?.btc ?: "0"),
                     usdValue = coinBalance?.usdValue ?: 0.0,
-                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currencyCode),
+                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currency.code),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.let { it.formatPercent() },
                     address = coin.address
@@ -67,7 +68,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     balance = coinBalance?.sol ?: "0",
                     balanceFormatted = formatCryptoAmount(coinBalance?.sol ?: "0"),
                     usdValue = coinBalance?.usdValue ?: 0.0,
-                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currencyCode),
+                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currency.code),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.let { it.formatPercent() },
                     tokenCount = coin.splTokens.size,
@@ -89,7 +90,7 @@ class FormatBalanceUseCase @Inject constructor() {
                         balance = "0",
                         balanceFormatted = "0",
                         usdValue = 0.0,
-                        usdValueFormatted = (0.0).formatCurrency(currencyCode),
+                        usdValueFormatted = (0.0).formatCurrency(currency.code),
                         priceChangePercentage = null,
                         priceChangeFormatted = null,
                         address = token.mintAddress
@@ -124,7 +125,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     balanceFormatted = formatCryptoAmount(tokenBalance?.balanceDecimal ?: "0"),
                     usdValue = tokenBalance?.usdValue ?: 0.0,
                     usdValueFormatted = (tokenBalance?.usdValue
-                        ?: 0.0).formatCurrency(currencyCode),
+                        ?: 0.0).formatCurrency(currency.code),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.let { it.formatPercent() },
                     address = token.address

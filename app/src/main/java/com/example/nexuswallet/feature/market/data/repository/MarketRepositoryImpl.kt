@@ -12,6 +12,7 @@ import com.example.nexuswallet.feature.market.domain.model.ChartData
 import com.example.nexuswallet.feature.market.domain.model.ChartDuration
 import com.example.nexuswallet.feature.market.domain.model.NewsArticle
 import com.example.nexuswallet.feature.market.domain.model.TokenDetail
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,10 +22,10 @@ class MarketRepositoryImpl @Inject constructor(
     private val coinStatsApi: CoinStatsApi
 ) : MarketRepository {
 
-    override suspend fun getLatestPricePercentages(): Result<Map<String, Double>> {
+    override suspend fun getLatestPricePercentages(currency: SupportedCurrency): Result<Map<String, Double>> {
         return SafeApiCall.make {
             coinGeckoApi.getMarkets(
-                vsCurrency = "usd",
+                vsCurrency = currency.code.lowercase(),
                 order = "market_cap_desc",
                 perPage = 100,
                 page = 1,
@@ -41,19 +42,21 @@ class MarketRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getTokenDetails(tokenId: String): Result<TokenDetail> {
+    override suspend fun getTokenDetails(tokenId: String, currency: SupportedCurrency): Result<TokenDetail> {
         return SafeApiCall.make {
-            coinGeckoApi.getCoinDetails(id = tokenId).toTokenDetail()
+            coinGeckoApi.getCoinDetails(id = tokenId).toTokenDetail(currency)
         }
     }
 
     override suspend fun getMarketChart(
         tokenId: String,
-        duration: ChartDuration
+        duration: ChartDuration,
+        currency: SupportedCurrency
     ): Result<ChartData> {
         return SafeApiCall.make {
             coinGeckoApi.getMarketChart(
                 id = tokenId,
+                vsCurrency = currency.code.lowercase(),
                 days = duration.days
             ).toChartData()
         }
@@ -80,15 +83,15 @@ class MarketRepositoryImpl @Inject constructor(
 
     override suspend fun getSimplePrices(
         ids: List<String>,
-        vsCurrency: String
+        currency: SupportedCurrency
     ): Result<Map<String, Double>> {
         return SafeApiCall.make {
-            val currency = vsCurrency.lowercase()
+            val currencyCode = currency.code.lowercase()
             val response = coinGeckoApi.getSimplePrice(
                 ids = ids.joinToString(","),
-                vsCurrencies = currency
+                vsCurrencies = currencyCode
             )
-            response.mapValues { it.value[currency] ?: 0.0 }
+            response.mapValues { it.value[currencyCode] ?: 0.0 }
         }
     }
 

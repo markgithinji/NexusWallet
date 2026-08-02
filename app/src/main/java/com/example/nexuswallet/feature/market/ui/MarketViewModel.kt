@@ -3,11 +3,12 @@ package com.example.nexuswallet.feature.market.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.market.domain.repository.CoinGeckoRepository
-import com.example.nexuswallet.feature.market.domain.repository.WebSocketRepository
+import com.example.nexuswallet.feature.market.domain.model.ConnectionState
 import com.example.nexuswallet.feature.market.domain.model.Token
 import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
-import com.example.nexuswallet.feature.market.domain.model.ConnectionState
+import com.example.nexuswallet.feature.market.domain.repository.CoinGeckoRepository
+import com.example.nexuswallet.feature.market.domain.repository.WebSocketRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -26,7 +27,8 @@ import javax.inject.Inject
 @HiltViewModel
 class MarketViewModel @Inject constructor(
     private val coinGeckoRepository: CoinGeckoRepository,
-    private val webSocketRepository: WebSocketRepository
+    private val webSocketRepository: WebSocketRepository,
+    private val securityRepository: SecurityRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(MarketUiState(isLoading = true))
@@ -46,9 +48,21 @@ class MarketViewModel @Inject constructor(
     private val searchDebounceTime = 300L
 
     init {
-        loadInitialData()
+        observeSelectedCurrency()
         setupWebSocketObservers()
         setupSearchDebounce()
+    }
+
+    private fun observeSelectedCurrency() {
+        viewModelScope.launch {
+            securityRepository.observeSelectedCurrency().collect { currency ->
+                val previousCurrency = _uiState.value.selectedCurrency
+                _uiState.update { it.copy(selectedCurrency = currency) }
+                if (previousCurrency != currency || !isInitialDataLoaded) {
+                    loadInitialData()
+                }
+            }
+        }
     }
 
     @OptIn(FlowPreview::class)
@@ -72,7 +86,8 @@ class MarketViewModel @Inject constructor(
 
             when (val result = coinGeckoRepository.getTopCryptocurrencies(
                 perPage = perPage,
-                page = 1
+                page = 1,
+                currency = _uiState.value.selectedCurrency
             )) {
                 is Result.Success -> {
                     val firstPage = result.data
@@ -130,7 +145,8 @@ class MarketViewModel @Inject constructor(
 
         when (val result = coinGeckoRepository.getTopCryptocurrencies(
             perPage = perPage,
-            page = page
+            page = page,
+            currency = _uiState.value.selectedCurrency
         )) {
             is Result.Success -> {
                 val tokens = result.data

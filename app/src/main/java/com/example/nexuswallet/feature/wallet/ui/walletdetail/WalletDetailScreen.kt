@@ -83,6 +83,7 @@ import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.NexusTextField
 import com.example.nexuswallet.feature.core.ui.clickableSingle
 import com.example.nexuswallet.feature.core.util.formatCurrency
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin

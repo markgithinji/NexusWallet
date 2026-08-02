@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.market.ui
 
 import com.example.nexuswallet.feature.market.domain.model.ConnectionState
 import com.example.nexuswallet.feature.market.domain.model.Token
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 
 data class MarketUiState(
     val tokens: List<Token> = emptyList(),
@@ -10,5 +11,6 @@ data class MarketUiState(
     val isLoadingMore: Boolean = false,
     val error: String? = null,
     val connectionState: ConnectionState = ConnectionState.CONNECTING,
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    val selectedCurrency: SupportedCurrency = SupportedCurrency.USD
 )
