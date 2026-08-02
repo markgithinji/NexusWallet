@@ -10,7 +10,6 @@ import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.usecase.CreateWalletUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GenerateMnemonicUseCase
-import com.example.nexuswallet.feature.wallet.domain.usecase.ValidateMnemonicUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +23,6 @@ import javax.inject.Inject
 @HiltViewModel
 class WalletCreationViewModel @Inject constructor(
     private val generateMnemonicUseCase: GenerateMnemonicUseCase,
-    private val validateMnemonicUseCase: ValidateMnemonicUseCase,
     private val createWalletUseCase: CreateWalletUseCase
 ) : ViewModel() {
 
@@ -37,8 +35,8 @@ class WalletCreationViewModel @Inject constructor(
     val currentStep: StateFlow<Int> = _currentStep.asStateFlow()
 
     // Generated mnemonic
-    private val _mnemonic = MutableStateFlow<List<String>>(emptyList())
-    val mnemonic: StateFlow<List<String>> = _mnemonic.asStateFlow()
+    private val _mnemonic = MutableStateFlow<List<CharArray>>(emptyList())
+    val mnemonic: StateFlow<List<CharArray>> = _mnemonic.asStateFlow()
 
     // Selected networks (base chains)
     private val _selectedNetworks = MutableStateFlow(
@@ -64,8 +62,8 @@ class WalletCreationViewModel @Inject constructor(
     private var pendingWalletId: String? = null
 
     // User entered words for verification
-    private val _enteredWords = MutableStateFlow<List<String>>(emptyList())
-    val enteredWords: StateFlow<List<String>> = _enteredWords.asStateFlow()
+    private val _enteredWords = MutableStateFlow<List<CharArray>>(emptyList())
+    val enteredWords: StateFlow<List<CharArray>> = _enteredWords.asStateFlow()
 
     // Track if mnemonic is generated
     private val _isMnemonicGenerated = MutableStateFlow(false)
@@ -139,7 +137,7 @@ class WalletCreationViewModel @Inject constructor(
         _walletName.value = name
     }
 
-    fun addWordToVerification(word: String) {
+    fun addWordToVerification(word: CharArray) {
         _enteredWords.value += word
     }
 
@@ -150,7 +148,15 @@ class WalletCreationViewModel @Inject constructor(
     }
 
     fun verifyMnemonic(): Boolean {
-        return validateMnemonicUseCase(_enteredWords.value)
+        // Compare CharArrays
+        val entered = _enteredWords.value
+        val actual = _mnemonic.value
+        if (entered.size != actual.size) return false
+        
+        for (i in entered.indices) {
+            if (!entered[i].contentEquals(actual[i])) return false
+        }
+        return true
     }
 
     fun completeVerificationAndMoveNext(): Boolean {

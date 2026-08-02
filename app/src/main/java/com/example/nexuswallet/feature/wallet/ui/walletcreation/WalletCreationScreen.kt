@@ -215,7 +215,7 @@ fun WalletCreationScreen(
                         if (hasSeenSecurityWarning) {
                             if (mnemonic.isNotEmpty()) {
                                 MnemonicDisplayStep(
-                                    mnemonic = mnemonic,
+                                    mnemonic = mnemonic.map { String(it) },
                                     onNext = { viewModel.nextStep() },
                                     onBack = { viewModel.previousStep() }
                                 )
@@ -226,9 +226,9 @@ fun WalletCreationScreen(
                     }
 
                     2 -> MnemonicVerificationStep(
-                        mnemonic = mnemonic,
-                        enteredWords = enteredWords,
-                        onAddWord = { word -> viewModel.addWordToVerification(word) },
+                        mnemonic = mnemonic.map { String(it) },
+                        enteredWords = enteredWords.map { String(it) },
+                        onAddWord = { word -> viewModel.addWordToVerification(word.toCharArray()) },
                         onRemoveWord = { index -> viewModel.removeWordFromVerification(index) },
                         onVerify = {
                             if (viewModel.completeVerificationAndMoveNext()) {

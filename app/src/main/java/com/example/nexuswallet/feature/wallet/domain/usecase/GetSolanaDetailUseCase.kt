@@ -81,7 +81,7 @@ class GetSolanaDetailUseCase @Inject constructor(
 
             is Result.Error -> {
                 logger.e(TAG, " Blockchain repository failed: ${blockchainResult.message}")
-                // Don't return error - we'll continue with whatever we have in DB
+                // Don't return error, we'll continue with whatever we have in DB
             }
 
             Result.Loading -> {

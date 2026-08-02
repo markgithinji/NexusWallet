@@ -32,8 +32,8 @@ class ImportWalletViewModel @Inject constructor(
     private val _currentStep = MutableStateFlow(0)
     val currentStep: StateFlow<Int> = _currentStep.asStateFlow()
 
-    private val _mnemonicWords = MutableStateFlow(List(12) { "" })
-    val mnemonicWords: StateFlow<List<String>> = _mnemonicWords.asStateFlow()
+    private val _mnemonicWords = MutableStateFlow(List(12) { charArrayOf() })
+    val mnemonicWords: StateFlow<List<CharArray>> = _mnemonicWords.asStateFlow()
 
     private val _walletName = MutableStateFlow("")
     val walletName: StateFlow<String> = _walletName.asStateFlow()
@@ -62,7 +62,7 @@ class ImportWalletViewModel @Inject constructor(
     fun updateWord(index: Int, word: String) {
         _mnemonicWords.update { current ->
             current.toMutableList().apply {
-                this[index] = word.trim().lowercase()
+                this[index] = word.trim().lowercase().toCharArray()
             }
         }
     }
@@ -108,12 +108,13 @@ class ImportWalletViewModel @Inject constructor(
 
     fun importWallet(cipher: Cipher? = null) {
         val words = _mnemonicWords.value
-        if (words.any { it.isBlank() }) {
+        if (words.any { it.isEmpty() }) {
             _uiState.value = WalletCreationUiState.Error("Please fill in all 12 words")
             return
         }
 
-        if (!validateMnemonicUseCase(words)) {
+        // Validate mnemonic (temporarily using String conversion for the validator library)
+        if (!validateMnemonicUseCase(words.map { String(it) })) {
             _uiState.value = WalletCreationUiState.Error("Invalid mnemonic phrase")
             return
         }

@@ -24,3 +24,14 @@ inline fun <T> ByteArray.use(block: (ByteArray) -> T): T {
         fill(0)
     }
 }
+
+/**
+ * Performs the given [block] on this [CharArray] and then wipes its content.
+ */
+inline fun <T> CharArray.use(block: (CharArray) -> T): T {
+    try {
+        return block(this)
+    } finally {
+        fill('\u0000')
+    }
+}

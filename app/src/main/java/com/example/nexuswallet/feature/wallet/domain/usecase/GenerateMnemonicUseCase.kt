@@ -12,7 +12,7 @@ class GenerateMnemonicUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    operator fun invoke(wordCount: Int): List<String> {
+    operator fun invoke(wordCount: Int): List<CharArray> {
         logger.d(TAG, "Generating mnemonic with word count: $wordCount")
 
         val strength = when (wordCount) {
@@ -31,7 +31,11 @@ class GenerateMnemonicUseCase @Inject constructor(
         SecureRandom().nextBytes(entropy)
 
         return try {
-            val mnemonic = MnemonicUtils.generateMnemonic(entropy).split(" ")
+            // SECURITY: Convert generated mnemonic String to CharArray immediately and split
+            val mnemonicString = MnemonicUtils.generateMnemonic(entropy)
+            val mnemonic = mnemonicString.split(" ").map { it.toCharArray() }
+            
+            // We can't clear mnemonicString but we've transitioned the domain result to CharArray
             logger.d(TAG, "Successfully generated ${mnemonic.size} word mnemonic")
             mnemonic
         } catch (e: Exception) {
@@ -40,9 +44,11 @@ class GenerateMnemonicUseCase @Inject constructor(
                 "Failed to generate mnemonic with MnemonicUtils, falling back to MnemonicCode",
                 e
             )
-            val mnemonic = MnemonicCode.INSTANCE.toMnemonic(entropy)
+            val mnemonic = MnemonicCode.INSTANCE.toMnemonic(entropy).map { it.toCharArray() }
             logger.d(TAG, "Successfully generated ${mnemonic.size} word mnemonic using fallback")
             mnemonic
+        } finally {
+            entropy.fill(0)
         }
     }
 

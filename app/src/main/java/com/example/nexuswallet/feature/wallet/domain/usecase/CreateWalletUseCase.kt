@@ -36,7 +36,8 @@ import org.bitcoinj.wallet.DeterministicSeed
 import org.sol4k.Keypair
 import org.web3j.crypto.Bip32ECKeyPair
 import org.web3j.crypto.Credentials
-import org.web3j.crypto.MnemonicUtils
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -51,7 +52,7 @@ class CreateWalletUseCase @Inject constructor(
 
     suspend operator fun invoke(
         walletId: String,
-        mnemonic: List<String>,
+        mnemonic: List<CharArray>,
         name: String,
         selectedNetworks: Set<Network>,
         selectedTokens: Map<EthereumNetwork, Set<EVMTokenType>>,
@@ -65,26 +66,33 @@ class CreateWalletUseCase @Inject constructor(
         val solanaCoins = mutableListOf<SolanaCoin>()
         val evmTokens = mutableListOf<EVMToken>()
 
-        // Generate master seed once
-        val mnemonicString = mnemonic.joinToString(" ")
-        val masterSeed = MnemonicUtils.generateSeed(mnemonicString, "")
+        // SECURITY: Generate master seed directly from CharArray without creating a joined String
+        val masterSeed = generateMasterSeed(mnemonic)
 
         masterSeed.use { seed ->
             // 1. Pre-derive all addresses and keys
             // Process Bitcoin networks
             val bitcoinNetworks = selectedNetworks.filterIsInstance<BitcoinNetwork>()
-            bitcoinNetworks.forEach { network ->
-                createBitcoinCoin(mnemonic, network)?.let { coin ->
-                    bitcoinCoins.add(coin)
-                    val keyType = if (network == BitcoinNetwork.Mainnet) KEY_BITCOIN_MAINNET else KEY_BITCOIN_TESTNET
-                    deriveBitcoinPrivateKey(mnemonic, network)?.let { rawKeys ->
-                        rawPrivateKeys[keyType] = rawKeys
+            
+            // Temporary localized mnemonic strings for bitcoinj (which requires List<String>)
+            val mnemonicStrings = mnemonic.map { String(it) }
+            
+            try {
+                bitcoinNetworks.forEach { network ->
+                    createBitcoinCoin(mnemonicStrings, network)?.let { coin ->
+                        bitcoinCoins.add(coin)
+                        val keyType = if (network == BitcoinNetwork.Mainnet) KEY_BITCOIN_MAINNET else KEY_BITCOIN_TESTNET
+                        deriveBitcoinPrivateKey(mnemonicStrings, network)?.let { rawKeys ->
+                            rawPrivateKeys[keyType] = rawKeys
+                        }
+                        logger.d(TAG, "Bitcoin ${network.name} coin derived")
+                    } ?: run {
+                        logger.e(TAG, "Failed to create Bitcoin ${network.name} coin")
+                        return@withContext Result.Error("Failed to create Bitcoin ${network.name} coin")
                     }
-                    logger.d(TAG, "Bitcoin ${network.name} coin derived")
-                } ?: run {
-                    logger.e(TAG, "Failed to create Bitcoin ${network.name} coin")
-                    return@withContext Result.Error("Failed to create Bitcoin ${network.name} coin")
                 }
+            } finally {
+                // We can't wipe Strings, but mnemonicStrings goes out of scope here
             }
 
             // Process Ethereum networks
@@ -149,9 +157,6 @@ class CreateWalletUseCase @Inject constructor(
         try {
             logger.d(TAG, "Securing wallet mnemonic and private keys")
             
-            // Perform all encryptions in one tight sequence
-            // after all heavy derivations are finished to stay within the 5s biometric window.
-            
             val encryptedPrivateKeys = mutableMapOf<String, Pair<String, ByteArray>>()
             
             // Secure mnemonic
@@ -195,7 +200,7 @@ class CreateWalletUseCase @Inject constructor(
             logger.e(TAG, "Encryption batch failed | error=${e.message}")
             return@withContext Result.Error("Failed to secure wallet: ${e.message}")
         } finally {
-            // Safety backup: ensure all raw keys are wiped
+            // Safety: ensure all raw keys are wiped
             rawPrivateKeys.values.forEach { it.fill(0) }
         }
 
@@ -222,6 +227,53 @@ class CreateWalletUseCase @Inject constructor(
 
         logger.d(TAG, "Wallet creation completed successfully")
         Result.Success(wallet)
+    }
+
+    private fun generateMasterSeed(mnemonic: List<CharArray>, passphrase: String = ""): ByteArray {
+        val mnemonicChars = joinMnemonic(mnemonic)
+        return try {
+            val salt = ("mnemonic" + passphrase).toByteArray(Charsets.UTF_8)
+            val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
+            val spec = PBEKeySpec(mnemonicChars, salt, 2048, 512)
+            factory.generateSecret(spec).encoded
+        } finally {
+            mnemonicChars.fill('\u0000')
+        }
+    }
+
+    private fun joinMnemonic(mnemonic: List<CharArray>): CharArray {
+        var totalLength = if (mnemonic.isEmpty()) 0 else mnemonic.size - 1
+        for (word in mnemonic) totalLength += word.size
+        
+        val result = CharArray(totalLength)
+        var offset = 0
+        for (i in mnemonic.indices) {
+            System.arraycopy(mnemonic[i], 0, result, offset, mnemonic[i].size)
+            offset += mnemonic[i].size
+            if (i < mnemonic.size - 1) {
+                result[offset++] = ' '
+            }
+        }
+        return result
+    }
+
+    private fun mnemonicToByteArray(mnemonic: List<CharArray>): ByteArray {
+        var totalBytes = if (mnemonic.isEmpty()) 0 else mnemonic.size - 1
+        for (word in mnemonic) {
+            totalBytes += word.size
+        }
+
+        val result = ByteArray(totalBytes)
+        var offset = 0
+        for (i in mnemonic.indices) {
+            for (j in mnemonic[i].indices) {
+                result[offset++] = mnemonic[i][j].code.toByte()
+            }
+            if (i < mnemonic.size - 1) {
+                result[offset++] = ' '.code.toByte()
+            }
+        }
+        return result
     }
 
     private fun createBitcoinCoin(
@@ -363,28 +415,6 @@ class CreateWalletUseCase @Inject constructor(
             logger.e(TAG, "Solana private key derivation failed | error=${e.message}")
             null
         }
-    }
-
-    private fun mnemonicToByteArray(mnemonic: List<String>): ByteArray {
-        var totalLength = 0
-        mnemonic.forEachIndexed { index, word ->
-            totalLength += word.length
-            if (index < mnemonic.size - 1) totalLength += 1
-        }
-        val bytes = ByteArray(totalLength)
-        var offset = 0
-        mnemonic.forEachIndexed { index, word ->
-            val wordBytes = word.toByteArray(Charsets.UTF_8)
-            System.arraycopy(wordBytes, 0, bytes, offset, wordBytes.size)
-            offset += wordBytes.size
-            if (index < mnemonic.size - 1) {
-                bytes[offset] = ' '.toByte()
-                offset += 1
-            }
-            // Note: wordBytes is short-lived and will be GC'd, 
-            // but we can't clear word itself as it's a String
-        }
-        return bytes
     }
 
     companion object {

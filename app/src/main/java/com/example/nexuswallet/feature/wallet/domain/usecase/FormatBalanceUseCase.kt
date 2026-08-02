@@ -45,7 +45,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     usdValue = coinBalance?.usdValue ?: 0.0,
                     usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currency.code),
                     priceChangePercentage = percentage,
-                    priceChangeFormatted = percentage?.let { it.formatPercent() },
+                    priceChangeFormatted = percentage?.formatPercent(),
                     address = coin.address
                 )
             )
@@ -70,7 +70,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     usdValue = coinBalance?.usdValue ?: 0.0,
                     usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currency.code),
                     priceChangePercentage = percentage,
-                    priceChangeFormatted = percentage?.let { it.formatPercent() },
+                    priceChangeFormatted = percentage?.formatPercent(),
                     tokenCount = coin.splTokens.size,
                     address = coin.address
                 )
@@ -127,7 +127,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     usdValueFormatted = (tokenBalance?.usdValue
                         ?: 0.0).formatCurrency(currency.code),
                     priceChangePercentage = percentage,
-                    priceChangeFormatted = percentage?.let { it.formatPercent() },
+                    priceChangeFormatted = percentage?.formatPercent(),
                     address = token.address
                 )
             )

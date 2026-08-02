@@ -169,7 +169,7 @@ fun ImportWalletScreen(
                     }
 
                     else -> ImportMnemonicStep(
-                        words = words,
+                        words = words.map { String(it) },
                         walletName = walletName,
                         uiState = uiState,
                         onWordChange = viewModel::updateWord,

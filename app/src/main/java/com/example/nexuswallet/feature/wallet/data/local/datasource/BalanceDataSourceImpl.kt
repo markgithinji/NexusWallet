@@ -167,18 +167,10 @@ class BalanceDataSourceImpl @Inject constructor(
         return combine(
             bitcoinBalanceDao.observeAll(),
             solanaBalanceDao.observeAll(),
-            evmBalanceDao.observeAll(),
             bitcoinCoinDao.observeAll(),
             solanaCoinDao.observeAll(),
-            walletDao.getAll()
-        ) { flows ->
-            val btcBalances = flows[0] as List<BitcoinBalanceEntity>
-            val solBalances = flows[1] as List<SolanaBalanceEntity>
-            val evmBalances = flows[2] as List<EVMBalanceEntity>
-            val btcCoins = flows[3] as List<BitcoinCoinEntity>
-            val solCoins = flows[4] as List<SolanaCoinEntity>
-            val wallets = flows[5] as List<WalletEntity>
-
+            combine(evmBalanceDao.observeAll(), walletDao.getAll()) { evm, wallets -> evm to wallets }
+        ) { btcBalances, solBalances, btcCoins, solCoins, (evmBalances, wallets) ->
             wallets.associate { walletEntity ->
                 val walletId = walletEntity.id
 
