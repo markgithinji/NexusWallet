@@ -2,10 +2,13 @@ package com.example.nexuswallet.feature.settings.domain.usecase
 
 import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.WalletConstants
 import com.example.nexuswallet.feature.core.util.decodeHex
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
+import com.example.nexuswallet.feature.settings.domain.model.BackupBundle
+import com.example.nexuswallet.feature.settings.domain.model.RestoreSelection
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
-import com.example.nexuswallet.feature.settings.domain.repository.BackupRepository
 import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import javax.inject.Inject
@@ -15,41 +18,63 @@ import javax.inject.Singleton
 class RestoreBackupUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val vaultRepository: VaultRepository,
-    private val securityRepository: SecurityRepository,
-    private val backupRepository: BackupRepository
+    private val securityRepository: SecurityRepository
 ) {
-    suspend operator fun invoke(backupData: ByteArray, pin: String): Result<Unit> {
+    suspend operator fun invoke(bundle: BackupBundle, selection: RestoreSelection): Result<Unit> {
         return try {
-            // 1. Decrypt Bundle via Repository
-            val decryptResult = backupRepository.decryptBackup(backupData, pin)
-            if (decryptResult is Result.Error) return Result.Error(decryptResult.message)
+            // 1. Filter and Restore Wallets
+            val selectedWallets = bundle.wallets.filter { selection.selectedWallets.contains(it.id) }
             
-            val bundle = (decryptResult as Result.Success).data
-            
-            // 2. Restore Wallets to Database
-            bundle.wallets.forEach { wallet ->
-                walletRepository.saveWallet(wallet)
-            }
-            
-            // 3. Restore sensitive data to Vault
-            bundle.vaultData.forEach { entry ->
-                vaultRepository.storeEncryptedMnemonic(
-                    entry.walletId, 
-                    entry.mnemonic.data, 
-                    entry.mnemonic.iv.decodeHex()
+            selectedWallets.forEach { wallet ->
+                val walletId = wallet.id
+                val allowedNetworks = selection.selectedNetworks[walletId] ?: emptySet()
+                
+                // Filter assets within the wallet based on selection
+                val filteredWallet = wallet.copy(
+                    bitcoinCoins = wallet.bitcoinCoins.filter { coin ->
+                        isNetworkSelected(coin.network.name, allowedNetworks)
+                    },
+                    solanaCoins = wallet.solanaCoins.filter { coin ->
+                        isNetworkSelected(coin.network.name, allowedNetworks)
+                    },
+                    evmTokens = wallet.evmTokens.filter { token ->
+                        val isNetworkAllowed = isNetworkSelected(token.network.name, allowedNetworks)
+                        val walletTokenSelection = selection.selectedTokens[walletId] ?: emptyMap()
+                        val allowedTokensForNetwork = walletTokenSelection[token.network.name] ?: emptySet()
+                        
+                        // Always include Native ETH if network is allowed, otherwise check token selection
+                        isNetworkAllowed && (token.evmTokenType == EVMTokenType.NATIVE || allowedTokensForNetwork.contains(token.evmTokenType))
+                    }
                 )
                 
-                entry.privateKeys.forEach { pk ->
-                    vaultRepository.storeEncryptedPrivateKey(
-                        entry.walletId,
-                        pk.keyType,
-                        pk.encryptedKey.data,
-                        pk.encryptedKey.iv.decodeHex()
+                // Save filtered wallet to database
+                walletRepository.saveWallet(filteredWallet)
+                
+                // 2. Restore corresponding sensitive data to Vault
+                val vaultEntry = bundle.vaultData.find { it.walletId == walletId }
+                if (vaultEntry != null) {
+                    // Restore Mnemonic
+                    vaultRepository.storeEncryptedMnemonic(
+                        walletId, 
+                        vaultEntry.mnemonic.data, 
+                        vaultEntry.mnemonic.iv.decodeHex()
                     )
+                    
+                    // Restore Private Keys only for selected networks
+                    vaultEntry.privateKeys.forEach { pk ->
+                        if (isKeyRequiredForNetworks(pk.keyType, allowedNetworks)) {
+                            vaultRepository.storeEncryptedPrivateKey(
+                                walletId,
+                                pk.keyType,
+                                pk.encryptedKey.data,
+                                pk.encryptedKey.iv.decodeHex()
+                            )
+                        }
+                    }
                 }
             }
             
-            // 4. Restore Application Settings
+            // 3. Restore Global Settings
             securityRepository.setThemeMode(ThemeMode.valueOf(bundle.settings.themeMode))
             securityRepository.setSelectedCurrency(SupportedCurrency.fromCode(bundle.settings.selectedCurrency))
             securityRepository.setPrivacyModeEnabled(bundle.settings.privacyModeEnabled)
@@ -58,6 +83,24 @@ class RestoreBackupUseCase @Inject constructor(
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e.message ?: "Failed to restore backup")
+        }
+    }
+
+    private fun isNetworkSelected(networkName: String, selectedNetworks: Set<String>): Boolean {
+        return selectedNetworks.any { it.equals(networkName, ignoreCase = true) }
+    }
+
+    private fun isKeyRequiredForNetworks(keyType: String, selectedNetworkNames: Set<String>): Boolean {
+        return when (keyType) {
+            WalletConstants.KEY_BITCOIN_MAINNET -> isNetworkSelected("Bitcoin Mainnet", selectedNetworkNames)
+            WalletConstants.KEY_BITCOIN_TESTNET -> isNetworkSelected("Bitcoin Testnet", selectedNetworkNames)
+            WalletConstants.KEY_ETHEREUM_MAIN -> {
+                isNetworkSelected("Ethereum Mainnet", selectedNetworkNames) ||
+                isNetworkSelected("Ethereum Sepolia", selectedNetworkNames)
+            }
+            WalletConstants.KEY_SOLANA_MAINNET -> isNetworkSelected("Solana Mainnet", selectedNetworkNames)
+            WalletConstants.KEY_SOLANA_DEVNET -> isNetworkSelected("Solana Devnet", selectedNetworkNames)
+            else -> false
         }
     }
 }

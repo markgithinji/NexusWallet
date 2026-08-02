@@ -9,7 +9,12 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
+import com.example.nexuswallet.feature.settings.domain.model.*
+import com.example.nexuswallet.feature.settings.domain.repository.BackupRepository
 import com.example.nexuswallet.feature.settings.domain.usecase.*
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.Network
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -26,7 +31,8 @@ class SecuritySettingsViewModel @Inject constructor(
     private val verifyPinUseCase: VerifyPinUseCase,
     private val clearAllSecurityDataUseCase: ClearAllSecurityDataUseCase,
     private val createBackupUseCase: CreateBackupUseCase,
-    private val restoreBackupUseCase: RestoreBackupUseCase
+    private val restoreBackupUseCase: RestoreBackupUseCase,
+    private val backupRepository: BackupRepository
 ) : ViewModel() {
 
     // UI State
@@ -50,6 +56,9 @@ class SecuritySettingsViewModel @Inject constructor(
     private val _showClearAllDataDialog = MutableStateFlow(false)
     val showClearAllDataDialog: StateFlow<Boolean> = _showClearAllDataDialog.asStateFlow()
 
+    private val _showRestoreSelectionDialog = MutableStateFlow(false)
+    val showRestoreSelectionDialog: StateFlow<Boolean> = _showRestoreSelectionDialog.asStateFlow()
+
     private val _clearAllConfirmationText = MutableStateFlow("")
     val clearAllConfirmationText: StateFlow<String> = _clearAllConfirmationText.asStateFlow()
 
@@ -63,8 +72,18 @@ class SecuritySettingsViewModel @Inject constructor(
     private val _operationState = MutableStateFlow<SecurityOperation>(SecurityOperation.IDLE)
     val operationState: StateFlow<SecurityOperation> = _operationState.asStateFlow()
 
-    private var pinVerifyPurpose: PinVerifyPurpose? = null
-    private var pendingRestoreData: ByteArray? = null
+    // Restore Selection State
+    private val _decryptedBundle = MutableStateFlow<BackupBundle?>(null)
+    val decryptedBundle: StateFlow<BackupBundle?> = _decryptedBundle.asStateFlow()
+
+    private val _restoreSelection = MutableStateFlow(RestoreSelection())
+    val restoreSelection: StateFlow<RestoreSelection> = _restoreSelection.asStateFlow()
+
+    private val _pinVerifyPurpose = MutableStateFlow<PinVerifyPurpose?>(null)
+    val pinVerifyPurpose: StateFlow<PinVerifyPurpose?> = _pinVerifyPurpose.asStateFlow()
+
+    private var pendingBackupData: ByteArray? = null
+    private var pendingBackupPin: String? = null
 
     init {
         loadSecurityStatus()
@@ -150,7 +169,6 @@ class SecuritySettingsViewModel @Inject constructor(
                             Result.Success(updatedState)
                         }
                         else -> {
-                            // If we weren't in success state, transition to it
                             Result.Success(
                                 SecurityUiState(
                                     isBiometricEnabled = status.isBiometricEnabled,
@@ -187,23 +205,21 @@ class SecuritySettingsViewModel @Inject constructor(
 
     fun handleCreateBackupClick() {
         checkPinAndProceed {
-            pinVerifyPurpose = PinVerifyPurpose.BACKUP
+            _pinVerifyPurpose.value = PinVerifyPurpose.BACKUP
             _showPinVerifyDialog.value = true
             _pinSetupError.value = null
         }
     }
 
     fun handleRestoreBackupClick() {
-        checkPinAndProceed {
-            viewModelScope.launch {
-                _uiEffect.emit(SecurityUiEffect.SelectBackupFile)
-            }
+        viewModelScope.launch {
+            _uiEffect.emit(SecurityUiEffect.SelectBackupFile)
         }
     }
 
     fun onBackupFileSelected(data: ByteArray) {
-        pendingRestoreData = data
-        pinVerifyPurpose = PinVerifyPurpose.RESTORE
+        pendingBackupData = data
+        _pinVerifyPurpose.value = PinVerifyPurpose.RESTORE
         _showPinVerifyDialog.value = true
         _pinSetupError.value = null
     }
@@ -212,6 +228,15 @@ class SecuritySettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _pinSetupError.value = null
             
+            // For RESTORE, we use the entered PIN directly for decryption.
+            // If it's wrong, the decryption will fail in executeBackupOperation.
+            // This allows restoration on new installs where no local PIN is set yet.
+            if (_pinVerifyPurpose.value == PinVerifyPurpose.RESTORE) {
+                _showPinVerifyDialog.value = false
+                executeBackupOperation(pin)
+                return@launch
+            }
+
             val verifyResult = verifyPinUseCase(pin)
             if (verifyResult is Result.Success && verifyResult.data) {
                 _showPinVerifyDialog.value = false
@@ -224,7 +249,7 @@ class SecuritySettingsViewModel @Inject constructor(
 
     private fun executeBackupOperation(pin: String) {
         viewModelScope.launch {
-            when (pinVerifyPurpose) {
+            when (_pinVerifyPurpose.value) {
                 PinVerifyPurpose.BACKUP -> {
                     _operationState.value = SecurityOperation.BACKING_UP
                     when (val result = createBackupUseCase(pin)) {
@@ -237,27 +262,128 @@ class SecuritySettingsViewModel @Inject constructor(
                         is Result.Error -> _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
                         else -> {}
                     }
+                    _operationState.value = SecurityOperation.IDLE
                 }
                 PinVerifyPurpose.RESTORE -> {
-                    val data = pendingRestoreData
+                    val data = pendingBackupData
                     if (data != null) {
                         _operationState.value = SecurityOperation.RESTORING
-                        when (val result = restoreBackupUseCase(data, pin)) {
+                        when (val result = backupRepository.decryptBackup(data, pin)) {
                             is Result.Success -> {
-                                refreshAuthStatus()
-                                _uiEffect.emit(SecurityUiEffect.ShowSnackbar("Backup restored successfully"))
+                                _decryptedBundle.value = result.data
+                                pendingBackupPin = pin
+                                // Initialize selection with everything enabled
+                                initRestoreSelection(result.data)
+                                _showRestoreSelectionDialog.value = true
                             }
-                            is Result.Error -> _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                            is Result.Error -> {
+                                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                            }
                             else -> {}
                         }
+                        _operationState.value = SecurityOperation.IDLE
                     }
                 }
                 null -> {}
             }
-            _operationState.value = SecurityOperation.IDLE
-            pinVerifyPurpose = null
-            pendingRestoreData = null
+            _pinVerifyPurpose.value = null
+            pendingBackupData = null
         }
+    }
+
+    private fun initRestoreSelection(bundle: BackupBundle) {
+        val walletIds = bundle.wallets.map { it.id }.toSet()
+        val networks = mutableMapOf<String, Set<String>>()
+        val tokens = mutableMapOf<String, Map<String, Set<EVMTokenType>>>()
+
+        bundle.wallets.forEach { wallet ->
+            val allNetworks = (wallet.bitcoinCoins.map { it.network.name } +
+                               wallet.solanaCoins.map { it.network.name } +
+                               wallet.evmTokens.map { it.network.name }).toSet()
+            networks[wallet.id] = allNetworks
+
+            val walletTokens = mutableMapOf<String, Set<EVMTokenType>>()
+            wallet.evmTokens.groupBy { it.network.name }.forEach { (netName, evmTokens) ->
+                walletTokens[netName] = evmTokens.map { it.evmTokenType }.toSet()
+            }
+            tokens[wallet.id] = walletTokens
+        }
+
+        _restoreSelection.value = RestoreSelection(
+            selectedWallets = walletIds,
+            selectedNetworks = networks,
+            selectedTokens = tokens
+        )
+    }
+
+    fun toggleWalletSelection(walletId: String, selected: Boolean) {
+        _restoreSelection.update { current ->
+            val newWallets = if (selected) current.selectedWallets + walletId else current.selectedWallets - walletId
+            current.copy(selectedWallets = newWallets)
+        }
+    }
+
+    fun toggleNetworkSelection(walletId: String, networkName: String, selected: Boolean) {
+        _restoreSelection.update { current ->
+            val walletNetworks = current.selectedNetworks[walletId]?.toMutableSet() ?: mutableSetOf()
+            if (selected) walletNetworks.add(networkName) else walletNetworks.remove(networkName)
+            
+            val newNetworks = current.selectedNetworks.toMutableMap()
+            newNetworks[walletId] = walletNetworks
+            current.copy(selectedNetworks = newNetworks)
+        }
+    }
+
+    fun toggleTokenSelection(walletId: String, networkName: String, tokenType: EVMTokenType, selected: Boolean) {
+        _restoreSelection.update { current ->
+            val walletTokens = current.selectedTokens[walletId]?.toMutableMap() ?: mutableMapOf()
+            val netTokens = walletTokens[networkName]?.toMutableSet() ?: mutableSetOf()
+            
+            if (selected) netTokens.add(tokenType) else netTokens.remove(tokenType)
+            walletTokens[networkName] = netTokens
+            
+            val newTokens = current.selectedTokens.toMutableMap()
+            newTokens[walletId] = walletTokens
+            current.copy(selectedTokens = newTokens)
+        }
+    }
+
+    fun confirmRestore() {
+        val bundle = _decryptedBundle.value ?: return
+        val selection = _restoreSelection.value
+        val pin = pendingBackupPin
+        
+        viewModelScope.launch {
+            _showRestoreSelectionDialog.value = false
+            _operationState.value = SecurityOperation.RESTORING
+            
+            when (val result = restoreBackupUseCase(bundle, selection)) {
+                is Result.Success -> {
+                    // Auto-set the PIN used for decryption as the app PIN
+                    if (pin != null) {
+                        setPinUseCase(pin)
+                    }
+                    refreshAuthStatus()
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar("Backup restored successfully"))
+                    _uiEffect.emit(SecurityUiEffect.RestoreSuccess)
+                }
+                is Result.Error -> {
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                }
+                else -> {}
+            }
+            
+            _operationState.value = SecurityOperation.IDLE
+            _decryptedBundle.value = null
+            pendingBackupPin = null
+        }
+    }
+
+    fun cancelRestoreSelection() {
+        _showRestoreSelectionDialog.value = false
+        _decryptedBundle.value = null
+        pendingBackupPin = null
+        pendingBackupData = null
     }
 
     fun deleteBackup() {
@@ -378,6 +504,9 @@ class SecuritySettingsViewModel @Inject constructor(
         _showPinChangeDialog.value = false
         _showPinVerifyDialog.value = false
         _pinSetupError.value = null
+        _pinVerifyPurpose.value = null
+        pendingBackupData = null
+        pendingBackupPin = null
     }
 
     fun clearError() {

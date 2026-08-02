@@ -48,6 +48,11 @@ fun NavGraphBuilder.onboardingGraph(navController: NavController) {
                 navController.navigate(MainRoute) {
                     popUpTo<WelcomeRoute> { inclusive = true }
                 }
+            },
+            onRestoreSuccess = {
+                navController.navigate(MainRoute) {
+                    popUpTo(navController.graph.id) { inclusive = true }
+                }
             }
         )
     }

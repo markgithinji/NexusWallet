@@ -6,76 +6,58 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Security
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
 import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
+import com.example.nexuswallet.feature.settings.domain.model.BackupBundle
+import com.example.nexuswallet.feature.settings.domain.model.RestoreSelection
 import com.example.nexuswallet.feature.settings.ui.auth.PinEntryDialog
-import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.ui.common.*
+import com.example.nexuswallet.ui.theme.bitcoinLight
+import com.example.nexuswallet.ui.theme.ethereumLight
+import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.success
+import com.example.nexuswallet.ui.theme.usdcLight
+import com.example.nexuswallet.ui.theme.usdtLight
 import com.example.nexuswallet.ui.theme.warning
 import kotlinx.coroutines.launch
 
@@ -91,9 +73,13 @@ fun SecuritySettingsScreen(
     val showPinChangeDialog by viewModel.showPinChangeDialog.collectAsStateWithLifecycle()
     val showPinVerifyDialog by viewModel.showPinVerifyDialog.collectAsStateWithLifecycle()
     val showClearAllDataDialog by viewModel.showClearAllDataDialog.collectAsStateWithLifecycle()
+    val showRestoreSelectionDialog by viewModel.showRestoreSelectionDialog.collectAsStateWithLifecycle()
     val clearAllConfirmationText by viewModel.clearAllConfirmationText.collectAsStateWithLifecycle()
     val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
+    val decryptedBundle by viewModel.decryptedBundle.collectAsStateWithLifecycle()
+    val restoreSelection by viewModel.restoreSelection.collectAsStateWithLifecycle()
     val pinSetupError by viewModel.pinSetupError.collectAsStateWithLifecycle()
+    val pinVerifyPurpose by viewModel.pinVerifyPurpose.collectAsStateWithLifecycle()
     
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -175,6 +161,9 @@ fun SecuritySettingsScreen(
                 SecurityUiEffect.SelectBackupFile -> {
                     selectBackupLauncher.launch(arrayOf("*/*"))
                 }
+                SecurityUiEffect.RestoreSuccess -> {
+                    // Maybe show an extra success state or navigate
+                }
             }
         }
     }
@@ -192,8 +181,12 @@ fun SecuritySettingsScreen(
     // PIN Verification Dialog for Backup/Restore
     PinEntryDialog(
         showDialog = showPinVerifyDialog,
-        title = stringResource(R.string.confirm_pin_title),
-        subtitle = stringResource(R.string.confirm_pin_subtitle),
+        title = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE) 
+            stringResource(R.string.restore_backup) 
+            else stringResource(R.string.confirm_pin_title),
+        subtitle = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE)
+            "Enter the PIN used to encrypt this backup file"
+            else stringResource(R.string.confirm_pin_subtitle),
         onPinEntered = viewModel::onPinVerified,
         onDismiss = viewModel::cancelPinSetup
     )
@@ -248,6 +241,19 @@ fun SecuritySettingsScreen(
                 }
             },
             shape = RoundedCornerShape(24.dp)
+        )
+    }
+
+    // Restore Selection Dialog
+    if (showRestoreSelectionDialog && decryptedBundle != null) {
+        RestoreSelectionDialog(
+            bundle = decryptedBundle!!,
+            selection = restoreSelection,
+            onWalletToggle = viewModel::toggleWalletSelection,
+            onNetworkToggle = viewModel::toggleNetworkSelection,
+            onTokenToggle = viewModel::toggleTokenSelection,
+            onConfirm = viewModel::confirmRestore,
+            onDismiss = viewModel::cancelRestoreSelection
         )
     }
 
@@ -798,7 +804,7 @@ private fun SecuritySection(
 }
 
 @Composable
-private fun SecurityOperationOverlay(operationState: SecurityOperation) {
+fun SecurityOperationOverlay(operationState: SecurityOperation) {
     if (operationState == SecurityOperation.BACKING_UP ||
         operationState == SecurityOperation.RESTORING ||
         operationState == SecurityOperation.UPDATING
