@@ -6,21 +6,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -31,44 +20,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
-import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.CurrencyBitcoin
-import androidx.compose.material.icons.outlined.Error
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.SearchOff
-import androidx.compose.material.icons.outlined.Sell
-import androidx.compose.material.icons.outlined.WifiOff
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -81,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.formatPrice
 import com.example.nexuswallet.feature.core.util.formatTwoDecimals
 import com.example.nexuswallet.feature.market.domain.model.ConnectionState
@@ -592,7 +559,7 @@ fun TokenItem(
 
             // Coin name and symbol
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(0.9f)
             ) {
                 Text(
                     text = token.name,
@@ -609,8 +576,27 @@ fun TokenItem(
                 )
             }
 
+            // Mini sparkline
+            Box(
+                modifier = Modifier
+                    .weight(0.7f)
+                    .height(32.dp)
+                    .padding(horizontal = 8.dp)
+            ) {
+                token.sparklineIn7d?.price?.let { prices ->
+                    if (prices.size >= 2) {
+                        TokenSparkline(
+                            prices = prices,
+                            isPositive = token.priceChangePercentage24h >= 0,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+            }
+
             // Price and change
             Column(
+                modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.End
             ) {
                 Text(
@@ -647,6 +633,47 @@ fun TokenItem(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun TokenSparkline(
+    prices: List<Double>,
+    isPositive: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val color = if (isPositive)
+        MaterialTheme.colorScheme.success
+    else
+        MaterialTheme.colorScheme.error
+
+    Canvas(modifier = modifier) {
+        if (prices.size < 2) return@Canvas
+
+        val minPrice = prices.min()
+        val maxPrice = prices.max()
+        val range = (maxPrice - minPrice).coerceAtLeast(0.00000001)
+
+        val width = size.width
+        val height = size.height
+
+        val path = Path()
+        prices.forEachIndexed { index, price ->
+            val x = index * (width / (prices.size - 1))
+            val y = height - ((price - minPrice) / range * height).toFloat()
+
+            if (index == 0) {
+                path.moveTo(x, y)
+            } else {
+                path.lineTo(x, y)
+            }
+        }
+
+        drawPath(
+            path = path,
+            color = color,
+            style = Stroke(width = 1.5.dp.toPx())
+        )
     }
 }
 

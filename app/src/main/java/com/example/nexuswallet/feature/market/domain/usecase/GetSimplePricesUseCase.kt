@@ -24,7 +24,7 @@ class GetSimplePricesUseCase @Inject constructor(
         val ids = symbols.mapNotNull { symbolToId[it.uppercase()] }.distinct()
         if (ids.isEmpty()) return Result.Success(emptyMap())
 
-        return when (val marketResult = marketRepository.getSimplePrices(ids, currency.code.lowercase())) {
+        return when (val marketResult = marketRepository.getSimplePrices(ids, currency)) {
             is Result.Success -> {
                 val pricesBySymbol = symbols.associateWith { symbol ->
                     val id = symbolToId[symbol.uppercase()]

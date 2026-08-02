@@ -15,7 +15,13 @@ fun Double.formatPrice(): String {
     return when {
         this >= 1000 -> String.format(Locale.US, "%,.2f", this)
         this >= 1 -> String.format(Locale.US, "%,.4f", this)
-        else -> String.format(Locale.US, "%,.6f", this)
+        this > 0.0001 -> String.format(Locale.US, "%,.6f", this)
+        this > 0 -> {
+            // For very small prices (meme coins), show enough decimals to see the value
+            val s = String.format(Locale.US, "%.10f", this)
+            s.trimEnd('0').trimEnd('.')
+        }
+        else -> "0.00"
     }
 }
 

@@ -166,7 +166,7 @@ class WalletDetailViewModel @Inject constructor(
     }
 
     private suspend fun loadMarketPercentages() {
-        when (val percentagesResult = marketRepository.getLatestPricePercentages()) {
+        when (val percentagesResult = marketRepository.getLatestPricePercentages(_uiState.value.selectedCurrency)) {
             is Result.Success -> {
                 _uiState.update { it.copy(pricePercentages = percentagesResult.data) }
             }
@@ -190,7 +190,7 @@ class WalletDetailViewModel @Inject constructor(
                     wallet.solanaCoins.map { it.symbol } +
                     wallet.evmTokens.map { it.symbol }).distinct()
 
-            val pricesResult = getSimplePricesUseCase(symbols, _uiState.value.selectedCurrency.code)
+            val pricesResult = getSimplePricesUseCase(symbols, _uiState.value.selectedCurrency)
             val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
 
             // 2. Sync balances with prices
@@ -219,7 +219,7 @@ class WalletDetailViewModel @Inject constructor(
 
             // ATOMIC UPDATE: Save the full wallet balance at once
             if (btcBalances.isNotEmpty() || solBalances.isNotEmpty() || evmList.isNotEmpty()) {
-                val newBalance = com.example.nexuswallet.feature.wallet.domain.model.WalletBalance(
+                val newBalance = WalletBalance(
                     walletId = wallet.id,
                     lastUpdated = System.currentTimeMillis(),
                     bitcoinBalances = btcBalances,
@@ -303,7 +303,7 @@ class WalletDetailViewModel @Inject constructor(
         )
 
         val totalUsd = assets.sumOf { it.usdValue }
-        val totalFormatted = totalUsd.formatCurrency(state.selectedCurrency.code)
+        val totalFormatted = totalUsd.formatCurrency(state.selectedCurrency)
 
         _uiState.update {
             it.copy(

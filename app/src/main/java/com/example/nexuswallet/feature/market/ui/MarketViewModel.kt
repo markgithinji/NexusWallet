@@ -17,9 +17,12 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -40,6 +43,9 @@ class MarketViewModel @Inject constructor(
     private var currentPage = 1
     private val perPage = 100
     private var allTokensCache = emptyList<Token>()
+    
+    // Stable order to prevent list items jumping during live updates
+    private var stableTokenIds = emptyList<String>()
 
     // Flag to track if initial data is loaded
     private var isInitialDataLoaded = false
@@ -102,6 +108,9 @@ class MarketViewModel @Inject constructor(
                             tokens = allTokensCache
                         )
                     }
+                    
+                    // Reset stable order on fresh load
+                    stableTokenIds = allTokensCache.sortedByDescending { it.marketCap }.map { it.id }
                     applySearchFilter(_uiState.value.searchQuery)
 
                     // Load next pages in background
@@ -186,11 +195,14 @@ class MarketViewModel @Inject constructor(
         connectionStateJob?.cancel()
 
         webSocketCollectorJob = viewModelScope.launch {
-            webSocketRepository.getTokenUpdates().collect { updatesMap ->
-                if (isInitialDataLoaded) {
-                    updateTokensWithLiveData(updatesMap)
+            webSocketRepository.getTokenUpdates()
+                .conflate()
+                .sample(1000) // Only update UI once per second to save battery/perf
+                .collect { updatesMap ->
+                    if (isInitialDataLoaded) {
+                        updateTokensWithLiveData(updatesMap)
+                    }
                 }
-            }
         }
 
         connectionStateJob = viewModelScope.launch {
@@ -224,8 +236,16 @@ class MarketViewModel @Inject constructor(
     }
 
     private fun applySearchFilter(query: String) {
-        // Ensure tokens are always ordered by market cap (real-time value)
-        val tokens = allTokensCache.sortedByDescending { it.marketCap }
+        // Use stableTokenIds to maintain order during live updates
+        val orderMap = stableTokenIds.withIndex().associate { it.value to it.index }
+        
+        // If query is blank, use the stable order. 
+        // If searching, we re-sort to show best matches first.
+        val tokens = if (query.isBlank()) {
+            allTokensCache.sortedBy { orderMap[it.id] ?: Int.MAX_VALUE }
+        } else {
+            allTokensCache.sortedByDescending { it.marketCap }
+        }
 
         val filtered = if (query.isBlank()) {
             tokens
@@ -241,6 +261,11 @@ class MarketViewModel @Inject constructor(
 
     fun updateSearchQuery(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
+        
+        // When query clears, we might want to refresh the stable order to reflect new market caps
+        if (query.isBlank()) {
+            stableTokenIds = allTokensCache.sortedByDescending { it.marketCap }.map { it.id }
+        }
     }
 
     fun clearSearch() {
