@@ -72,7 +72,8 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Network selection** - Choose specific mainnets and testnets to "bring back" during the import process
 - **Token selection** - Choose which tokens to enable per wallet
 - **Wallet backup** - Seed phrase display with security checklist
-- **Wallet restoration** - Seamlessly import existing wallets from any BIP39-compliant app (MetaMask, Trust Wallet, etc.) using 12-word seed phrases
+- **Local Encrypted Backup** - Export all wallets and settings into a secure, portable file encrypted with your PIN (AES-GCM)
+- **Wallet restoration** - Seamlessly import existing wallets from any BIP39-compliant app (MetaMask, Trust Wallet, etc.) or restore from a Nexus backup file
 - **Wallet deletion** - Secure wallet removal
 
 ### Transaction Capabilities
@@ -89,6 +90,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **PIN Protection** - Secure 6-digit PIN with haptic feedback and encrypted storage
 - **Privacy Mode** - Toggle to hide sensitive balances on the main dashboard
 - **Transaction Security** - Optional setting to require re-authentication for every outgoing transaction
+- **Portable Backups** - Industry-standard AES-GCM encryption for wallet exports, allowing secure migration between devices using a PIN-derived key
 - **Secure Key Storage** - Private keys are encrypted using Android KeyStore and never stored in plain text
 - **Transaction Validation** - Real-time address validation, balance checks, and self-send protection
 - **Secure Data Management** - Option to wipe all sensitive data and keys from the device
@@ -154,6 +156,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 | ✅ Price Charts | Complete | Historical price graphs |
 | ✅ Privacy Mode | Complete | Hide balances from the main screen |
 | ✅ Multi-Currency | Complete | Support for USD, EUR, GBP, KES, etc. |
+| ✅ Local Backup | Complete | AES-GCM encrypted export/import via user PIN |
 | 🔄 Cloud Backup | Planned | Encrypted backup to Google Drive |
 | 🔄 Push Notifications | Planned | Transaction confirmations |
 
