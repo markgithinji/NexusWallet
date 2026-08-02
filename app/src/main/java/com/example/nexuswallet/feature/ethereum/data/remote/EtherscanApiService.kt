@@ -1,8 +1,8 @@
 package com.example.nexuswallet.feature.ethereum.data.remote
 
 import com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanBroadcastResponse
+import com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTokenTransfersResponse
 import com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionsResponse
-import com.example.nexuswallet.feature.usdc.domain.EtherscanTokenTransfersResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 

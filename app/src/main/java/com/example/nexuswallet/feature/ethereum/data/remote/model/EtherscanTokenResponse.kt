@@ -1,4 +1,4 @@
-package com.example.nexuswallet.feature.usdc.domain
+package com.example.nexuswallet.feature.ethereum.data.remote.model
 
 import kotlinx.serialization.Serializable
 

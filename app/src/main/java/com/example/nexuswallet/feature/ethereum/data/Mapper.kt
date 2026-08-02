@@ -6,13 +6,13 @@ import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity
 import com.example.nexuswallet.feature.ethereum.data.remote.model.EtherscanTransactionDto
+import com.example.nexuswallet.feature.ethereum.data.remote.model.TokenTransactionResponse
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GWEI_TO_WEI
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.WEI_PER_ETH
-import com.example.nexuswallet.feature.usdc.domain.TokenTransactionResponse
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import java.math.BigDecimal
