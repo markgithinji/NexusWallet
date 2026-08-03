@@ -6,7 +6,12 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
+import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
@@ -41,7 +46,7 @@ class WalletDashboardViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<Result<List<Wallet>>>(Result.Loading)
     val uiState: StateFlow<Result<List<Wallet>>> = _uiState.asStateFlow()
 
-    // Balances map - REACTIVE
+    // Balances map (reactive)
     val balances: StateFlow<Map<String, WalletBalance>> = walletRepository.observeAllBalances()
         .stateIn(
             scope = viewModelScope,
@@ -49,7 +54,7 @@ class WalletDashboardViewModel @Inject constructor(
             initialValue = emptyMap()
         )
 
-    // Total portfolio value - REACTIVE
+    // Total portfolio value (reactive)
     val totalPortfolioValue: StateFlow<BigDecimal> = balances.map { balancesMap ->
         balancesMap.values.sumOf { balance ->
             balance.bitcoinBalances.values.sumOf { BigDecimal(it.usdValue) } +
@@ -194,27 +199,42 @@ class WalletDashboardViewModel @Inject constructor(
                 }
 
                 currentWallets.forEach { wallet ->
-                    val btcBalances = mutableMapOf<com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork, com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance>()
-                    val solBalances = mutableMapOf<com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork, com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance>()
-                    val evmList = mutableListOf<com.example.nexuswallet.feature.wallet.domain.model.EVMBalance>()
+                    val btcBalances = mutableMapOf<BitcoinNetwork, BitcoinBalance>()
+                    val solBalances = mutableMapOf<SolanaNetwork, SolanaBalance>()
+                    val evmList = mutableListOf<EVMBalance>()
 
                     // Sync Bitcoin
                     wallet.bitcoinCoins.forEach { coin ->
-                        val (balance, errors) = syncBitcoinBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
+                        val (balance, errors) = syncBitcoinBalanceUseCase(
+                            wallet.id,
+                            coin,
+                            prices[coin.symbol] ?: 0.0,
+                            saveToCache = false
+                        )
                         balance?.let { btcBalances[coin.network] = it }
                         allErrors.addAll(errors)
                     }
 
                     // Sync Solana
                     wallet.solanaCoins.forEach { coin ->
-                        val (balance, errors) = syncSolanaBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
+                        val (balance, errors) = syncSolanaBalanceUseCase(
+                            wallet.id,
+                            coin,
+                            prices[coin.symbol] ?: 0.0,
+                            saveToCache = false
+                        )
                         balance?.let { solBalances[coin.network] = it }
                         allErrors.addAll(errors)
                     }
 
                     // Sync EVM
                     if (wallet.evmTokens.isNotEmpty()) {
-                        val (balances, errors) = syncEVMBalancesUseCase(wallet.id, wallet.evmTokens, prices, saveToCache = false)
+                        val (balances, errors) = syncEVMBalancesUseCase(
+                            wallet.id,
+                            wallet.evmTokens,
+                            prices,
+                            saveToCache = false
+                        )
                         evmList.addAll(balances)
                         allErrors.addAll(errors)
                     }
@@ -233,11 +253,12 @@ class WalletDashboardViewModel @Inject constructor(
                 }
 
                 if (allErrors.isNotEmpty()) {
-                    val errorString = allErrors.distinctBy { "${it.network.name}-${it.assetSymbol}" }
-                        .joinToString("\n") { error ->
-                            val assetPrefix = error.assetSymbol?.let { "$it on " } ?: ""
-                            "• $assetPrefix${error.network.name}: ${error.message}"
-                        }
+                    val errorString =
+                        allErrors.distinctBy { "${it.network.name}-${it.assetSymbol}" }
+                            .joinToString("\n") { error ->
+                                val assetPrefix = error.assetSymbol?.let { "$it on " } ?: ""
+                                "• $assetPrefix${error.network.name}: ${error.message}"
+                            }
                     val existingError = _operationError.value
                     val newError = "Partial sync failure:\n$errorString"
                     _operationError.update { if (existingError != null) "$existingError\n\n$newError" else newError }

@@ -12,12 +12,16 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
-import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
+import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
@@ -74,7 +78,7 @@ class WalletDetailViewModel @Inject constructor(
             securityRepository.observeSelectedCurrency().collect { currency ->
                 val previousCurrency = _uiState.value.selectedCurrency
                 _uiState.update { it.copy(selectedCurrency = currency) }
-                
+
                 // If currency changed and we have a wallet, refresh to get new prices
                 if (previousCurrency != currency && _uiState.value.wallet != null) {
                     refresh()
@@ -121,7 +125,7 @@ class WalletDetailViewModel @Inject constructor(
                     loadMarketPercentages()
                 }
 
-                // STEP 4: Observe transactions - initial load without force refresh
+                // STEP 4: Observe transactions , initial load without force refresh
                 observeTransactions(walletId, loadedWallet, forceRefresh = false)
 
                 // STEP 5: Refresh balance if needed
@@ -166,7 +170,8 @@ class WalletDetailViewModel @Inject constructor(
     }
 
     private suspend fun loadMarketPercentages() {
-        when (val percentagesResult = marketRepository.getLatestPricePercentages(_uiState.value.selectedCurrency)) {
+        when (val percentagesResult =
+            marketRepository.getLatestPricePercentages(_uiState.value.selectedCurrency)) {
             is Result.Success -> {
                 _uiState.update { it.copy(pricePercentages = percentagesResult.data) }
             }
@@ -199,24 +204,39 @@ class WalletDetailViewModel @Inject constructor(
 
             // 2. Sync balances with prices
             val allErrors = mutableListOf<ChainSyncError>()
-            val btcBalances = mutableMapOf<com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork, com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance>()
-            val solBalances = mutableMapOf<com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork, com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance>()
-            val evmList = mutableListOf<com.example.nexuswallet.feature.wallet.domain.model.EVMBalance>()
+            val btcBalances = mutableMapOf<BitcoinNetwork, BitcoinBalance>()
+            val solBalances = mutableMapOf<SolanaNetwork, SolanaBalance>()
+            val evmList = mutableListOf<EVMBalance>()
 
             wallet.bitcoinCoins.forEach { coin ->
-                val (balance, errors) = syncBitcoinBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
+                val (balance, errors) = syncBitcoinBalanceUseCase(
+                    wallet.id,
+                    coin,
+                    prices[coin.symbol] ?: 0.0,
+                    saveToCache = false
+                )
                 balance?.let { btcBalances[coin.network] = it }
                 allErrors.addAll(errors)
             }
 
             wallet.solanaCoins.forEach { coin ->
-                val (balance, errors) = syncSolanaBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
+                val (balance, errors) = syncSolanaBalanceUseCase(
+                    wallet.id,
+                    coin,
+                    prices[coin.symbol] ?: 0.0,
+                    saveToCache = false
+                )
                 balance?.let { solBalances[coin.network] = it }
                 allErrors.addAll(errors)
             }
 
             if (wallet.evmTokens.isNotEmpty()) {
-                val (balances, errors) = syncEVMBalancesUseCase(wallet.id, wallet.evmTokens, prices, saveToCache = false)
+                val (balances, errors) = syncEVMBalancesUseCase(
+                    wallet.id,
+                    wallet.evmTokens,
+                    prices,
+                    saveToCache = false
+                )
                 evmList.addAll(balances)
                 allErrors.addAll(errors)
             }
@@ -384,7 +404,12 @@ class WalletDetailViewModel @Inject constructor(
                 val updatedWallet = walletRepository.getWallet(currentWallet.id)
                 _uiState.update { it.copy(wallet = updatedWallet, isLoading = false) }
             }.onFailure { e ->
-                _uiState.update { it.copy(error = "Failed to rename wallet: ${e.message}", isLoading = false) }
+                _uiState.update {
+                    it.copy(
+                        error = "Failed to rename wallet: ${e.message}",
+                        isLoading = false
+                    )
+                }
             }
         }
     }

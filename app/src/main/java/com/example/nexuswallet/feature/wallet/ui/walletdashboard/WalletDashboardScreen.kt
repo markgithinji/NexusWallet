@@ -44,8 +44,6 @@ import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -69,7 +67,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
@@ -80,6 +77,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -314,15 +312,15 @@ fun DashboardTopBar(
                         .width(200.dp)
                         .background(MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp),
-                    offset = androidx.compose.ui.unit.DpOffset(x = (-16).dp, y = 8.dp)
+                    offset = DpOffset(x = (-16).dp, y = 8.dp)
                 ) {
                     DropdownMenuItem(
-                        text = { 
+                        text = {
                             Text(
                                 stringResource(R.string.create_new_wallet),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
-                            ) 
+                            )
                         },
                         onClick = {
                             showMenu = false
@@ -330,7 +328,7 @@ fun DashboardTopBar(
                         },
                         leadingIcon = {
                             Icon(
-                                Icons.Outlined.Add, 
+                                Icons.Outlined.Add,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
                                 tint = MaterialTheme.colorScheme.primary
@@ -338,12 +336,12 @@ fun DashboardTopBar(
                         }
                     )
                     DropdownMenuItem(
-                        text = { 
+                        text = {
                             Text(
                                 stringResource(R.string.import_existing_wallet),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
-                            ) 
+                            )
                         },
                         onClick = {
                             showMenu = false
@@ -351,7 +349,7 @@ fun DashboardTopBar(
                         },
                         leadingIcon = {
                             Icon(
-                                Icons.Outlined.Shield, 
+                                Icons.Outlined.Shield,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
                                 tint = MaterialTheme.colorScheme.secondary
@@ -497,8 +495,8 @@ fun WalletCard(
         shadowElevation = 0.dp,
         border = BorderStroke(
             width = 1.dp,
-            color = if (isExpanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) 
-                    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)
+            color = if (isExpanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)
         )
     ) {
         Column(
@@ -740,7 +738,11 @@ fun WalletExpandedContent(
                 shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(
+                    Icons.Outlined.Edit,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(R.string.rename_wallet))
             }
@@ -755,7 +757,11 @@ fun WalletExpandedContent(
                 ),
                 elevation = null
             ) {
-                Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(R.string.delete_wallet))
             }
@@ -787,8 +793,19 @@ fun SimpleBalanceRow(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 when (icon) {
-                    is ImageVector -> Icon(icon, null, tint = color, modifier = Modifier.size(16.dp))
-                    is Painter -> Icon(icon, null, tint = Color.Unspecified, modifier = Modifier.size(16.dp))
+                    is ImageVector -> Icon(
+                        icon,
+                        null,
+                        tint = color,
+                        modifier = Modifier.size(16.dp)
+                    )
+
+                    is Painter -> Icon(
+                        icon,
+                        null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }
@@ -822,24 +839,9 @@ fun SimpleBalanceRow(
             text = if (isPrivacyModeEnabled) "****" else usdValue.formatCurrency(selectedCurrency),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
-            color = if (usdValue > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-        )
-    }
-}
-
-@Composable
-fun CoinBadge(text: String, color: Color) {
-    Box(
-        modifier = Modifier
-            .background(color.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            fontSize = 10.sp,
-            color = color,
-            fontWeight = FontWeight.Bold
+            color = if (usdValue > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                alpha = 0.5f
+            )
         )
     }
 }
@@ -900,7 +902,7 @@ fun AnimatedPortfolioHeader(
                         color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                         fontWeight = FontWeight.SemiBold
                     )
-                    
+
                     Surface(
                         color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
                         shape = RoundedCornerShape(8.dp)
@@ -966,7 +968,10 @@ fun PortfolioStatItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier
-            .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+            .background(
+                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f),
+                RoundedCornerShape(12.dp)
+            )
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Icon(
@@ -1004,7 +1009,10 @@ fun EmptyWalletsContent(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp,
             shadowElevation = 0.dp,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)),
+            border = BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight()
@@ -1019,7 +1027,7 @@ fun EmptyWalletsContent(
                     modifier = Modifier.size(80.dp),
                     shape = CircleShape,
                     color = if (isError) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
-                            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                    else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
@@ -1063,7 +1071,9 @@ fun EmptyWalletsContent(
                 if (isError) {
                     Button(
                         onClick = onRetry ?: {},
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
@@ -1082,7 +1092,9 @@ fun EmptyWalletsContent(
                     ) {
                         Button(
                             onClick = onCreateWallet,
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
                             shape = RoundedCornerShape(16.dp)
                         ) {
                             Text(
@@ -1094,7 +1106,9 @@ fun EmptyWalletsContent(
 
                         OutlinedButton(
                             onClick = onImportWallet,
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {

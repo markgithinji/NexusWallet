@@ -1,14 +1,34 @@
 package com.example.nexuswallet.feature.wallet.ui.walletcreation
 
 import androidx.biometric.BiometricPrompt
-import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
-import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -17,29 +37,49 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Dashboard
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.NexusTextField
+import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
+import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
@@ -49,7 +89,19 @@ import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
-import com.example.nexuswallet.feature.wallet.ui.common.*
+import com.example.nexuswallet.feature.wallet.ui.common.AssetDetailItem
+import com.example.nexuswallet.feature.wallet.ui.common.AssetSummaryCard
+import com.example.nexuswallet.feature.wallet.ui.common.DetailRow
+import com.example.nexuswallet.feature.wallet.ui.common.ErrorScreen
+import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
+import com.example.nexuswallet.feature.wallet.ui.common.MnemonicDisplayChip
+import com.example.nexuswallet.feature.wallet.ui.common.NetworkToggleCard
+import com.example.nexuswallet.feature.wallet.ui.common.SafetyConfirmationItem
+import com.example.nexuswallet.feature.wallet.ui.common.SectionHeader
+import com.example.nexuswallet.feature.wallet.ui.common.SecurityWarningDialog
+import com.example.nexuswallet.feature.wallet.ui.common.SimpleSelectedChip
+import com.example.nexuswallet.feature.wallet.ui.common.SimpleWordChip
+import com.example.nexuswallet.feature.wallet.ui.common.TokenToggleCard
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -100,7 +152,10 @@ fun WalletCreationScreen(
     LaunchedEffect(authRequest) {
         if (authRequest != null) {
             if (cryptoObject != null) {
-                biometricPrompt?.authenticate(promptInfo, BiometricPrompt.CryptoObject(cryptoObject!!))
+                biometricPrompt?.authenticate(
+                    promptInfo,
+                    BiometricPrompt.CryptoObject(cryptoObject!!)
+                )
             } else {
                 biometricPrompt?.authenticate(promptInfo)
             }
@@ -318,7 +373,11 @@ fun WalletCreationStepper(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = stringResource(R.string.step_x_of_y, currentStep + 1, steps.size),
+                            text = stringResource(
+                                R.string.step_x_of_y,
+                                currentStep + 1,
+                                steps.size
+                            ),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold
@@ -332,7 +391,7 @@ fun WalletCreationStepper(
                             strokeWidth = 4.dp,
                             color = MaterialTheme.colorScheme.primary,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                            strokeCap = StrokeCap.Round
                         )
                         Text(
                             text = "${((currentStep + 1) * 100 / steps.size)}%",
@@ -367,7 +426,10 @@ fun WalletCreationStepper(
                                 .background(
                                     when {
                                         index == currentStep -> MaterialTheme.colorScheme.primary
-                                        index < currentStep -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                        index < currentStep -> MaterialTheme.colorScheme.primary.copy(
+                                            alpha = 0.5f
+                                        )
+
                                         else -> MaterialTheme.colorScheme.surfaceVariant
                                     }
                                 )
@@ -520,7 +582,13 @@ fun NetworkSelectionStep(
                         tokenSymbol = stringResource(R.string.usdc_symbol),
                         isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(EVMTokenType.USDC) == true,
                         networkEnabled = selectedNetworks.contains(EthereumNetwork.Mainnet),
-                        onSelectedChange = { onTokenToggle(EthereumNetwork.Mainnet, EVMTokenType.USDC, it) }
+                        onSelectedChange = {
+                            onTokenToggle(
+                                EthereumNetwork.Mainnet,
+                                EVMTokenType.USDC,
+                                it
+                            )
+                        }
                     )
                 }
 
@@ -534,7 +602,13 @@ fun NetworkSelectionStep(
                         tokenSymbol = stringResource(R.string.usdc_symbol),
                         isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(EVMTokenType.USDC) == true,
                         networkEnabled = selectedNetworks.contains(EthereumNetwork.Sepolia),
-                        onSelectedChange = { onTokenToggle(EthereumNetwork.Sepolia, EVMTokenType.USDC, it) }
+                        onSelectedChange = {
+                            onTokenToggle(
+                                EthereumNetwork.Sepolia,
+                                EVMTokenType.USDC,
+                                it
+                            )
+                        }
                     )
                 }
 
@@ -548,7 +622,13 @@ fun NetworkSelectionStep(
                         tokenSymbol = stringResource(R.string.usdt_symbol),
                         isSelected = selectedTokens[EthereumNetwork.Mainnet]?.contains(EVMTokenType.USDT) == true,
                         networkEnabled = selectedNetworks.contains(EthereumNetwork.Mainnet),
-                        onSelectedChange = { onTokenToggle(EthereumNetwork.Mainnet, EVMTokenType.USDT, it) }
+                        onSelectedChange = {
+                            onTokenToggle(
+                                EthereumNetwork.Mainnet,
+                                EVMTokenType.USDT,
+                                it
+                            )
+                        }
                     )
                 }
 
@@ -562,7 +642,13 @@ fun NetworkSelectionStep(
                         tokenSymbol = stringResource(R.string.usdt_symbol),
                         isSelected = selectedTokens[EthereumNetwork.Sepolia]?.contains(EVMTokenType.USDT) == true,
                         networkEnabled = selectedNetworks.contains(EthereumNetwork.Sepolia),
-                        onSelectedChange = { onTokenToggle(EthereumNetwork.Sepolia, EVMTokenType.USDT, it) }
+                        onSelectedChange = {
+                            onTokenToggle(
+                                EthereumNetwork.Sepolia,
+                                EVMTokenType.USDT,
+                                it
+                            )
+                        }
                     )
                 }
             }
@@ -782,8 +868,8 @@ fun MnemonicVerificationStep(
     val haptic = LocalHapticFeedback.current
 
     val borderColor by animateColorAsState(
-        targetValue = if (verificationError) MaterialTheme.colorScheme.error 
-                     else MaterialTheme.colorScheme.outlineVariant,
+        targetValue = if (verificationError) MaterialTheme.colorScheme.error
+        else MaterialTheme.colorScheme.outlineVariant,
         label = "verification_border"
     )
 
@@ -812,20 +898,24 @@ fun MnemonicVerificationStep(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = stringResource(R.string.selected_words, enteredWords.size, mnemonic.size),
+                            text = stringResource(
+                                R.string.selected_words,
+                                enteredWords.size,
+                                mnemonic.size
+                            ),
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.ExtraBold,
                             modifier = Modifier.padding(start = 4.dp)
                         )
-                        
-                        androidx.compose.animation.AnimatedVisibility(
+
+                        AnimatedVisibility(
                             visible = enteredWords.isNotEmpty(),
-                            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandHorizontally(),
-                            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkHorizontally()
+                            enter = fadeIn() + expandHorizontally(),
+                            exit = fadeOut() + shrinkHorizontally()
                         ) {
                             TextButton(
-                                onClick = { 
+                                onClick = {
                                     repeat(enteredWords.size) { onRemoveWord(0) }
                                     verificationError = false
                                 },
@@ -850,11 +940,11 @@ fun MnemonicVerificationStep(
                         shape = RoundedCornerShape(24.dp),
                         border = BorderStroke(1.dp, borderColor)
                     ) {
-                        androidx.compose.animation.AnimatedContent(
+                        AnimatedContent(
                             targetState = enteredWords.isEmpty(),
                             label = "words_container_content",
                             transitionSpec = {
-                                androidx.compose.animation.fadeIn() togetherWith androidx.compose.animation.fadeOut()
+                                fadeIn() togetherWith fadeOut()
                             }
                         ) { isEmpty ->
                             Box(
@@ -866,10 +956,13 @@ fun MnemonicVerificationStep(
                                     Text(
                                         text = stringResource(R.string.no_words_selected),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                            alpha = 0.5f
+                                        ),
                                         modifier = Modifier.align(Alignment.Center)
                                     )
                                 } else {
+                                    @OptIn(ExperimentalLayoutApi::class)
                                     FlowRow(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -879,7 +972,7 @@ fun MnemonicVerificationStep(
                                             SimpleSelectedChip(
                                                 word = word,
                                                 index = index + 1,
-                                                onRemove = { 
+                                                onRemove = {
                                                     onRemoveWord(index)
                                                     verificationError = false
                                                 }
@@ -891,10 +984,10 @@ fun MnemonicVerificationStep(
                         }
                     }
 
-                    androidx.compose.animation.AnimatedVisibility(
+                    AnimatedVisibility(
                         visible = verificationError,
-                        enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
-                        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
                     ) {
                         Row(
                             modifier = Modifier
@@ -929,9 +1022,10 @@ fun MnemonicVerificationStep(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    
+
                     Spacer(modifier = Modifier.height(12.dp))
-                    
+
+                    @OptIn(ExperimentalLayoutApi::class)
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -941,11 +1035,11 @@ fun MnemonicVerificationStep(
                             val usageCount = enteredWords.count { it == word }
                             val totalCount = mnemonic.count { it == word }
                             val isUsed = usageCount >= totalCount
-                            
+
                             SimpleWordChip(
                                 word = word,
                                 isEnabled = !isUsed,
-                                onClick = { 
+                                onClick = {
                                     onAddWord(word)
                                     verificationError = false
                                 }
@@ -1115,7 +1209,7 @@ fun WalletSuccessStep(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     DetailRow(label = stringResource(R.string.name_label), value = wallet.name)
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
@@ -1182,7 +1276,7 @@ fun WalletSuccessStep(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(32.dp))
         }
 

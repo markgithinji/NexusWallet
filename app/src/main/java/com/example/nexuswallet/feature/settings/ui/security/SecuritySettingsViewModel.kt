@@ -14,8 +14,13 @@ import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.settings.domain.model.*
 import com.example.nexuswallet.feature.settings.domain.repository.BackupRepository
 import com.example.nexuswallet.feature.settings.domain.usecase.*
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
+import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceUseCase
@@ -412,9 +417,9 @@ class SecuritySettingsViewModel @Inject constructor(
         val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
 
         selectedWallets.forEach { wallet ->
-            val btcBalances = mutableMapOf<com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork, com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance>()
-            val solBalances = mutableMapOf<com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork, com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance>()
-            val evmList = mutableListOf<com.example.nexuswallet.feature.wallet.domain.model.EVMBalance>()
+            val btcBalances = mutableMapOf<BitcoinNetwork, BitcoinBalance>()
+            val solBalances = mutableMapOf<SolanaNetwork, SolanaBalance>()
+            val evmList = mutableListOf<EVMBalance>()
 
             wallet.bitcoinCoins.forEach { coin ->
                 val (balance, _) = syncBitcoinBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)

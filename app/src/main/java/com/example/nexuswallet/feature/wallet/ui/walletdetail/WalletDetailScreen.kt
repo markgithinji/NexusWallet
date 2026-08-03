@@ -33,7 +33,6 @@ import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Error
-import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.SwapHoriz
@@ -43,7 +42,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -66,8 +64,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -83,11 +79,10 @@ import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.NexusTextField
 import com.example.nexuswallet.feature.core.ui.clickableSingle
 import com.example.nexuswallet.feature.core.util.formatCurrency
-import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
-import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
@@ -503,8 +498,8 @@ private fun WalletDetailContent(
             items = assets,
             key = { it.id }
         ) { asset ->
-            val assetError = syncErrors.find { 
-                it.assetSymbol == asset.coin.symbol && it.network == asset.coin.network 
+            val assetError = syncErrors.find {
+                it.assetSymbol == asset.coin.symbol && it.network == asset.coin.network
             }
             AssetCard(
                 asset = asset,
@@ -910,7 +905,9 @@ fun TransactionsContainer(
                 }
 
                 // Show loading message
-                Box(modifier = Modifier.fillMaxWidth().height(24.dp)) {
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .height(24.dp)) {
                     if (isLoading && loadingMessage.isNotEmpty() && transactions.isNotEmpty()) {
                         Text(
                             text = loadingMessage,

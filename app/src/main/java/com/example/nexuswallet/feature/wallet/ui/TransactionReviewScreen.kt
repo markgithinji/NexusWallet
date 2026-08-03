@@ -6,9 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.biometric.BiometricPrompt
-import javax.crypto.Cipher
-import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
-import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -76,7 +73,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -85,6 +81,8 @@ import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewEffect
 import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewViewModel
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
+import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.ui.EVMSendEffect
@@ -129,6 +127,10 @@ fun TransactionReviewScreen(
     bitcoinReviewViewModel: BitcoinReviewViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val transactionSent = stringResource(R.string.transaction_sent)
+    val authCanceled = stringResource(R.string.auth_canceled)
+    val addressCopied = stringResource(R.string.address_copied_small)
+
     var isSending by remember { mutableStateOf(false) }
     var sendError by remember { mutableStateOf<String?>(null) }
     var txHash by remember { mutableStateOf<String?>(null) }
@@ -152,7 +154,7 @@ fun TransactionReviewScreen(
         onSuccess = { result ->
             val onSuccess: (String) -> Unit = { hash ->
                 txHash = hash
-                txStatus = context.getString(R.string.transaction_sent)
+                txStatus = transactionSent
                 isSending = false
             }
 
@@ -165,7 +167,7 @@ fun TransactionReviewScreen(
         onError = { errorCode, errString ->
             // Map common cancellation codes to a more descriptive internal message or null
             sendError = if (isBiometricUserCancel(errorCode)) {
-                context.getString(R.string.auth_canceled)
+                authCanceled
             } else {
                 when (errorCode) {
                     BiometricPrompt.ERROR_LOCKOUT,
@@ -230,7 +232,7 @@ fun TransactionReviewScreen(
                 is BitcoinReviewEffect.TransactionSent -> {
                     txHash = effect.txHash
                     explorerUrl = effect.explorerUrl
-                    txStatus = context.getString(R.string.transaction_sent)
+                    txStatus = transactionSent
                     isSending = false
                     showSuccessBanner = true
                     delay(5000)
@@ -252,7 +254,7 @@ fun TransactionReviewScreen(
                 is EVMSendEffect.TransactionSent -> {
                     txHash = effect.txHash
                     explorerUrl = effect.explorerUrl
-                    txStatus = context.getString(R.string.transaction_sent)
+                    txStatus = transactionSent
                     isSending = false
                     showSuccessBanner = true
                     delay(5000)
@@ -274,7 +276,7 @@ fun TransactionReviewScreen(
                 is SolanaSendEffect.TransactionSent -> {
                     txHash = effect.txHash
                     explorerUrl = effect.explorerUrl
-                    txStatus = context.getString(R.string.transaction_sent)
+                    txStatus = transactionSent
                     isSending = false
                     showSuccessBanner = true
                     delay(5000)
@@ -426,7 +428,7 @@ fun TransactionReviewScreen(
                                 cipher = null,
                                 onSuccess = { hash ->
                                     txHash = hash
-                                    txStatus = context.getString(R.string.transaction_sent)
+                                    txStatus = transactionSent
                                     isSending = false
                                 }
                             )
@@ -437,7 +439,7 @@ fun TransactionReviewScreen(
                                 cipher = null,
                                 onSuccess = { hash ->
                                     txHash = hash
-                                    txStatus = context.getString(R.string.transaction_sent)
+                                    txStatus = transactionSent
                                     isSending = false
                                 }
                             )
@@ -448,7 +450,7 @@ fun TransactionReviewScreen(
                                 cipher = null,
                                 onSuccess = { hash ->
                                     txHash = hash
-                                    txStatus = context.getString(R.string.transaction_sent)
+                                    txStatus = transactionSent
                                     isSending = false
                                 }
                             )
@@ -479,10 +481,9 @@ fun TransactionReviewScreen(
                 tokenIconRes = tokenIconRes,
                 selectedToken = selectedToken,
                 networkName = fullNetworkName,
-                isValid = true,
                 validationErrors = if (sendError != null) listOf(sendError!!) else emptyList(),
                 onCopyAddress = { address ->
-                    copyToClipboard(context, address)
+                    copyToClipboard(context, address, addressCopied)
                 },
                 onViewOnExplorer = { _, url ->
                     val intent = Intent(Intent.ACTION_VIEW, url.toUri())
@@ -500,7 +501,7 @@ fun TransactionReviewScreen(
                 SuccessBanner(
                     txHash = txHash ?: "",
                     explorerUrl = explorerUrl,
-                    onViewExplorer = { hash, url ->
+                    onViewExplorer = { _, url ->
                         val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                         context.startActivity(intent)
                     },
@@ -530,7 +531,6 @@ fun TransactionReviewContent(
     tokenIconRes: Int? = null,
     selectedToken: EVMToken? = null,
     networkName: String? = null,
-    isValid: Boolean = true,
     validationErrors: List<String> = emptyList(),
     onCopyAddress: (String) -> Unit,
     onViewOnExplorer: (String, String) -> Unit
@@ -795,6 +795,7 @@ fun TransactionSuccessCard(
     onViewOnExplorer: () -> Unit
 ) {
     val context = LocalContext.current
+    val hashCopiedMessage = stringResource(R.string.hash_copied)
 
     Card(
         modifier = Modifier
@@ -890,7 +891,7 @@ fun TransactionSuccessCard(
                                 context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             val clip = ClipData.newPlainText("Transaction Hash", hash)
                             clipboard.setPrimaryClip(clip)
-                            Toast.makeText(context, context.getString(R.string.hash_copied), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, hashCopiedMessage, Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.size(32.dp)
                     ) {
@@ -1423,9 +1424,9 @@ private fun getCoinDetailConfig(coin: Coin): Pair<Color, Int> {
     }
 }
 
-private fun copyToClipboard(context: Context, address: String) {
+private fun copyToClipboard(context: Context, address: String, message: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clip = ClipData.newPlainText("Address", address)
     clipboard.setPrimaryClip(clip)
-    Toast.makeText(context, context.getString(R.string.address_copied_small), Toast.LENGTH_SHORT).show()
+    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
 }

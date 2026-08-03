@@ -12,6 +12,7 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.CreateWalletUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.ValidateMnemonicUseCase
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -168,7 +169,7 @@ class ImportWalletViewModel @Inject constructor(
         _authRequest.value = null
         viewModelScope.launch {
             // Small delay to ensure TEE session is fully registered on physical hardware
-            kotlinx.coroutines.delay(300)
+            delay(300)
             importWallet(cipher)
         }
     }
