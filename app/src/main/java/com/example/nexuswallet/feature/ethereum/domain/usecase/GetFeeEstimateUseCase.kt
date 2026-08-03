@@ -35,6 +35,7 @@ class GetFeeEstimateUseCase @Inject constructor(
         logger.d(TAG, "Getting fee estimate for $feeLevel on ${network.name} (isToken=$isToken)")
 
         // 1. Get gas limit - try dynamic estimation if we have data
+        // Optimization: repository adds a 20% safety buffer to dynamic estimates to prevent "Out of Gas" errors.
         val gasLimitResult = if (fromAddress != null && toAddress != null && amount != null) {
             evmBlockchainRepository.estimateGas(
                 fromAddress = fromAddress,
@@ -50,12 +51,14 @@ class GetFeeEstimateUseCase @Inject constructor(
         val gasLimit = when (gasLimitResult) {
             is Result.Success -> gasLimitResult.data
             else -> {
-                // Fallback logic if dynamic estimation fails
+                // Granular Fallback logic: If dynamic estimation fails (common for 0 balance),
+                // use network-specific constants.
                 when {
-                    !isToken -> BigInteger.valueOf(GAS_LIMIT_STANDARD)
+                    !isToken -> BigInteger.valueOf(GAS_LIMIT_STANDARD) // 21,000 for ETH
+                    // USDT has higher complexity and needs at least 78,000 gas.
                     tokenContract?.equals(network.usdtContractAddress, ignoreCase = true) == true -> 
                         BigInteger.valueOf(USDT_GAS_LIMIT)
-                    else -> BigInteger.valueOf(DEFAULT_TOKEN_GAS_LIMIT)
+                    else -> BigInteger.valueOf(DEFAULT_TOKEN_GAS_LIMIT) // 65,000 for standard ERC-20
                 }
             }
         }

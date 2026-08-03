@@ -92,6 +92,7 @@ import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.ui.SolanaSendEffect
 import com.example.nexuswallet.feature.solana.ui.SolanaSendEvent
 import com.example.nexuswallet.feature.solana.ui.SolanaSendViewModel
+import com.example.nexuswallet.feature.wallet.service.TransactionMonitorService
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
@@ -150,6 +151,28 @@ fun TransactionReviewScreen(
     val solAuthRequest by solanaViewModel.authRequest.collectAsStateWithLifecycle()
     val btcAuthRequest by bitcoinReviewViewModel.authRequest.collectAsStateWithLifecycle()
 
+    val onTransactionSent: (String, String?) -> Unit = { hash, url ->
+        txHash = hash
+        if (url != null) explorerUrl = url
+        txStatus = transactionSent
+        isSending = false
+
+        val networkType = when (coin) {
+            is BitcoinCoin -> TransactionMonitorService.NETWORK_BITCOIN
+            is SolanaCoin -> TransactionMonitorService.NETWORK_SOLANA
+            is EVMToken -> TransactionMonitorService.NETWORK_ETHEREUM
+        }
+
+        TransactionMonitorService.enqueue(
+            context = context,
+            txHash = hash,
+            networkType = networkType,
+            networkName = coin.network.name,
+            coinSymbol = coin.symbol,
+            amount = amount
+        )
+    }
+
     val authRequest = when (coin) {
         is EVMToken -> ethAuthRequest
         is SolanaCoin -> solAuthRequest
@@ -167,16 +190,10 @@ fun TransactionReviewScreen(
         cryptoObject = cryptoObject,
         subtitle = stringResource(R.string.confirm_and_send),
         onSuccess = { result ->
-            val onSuccess: (String) -> Unit = { hash ->
-                txHash = hash
-                txStatus = transactionSent
-                isSending = false
-            }
-
             when (coin) {
-                is EVMToken -> ethereumViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher, onSuccess)
-                is SolanaCoin -> solanaViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher, onSuccess)
-                is BitcoinCoin -> bitcoinReviewViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher, onSuccess)
+                is EVMToken -> ethereumViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher) { onTransactionSent(it, null) }
+                is SolanaCoin -> solanaViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher) { onTransactionSent(it, null) }
+                is BitcoinCoin -> bitcoinReviewViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher) { onTransactionSent(it, null) }
             }
         },
         onError = { errorCode, errString ->
@@ -210,10 +227,7 @@ fun TransactionReviewScreen(
 
                 is BitcoinReviewEffect.TransactionPrepared -> {}
                 is BitcoinReviewEffect.TransactionSent -> {
-                    txHash = effect.txHash
-                    explorerUrl = effect.explorerUrl
-                    txStatus = transactionSent
-                    isSending = false
+                    onTransactionSent(effect.txHash, effect.explorerUrl)
                     showSuccessBanner = true
                     delay(5000)
                     showSuccessBanner = false
@@ -232,10 +246,7 @@ fun TransactionReviewScreen(
                 }
 
                 is EVMSendEffect.TransactionSent -> {
-                    txHash = effect.txHash
-                    explorerUrl = effect.explorerUrl
-                    txStatus = transactionSent
-                    isSending = false
+                    onTransactionSent(effect.txHash, effect.explorerUrl)
                     showSuccessBanner = true
                     delay(5000)
                     showSuccessBanner = false
@@ -254,10 +265,7 @@ fun TransactionReviewScreen(
                 }
 
                 is SolanaSendEffect.TransactionSent -> {
-                    txHash = effect.txHash
-                    explorerUrl = effect.explorerUrl
-                    txStatus = transactionSent
-                    isSending = false
+                    onTransactionSent(effect.txHash, effect.explorerUrl)
                     showSuccessBanner = true
                     delay(5000)
                     showSuccessBanner = false
@@ -406,33 +414,21 @@ fun TransactionReviewScreen(
                         is EVMToken -> {
                             ethereumViewModel.send(
                                 cipher = null,
-                                onSuccess = { hash ->
-                                    txHash = hash
-                                    txStatus = transactionSent
-                                    isSending = false
-                                }
+                                onSuccess = { onTransactionSent(it, null) }
                             )
                         }
 
                         is SolanaCoin -> {
                             solanaViewModel.send(
                                 cipher = null,
-                                onSuccess = { hash ->
-                                    txHash = hash
-                                    txStatus = transactionSent
-                                    isSending = false
-                                }
+                                onSuccess = { onTransactionSent(it, null) }
                             )
                         }
 
                         is BitcoinCoin -> {
                             bitcoinReviewViewModel.sendTransaction(
                                 cipher = null,
-                                onSuccess = { hash ->
-                                    txHash = hash
-                                    txStatus = transactionSent
-                                    isSending = false
-                                }
+                                onSuccess = { onTransactionSent(it, null) }
                             )
                         }
                     }
@@ -678,14 +674,12 @@ fun TransactionReviewContent(
 
         // Success Message
         txHash?.let { hash ->
-            explorerUrl?.let { url ->
-                TransactionSuccessCard(
-                    hash = hash,
-                    coin = coin,
-                    coinColor = coinColor,
-                    onViewOnExplorer = { onViewOnExplorer(hash, url) }
-                )
-            }
+            TransactionSuccessCard(
+                hash = hash,
+                coin = coin,
+                coinColor = coinColor,
+                onViewOnExplorer = explorerUrl?.let { url -> { onViewOnExplorer(hash, url) } }
+            )
         }
     }
 }
@@ -772,7 +766,7 @@ fun TransactionSuccessCard(
     hash: String,
     coin: Coin,
     coinColor: Color,
-    onViewOnExplorer: () -> Unit
+    onViewOnExplorer: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val hashCopiedMessage = stringResource(R.string.hash_copied)
@@ -885,28 +879,30 @@ fun TransactionSuccessCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (onViewOnExplorer != null) {
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Explorer button
-            Button(
-                onClick = onViewOnExplorer,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = coinColor,
-                    contentColor = Color.White
-                )
-            ) {
-                Icon(
-                    Icons.Outlined.OpenInBrowser,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    "View on ${coin.network.name} Explorer",
-                    style = MaterialTheme.typography.labelLarge
-                )
+                // Explorer button
+                Button(
+                    onClick = onViewOnExplorer,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = coinColor,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Icon(
+                        Icons.Outlined.OpenInBrowser,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "View on ${coin.network.name} Explorer",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
             }
         }
     }

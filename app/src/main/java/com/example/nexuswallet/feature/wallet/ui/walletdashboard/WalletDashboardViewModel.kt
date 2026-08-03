@@ -11,6 +11,8 @@ import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
@@ -98,22 +100,72 @@ class WalletDashboardViewModel @Inject constructor(
     private var lastRefreshTime = 0L
     private val refreshThreshold = 30_000L // 30 seconds
 
-    private val signalFlow = MutableSharedFlow<String>(extraBufferCapacity = 10)
+    private val signalFlow = MutableSharedFlow<Network>(extraBufferCapacity = 10)
     private var subscriptionJob: Job? = null
+    private var priceRefreshJob: Job? = null
+    private var lastPrices: Map<String, Double> = emptyMap()
+    
+    // Performance & API optimization: Tracks the last time each network was auto-refreshed
+    // to prevent redundant calls from high-frequency blockchains (like Ethereum blocks every 12s).
+    private val lastNetworkRefreshTimes = mutableMapOf<Network, Long>()
+    private val REFRESH_COOLDOWN_MS = 60_000L // 1 minute cooldown for background auto-refreshes
 
     init {
         observeWallets()
         observePrivacyMode()
         observeSelectedCurrency()
         observeSignals()
+        startPriceTimer()
     }
 
+    /**
+     * Periodically refreshes fiat prices (USD/EUR) on a slow timer.
+     * Prices are decoupled from balance updates to avoid hitting CoinGecko rate limits.
+     */
+    private fun startPriceTimer() {
+        priceRefreshJob?.cancel()
+        priceRefreshJob = viewModelScope.launch {
+            while (true) {
+                refreshPrices()
+                delay(300_000L) // Refresh prices every 5 minutes
+            }
+        }
+    }
+
+    private suspend fun refreshPrices() {
+        val wallets = (_uiState.value as? Result.Success)?.data ?: return
+        if (wallets.isEmpty()) return
+
+        val allSymbols = wallets.flatMap { wallet ->
+            wallet.bitcoinCoins.map { it.symbol } +
+                    wallet.solanaCoins.map { it.symbol } +
+                    wallet.evmTokens.map { it.symbol }
+        }.distinct()
+
+        val pricesResult = getSimplePricesUseCase(allSymbols, _selectedCurrency.value)
+        if (pricesResult is Result.Success) {
+            lastPrices = pricesResult.data
+        }
+    }
+
+    /**
+     * Listens for real-time activity signals from the BlockchainSubscriptionRepository.
+     * Signals (like "Ethereum activity detected") trigger a granular balance refresh.
+     */
     private fun observeSignals() {
         viewModelScope.launch {
             signalFlow
-                .debounce(2000L) // Prevent rapid re-syncs
-                .collect {
-                    refresh(force = true)
+                .debounce(5000L) // Groups multiple rapid events into a single refresh cycle.
+                .collect { network ->
+                    val lastRefresh = lastNetworkRefreshTimes.getOrDefault(network, 0L)
+                    val currentTime = System.currentTimeMillis()
+                    
+                    // Cooldown logic: Only auto-refresh if at least 1 minute has passed since the last one.
+                    // This prevents the app from constant fetching when blocks are fast.
+                    if (currentTime - lastRefresh >= REFRESH_COOLDOWN_MS) {
+                        lastNetworkRefreshTimes[network] = currentTime
+                        refresh(force = true, networkFilter = network)
+                    }
                 }
         }
     }
@@ -168,21 +220,21 @@ class WalletDashboardViewModel @Inject constructor(
                 wallet.bitcoinCoins.forEach { coin ->
                     launch {
                         subscriptionRepository.subscribeToAddressChanges(coin.address, coin.network)
-                            .collect { signalFlow.emit(it) }
+                            .collect { _ -> signalFlow.emit(coin.network) }
                     }
                 }
                 // Subscribe to Solana
                 wallet.solanaCoins.forEach { coin ->
                     launch {
                         subscriptionRepository.subscribeToAddressChanges(coin.address, coin.network)
-                            .collect { signalFlow.emit(it) }
+                            .collect { _ -> signalFlow.emit(coin.network) }
                     }
                 }
                 // Subscribe to Ethereum
                 wallet.evmTokens.forEach { token ->
                     launch {
                         subscriptionRepository.subscribeToAddressChanges(token.address, token.network)
-                            .collect { signalFlow.emit(it) }
+                            .collect { _ -> signalFlow.emit(token.network) }
                     }
                 }
             }
@@ -219,115 +271,135 @@ class WalletDashboardViewModel @Inject constructor(
         }
     }
 
-    fun refresh(force: Boolean = false) {
+    /**
+     * Primary data synchronization engine.
+     * 
+     * @param force If true, bypasses the internal rate-limit threshold.
+     * @param networkFilter If provided, only syncs the specific blockchain network that signaled a change.
+     */
+    fun refresh(force: Boolean = false, networkFilter: Network? = null) {
         val currentTime = System.currentTimeMillis()
-        if (!force) {
+        // Threshold: Only allow one "Global" refresh every 30 seconds to save battery and data.
+        if (!force && networkFilter == null) {
             if (currentTime - lastRefreshTime < refreshThreshold && _isRefreshing.value) return
             if (currentTime - lastRefreshTime < refreshThreshold && _uiState.value !is Result.Error) {
-                // If we refreshed recently and have data, don't block or restart sync
                 return
             }
         }
 
         viewModelScope.launch {
             _isRefreshing.update { true }
-            _isOperationLoading.update { false } // Safety reset
-            lastRefreshTime = currentTime
+            _isOperationLoading.update { false }
+            if (networkFilter == null) lastRefreshTime = currentTime
             _operationError.update { null }
 
             val currentWallets = (_uiState.value as? Result.Success)?.data ?: emptyList()
             if (currentWallets.isNotEmpty()) {
-                val allErrors = mutableListOf<ChainSyncError>()
-
-                // Fetch prices once for all wallets
-                val allSymbols = currentWallets.flatMap { wallet ->
-                    wallet.bitcoinCoins.map { it.symbol } +
-                            wallet.solanaCoins.map { it.symbol } +
-                            wallet.evmTokens.map { it.symbol }
-                }.distinct()
-
-                val pricesResult = getSimplePricesUseCase(allSymbols, _selectedCurrency.value)
-                val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
-
-                if (pricesResult is Result.Error) {
-                    _operationError.update { "Price fetch failed: ${pricesResult.message}. Using last known balances." }
+                
+                // DECISION: Should we hit the Price API?
+                // Price updates are expensive and rate-limited. We only fetch on manual refresh (networkFilter == null)
+                // or if we have no price data yet. Otherwise, we use the cached values.
+                val prices = if (networkFilter == null || lastPrices.isEmpty()) {
+                    val allSymbols = currentWallets.flatMap { wallet ->
+                        wallet.bitcoinCoins.map { it.symbol } +
+                                wallet.solanaCoins.map { it.symbol } +
+                                wallet.evmTokens.map { it.symbol }
+                    }.distinct()
+                    val pricesResult = getSimplePricesUseCase(allSymbols, _selectedCurrency.value)
+                    if (pricesResult is Result.Success) {
+                        lastPrices = pricesResult.data
+                        pricesResult.data
+                    } else {
+                        if (pricesResult is Result.Error) {
+                            _operationError.update { "Price fetch failed: ${pricesResult.message}" }
+                        }
+                        lastPrices
+                    }
+                } else {
+                    lastPrices
                 }
+
+                val allErrors = mutableListOf<ChainSyncError>()
 
                 coroutineScope {
                     currentWallets.map { wallet ->
+                        // OPTIMIZATION: Skip processing for entire wallets that don't match the current network signal.
+                        if (networkFilter != null) {
+                            val matchesFilter = when (networkFilter) {
+                                is BitcoinNetwork -> wallet.bitcoinCoins.any { it.network == networkFilter }
+                                is SolanaNetwork -> wallet.solanaCoins.any { it.network == networkFilter }
+                                is EthereumNetwork -> wallet.evmTokens.any { it.network == networkFilter }
+                            }
+                            if (!matchesFilter) return@map async { emptyList<ChainSyncError>() }
+                        }
+
                         async {
                             val btcBalances = mutableMapOf<BitcoinNetwork, BitcoinBalance>()
                             val solBalances = mutableMapOf<SolanaNetwork, SolanaBalance>()
                             val evmList = mutableListOf<EVMBalance>()
                             val walletErrors = mutableListOf<ChainSyncError>()
 
-                            // Sync Bitcoin in parallel
-                            val btcDeferred = wallet.bitcoinCoins.map { coin ->
-                                async {
-                                    val (balance, errors) = syncBitcoinBalanceUseCase(
-                                        wallet.id,
-                                        coin,
-                                        prices[coin.symbol] ?: 0.0,
-                                        saveToCache = false
-                                    )
-                                    Triple(coin.network, balance, errors)
-                                }
+                            // Only fetch chains that match the filter (or all if filter is null)
+                            // This ensures that an Ethereum change doesn't hit the rate-limited Bitcoin API.
+                            if (networkFilter == null || networkFilter is BitcoinNetwork) {
+                                wallet.bitcoinCoins
+                                    .filter { networkFilter == null || it.network == networkFilter }
+                                    .forEach { coin ->
+                                        val (balance, errors) = syncBitcoinBalanceUseCase(
+                                            wallet.id,
+                                            coin,
+                                            prices[coin.symbol] ?: 0.0,
+                                            saveToCache = false
+                                        )
+                                        balance?.let { btcBalances[coin.network] = it }
+                                        walletErrors.addAll(errors)
+                                    }
                             }
 
-                            // Sync Solana in parallel
-                            val solDeferred = wallet.solanaCoins.map { coin ->
-                                async {
-                                    val (balance, errors) = syncSolanaBalanceUseCase(
-                                        wallet.id,
-                                        coin,
-                                        prices[coin.symbol] ?: 0.0,
-                                        saveToCache = false
-                                    )
-                                    Triple(coin.network, balance, errors)
-                                }
+                            if (networkFilter == null || networkFilter is SolanaNetwork) {
+                                wallet.solanaCoins
+                                    .filter { networkFilter == null || it.network == networkFilter }
+                                    .forEach { coin ->
+                                        val (balance, errors) = syncSolanaBalanceUseCase(
+                                            wallet.id,
+                                            coin,
+                                            prices[coin.symbol] ?: 0.0,
+                                            saveToCache = false
+                                        )
+                                        balance?.let { solBalances[coin.network] = it }
+                                        walletErrors.addAll(errors)
+                                    }
                             }
 
-                            // Sync EVM
-                            val evmDeferred = if (wallet.evmTokens.isNotEmpty()) {
-                                async {
-                                    syncEVMBalancesUseCase(
-                                        wallet.id,
-                                        wallet.evmTokens,
-                                        prices,
-                                        saveToCache = false
-                                    )
-                                }
-                            } else null
-
-                            // Collect Bitcoin results
-                            btcDeferred.awaitAll().forEach { (network, balance, errors) ->
-                                balance?.let { btcBalances[network] = it }
-                                walletErrors.addAll(errors)
-                            }
-
-                            // Collect Solana results
-                            solDeferred.awaitAll().forEach { (network, balance, errors) ->
-                                balance?.let { solBalances[network] = it }
-                                walletErrors.addAll(errors)
-                            }
-
-                            // Collect EVM results
-                            evmDeferred?.await()?.let { (balances, errors) ->
+                            if (wallet.evmTokens.isNotEmpty() && (networkFilter == null || networkFilter is EthereumNetwork)) {
+                                val (balances, errors) = syncEVMBalancesUseCase(
+                                    wallet.id,
+                                    wallet.evmTokens,
+                                    prices,
+                                    saveToCache = false
+                                )
                                 evmList.addAll(balances)
                                 walletErrors.addAll(errors)
                             }
 
-                            // Save the full wallet balance at once
-                            if (btcBalances.isNotEmpty() || solBalances.isNotEmpty() || evmList.isNotEmpty()) {
-                                val newBalance = WalletBalance(
-                                    walletId = wallet.id,
-                                    lastUpdated = System.currentTimeMillis(),
-                                    bitcoinBalances = btcBalances,
-                                    solanaBalances = solBalances,
-                                    evmBalances = evmList
-                                )
-                                walletRepository.saveWalletBalance(newBalance)
-                            }
+                            // ATOMIC UPDATE: Merge the new chain balance with the existing cached balances for other chains.
+                            val existing = walletRepository.getWalletBalance(wallet.id)
+                            val newBalance = WalletBalance(
+                                walletId = wallet.id,
+                                lastUpdated = System.currentTimeMillis(),
+                                bitcoinBalances = existing?.bitcoinBalances?.toMutableMap()?.apply {
+                                    if (networkFilter == null || networkFilter is BitcoinNetwork) putAll(btcBalances)
+                                } ?: btcBalances,
+                                solanaBalances = existing?.solanaBalances?.toMutableMap()?.apply {
+                                    if (networkFilter == null || networkFilter is SolanaNetwork) putAll(solBalances)
+                                } ?: solBalances,
+                                evmBalances = if (networkFilter == null || networkFilter is EthereumNetwork) {
+                                    evmList 
+                                } else {
+                                    existing?.evmBalances ?: emptyList()
+                                }
+                            )
+                            walletRepository.saveWalletBalance(newBalance)
                             walletErrors
                         }
                     }.awaitAll().forEach { errors ->
