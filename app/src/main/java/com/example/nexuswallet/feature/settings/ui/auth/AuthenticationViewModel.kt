@@ -137,4 +137,8 @@ class AuthenticationViewModel @Inject constructor(
         _authRequest.value = null
         _cryptoObject.value = null
     }
+
+    fun clearAuthRequest() {
+        _authRequest.value = null
+    }
 }

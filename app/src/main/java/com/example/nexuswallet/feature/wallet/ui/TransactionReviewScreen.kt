@@ -81,8 +81,8 @@ import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewEffect
 import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewViewModel
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
-import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.ui.EVMSendEffect
@@ -150,7 +150,22 @@ fun TransactionReviewScreen(
     val solAuthRequest by solanaViewModel.authRequest.collectAsStateWithLifecycle()
     val btcAuthRequest by bitcoinReviewViewModel.authRequest.collectAsStateWithLifecycle()
 
-    val biometricPrompt = rememberBiometricPrompt(
+    val authRequest = when (coin) {
+        is EVMToken -> ethAuthRequest
+        is SolanaCoin -> solAuthRequest
+        is BitcoinCoin -> btcAuthRequest
+    }
+
+    val cryptoObject = when (coin) {
+        is EVMToken -> ethCryptoObject
+        is SolanaCoin -> solCryptoObject
+        is BitcoinCoin -> btcCryptoObject
+    }
+
+    BiometricAuthHandler(
+        authRequest = authRequest,
+        cryptoObject = cryptoObject,
+        subtitle = stringResource(R.string.confirm_and_send),
         onSuccess = { result ->
             val onSuccess: (String) -> Unit = { hash ->
                 txHash = hash
@@ -165,56 +180,21 @@ fun TransactionReviewScreen(
             }
         },
         onError = { errorCode, errString ->
-            // Map common cancellation codes to a more descriptive internal message or null
             sendError = if (isBiometricUserCancel(errorCode)) {
                 authCanceled
             } else {
-                when (errorCode) {
-                    BiometricPrompt.ERROR_LOCKOUT,
-                    BiometricPrompt.ERROR_LOCKOUT_PERMANENT -> {
-                        errString.toString() // Keep system message for lockouts
-                    }
-                    else -> errString.toString()
-                }
+                errString
             }
             isSending = false
+        },
+        onDismiss = {
+            when (coin) {
+                is EVMToken -> ethereumViewModel.clearAuthRequest()
+                is SolanaCoin -> solanaViewModel.clearAuthRequest()
+                is BitcoinCoin -> bitcoinReviewViewModel.clearAuthRequest()
+            }
         }
     )
-
-    val biometricTitle = stringResource(R.string.biometric_authentication)
-    val biometricSubtitle = stringResource(R.string.confirm_and_send)
-    val biometricCancel = stringResource(R.string.cancel)
-
-    val promptInfo = remember(biometricTitle, biometricSubtitle, biometricCancel) {
-        BiometricPrompt.PromptInfo.Builder()
-            .setTitle(biometricTitle)
-            .setSubtitle(biometricSubtitle)
-            .setNegativeButtonText(biometricCancel)
-            .build()
-    }
-
-    // Handle auth requests
-    LaunchedEffect(ethAuthRequest, solAuthRequest, btcAuthRequest) {
-        val request = when (coin) {
-            is EVMToken -> ethAuthRequest
-            is SolanaCoin -> solAuthRequest
-            is BitcoinCoin -> btcAuthRequest
-        }
-
-        if (request != null) {
-            val crypto = when (coin) {
-                is EVMToken -> ethCryptoObject
-                is SolanaCoin -> solCryptoObject
-                is BitcoinCoin -> btcCryptoObject
-            }
-
-            if (crypto != null) {
-                biometricPrompt?.authenticate(promptInfo, BiometricPrompt.CryptoObject(crypto))
-            } else {
-                biometricPrompt?.authenticate(promptInfo)
-            }
-        }
-    }
 
     // Get coin config
     val (coinColor, iconRes) = getCoinDetailConfig(coin)

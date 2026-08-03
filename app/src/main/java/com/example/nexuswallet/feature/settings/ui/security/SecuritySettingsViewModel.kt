@@ -591,4 +591,8 @@ class SecuritySettingsViewModel @Inject constructor(
     fun retry() {
         loadSecurityStatus()
     }
+
+    fun clearAuthRequest() {
+        _authRequest.value = null
+    }
 }

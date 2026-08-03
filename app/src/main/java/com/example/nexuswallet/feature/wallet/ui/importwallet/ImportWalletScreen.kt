@@ -1,8 +1,8 @@
 package com.example.nexuswallet.feature.wallet.ui.importwallet
 
 import androidx.biometric.BiometricPrompt
+import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
-import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -69,38 +69,20 @@ fun ImportWalletScreen(
     val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
     val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
 
-    val biometricPrompt = rememberBiometricPrompt(
+    BiometricAuthHandler(
+        authRequest = authRequest,
+        cryptoObject = cryptoObject,
+        subtitle = stringResource(R.string.secure_your_wallet),
         onSuccess = { result ->
             viewModel.onBiometricSuccess(result.cryptoObject?.cipher)
         },
         onError = { errorCode, errString ->
             if (!isBiometricUserCancel(errorCode)) {
-                viewModel.setErrorMessage(errString.toString())
+                viewModel.setErrorMessage(errString)
             }
-        }
+        },
+        onDismiss = { viewModel.clearAuthRequest() }
     )
-
-    val biometricTitle = stringResource(R.string.biometric_authentication)
-    val biometricSubtitle = stringResource(R.string.secure_your_wallet)
-    val biometricCancel = stringResource(R.string.cancel)
-
-    val promptInfo = remember(biometricTitle, biometricSubtitle, biometricCancel) {
-        BiometricPrompt.PromptInfo.Builder()
-            .setTitle(biometricTitle)
-            .setSubtitle(biometricSubtitle)
-            .setNegativeButtonText(biometricCancel)
-            .build()
-    }
-
-    LaunchedEffect(authRequest) {
-        if (authRequest != null) {
-            if (cryptoObject != null) {
-                biometricPrompt?.authenticate(promptInfo, BiometricPrompt.CryptoObject(cryptoObject!!))
-            } else {
-                biometricPrompt?.authenticate(promptInfo)
-            }
-        }
-    }
 
     LaunchedEffect(uiState) {
         if (uiState is WalletCreationUiState.WalletCreated) {

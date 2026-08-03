@@ -80,4 +80,8 @@ class BackupViewModel @Inject constructor(
     fun setErrorMessage(message: String) {
         _errorMessage.value = message
     }
+
+    fun clearAuthRequest() {
+        _authRequest.value = null
+    }
 }

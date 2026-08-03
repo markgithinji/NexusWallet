@@ -2,8 +2,8 @@ package com.example.nexuswallet.feature.wallet.ui.backup
 
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
-import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,42 +55,23 @@ fun BackupScreen(
     val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
     val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
 
-    val biometricPrompt = rememberBiometricPrompt(
+    BiometricAuthHandler(
+        authRequest = authRequest,
+        cryptoObject = cryptoObject,
+        subtitle = stringResource(R.string.reveal_recovery_phrase_subtitle),
         onSuccess = { result ->
             viewModel.onBiometricSuccess(walletId, result.cryptoObject?.cipher)
         },
         onError = { errorCode, errString ->
             if (!isBiometricUserCancel(errorCode)) {
-                viewModel.setErrorMessage(errString.toString())
+                viewModel.setErrorMessage(errString)
             }
-        }
+        },
+        onDismiss = { viewModel.clearAuthRequest() }
     )
-
-    val biometricTitle = stringResource(R.string.biometric_authentication)
-    val biometricSubtitle = stringResource(R.string.reveal_recovery_phrase_subtitle)
-    val biometricCancel = stringResource(R.string.cancel)
-
-    val promptInfo = remember(biometricTitle, biometricSubtitle, biometricCancel) {
-        BiometricPrompt.PromptInfo.Builder()
-            .setTitle(biometricTitle)
-            .setSubtitle(biometricSubtitle)
-            .setNegativeButtonText(biometricCancel)
-            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-            .build()
-    }
 
     LaunchedEffect(walletId) {
         viewModel.loadMnemonic(walletId)
-    }
-
-    LaunchedEffect(authRequest) {
-        if (authRequest != null) {
-            if (cryptoObject != null) {
-                biometricPrompt?.authenticate(promptInfo, BiometricPrompt.CryptoObject(cryptoObject!!))
-            } else {
-                biometricPrompt?.authenticate(promptInfo)
-            }
-        }
     }
 
     Scaffold(

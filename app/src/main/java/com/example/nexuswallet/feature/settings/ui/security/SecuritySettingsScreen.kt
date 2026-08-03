@@ -41,8 +41,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
-import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.settings.domain.model.BackupBundle
@@ -125,32 +125,19 @@ fun SecuritySettingsScreen(
         }
     }
 
-    val biometricPrompt = rememberBiometricPrompt(
-        onSuccess = { _ -> viewModel.onClearAllAuthSuccess() },
+    BiometricAuthHandler(
+        authRequest = authRequest,
+        subtitle = stringResource(R.string.clear_all_data),
+        onSuccess = { viewModel.onClearAllAuthSuccess() },
         onError = { errorCode, errString ->
             if (!isBiometricUserCancel(errorCode)) {
                 scope.launch {
-                    snackbarHostState.showSnackbar(errString.toString())
+                    snackbarHostState.showSnackbar(errString)
                 }
             }
-        }
+        },
+        onDismiss = { viewModel.clearAuthRequest() }
     )
-
-    val biometricTitle = stringResource(R.string.biometric_authentication)
-    val biometricSubtitle = stringResource(R.string.clear_all_data)
-    val biometricCancel = stringResource(R.string.cancel)
-
-    LaunchedEffect(authRequest) {
-        if (authRequest != null) {
-            val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle(biometricTitle)
-                .setSubtitle(biometricSubtitle)
-                .setNegativeButtonText(biometricCancel)
-                .build()
-
-            biometricPrompt?.authenticate(promptInfo)
-        }
-    }
 
     LaunchedEffect(Unit) {
         viewModel.uiEffect.collect { effect ->

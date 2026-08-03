@@ -280,5 +280,11 @@ class WalletCreationViewModel @Inject constructor(
         _enteredWords.value = emptyList()
         _isMnemonicGenerated.value = false
         pendingWalletId = null
+        _authRequest.value = null
+        _cryptoObject.value = null
+    }
+
+    fun clearAuthRequest() {
+        _authRequest.value = null
     }
 }

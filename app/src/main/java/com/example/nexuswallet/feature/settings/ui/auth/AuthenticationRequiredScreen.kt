@@ -3,8 +3,8 @@ package com.example.nexuswallet.feature.settings.ui.auth
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
+import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
-import com.example.nexuswallet.feature.core.ui.rememberBiometricPrompt
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -82,38 +82,18 @@ fun AuthenticationRequiredScreen(
     val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
     val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
 
-    val biometricPrompt = rememberBiometricPrompt(
-        onSuccess = { _ ->
-            viewModel.onBiometricSuccess()
-        },
+    BiometricAuthHandler(
+        authRequest = authRequest,
+        cryptoObject = cryptoObject,
+        subtitle = "Use your fingerprint to authenticate",
+        onSuccess = { viewModel.onBiometricSuccess() },
         onError = { errorCode, errString ->
             if (!isBiometricUserCancel(errorCode)) {
-                viewModel.setErrorMessage(errString.toString())
+                viewModel.setErrorMessage(errString)
             }
         },
-        onFailed = {
-            viewModel.setErrorMessage("Authentication failed. Please try again.")
-        }
+        onDismiss = { viewModel.clearAuthRequest() }
     )
-
-    val promptInfo = remember {
-        BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Biometric Authentication")
-            .setSubtitle("Use your fingerprint to authenticate")
-            .setAllowedAuthenticators(BIOMETRIC_STRONG or DEVICE_CREDENTIAL)
-            .setConfirmationRequired(false)
-            .build()
-    }
-
-    LaunchedEffect(authRequest) {
-        if (authRequest != null) {
-            if (cryptoObject != null) {
-                biometricPrompt?.authenticate(promptInfo, BiometricPrompt.CryptoObject(cryptoObject!!))
-            } else {
-                biometricPrompt?.authenticate(promptInfo)
-            }
-        }
-    }
 
     if (showPinDialog) {
         PinEntryDialog(

@@ -515,4 +515,8 @@ class EVMSendViewModel @Inject constructor(
     }
 
     fun clearError() = _uiState.update { it.copy(error = null) }
+
+    fun clearAuthRequest() {
+        _authRequest.value = null
+    }
 }

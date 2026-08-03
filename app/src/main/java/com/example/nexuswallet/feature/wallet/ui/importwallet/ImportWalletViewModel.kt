@@ -177,4 +177,8 @@ class ImportWalletViewModel @Inject constructor(
     fun setErrorMessage(message: String) {
         _uiState.value = WalletCreationUiState.Error(message)
     }
+
+    fun clearAuthRequest() {
+        _authRequest.value = null
+    }
 }

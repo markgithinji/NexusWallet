@@ -212,4 +212,8 @@ class SolanaSendViewModel @Inject constructor(
     fun clearError() {
         _state.update { it.copy(error = null) }
     }
+
+    fun clearAuthRequest() {
+        _authRequest.value = null
+    }
 }
