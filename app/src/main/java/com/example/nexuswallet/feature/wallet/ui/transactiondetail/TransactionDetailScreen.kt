@@ -96,7 +96,7 @@ fun TransactionDetailScreen(
         viewModel.loadTransactionDetail(walletId, transactionId, coin)
     }
 
-    LaunchedEffect(viewModel) {
+    LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
             when (effect) {
                 is TransactionDetailEffect.ShowError -> {

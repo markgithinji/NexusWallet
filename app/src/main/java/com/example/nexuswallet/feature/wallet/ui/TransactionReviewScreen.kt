@@ -200,7 +200,7 @@ fun TransactionReviewScreen(
     val (coinColor, iconRes) = getCoinDetailConfig(coin)
 
     // Handle Bitcoin effects
-    LaunchedEffect(bitcoinReviewViewModel) {
+    LaunchedEffect(Unit) {
         bitcoinReviewViewModel.effect.collect { effect ->
             when (effect) {
                 is BitcoinReviewEffect.ShowError -> {
@@ -223,7 +223,7 @@ fun TransactionReviewScreen(
     }
 
     // Handle Ethereum effects
-    LaunchedEffect(ethereumViewModel) {
+    LaunchedEffect(Unit) {
         ethereumViewModel.effect.collect { effect ->
             when (effect) {
                 is EVMSendEffect.ShowError -> {
@@ -245,7 +245,7 @@ fun TransactionReviewScreen(
     }
 
     // Handle Solana effects
-    LaunchedEffect(solanaViewModel) {
+    LaunchedEffect(Unit) {
         solanaViewModel.effect.collect { effect ->
             when (effect) {
                 is SolanaSendEffect.ShowError -> {
