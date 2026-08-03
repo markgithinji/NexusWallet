@@ -9,6 +9,7 @@ import com.example.nexuswallet.feature.solana.data.remote.model.HeliusTransactio
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.domain.model.TransferInfo
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import org.sol4k.Keypair
 import java.math.BigDecimal
 
@@ -19,6 +20,11 @@ interface SolanaBlockchainRepository {
         address: String,
         network: SolanaNetwork
     ): Result<BigDecimal>
+
+    suspend fun getTransactionStatus(
+        signature: String,
+        network: SolanaNetwork
+    ): Result<TransactionStatus>
 
     suspend fun getTokenBalance(
         address: String,

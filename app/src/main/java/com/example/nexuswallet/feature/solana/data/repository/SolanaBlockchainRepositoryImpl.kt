@@ -16,6 +16,7 @@ import com.example.nexuswallet.feature.solana.domain.model.TransferInfo
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.sol4k.Base58
@@ -82,6 +83,32 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
             )
             
             result
+        }
+    }
+
+    override suspend fun getTransactionStatus(
+        signature: String,
+        network: SolanaNetwork
+    ): Result<TransactionStatus> = withContext(ioDispatcher) {
+        val result = getTransaction(signature, network)
+        when (result) {
+            is Result.Success -> {
+                val tx = result.data
+                if (tx.transactionError != null) {
+                    Result.Success(TransactionStatus.FAILED)
+                } else {
+                    Result.Success(TransactionStatus.SUCCESS)
+                }
+            }
+            is Result.Error -> {
+                // If not found yet, it's pending
+                if (result.message.contains("not found", ignoreCase = true)) {
+                    Result.Success(TransactionStatus.PENDING)
+                } else {
+                    Result.Error(result.message)
+                }
+            }
+            else -> Result.Success(TransactionStatus.PENDING)
         }
     }
 

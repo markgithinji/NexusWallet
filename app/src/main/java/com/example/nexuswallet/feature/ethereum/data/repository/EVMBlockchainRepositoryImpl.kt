@@ -13,6 +13,7 @@ import com.example.nexuswallet.feature.ethereum.data.toNativeETHTransactionList
 import com.example.nexuswallet.feature.ethereum.data.toTokenTransactionList
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GWEI_TO_WEI
@@ -64,6 +65,27 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
             val web3j = web3jFactory.create(network)
             val wei = web3j.ethGetBalance(address, DefaultBlockParameterName.LATEST).send().balance
             BigDecimal(wei).divide(BigDecimal(WEI_PER_ETH), ETH_DECIMALS, RoundingMode.HALF_UP)
+        }
+    }
+
+    override suspend fun getTransactionStatus(
+        txHash: String,
+        network: EthereumNetwork
+    ): Result<TransactionStatus> = withContext(ioDispatcher) {
+        SafeApiCall.make {
+            val web3j = web3jFactory.create(network)
+            val response = web3j.ethGetTransactionReceipt(txHash).send()
+            
+            if (response.hasError()) {
+                throw Exception(response.error.message)
+            }
+            
+            val receipt = response.transactionReceipt.orElse(null)
+            when {
+                receipt == null -> TransactionStatus.PENDING
+                receipt.isStatusOK -> TransactionStatus.SUCCESS
+                else -> TransactionStatus.FAILED
+            }
         }
     }
 

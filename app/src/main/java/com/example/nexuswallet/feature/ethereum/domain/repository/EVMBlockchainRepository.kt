@@ -9,6 +9,7 @@ import com.example.nexuswallet.feature.ethereum.data.model.GasPrice
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import org.web3j.crypto.RawTransaction
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -18,6 +19,11 @@ interface EVMBlockchainRepository {
         address: String,
         network: EthereumNetwork
     ): Result<BigDecimal>
+
+    suspend fun getTransactionStatus(
+        txHash: String,
+        network: EthereumNetwork
+    ): Result<TransactionStatus>
 
     suspend fun getTokenBalance(
         address: String,
