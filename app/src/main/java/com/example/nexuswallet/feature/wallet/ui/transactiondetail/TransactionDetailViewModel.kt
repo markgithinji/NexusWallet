@@ -4,13 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.formatCurrency
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
+import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
-import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
-import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
-import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDetailDisplayUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetTransactionDetailUseCase
 import com.example.nexuswallet.feature.wallet.util.ExplorerUrlHelper
@@ -30,6 +27,8 @@ import javax.inject.Inject
 class TransactionDetailViewModel @Inject constructor(
     private val getTransactionDetailUseCase: GetTransactionDetailUseCase,
     private val formatTransactionDetailDisplayUseCase: FormatTransactionDetailDisplayUseCase,
+    private val getSimplePricesUseCase: GetSimplePricesUseCase,
+    private val securityRepository: SecurityRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(TransactionDetailState())
@@ -52,8 +51,16 @@ class TransactionDetailViewModel @Inject constructor(
 
                     val displayInfo = formatTransactionDetailDisplayUseCase(transaction)
 
-                    val usdValue = calculateUSDValue(transaction)
-                    val formattedUsd = usdValue.formatCurrency()
+                    // Get real price
+                    val currency = securityRepository.getSelectedCurrency()
+                    val priceResult = getSimplePricesUseCase(listOf(transaction.coin.symbol), currency)
+                    val price = if (priceResult is Result.Success) {
+                        priceResult.data[transaction.coin.symbol] ?: 0.0
+                    } else 0.0
+
+                    val amount = transaction.amount.toDoubleOrNull() ?: 0.0
+                    val usdValue = amount * price
+                    val formattedUsd = usdValue.formatCurrency(currency)
 
                     _state.update {
                         it.copy(
@@ -81,29 +88,6 @@ class TransactionDetailViewModel @Inject constructor(
                 Result.Loading -> {}
             }
         }
-    }
-
-    private fun calculateUSDValue(transaction: TransactionDetail): Double {
-        val amount = transaction.amount.toDoubleOrNull() ?: 0.0
-
-        val mockPrices = mapOf(
-            "bitcoin" to 65000.0,
-            "ethereum" to 3500.0,
-            "solana" to 150.0,
-            "usd-coin" to 1.0
-        )
-
-        // Use coin from transaction to determine price key
-        val priceKey = when (transaction.coin) {
-            is BitcoinCoin -> "bitcoin"
-            is NativeETH -> "ethereum"
-            is SolanaCoin -> "solana"
-            is USDCToken -> "usd-coin"
-            is USDTToken -> "usd-coin"
-        }
-
-        val price = mockPrices[priceKey] ?: 0.0
-        return amount * price
     }
 
     fun refresh() {
