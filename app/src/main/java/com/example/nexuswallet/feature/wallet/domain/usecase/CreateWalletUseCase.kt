@@ -232,7 +232,7 @@ class CreateWalletUseCase @Inject constructor(
     private fun generateMasterSeed(mnemonic: List<CharArray>, passphrase: String = ""): ByteArray {
         val mnemonicChars = joinMnemonic(mnemonic)
         return try {
-            val salt = ("mnemonic" + passphrase).toByteArray(Charsets.UTF_8)
+            val salt = ("mnemonic$passphrase").toByteArray(Charsets.UTF_8)
             val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
             val spec = PBEKeySpec(mnemonicChars, salt, 2048, 512)
             factory.generateSecret(spec).encoded
@@ -340,7 +340,7 @@ class CreateWalletUseCase @Inject constructor(
             Context.propagate(context)
 
             val seed = DeterministicSeed(mnemonic, null, "", 0L)
-            val wallet = org.bitcoinj.wallet.Wallet.fromSeed(params, seed)
+            val wallet = org.bitcoinj.wallet.Wallet.fromSeed(params, seed, Script.ScriptType.P2PKH)
             val key = wallet.currentReceiveKey()
             key.privKeyBytes
         } catch (e: Exception) {
