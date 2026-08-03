@@ -70,7 +70,7 @@ class ReceiveViewModel @Inject constructor(
                     }
 
                     // Generate QR code
-                    val qrCodeBitmap = generateQrCodeUseCase(address)
+                    val qrCode = generateQrCodeUseCase(address)
 
                     _uiState.update {
                         it.copy(
@@ -80,7 +80,7 @@ class ReceiveViewModel @Inject constructor(
                             coin = coin,
                             networkDisplayName = networkDisplayName,
                             shareUrl = shareUrl,
-                            qrCodeBitmap = qrCodeBitmap,
+                            qrCode = qrCode,
                             isLoading = false
                         )
                     }

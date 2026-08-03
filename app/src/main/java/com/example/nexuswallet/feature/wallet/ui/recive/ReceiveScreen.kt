@@ -71,10 +71,12 @@ import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.QrCodeData
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
+import com.example.nexuswallet.feature.wallet.ui.common.toBitmap
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -134,7 +136,7 @@ fun ReceiveScreen(
         } else {
             ReceiveContent(
                 address = uiState.address,
-                qrCodeBitmap = uiState.qrCodeBitmap,
+                qrCode = uiState.qrCode,
                 coin = currentCoin,
                 networkDisplayName = uiState.networkDisplayName.ifEmpty { currentCoin.network.name },
                 copiedToClipboard = uiState.copiedToClipboard,
@@ -202,7 +204,7 @@ private fun ReceiveScreenTopBar(
 @Composable
 private fun ReceiveContent(
     address: String,
-    qrCodeBitmap: Bitmap?,
+    qrCode: QrCodeData?,
     coin: Coin,
     networkDisplayName: String,
     copiedToClipboard: Boolean,
@@ -211,6 +213,10 @@ private fun ReceiveContent(
     iconRes: Int,
     modifier: Modifier = Modifier
 ) {
+    val qrCodeBitmap = remember(qrCode) {
+        qrCode?.toBitmap()
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
