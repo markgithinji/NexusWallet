@@ -14,21 +14,25 @@ import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
+import com.example.nexuswallet.feature.wallet.domain.repository.BlockchainSubscriptionRepository
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -43,7 +47,8 @@ class WalletDashboardViewModel @Inject constructor(
     private val syncSolanaBalanceUseCase: SyncSolanaBalanceUseCase,
     private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
-    private val securityRepository: SecurityRepository
+    private val securityRepository: SecurityRepository,
+    private val subscriptionRepository: BlockchainSubscriptionRepository
 ) : ViewModel() {
 
     // State
@@ -93,10 +98,24 @@ class WalletDashboardViewModel @Inject constructor(
     private var lastRefreshTime = 0L
     private val refreshThreshold = 30_000L // 30 seconds
 
+    private val signalFlow = MutableSharedFlow<String>(extraBufferCapacity = 10)
+    private var subscriptionJob: Job? = null
+
     init {
         observeWallets()
         observePrivacyMode()
         observeSelectedCurrency()
+        observeSignals()
+    }
+
+    private fun observeSignals() {
+        viewModelScope.launch {
+            signalFlow
+                .debounce(2000L) // Prevent rapid re-syncs
+                .collect {
+                    refresh(force = true)
+                }
+        }
     }
 
     private fun observePrivacyMode() {
@@ -134,7 +153,39 @@ class WalletDashboardViewModel @Inject constructor(
                     if (walletsList.isNotEmpty() && walletsList.size > previousWallets.size) {
                         refresh(force = true)
                     }
+
+                    // Update subscriptions when wallets change
+                    updateSubscriptions(walletsList)
                 }
+        }
+    }
+
+    private fun updateSubscriptions(wallets: List<Wallet>) {
+        subscriptionJob?.cancel()
+        subscriptionJob = viewModelScope.launch {
+            wallets.forEach { wallet ->
+                // Subscribe to Bitcoin
+                wallet.bitcoinCoins.forEach { coin ->
+                    launch {
+                        subscriptionRepository.subscribeToAddressChanges(coin.address, coin.network)
+                            .collect { signalFlow.emit(it) }
+                    }
+                }
+                // Subscribe to Solana
+                wallet.solanaCoins.forEach { coin ->
+                    launch {
+                        subscriptionRepository.subscribeToAddressChanges(coin.address, coin.network)
+                            .collect { signalFlow.emit(it) }
+                    }
+                }
+                // Subscribe to Ethereum
+                wallet.evmTokens.forEach { token ->
+                    launch {
+                        subscriptionRepository.subscribeToAddressChanges(token.address, token.network)
+                            .collect { signalFlow.emit(it) }
+                    }
+                }
+            }
         }
     }
 
@@ -266,7 +317,7 @@ class WalletDashboardViewModel @Inject constructor(
                                 walletErrors.addAll(errors)
                             }
 
-                            // ATOMIC UPDATE: Save the full wallet balance at once
+                            // Save the full wallet balance at once
                             if (btcBalances.isNotEmpty() || solBalances.isNotEmpty() || evmList.isNotEmpty()) {
                                 val newBalance = WalletBalance(
                                     walletId = wallet.id,
@@ -303,5 +354,10 @@ class WalletDashboardViewModel @Inject constructor(
 
     fun clearOperationError() {
         _operationError.update { null }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        subscriptionRepository.clearAllSubscriptions()
     }
 }

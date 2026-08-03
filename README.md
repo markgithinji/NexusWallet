@@ -1,6 +1,6 @@
 # Nexus Wallet 🔐 — Cryptocurrency Wallet for Android
 
-**Nexus Wallet** is a self-hosted **oflfine-first** ryptocurrency wallet built with **Kotlin and Jetpack Compose**, showcasing advanced Android development skills in security, real-time data handling, and modern architecture. It connects to multiple blockchain APIs (Etherscan, Blockstream, Solana RPC) for secure balance checking and transaction management.
+**Nexus Wallet** is a self-hosted **offline-first** cryptocurrency wallet built with **Kotlin and Jetpack Compose**, showcasing advanced Android development skills in security, real-time data handling, and modern architecture. It connects to multiple blockchain APIs (Etherscan, Blockstream, Solana RPC) for secure balance checking and transaction management.
 
 It allows users to **create wallets, manage multiple cryptocurrencies, send and receive transactions**, and monitor **real-time market data**.
 
@@ -44,14 +44,15 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Market data aggregation** - CoinGecko REST API for historical data and market trends
 - **Crypto news aggregation** - CoinStats API for latest cryptocurrency news
 - **JSON-RPC client** - Direct blockchain node communication via Web3j for Ethereum and custom RPC for Bitcoin/Solana
+- **Multi-Chain Live Subscriptions** - Real-time balance updates using WebSockets for Bitcoin (Mempool.space), Ethereum (Alchemy), and Solana (Helius); app reacts instantly to on-chain activity without manual polling.
 
 ### 🔌 **Real-time Data & WebSocket Integration**
-- **WebSocket connection** to Binance WebSocket API for live price streaming
-- **Real-time price updates** for all many cryptocurrencies
-- **Automatic reconnection** handling with exponential backoff
-- **Price change indicators** updating in real-time without manual refresh
-- **WebSocket event handling** for market depth and ticker updates
-- **Background data synchronization** using Coroutine Flows
+- **Unified WebSocket Repository** - Centralized management of persistent connections for both market data and blockchain events.
+- **Price Streaming** - Real-time price updates for 60+ assets via Binance WebSocket API.
+- **Address Tracking** - Instant detection of transactions via `accountSubscribe` (Solana), `eth_subscribe` (Ethereum), and `track-address` (Bitcoin).
+- **Automatic Reconnection** - Robust handling of network switches and drops using exponential backoff.
+- **Reactive UI** - Balance "ticking" and portfolio animations that update without manual refresh.
+- **Background Data Sync** - Efficient event-driven updates using Coroutine Flows to minimize API usage.
   
 ### 🏗️ **Modern Android Architecture**
 - **Jetpack Compose UI** with Material Design 3
@@ -124,7 +125,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 | **UI** | Jetpack Compose, Material Design 3 | Modern declarative UI with animations |
 | **Architecture** | MVI, MVVM, Repository Pattern | Clean separation of concerns |
 | **DI** | Hilt | Dependency injection |
-| **Networking** | Retrofit, OkHttp, WebSocket (Binance), JSON-RPC | API communication, real-time price streaming, and blockchain RPC calls |
+| **Networking** | Retrofit, OkHttp, WebSockets (Binance, Mempool, Alchemy, Helius), JSON-RPC | API communication, real-time streaming, and blockchain RPC calls |
 | **Persistence** | Room Database, DataStore | Local data caching |
 | **Security** | Android KeyStore, Biometric API, Security Crypto | Encryption & authentication |
 | **Serialization** | Kotlinx Serialization | Type-safe JSON parsing |
@@ -150,6 +151,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 | ✅ Transaction History | Complete | Recent and all transactions |
 | ✅ Market Data | Complete | Live prices from CoinGecko |
 | ✅ Portfolio Tracking | Complete | Total value across all assets |
+| ✅ Live Balance Updates | Complete | Real-time WebSocket subscriptions for all chains |
 | ✅ Crypto News | Complete | Aggregated news from CoinStats |
 | ✅ Transaction Review | Complete | Confirm details before sending |
 | ✅ Wallet Import | Complete | Restore any BIP39-compliant wallet with full asset selection |
