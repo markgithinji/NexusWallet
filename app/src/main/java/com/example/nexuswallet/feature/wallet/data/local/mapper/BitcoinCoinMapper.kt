@@ -14,7 +14,7 @@ fun BitcoinCoinEntity.toDomain(): BitcoinCoin =
     )
 
 fun BitcoinCoin.toEntity(walletId: String): BitcoinCoinEntity = BitcoinCoinEntity(
-    id = UUID.randomUUID().toString(),
+    id = "${walletId}_${network.name}_$address",
     walletId = walletId,
     address = address,
     publicKey = publicKey,

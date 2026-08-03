@@ -13,7 +13,7 @@ fun BitcoinBalanceEntity.toDomain(): BitcoinBalance =
     )
 
 fun BitcoinBalance.toEntity(coinId: String): BitcoinBalanceEntity = BitcoinBalanceEntity(
-    id = UUID.randomUUID().toString(),
+    id = coinId,
     coinId = coinId,
     address = address,
     satoshis = satoshis,

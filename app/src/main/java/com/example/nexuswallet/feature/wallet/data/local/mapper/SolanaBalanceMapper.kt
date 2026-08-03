@@ -13,7 +13,7 @@ fun SolanaBalanceEntity.toDomain(): SolanaBalance =
     )
 
 fun SolanaBalance.toEntity(coinId: String): SolanaBalanceEntity = SolanaBalanceEntity(
-    id = UUID.randomUUID().toString(),
+    id = coinId,
     coinId = coinId,
     address = address,
     lamports = lamports,

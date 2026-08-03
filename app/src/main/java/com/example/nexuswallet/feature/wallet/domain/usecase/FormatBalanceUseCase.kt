@@ -43,7 +43,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     balance = coinBalance?.btc ?: "0",
                     balanceFormatted = formatCryptoAmount(coinBalance?.btc ?: "0"),
                     usdValue = coinBalance?.usdValue ?: 0.0,
-                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currency.code),
+                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currency),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.formatPercent(),
                     address = coin.address
@@ -68,7 +68,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     balance = coinBalance?.sol ?: "0",
                     balanceFormatted = formatCryptoAmount(coinBalance?.sol ?: "0"),
                     usdValue = coinBalance?.usdValue ?: 0.0,
-                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currency.code),
+                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currency),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.formatPercent(),
                     tokenCount = coin.splTokens.size,
@@ -90,7 +90,7 @@ class FormatBalanceUseCase @Inject constructor() {
                         balance = "0",
                         balanceFormatted = "0",
                         usdValue = 0.0,
-                        usdValueFormatted = (0.0).formatCurrency(currency.code),
+                        usdValueFormatted = (0.0).formatCurrency(currency),
                         priceChangePercentage = null,
                         priceChangeFormatted = null,
                         address = token.mintAddress
@@ -125,7 +125,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     balanceFormatted = formatCryptoAmount(tokenBalance?.balanceDecimal ?: "0"),
                     usdValue = tokenBalance?.usdValue ?: 0.0,
                     usdValueFormatted = (tokenBalance?.usdValue
-                        ?: 0.0).formatCurrency(currency.code),
+                        ?: 0.0).formatCurrency(currency),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.formatPercent(),
                     address = token.address

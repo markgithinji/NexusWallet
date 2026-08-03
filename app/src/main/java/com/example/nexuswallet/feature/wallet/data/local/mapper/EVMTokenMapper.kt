@@ -9,7 +9,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import java.util.UUID
 
 fun EVMToken.toEntity(walletId: String): EVMTokenEntity = EVMTokenEntity(
-    id = UUID.randomUUID().toString(),
+    id = "${walletId}_${network.name}_${evmTokenType.name}_$address",
     walletId = walletId,
     address = address,
     publicKey = publicKey,

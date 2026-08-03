@@ -126,7 +126,7 @@ class WalletDetailViewModel @Inject constructor(
 
                 // STEP 5: Refresh balance if needed
                 if (!isBalanceFresh) {
-                    refreshBalanceInBackground(walletId, loadedWallet)
+                    refreshBalanceInBackground(loadedWallet)
                 }
             }.onFailure { e ->
                 _uiState.update {
@@ -181,7 +181,7 @@ class WalletDetailViewModel @Inject constructor(
         updateAssets()
     }
 
-    private fun refreshBalanceInBackground(walletId: String, wallet: Wallet) {
+    private fun refreshBalanceInBackground(wallet: Wallet) {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshingBalance = true) }
 
@@ -191,7 +191,11 @@ class WalletDetailViewModel @Inject constructor(
                     wallet.evmTokens.map { it.symbol }).distinct()
 
             val pricesResult = getSimplePricesUseCase(symbols, _uiState.value.selectedCurrency)
-            val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
+            val prices = if (pricesResult is Result.Success) {
+                pricesResult.data
+            } else {
+                emptyMap()
+            }
 
             // 2. Sync balances with prices
             val allErrors = mutableListOf<ChainSyncError>()
@@ -308,6 +312,7 @@ class WalletDetailViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 assets = assets,
+                totalBalance = totalUsd,
                 totalBalanceFormatted = totalFormatted
             )
         }
@@ -360,7 +365,7 @@ class WalletDetailViewModel @Inject constructor(
             viewModelScope.launch {
 
                 // Refresh balance
-                refreshBalanceInBackground(wallet.id, wallet)
+                refreshBalanceInBackground(wallet)
 
                 // Refresh transactions with forceRefresh = true
                 // This will trigger a new sync and update the UI when complete

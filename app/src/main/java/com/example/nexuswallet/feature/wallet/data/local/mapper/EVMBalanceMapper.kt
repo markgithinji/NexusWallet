@@ -6,7 +6,7 @@ import java.util.UUID
 
 fun EVMBalance.toEntity(walletId: String): EVMBalanceEntity =
     EVMBalanceEntity(
-        id = UUID.randomUUID().toString(),
+        id = "${walletId}_${network.name}_${evmTokenType.name}",
         walletId = walletId,
         evmTokenType = evmTokenType,
         network = network,

@@ -250,6 +250,7 @@ fun WalletDetailScreen(
                 assets = uiState.assets,
                 transactions = uiState.transactions,
                 syncErrors = uiState.syncErrors,
+                totalBalance = uiState.totalBalance,
                 totalBalanceFormatted = uiState.totalBalanceFormatted,
                 hasSyncError = uiState.hasSyncError,
                 isLoadingBalance = uiState.isLoadingBalance,
@@ -440,6 +441,7 @@ private fun WalletDetailContent(
     assets: List<AssetDisplayInfo>,
     transactions: List<TransactionDisplayInfo>,
     syncErrors: List<ChainSyncError>,
+    totalBalance: Double,
     totalBalanceFormatted: String,
     hasSyncError: Boolean,
     isLoadingBalance: Boolean,
@@ -469,6 +471,7 @@ private fun WalletDetailContent(
         item {
             WalletHeaderCard(
                 wallet = wallet,
+                totalBalance = totalBalance,
                 totalBalanceFormatted = totalBalanceFormatted,
                 hasSyncError = hasSyncError,
                 isLoadingBalance = isLoadingBalance || isRefreshingBalance,
@@ -667,6 +670,7 @@ fun AssetCard(
 @Composable
 fun WalletHeaderCard(
     wallet: Wallet,
+    totalBalance: Double,
     totalBalanceFormatted: String,
     hasSyncError: Boolean = false,
     isLoadingBalance: Boolean = false,
@@ -681,21 +685,16 @@ fun WalletHeaderCard(
             wallet.solanaCoins.size +
             wallet.evmTokens.size
 
-    // Extract numeric value from formatted string
-    val numericBalance = remember(totalBalanceFormatted) {
-        totalBalanceFormatted.replace("[$,]".toRegex(), "").toDoubleOrNull() ?: 0.0
-    }
-
-    var previousValue by remember { mutableDoubleStateOf(numericBalance) }
+    var previousValue by remember { mutableDoubleStateOf(totalBalance) }
     val animatedValue = remember { Animatable(previousValue.toFloat()) }
 
-    LaunchedEffect(numericBalance) {
-        if (previousValue != numericBalance) {
+    LaunchedEffect(totalBalance) {
+        if (previousValue != totalBalance) {
             animatedValue.animateTo(
-                targetValue = numericBalance.toFloat(),
+                targetValue = totalBalance.toFloat(),
                 animationSpec = tween(1000, easing = FastOutSlowInEasing)
             )
-            previousValue = numericBalance
+            previousValue = totalBalance
         }
     }
 

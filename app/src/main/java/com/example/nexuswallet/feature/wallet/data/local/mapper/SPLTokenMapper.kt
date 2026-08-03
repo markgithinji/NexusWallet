@@ -13,7 +13,7 @@ fun SPLTokenEntity.toDomain(): SPLToken =
     )
 
 fun SPLToken.toEntity(solanaCoinId: String): SPLTokenEntity = SPLTokenEntity(
-    id = UUID.randomUUID().toString(),
+    id = "${solanaCoinId}_$mintAddress",
     solanaCoinId = solanaCoinId,
     mintAddress = mintAddress,
     symbol = symbol,

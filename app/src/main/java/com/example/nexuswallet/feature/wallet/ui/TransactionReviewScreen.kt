@@ -207,7 +207,7 @@ fun TransactionReviewScreen(
             }
 
             if (crypto != null) {
-                biometricPrompt?.authenticate(promptInfo, BiometricPrompt.CryptoObject(crypto as javax.crypto.Cipher))
+                biometricPrompt?.authenticate(promptInfo, BiometricPrompt.CryptoObject(crypto))
             } else {
                 biometricPrompt?.authenticate(promptInfo)
             }

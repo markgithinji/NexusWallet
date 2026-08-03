@@ -15,7 +15,7 @@ fun SolanaCoinEntity.toDomain(splTokens: List<SPLToken>): SolanaCoin =
     )
 
 fun SolanaCoin.toEntity(walletId: String): SolanaCoinEntity = SolanaCoinEntity(
-    id = UUID.randomUUID().toString(),
+    id = "${walletId}_${network.name}_$address",
     walletId = walletId,
     address = address,
     publicKey = publicKey,
