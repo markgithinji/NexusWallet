@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainR
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.DEFAULT_TOKEN_GAS_LIMIT
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GAS_LIMIT_STANDARD
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.GWEI_TO_WEI
+import com.example.nexuswallet.feature.ethereum.util.EVMConstants.USDT_GAS_LIMIT
 import com.example.nexuswallet.feature.ethereum.util.EVMConstants.WEI_PER_ETH
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
@@ -49,8 +50,13 @@ class GetFeeEstimateUseCase @Inject constructor(
         val gasLimit = when (gasLimitResult) {
             is Result.Success -> gasLimitResult.data
             else -> {
-                // Fallback to constants if no data or estimation failed
-                BigInteger.valueOf(if (isToken) DEFAULT_TOKEN_GAS_LIMIT else GAS_LIMIT_STANDARD)
+                // Fallback logic if dynamic estimation fails
+                when {
+                    !isToken -> BigInteger.valueOf(GAS_LIMIT_STANDARD)
+                    tokenContract?.equals(network.usdtContractAddress, ignoreCase = true) == true -> 
+                        BigInteger.valueOf(USDT_GAS_LIMIT)
+                    else -> BigInteger.valueOf(DEFAULT_TOKEN_GAS_LIMIT)
+                }
             }
         }
 

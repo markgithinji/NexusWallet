@@ -512,8 +512,8 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
                 }
             } else {
                 val estimated = response.amountUsed
-                // Add 15% buffer instead of 10% for better reliability on L2s or volatile gas
-                estimated.multiply(BigInteger.valueOf(115)).divide(BigInteger.valueOf(100))
+                // Add 20% buffer for better reliability on L2s or volatile gas
+                estimated.multiply(BigInteger.valueOf(120)).divide(BigInteger.valueOf(100))
             }
         }
     }
