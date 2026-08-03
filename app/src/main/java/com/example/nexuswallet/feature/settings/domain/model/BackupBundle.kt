@@ -9,26 +9,20 @@ data class BackupBundle(
     val vaultData: List<VaultWalletEntry>,
     val settings: BackupSettings,
     val backupTimestamp: Long = System.currentTimeMillis(),
-    val version: Int = 1
+    val version: Int = 2 // Updated version
 )
 
 @Serializable
 data class VaultWalletEntry(
     val walletId: String,
-    val mnemonic: EncryptedData,
-    val privateKeys: List<PrivateKeyEntry>
+    val mnemonicRaw: String, // Hex encoded RAW mnemonic bytes
+    val privateKeys: List<PrivateKeyRawEntry>
 )
 
 @Serializable
-data class PrivateKeyEntry(
+data class PrivateKeyRawEntry(
     val keyType: String,
-    val encryptedKey: EncryptedData
-)
-
-@Serializable
-data class EncryptedData(
-    val data: String, // Base64 or Hex
-    val iv: String    // Hex
+    val keyRaw: String // Hex encoded RAW private key bytes
 )
 
 @Serializable

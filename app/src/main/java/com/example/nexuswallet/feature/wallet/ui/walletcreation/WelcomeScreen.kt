@@ -1,20 +1,56 @@
 package com.example.nexuswallet.feature.wallet.ui.walletcreation
 
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.FileOpen
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.Password
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.VpnKey
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,13 +64,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
-import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.settings.ui.auth.PinEntryDialog
-import com.example.nexuswallet.feature.settings.ui.security.*
+import com.example.nexuswallet.feature.settings.ui.security.PinVerifyPurpose
+import com.example.nexuswallet.feature.settings.ui.security.RestoreSelectionDialog
+import com.example.nexuswallet.feature.settings.ui.security.SecurityOperationOverlay
+import com.example.nexuswallet.feature.settings.ui.security.SecuritySettingsViewModel
+import com.example.nexuswallet.feature.settings.ui.security.SecurityUiEffect
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,14 +88,14 @@ fun WelcomeScreen(
     val scope = rememberCoroutineScope()
     var showImportOptions by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
-    
+
     val operationState by viewModel.operationState.collectAsStateWithLifecycle()
     val showPinVerifyDialog by viewModel.showPinVerifyDialog.collectAsStateWithLifecycle()
     val showRestoreSelectionDialog by viewModel.showRestoreSelectionDialog.collectAsStateWithLifecycle()
     val decryptedBundle by viewModel.decryptedBundle.collectAsStateWithLifecycle()
     val restoreSelection by viewModel.restoreSelection.collectAsStateWithLifecycle()
     val pinVerifyPurpose by viewModel.pinVerifyPurpose.collectAsStateWithLifecycle()
-    
+
     val snackbarHostState = remember { SnackbarHostState() }
 
     val selectBackupLauncher = rememberLauncherForActivityResult(
@@ -101,7 +139,9 @@ fun WelcomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.Transparent
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -159,16 +199,34 @@ fun WelcomeScreen(
                     elevation = CardDefaults.cardElevation(0.dp)
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp, horizontal = 12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp, horizontal = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            CompactFeatureItem(Modifier.weight(1f), Icons.Outlined.Security, stringResource(R.string.feature_bip39))
-                            CompactFeatureItem(Modifier.weight(1f), Icons.Outlined.Fingerprint, stringResource(R.string.feature_biometric))
+                            CompactFeatureItem(
+                                Modifier.weight(1f),
+                                Icons.Outlined.Security,
+                                stringResource(R.string.feature_bip39)
+                            )
+                            CompactFeatureItem(
+                                Modifier.weight(1f),
+                                Icons.Outlined.Fingerprint,
+                                stringResource(R.string.feature_biometric)
+                            )
                         }
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            CompactFeatureItem(Modifier.weight(1f), Icons.Outlined.VpnKey, stringResource(R.string.feature_keystore))
-                            CompactFeatureItem(Modifier.weight(1f), Icons.Outlined.AccountBalanceWallet, stringResource(R.string.feature_multichain))
+                            CompactFeatureItem(
+                                Modifier.weight(1f),
+                                Icons.Outlined.VpnKey,
+                                stringResource(R.string.feature_keystore)
+                            )
+                            CompactFeatureItem(
+                                Modifier.weight(1f),
+                                Icons.Outlined.AccountBalanceWallet,
+                                stringResource(R.string.feature_multichain)
+                            )
                         }
                     }
                 }
@@ -177,29 +235,51 @@ fun WelcomeScreen(
 
                 // Action Buttons
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 32.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Button(
                         onClick = onCreateWallet,
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
                         shape = RoundedCornerShape(16.dp)
                     ) {
-                        Text(stringResource(R.string.create_new_wallet), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            stringResource(R.string.create_new_wallet),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
 
                     OutlinedButton(
                         onClick = { showImportOptions = true },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+                        border = BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
                     ) {
-                        Text(stringResource(R.string.import_existing_wallet), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            stringResource(R.string.import_existing_wallet),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
 
                     TextButton(onClick = onSkip) {
-                        Text(stringResource(R.string.skip_for_now), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            stringResource(R.string.skip_for_now),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -217,7 +297,9 @@ fun WelcomeScreen(
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 48.dp),
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 48.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
@@ -230,7 +312,7 @@ fun WelcomeScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 ImportOptionItem(
@@ -259,12 +341,12 @@ fun WelcomeScreen(
     // PIN Verification for Backup
     PinEntryDialog(
         showDialog = showPinVerifyDialog,
-        title = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE) 
-            "Enter Backup PIN" 
-            else stringResource(R.string.confirm_pin_title),
+        title = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE)
+            "Enter Backup PIN"
+        else stringResource(R.string.confirm_pin_title),
         subtitle = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE)
             "Enter the PIN used to encrypt this backup file"
-            else stringResource(R.string.confirm_pin_subtitle),
+        else stringResource(R.string.confirm_pin_subtitle),
         onPinEntered = viewModel::onPinVerified,
         onDismiss = viewModel::cancelPinSetup
     )
@@ -299,32 +381,74 @@ fun ImportOptionItem(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(text = description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-            Icon(imageVector = Icons.Outlined.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(
+                imageVector = Icons.Outlined.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
 
 @Composable
 fun CompactFeatureItem(modifier: Modifier = Modifier, icon: ImageVector, text: String) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
-            Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text = text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
     }
 }

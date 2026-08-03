@@ -1,9 +1,12 @@
 package com.example.nexuswallet.feature.settings.domain.usecase
 
+import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants
+import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.toHex
+import com.example.nexuswallet.feature.core.util.use
 import com.example.nexuswallet.feature.settings.domain.model.*
 import com.example.nexuswallet.feature.settings.domain.repository.BackupRepository
 import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
@@ -17,7 +20,8 @@ class CreateBackupUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val vaultRepository: VaultRepository,
     private val securityRepository: SecurityRepository,
-    private val backupRepository: BackupRepository
+    private val backupRepository: BackupRepository,
+    private val keyStoreRepository: KeyStoreRepository
 ) {
     suspend operator fun invoke(pin: String): Result<ByteArray> {
         return try {
@@ -26,8 +30,20 @@ class CreateBackupUseCase @Inject constructor(
             
             // 2. Collect corresponding Vault data for each wallet
             val vaultEntries = wallets.map { wallet ->
-                val mnemonic = vaultRepository.getEncryptedMnemonic(wallet.id) 
+                // Decrypt mnemonic from hardware
+                val encryptedMnemonic = vaultRepository.getEncryptedMnemonic(wallet.id) 
                     ?: throw Exception("Mnemonic missing for wallet ${wallet.id}")
+                
+                val mnemonicResult = keyStoreRepository.decrypt(
+                    encryptedMnemonic.first.decodeHex(), 
+                    encryptedMnemonic.second
+                )
+                
+                if (mnemonicResult !is Result.Success) {
+                    throw Exception("Failed to decrypt mnemonic for wallet ${wallet.id}")
+                }
+                
+                val mnemonicBytes = mnemonicResult.data
                 
                 val keyTypes = listOf(
                     WalletConstants.KEY_BITCOIN_MAINNET,
@@ -39,15 +55,23 @@ class CreateBackupUseCase @Inject constructor(
                 
                 val privateKeys = keyTypes.mapNotNull { type ->
                     vaultRepository.getEncryptedPrivateKey(wallet.id, type)?.let { (data, iv) ->
-                        PrivateKeyEntry(type, EncryptedData(data, iv.toHex()))
+                        val keyResult = keyStoreRepository.decrypt(data.decodeHex(), iv)
+                        if (keyResult is Result.Success) {
+                            val rawKey = keyResult.data
+                            val entry = PrivateKeyRawEntry(type, rawKey.toHex())
+                            rawKey.fill(0) // Wipe raw key after hexing
+                            entry
+                        } else null
                     }
                 }
                 
-                VaultWalletEntry(
+                val entry = VaultWalletEntry(
                     walletId = wallet.id,
-                    mnemonic = EncryptedData(mnemonic.first, mnemonic.second.toHex()),
+                    mnemonicRaw = mnemonicBytes.toHex(),
                     privateKeys = privateKeys
                 )
+                mnemonicBytes.fill(0) // Wipe raw mnemonic bytes
+                entry
             }
             
             // 3. Collect Settings

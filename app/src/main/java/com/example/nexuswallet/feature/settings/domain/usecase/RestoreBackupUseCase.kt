@@ -1,9 +1,11 @@
 package com.example.nexuswallet.feature.settings.domain.usecase
 
+import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants
 import com.example.nexuswallet.feature.core.util.decodeHex
+import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.settings.domain.model.BackupBundle
 import com.example.nexuswallet.feature.settings.domain.model.RestoreSelection
@@ -18,7 +20,8 @@ import javax.inject.Singleton
 class RestoreBackupUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val vaultRepository: VaultRepository,
-    private val securityRepository: SecurityRepository
+    private val securityRepository: SecurityRepository,
+    private val keyStoreRepository: KeyStoreRepository
 ) {
     suspend operator fun invoke(bundle: BackupBundle, selection: RestoreSelection): Result<Unit> {
         return try {
@@ -51,24 +54,37 @@ class RestoreBackupUseCase @Inject constructor(
                 walletRepository.saveWallet(filteredWallet)
                 
                 // 2. Restore corresponding sensitive data to Vault
+                // IMPORTANT: We must re-encrypt these raw bytes with the CURRENT device's hardware key
                 val vaultEntry = bundle.vaultData.find { it.walletId == walletId }
                 if (vaultEntry != null) {
                     // Restore Mnemonic
-                    vaultRepository.storeEncryptedMnemonic(
-                        walletId, 
-                        vaultEntry.mnemonic.data, 
-                        vaultEntry.mnemonic.iv.decodeHex()
-                    )
+                    val rawMnemonic = vaultEntry.mnemonicRaw.decodeHex()
+                    val encryptMnemonicResult = keyStoreRepository.encrypt(rawMnemonic)
+                    if (encryptMnemonicResult is Result.Success) {
+                        val (encryptedData, iv) = encryptMnemonicResult.data
+                        vaultRepository.storeEncryptedMnemonic(
+                            walletId, 
+                            encryptedData.toHex(), 
+                            iv
+                        )
+                    }
+                    rawMnemonic.fill(0) // Wipe raw mnemonic
                     
                     // Restore Private Keys only for selected networks
                     vaultEntry.privateKeys.forEach { pk ->
                         if (isKeyRequiredForNetworks(pk.keyType, allowedNetworks)) {
-                            vaultRepository.storeEncryptedPrivateKey(
-                                walletId,
-                                pk.keyType,
-                                pk.encryptedKey.data,
-                                pk.encryptedKey.iv.decodeHex()
-                            )
+                            val rawKey = pk.keyRaw.decodeHex()
+                            val encryptKeyResult = keyStoreRepository.encrypt(rawKey)
+                            if (encryptKeyResult is Result.Success) {
+                                val (encryptedData, iv) = encryptKeyResult.data
+                                vaultRepository.storeEncryptedPrivateKey(
+                                    walletId,
+                                    pk.keyType,
+                                    encryptedData.toHex(),
+                                    iv
+                                )
+                            }
+                            rawKey.fill(0) // Wipe raw key
                         }
                     }
                 }

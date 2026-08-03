@@ -39,9 +39,10 @@ inline fun <T> safeKeyStoreCall(
                 throwable = HardwareAuthRequiredException(onAuthRequired())
             )
         } else {
+            val isTagFailed = e is AEADBadTagException || e.cause is AEADBadTagException
             val message = when {
                 isPermanentlyInvalidated -> "Security key invalidated (biometrics changed). Please restore your wallet using your seed phrase."
-                e is AEADBadTagException -> "Decryption failed (integrity check failed). Data may be corrupted or the key has changed."
+                isTagFailed -> "Decryption failed (integrity check failed). Data may be corrupted or the key has changed."
                 e is java.security.KeyStoreException -> "KeyStore hardware error: ${e.message}"
                 e is EncryptionException -> e.message ?: "Security operation failed"
                 else -> e.message ?: "Encryption/Decryption failed (${e::class.java.simpleName})"
