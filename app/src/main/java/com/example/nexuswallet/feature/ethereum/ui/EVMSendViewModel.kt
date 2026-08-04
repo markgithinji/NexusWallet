@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
+import com.example.nexuswallet.feature.core.domain.model.TransactionResult
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
@@ -447,7 +448,7 @@ class EVMSendViewModel @Inject constructor(
         return validationResult.isValid
     }
 
-    fun send(cipher: Cipher? = null, onSuccess: (String) -> Unit) {
+    fun send(cipher: Cipher? = null, onSuccess: (String) -> Unit = {}) {
         viewModelScope.launch {
             val state = _uiState.value
             val token = state.selectedToken ?: currentCoin
@@ -479,9 +480,11 @@ class EVMSendViewModel @Inject constructor(
                         val explorerUrl =
                             ExplorerUrlHelper.getExplorerUrl(sendResult.txHash, state.network)
                         _effect.emit(
-                            EVMSendEffect.TransactionSent(
-                                sendResult.txHash,
-                                explorerUrl
+                            EVMSendEffect.TransactionResultEffect(
+                                TransactionResult.Success(
+                                    sendResult.txHash,
+                                    explorerUrl
+                                )
                             )
                         )
                         onSuccess(sendResult.txHash)
@@ -493,8 +496,10 @@ class EVMSendViewModel @Inject constructor(
                             )
                         }
                         _effect.emit(
-                            EVMSendEffect.ShowError(
-                                sendResult.error ?: "Send failed"
+                            EVMSendEffect.TransactionResultEffect(
+                                TransactionResult.Error(
+                                    sendResult.error ?: "Send failed"
+                                )
                             )
                         )
                     }
@@ -513,7 +518,7 @@ class EVMSendViewModel @Inject constructor(
                                 error = result.message
                             )
                         }
-                        _effect.emit(EVMSendEffect.ShowError(result.message))
+                        _effect.emit(EVMSendEffect.TransactionResultEffect(TransactionResult.Error(result.message)))
                     }
                 }
 
@@ -522,7 +527,7 @@ class EVMSendViewModel @Inject constructor(
         }
     }
 
-    fun completeSendAfterBiometric(cipher: Cipher? = null, onSuccess: (String) -> Unit) {
+    fun completeSendAfterBiometric(cipher: Cipher? = null, onSuccess: (String) -> Unit = {}) {
         _cryptoObject.value = null
         _authRequest.value = null
         send(cipher = cipher, onSuccess = onSuccess)

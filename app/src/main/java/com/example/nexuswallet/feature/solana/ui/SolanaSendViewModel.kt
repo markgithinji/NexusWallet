@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.solana.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
+import com.example.nexuswallet.feature.core.domain.model.TransactionResult
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
@@ -76,7 +77,8 @@ class SolanaSendViewModel @Inject constructor(
             
             currentWallet = walletRepository.getWallet(walletId)
             if (currentWallet == null) {
-                _effect.emit(SolanaSendEffect.ShowError("Wallet not found"))
+                _effect.emit(SolanaSendEffect.TransactionResultEffect(TransactionResult.Error("Wallet not found")))
+                _state.update { it.copy(isLoading = false, error = "Wallet not found") }
                 return@launch
             }
 
@@ -173,12 +175,12 @@ class SolanaSendViewModel @Inject constructor(
         }
     }
 
-    fun send(cipher: Cipher? = null, onSuccess: (String) -> Unit) {
+    fun send(cipher: Cipher? = null, onSuccess: (String) -> Unit = {}) {
         viewModelScope.launch {
             val currentState = _state.value
             val currentCoin = currentState.coin ?: return@launch
 
-            _state.update { it.copy(isLoading = true) }
+            _state.update { it.copy(isLoading = true, step = "Sending...", error = null) }
 
             val result = sendSolanaUseCase(
                 walletId = currentState.walletId,
@@ -196,10 +198,14 @@ class SolanaSendViewModel @Inject constructor(
                     if (sendResult.success) {
                         val txHash = sendResult.txHash
                         val explorerUrl = ExplorerUrlHelper.getExplorerUrl(txHash, currentState.network)
-                        _effect.emit(SolanaSendEffect.TransactionSent(txHash, explorerUrl))
+                        
+                        _state.update { it.copy(isLoading = false, step = "Sent!") }
+                        _effect.emit(SolanaSendEffect.TransactionResultEffect(TransactionResult.Success(txHash, explorerUrl)))
                         onSuccess(txHash)
                     } else {
-                        _effect.emit(SolanaSendEffect.ShowError(sendResult.error ?: "Send failed"))
+                        val errorMessage = sendResult.error ?: "Send failed"
+                        _state.update { it.copy(isLoading = false, error = errorMessage) }
+                        _effect.emit(SolanaSendEffect.TransactionResultEffect(TransactionResult.Error(errorMessage)))
                     }
                 }
                 is Result.Error -> {
@@ -207,17 +213,18 @@ class SolanaSendViewModel @Inject constructor(
                     if (authException != null) {
                         _cryptoObject.value = authException.cryptoObject?.cipher
                         _authRequest.value = System.currentTimeMillis()
+                        _state.update { it.copy(isLoading = false) }
                     } else {
-                        _effect.emit(SolanaSendEffect.ShowError(result.message))
+                        _state.update { it.copy(isLoading = false, error = result.message) }
+                        _effect.emit(SolanaSendEffect.TransactionResultEffect(TransactionResult.Error(result.message)))
                     }
                 }
                 Result.Loading -> {}
             }
-            _state.update { it.copy(isLoading = false) }
         }
     }
 
-    fun completeSendAfterBiometric(cipher: Cipher? = null, onSuccess: (String) -> Unit) {
+    fun completeSendAfterBiometric(cipher: Cipher? = null, onSuccess: (String) -> Unit = {}) {
         _cryptoObject.value = null
         _authRequest.value = null
         send(cipher, onSuccess)

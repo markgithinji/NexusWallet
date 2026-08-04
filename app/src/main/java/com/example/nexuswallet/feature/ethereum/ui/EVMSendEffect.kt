@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.ethereum.ui
 
+import com.example.nexuswallet.feature.core.domain.model.TransactionResult
+
 sealed class EVMSendEffect {
-    data class ShowError(val message: String) : EVMSendEffect()
-    data class TransactionSent(val txHash: String, val explorerUrl: String) : EVMSendEffect()
+    data class TransactionResultEffect(val result: TransactionResult) : EVMSendEffect()
 }

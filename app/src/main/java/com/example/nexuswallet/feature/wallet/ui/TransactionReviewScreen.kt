@@ -5,7 +5,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
-import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -81,6 +80,8 @@ import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewEffect
 import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewViewModel
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.TransactionResult
+import com.example.nexuswallet.feature.core.service.TransactionMonitorService
 import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
@@ -92,7 +93,6 @@ import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.ui.SolanaSendEffect
 import com.example.nexuswallet.feature.solana.ui.SolanaSendEvent
 import com.example.nexuswallet.feature.solana.ui.SolanaSendViewModel
-import com.example.nexuswallet.feature.core.service.TransactionMonitorService
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
@@ -132,12 +132,14 @@ fun TransactionReviewScreen(
     val authCanceled = stringResource(R.string.auth_canceled)
     val addressCopied = stringResource(R.string.address_copied_small)
 
-    var isSending by remember { mutableStateOf(false) }
-    var sendError by remember { mutableStateOf<String?>(null) }
-    var txHash by remember { mutableStateOf<String?>(null) }
-    var explorerUrl by remember { mutableStateOf<String?>(null) }
+    var txResult by remember { mutableStateOf<TransactionResult?>(null) }
     var txStatus by remember { mutableStateOf("") }
     var showSuccessBanner by remember { mutableStateOf(false) }
+
+    val txHash = (txResult as? TransactionResult.Success)?.txHash
+    val explorerUrl = (txResult as? TransactionResult.Success)?.explorerUrl
+    val sendError = (txResult as? TransactionResult.Error)?.message
+    val isSending = txResult is TransactionResult.Loading
 
     val ethereumState = ethereumViewModel.uiState.collectAsStateWithLifecycle()
     val solanaState = solanaViewModel.state.collectAsStateWithLifecycle()
@@ -151,28 +153,6 @@ fun TransactionReviewScreen(
     val solAuthRequest by solanaViewModel.authRequest.collectAsStateWithLifecycle()
     val btcAuthRequest by bitcoinReviewViewModel.authRequest.collectAsStateWithLifecycle()
 
-    val onTransactionSent: (String, String?) -> Unit = { hash, url ->
-        txHash = hash
-        if (url != null) explorerUrl = url
-        txStatus = transactionSent
-        isSending = false
-
-        val networkType = when (coin) {
-            is BitcoinCoin -> TransactionMonitorService.NETWORK_BITCOIN
-            is SolanaCoin -> TransactionMonitorService.NETWORK_SOLANA
-            is EVMToken -> TransactionMonitorService.NETWORK_ETHEREUM
-        }
-
-        TransactionMonitorService.enqueue(
-            context = context,
-            txHash = hash,
-            networkType = networkType,
-            networkName = coin.network.name,
-            coinSymbol = coin.symbol,
-            amount = amount
-        )
-    }
-
     val authRequest = when (coin) {
         is EVMToken -> ethAuthRequest
         is SolanaCoin -> solAuthRequest
@@ -185,24 +165,50 @@ fun TransactionReviewScreen(
         is BitcoinCoin -> btcCryptoObject
     }
 
+    suspend fun handleTransactionResult(result: TransactionResult) {
+        txResult = result
+        when (result) {
+            is TransactionResult.Success -> {
+                txStatus = transactionSent
+                val networkType = when (coin) {
+                    is BitcoinCoin -> TransactionMonitorService.NETWORK_BITCOIN
+                    is SolanaCoin -> TransactionMonitorService.NETWORK_SOLANA
+                    is EVMToken -> TransactionMonitorService.NETWORK_ETHEREUM
+                }
+
+                TransactionMonitorService.enqueue(
+                    context = context,
+                    txHash = result.txHash,
+                    networkType = networkType,
+                    networkName = coin.network.name,
+                    coinSymbol = coin.symbol,
+                    amount = amount
+                )
+
+                showSuccessBanner = true
+                delay(5000)
+                showSuccessBanner = false
+            }
+
+            is TransactionResult.Error -> {}
+            TransactionResult.Loading -> {}
+        }
+    }
+
     BiometricAuthHandler(
         authRequest = authRequest,
         cryptoObject = cryptoObject,
         subtitle = stringResource(R.string.confirm_and_send),
         onSuccess = { result ->
             when (coin) {
-                is EVMToken -> ethereumViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher) { onTransactionSent(it, null) }
-                is SolanaCoin -> solanaViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher) { onTransactionSent(it, null) }
-                is BitcoinCoin -> bitcoinReviewViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher) { onTransactionSent(it, null) }
+                is EVMToken -> ethereumViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher) { }
+                is SolanaCoin -> solanaViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher) { }
+                is BitcoinCoin -> bitcoinReviewViewModel.completeSendAfterBiometric(result.cryptoObject?.cipher) { }
             }
         },
         onError = { errorCode, errString ->
-            sendError = if (isBiometricUserCancel(errorCode)) {
-                authCanceled
-            } else {
-                errString
-            }
-            isSending = false
+            val message = if (isBiometricUserCancel(errorCode)) authCanceled else errString
+            txResult = TransactionResult.Error(message)
         },
         onDismiss = {
             when (coin) {
@@ -216,60 +222,30 @@ fun TransactionReviewScreen(
     // Get coin config
     val (coinColor, iconRes) = getCoinDetailConfig(coin)
 
-    // Handle Bitcoin effects
+    // Handle effects using unified TransactionResult
     LaunchedEffect(Unit) {
         bitcoinReviewViewModel.effect.collect { effect ->
             when (effect) {
-                is BitcoinReviewEffect.ShowError -> {
-                    sendError = effect.message
-                    isSending = false
-                }
-
-                is BitcoinReviewEffect.TransactionPrepared -> {}
-                is BitcoinReviewEffect.TransactionSent -> {
-                    onTransactionSent(effect.txHash, effect.explorerUrl)
-                    showSuccessBanner = true
-                    delay(5000)
-                    showSuccessBanner = false
+                is BitcoinReviewEffect.TransactionResultEffect -> handleTransactionResult(effect.result)
+                is BitcoinReviewEffect.TransactionPrepared -> {
+                    // Transaction prepared successfully
                 }
             }
         }
     }
 
-    // Handle Ethereum effects
     LaunchedEffect(Unit) {
         ethereumViewModel.effect.collect { effect ->
             when (effect) {
-                is EVMSendEffect.ShowError -> {
-                    sendError = effect.message
-                    isSending = false
-                }
-
-                is EVMSendEffect.TransactionSent -> {
-                    onTransactionSent(effect.txHash, effect.explorerUrl)
-                    showSuccessBanner = true
-                    delay(5000)
-                    showSuccessBanner = false
-                }
+                is EVMSendEffect.TransactionResultEffect -> handleTransactionResult(effect.result)
             }
         }
     }
 
-    // Handle Solana effects
     LaunchedEffect(Unit) {
         solanaViewModel.effect.collect { effect ->
             when (effect) {
-                is SolanaSendEffect.ShowError -> {
-                    sendError = effect.message
-                    isSending = false
-                }
-
-                is SolanaSendEffect.TransactionSent -> {
-                    onTransactionSent(effect.txHash, effect.explorerUrl)
-                    showSuccessBanner = true
-                    delay(5000)
-                    showSuccessBanner = false
-                }
+                is SolanaSendEffect.TransactionResultEffect -> handleTransactionResult(effect.result)
             }
         }
     }
@@ -407,30 +383,11 @@ fun TransactionReviewScreen(
                 isPreparing = isPreparing,
                 isFeeLoading = isFeeLoading,
                 onSend = {
-                    isSending = true
-                    sendError = null
-
+                    txResult = TransactionResult.Loading
                     when (coin) {
-                        is EVMToken -> {
-                            ethereumViewModel.send(
-                                cipher = null,
-                                onSuccess = { onTransactionSent(it, null) }
-                            )
-                        }
-
-                        is SolanaCoin -> {
-                            solanaViewModel.send(
-                                cipher = null,
-                                onSuccess = { onTransactionSent(it, null) }
-                            )
-                        }
-
-                        is BitcoinCoin -> {
-                            bitcoinReviewViewModel.sendTransaction(
-                                cipher = null,
-                                onSuccess = { onTransactionSent(it, null) }
-                            )
-                        }
+                        is EVMToken -> ethereumViewModel.send(cipher = null, onSuccess = { })
+                        is SolanaCoin -> solanaViewModel.send(cipher = null, onSuccess = { })
+                        is BitcoinCoin -> bitcoinReviewViewModel.sendTransaction(cipher = null, onSuccess = { })
                     }
                 },
                 onDone = { onDone(walletId, coin) }

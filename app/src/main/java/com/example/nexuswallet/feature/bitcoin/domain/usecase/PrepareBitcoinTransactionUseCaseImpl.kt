@@ -19,6 +19,15 @@ import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Prepares a Bitcoin transaction by selecting UTXOs and estimating fees.
+ *
+ * Unlike Account-based networks (Ethereum, Solana) where a transaction has a fixed input,
+ * Bitcoin uses the UTXO (Unspent Transaction Output) model. This requires a preparation step to:
+ * 1. Select specific UTXOs to cover the target amount + fees.
+ * 2. Calculate the transaction size in bytes (which depends on the number of inputs).
+ * 3. Re-estimate the fee based on the actual size before broadcasting.
+ */
 @Singleton
 class PrepareBitcoinTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,

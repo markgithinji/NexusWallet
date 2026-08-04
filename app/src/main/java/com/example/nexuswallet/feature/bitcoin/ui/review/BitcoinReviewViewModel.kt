@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.bitcoin.ui.review
 
+import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewEffect
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
@@ -12,6 +13,7 @@ import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_INP
 import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_OUTPUT_COUNT
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
+import com.example.nexuswallet.feature.core.domain.model.TransactionResult
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.toSatoshis
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
@@ -206,7 +208,7 @@ class BitcoinReviewViewModel @Inject constructor(
 
                 is Result.Error -> {
                     _state.update { it.copy(isLoading = false, error = result.message) }
-                    _effect.emit(BitcoinReviewEffect.ShowError(result.message))
+                    _effect.emit(BitcoinReviewEffect.TransactionResultEffect(TransactionResult.Error(result.message)))
                 }
 
                 else -> {}
@@ -214,13 +216,13 @@ class BitcoinReviewViewModel @Inject constructor(
         }
     }
 
-    fun sendTransaction(cipher: Cipher? = null, onSuccess: (String) -> Unit) {
+    fun sendTransaction(cipher: Cipher? = null, onSuccess: (String) -> Unit = {}) {
         viewModelScope.launch {
             val state = _state.value
             val preparedTx = state.preparedTransaction
 
             if (preparedTx == null || !state.transactionPrepared) {
-                _effect.emit(BitcoinReviewEffect.ShowError("Transaction not prepared"))
+                _effect.emit(BitcoinReviewEffect.TransactionResultEffect(TransactionResult.Error("Transaction not prepared")))
                 return@launch
             }
 
@@ -248,9 +250,11 @@ class BitcoinReviewViewModel @Inject constructor(
                         val explorerUrl =
                             ExplorerUrlHelper.getExplorerUrl(sendResult.txHash, state.network)
                         _effect.emit(
-                            BitcoinReviewEffect.TransactionSent(
-                                sendResult.txHash,
-                                explorerUrl
+                            BitcoinReviewEffect.TransactionResultEffect(
+                                TransactionResult.Success(
+                                    sendResult.txHash,
+                                    explorerUrl
+                                )
                             )
                         )
                         onSuccess(sendResult.txHash)
@@ -261,7 +265,7 @@ class BitcoinReviewViewModel @Inject constructor(
                                 error = sendResult.error ?: "Send failed"
                             )
                         }
-                        _effect.emit(BitcoinReviewEffect.ShowError(sendResult.error ?: "Send failed"))
+                        _effect.emit(BitcoinReviewEffect.TransactionResultEffect(TransactionResult.Error(sendResult.error ?: "Send failed")))
                     }
                 }
 
@@ -278,7 +282,7 @@ class BitcoinReviewViewModel @Inject constructor(
                                 error = result.message
                             )
                         }
-                        _effect.emit(BitcoinReviewEffect.ShowError(result.message))
+                        _effect.emit(BitcoinReviewEffect.TransactionResultEffect(TransactionResult.Error(result.message)))
                     }
                 }
 
@@ -287,7 +291,7 @@ class BitcoinReviewViewModel @Inject constructor(
         }
     }
 
-    fun completeSendAfterBiometric(cipher: Cipher? = null, onSuccess: (String) -> Unit) {
+    fun completeSendAfterBiometric(cipher: Cipher? = null, onSuccess: (String) -> Unit = {}) {
         _cryptoObject.value = null
         _authRequest.value = null
         sendTransaction(cipher = cipher, onSuccess = onSuccess)
