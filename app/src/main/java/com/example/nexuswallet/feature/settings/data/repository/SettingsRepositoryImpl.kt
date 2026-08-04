@@ -1,10 +1,5 @@
 package com.example.nexuswallet.feature.settings.data.repository
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.core.content.ContextCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -15,8 +10,7 @@ import com.example.nexuswallet.feature.core.data.util.safeEdit
 import com.example.nexuswallet.feature.core.data.util.safeGet
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -24,9 +18,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SecurityRepositoryImpl @Inject constructor(
+class SettingsRepositoryImpl @Inject constructor(
     private val dataStore: DataStore<Preferences>
-) : SecurityRepository {
+) : SettingsRepository {
 
     override suspend fun storePinHash(pinHash: String) {
         safeEdit {
@@ -231,6 +225,21 @@ class SecurityRepositoryImpl @Inject constructor(
             preferences[NOTIFICATION_RATIONALE_SILENCED_KEY] ?: false
         }
 
+    override suspend fun setHasRequestedNotificationPermission(requested: Boolean) {
+        safeEdit {
+            dataStore.edit { preferences ->
+                preferences[HAS_REQUESTED_NOTIFICATION_PERMISSION_KEY] = requested
+            }
+        }
+    }
+
+    override suspend fun hasRequestedNotificationPermission(): Boolean {
+        return safeGet(defaultValue = false) {
+            val preferences = dataStore.data.first()
+            preferences[HAS_REQUESTED_NOTIFICATION_PERMISSION_KEY] ?: false
+        } ?: false
+    }
+
     override suspend fun clearAll() {
         safeEdit {
             dataStore.edit { preferences ->
@@ -248,6 +257,9 @@ class SecurityRepositoryImpl @Inject constructor(
         private val SELECTED_CURRENCY_KEY = stringPreferencesKey("selected_currency")
         private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
         private val NOTIFICATIONS_ENABLED_KEY = booleanPreferencesKey("notifications_enabled")
-        private val NOTIFICATION_RATIONALE_SILENCED_KEY = booleanPreferencesKey("notification_rationale_silenced")
+        private val NOTIFICATION_RATIONALE_SILENCED_KEY =
+            booleanPreferencesKey("notification_rationale_silenced")
+        private val HAS_REQUESTED_NOTIFICATION_PERMISSION_KEY =
+            booleanPreferencesKey("has_requested_notification_permission")
     }
 }

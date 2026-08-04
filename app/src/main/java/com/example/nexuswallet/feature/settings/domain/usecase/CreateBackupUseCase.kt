@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.settings.domain.usecase
 
+import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.util.Result
@@ -9,9 +10,10 @@ import com.example.nexuswallet.feature.core.util.toHex
 import com.example.nexuswallet.feature.core.util.use
 import com.example.nexuswallet.feature.settings.domain.model.*
 import com.example.nexuswallet.feature.settings.domain.repository.BackupRepository
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import kotlinx.coroutines.flow.first
+import javax.crypto.Cipher
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,11 +21,11 @@ import javax.inject.Singleton
 class CreateBackupUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val vaultRepository: VaultRepository,
-    private val securityRepository: SecurityRepository,
+    private val settingsRepository: SettingsRepository,
     private val backupRepository: BackupRepository,
     private val keyStoreRepository: KeyStoreRepository
 ) {
-    suspend operator fun invoke(pin: String): Result<ByteArray> {
+    suspend operator fun invoke(pin: String, cipher: Cipher? = null): Result<ByteArray> {
         return try {
             // 1. Collect all Wallets
             val wallets = walletRepository.observeWallets().first()
@@ -34,10 +36,18 @@ class CreateBackupUseCase @Inject constructor(
                 val encryptedMnemonic = vaultRepository.getEncryptedMnemonic(wallet.id) 
                     ?: throw Exception("Mnemonic missing for wallet ${wallet.id}")
                 
-                val mnemonicResult = keyStoreRepository.decrypt(
-                    encryptedMnemonic.first.decodeHex(), 
-                    encryptedMnemonic.second
-                )
+                val mnemonicResult = if (cipher != null) {
+                    keyStoreRepository.decryptWithCipher(cipher, encryptedMnemonic.first.decodeHex())
+                } else {
+                    keyStoreRepository.decrypt(
+                        encryptedMnemonic.first.decodeHex(), 
+                        encryptedMnemonic.second
+                    )
+                }
+                
+                if (mnemonicResult is Result.Error && mnemonicResult.throwable is HardwareAuthRequiredException) {
+                    throw mnemonicResult.throwable
+                }
                 
                 if (mnemonicResult !is Result.Success) {
                     throw Exception("Failed to decrypt mnemonic for wallet ${wallet.id}")
@@ -55,7 +65,13 @@ class CreateBackupUseCase @Inject constructor(
                 
                 val privateKeys = keyTypes.mapNotNull { type ->
                     vaultRepository.getEncryptedPrivateKey(wallet.id, type)?.let { (data, iv) ->
-                        val keyResult = keyStoreRepository.decrypt(data.decodeHex(), iv)
+                        // Reuse the same cipher session if it was provided
+                        val keyResult = if (cipher != null) {
+                             keyStoreRepository.decryptWithCipher(cipher, data.decodeHex())
+                        } else {
+                            keyStoreRepository.decrypt(data.decodeHex(), iv)
+                        }
+
                         if (keyResult is Result.Success) {
                             val rawKey = keyResult.data
                             val entry = PrivateKeyRawEntry(type, rawKey.toHex())
@@ -76,10 +92,10 @@ class CreateBackupUseCase @Inject constructor(
             
             // 3. Collect Settings
             val settings = BackupSettings(
-                themeMode = securityRepository.getThemeMode().name,
-                selectedCurrency = securityRepository.getSelectedCurrency().code,
-                privacyModeEnabled = securityRepository.isPrivacyModeEnabled(),
-                requireAuthForSend = securityRepository.isRequireAuthForSend()
+                themeMode = settingsRepository.getThemeMode().name,
+                selectedCurrency = settingsRepository.getSelectedCurrency().code,
+                privacyModeEnabled = settingsRepository.isPrivacyModeEnabled(),
+                requireAuthForSend = settingsRepository.isRequireAuthForSend()
             )
             
             // 4. Create Bundle
@@ -92,6 +108,8 @@ class CreateBackupUseCase @Inject constructor(
             // 5. Encrypt Bundle via Repository
             backupRepository.encryptBackup(bundle, pin)
             
+        } catch (e: HardwareAuthRequiredException) {
+            Result.Error("Biometric authentication required", e)
         } catch (e: Exception) {
             Result.Error(e.message ?: "Failed to create backup")
         }

@@ -1,72 +1,91 @@
 package com.example.nexuswallet.feature.settings.ui.security
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Security
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
-import android.app.Activity
-import android.content.Intent
-import android.provider.Settings
-import androidx.core.app.ActivityCompat
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
-import com.example.nexuswallet.feature.settings.domain.model.BackupBundle
-import com.example.nexuswallet.feature.settings.domain.model.RestoreSelection
 import com.example.nexuswallet.feature.settings.ui.auth.PinEntryDialog
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.ui.common.*
-import com.example.nexuswallet.ui.theme.bitcoinLight
-import com.example.nexuswallet.ui.theme.ethereumLight
-import com.example.nexuswallet.ui.theme.solanaLight
+import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.ui.theme.success
-import com.example.nexuswallet.ui.theme.usdcLight
-import com.example.nexuswallet.ui.theme.usdtLight
 import com.example.nexuswallet.ui.theme.warning
 import kotlinx.coroutines.launch
 
@@ -89,7 +108,8 @@ fun SecuritySettingsScreen(
     val restoreSelection by viewModel.restoreSelection.collectAsStateWithLifecycle()
     val pinSetupError by viewModel.pinSetupError.collectAsStateWithLifecycle()
     val pinVerifyPurpose by viewModel.pinVerifyPurpose.collectAsStateWithLifecycle()
-    
+    val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -144,8 +164,9 @@ fun SecuritySettingsScreen(
 
     BiometricAuthHandler(
         authRequest = authRequest,
-        subtitle = stringResource(R.string.clear_all_data),
-        onSuccess = { viewModel.onClearAllAuthSuccess() },
+        cryptoObject = cryptoObject,
+        subtitle = stringResource(R.string.authentication_required),
+        onSuccess = { result -> viewModel.onAuthSuccess(result.cryptoObject?.cipher) },
         onError = { errorCode, errString ->
             if (!isBiometricUserCancel(errorCode)) {
                 scope.launch {
@@ -162,13 +183,16 @@ fun SecuritySettingsScreen(
                 is SecurityUiEffect.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(effect.message)
                 }
+
                 is SecurityUiEffect.SaveBackupFile -> {
                     pendingBackupData = effect.data
                     saveBackupLauncher.launch(effect.fileName)
                 }
+
                 SecurityUiEffect.SelectBackupFile -> {
                     selectBackupLauncher.launch(arrayOf("*/*"))
                 }
+
                 SecurityUiEffect.RestoreSuccess -> {
                     // Maybe show an extra success state or navigate
                 }
@@ -190,18 +214,26 @@ fun SecuritySettingsScreen(
     if (uiState is Result.Success) {
         val state = (uiState as Result.Success<SecurityUiState>).data
         val activity = context as? Activity
-        
+
         // Decide if we should show the rationale
-        val shouldShowRationale = state.isNotificationsEnabled && 
-                                !isPermissionGranted && 
-                                !state.isNotificationRationaleSilenced
+        val shouldShowRationale = state.isNotificationsEnabled &&
+                !isPermissionGranted &&
+                !state.isNotificationRationaleSilenced
 
         if (shouldShowRationale) {
-            // Detect if permanently denied (not granted AND should NOT show system rationale anymore)
+            // Detect if permanently denied:
+            // It is only "permanently denied" if:
+            // 1. Permission is NOT granted.
+            // 2. system rationale returns FALSE (meaning OS won't show popup).
+            // 3. AND we have actually attempted to request it at least once before.
             val isPermanentlyDenied = activity?.let {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    !isPermissionGranted && 
-                    !ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS)
+                    !isPermissionGranted &&
+                            !ActivityCompat.shouldShowRequestPermissionRationale(
+                                it,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            ) &&
+                            state.hasRequestedNotificationPermission
                 } else false
             } ?: false
 
@@ -245,7 +277,9 @@ fun SecuritySettingsScreen(
 
                         // Title
                         Text(
-                            text = if (isPermanentlyDenied) "Enable in Settings" else stringResource(R.string.enable_notifications_title),
+                            text = if (isPermanentlyDenied) "Enable in Settings" else stringResource(
+                                R.string.enable_notifications_title
+                            ),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -256,10 +290,10 @@ fun SecuritySettingsScreen(
 
                         // Text
                         Text(
-                            text = if (isPermanentlyDenied) 
+                            text = if (isPermanentlyDenied)
                                 "Notifications are blocked by your phone system. Please go to App Settings to enable them for Nexus Wallet."
-                                else stringResource(R.string.notifications_rationale_message),
-                            style = MaterialTheme.typography.bodyMedium,
+                            else stringResource(R.string.notifications_rationale_message),
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
@@ -270,24 +304,29 @@ fun SecuritySettingsScreen(
                         Button(
                             onClick = {
                                 if (isPermanentlyDenied) {
-                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                        data = Uri.fromParts("package", context.packageName, null)
-                                    }
+                                    val intent =
+                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                            data =
+                                                Uri.fromParts("package", context.packageName, null)
+                                        }
                                     context.startActivity(intent)
                                 } else {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        viewModel.onNotificationPermissionRequested()
                                         permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            colors = if (isPermanentlyDenied) 
+                            colors = if (isPermanentlyDenied)
                                 ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                                else ButtonDefaults.buttonColors()
+                            else ButtonDefaults.buttonColors()
                         ) {
                             Text(
-                                text = if (isPermanentlyDenied) "Open Settings" else stringResource(R.string.grant_permission),
+                                text = if (isPermanentlyDenied) "Open Settings" else stringResource(
+                                    R.string.grant_permission
+                                ),
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold
                             )
@@ -325,12 +364,12 @@ fun SecuritySettingsScreen(
     // PIN Verification Dialog for Backup/Restore
     PinEntryDialog(
         showDialog = showPinVerifyDialog,
-        title = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE) 
-            stringResource(R.string.restore_backup) 
-            else stringResource(R.string.confirm_pin_title),
+        title = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE)
+            stringResource(R.string.restore_backup)
+        else stringResource(R.string.confirm_pin_title),
         subtitle = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE)
             "Enter the PIN used to encrypt this backup file"
-            else stringResource(R.string.confirm_pin_subtitle),
+        else stringResource(R.string.confirm_pin_subtitle),
         onPinEntered = viewModel::onPinVerified,
         onDismiss = viewModel::cancelPinSetup
     )
@@ -351,7 +390,7 @@ fun SecuritySettingsScreen(
                 Column {
                     Text(
                         text = stringResource(R.string.clear_all_data_confirmation_desc),
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodySmall
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
@@ -412,11 +451,13 @@ fun SecuritySettingsScreen(
                     modifier = Modifier.padding(padding),
                     message = stringResource(R.string.loading)
                 )
+
                 is Result.Error -> SecurityErrorContent(
                     message = state.message,
                     onRetry = viewModel::retry,
                     padding = padding
                 )
+
                 is Result.Success -> SecuritySettingsContent(
                     securityState = state.data,
                     viewModel = viewModel,
@@ -975,7 +1016,10 @@ fun SecurityOperationOverlay(operationState: SecurityOperation) {
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                border = BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                )
             ) {
                 Column(
                     modifier = Modifier.padding(horizontal = 40.dp, vertical = 32.dp),

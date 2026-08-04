@@ -2,23 +2,24 @@ package com.example.nexuswallet.feature.settings.ui.security
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
-import com.example.nexuswallet.feature.settings.domain.model.*
+import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
+import com.example.nexuswallet.feature.settings.domain.model.BackupBundle
+import com.example.nexuswallet.feature.settings.domain.model.RestoreSelection
 import com.example.nexuswallet.feature.settings.domain.repository.BackupRepository
-import com.example.nexuswallet.feature.settings.domain.usecase.*
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
+import com.example.nexuswallet.feature.settings.domain.usecase.ClearAllSecurityDataUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.ClearPinUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.CreateBackupUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.GetAuthStatusUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.RestoreBackupUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.SetBiometricEnabledUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.SetPinUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.VerifyPinUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
-import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
@@ -26,18 +27,24 @@ import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
-import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.crypto.Cipher
+import javax.inject.Inject
 
 @HiltViewModel
 class SecuritySettingsViewModel @Inject constructor(
     private val getAuthStatusUseCase: GetAuthStatusUseCase,
     private val setBiometricEnabledUseCase: SetBiometricEnabledUseCase,
-    private val securityRepository: SecurityRepository,
+    private val settingsRepository: SettingsRepository,
     private val setPinUseCase: SetPinUseCase,
     private val clearPinUseCase: ClearPinUseCase,
     private val verifyPinUseCase: VerifyPinUseCase,
@@ -82,6 +89,9 @@ class SecuritySettingsViewModel @Inject constructor(
     private val _authRequest = MutableStateFlow<Long?>(null)
     val authRequest: StateFlow<Long?> = _authRequest.asStateFlow()
 
+    private val _cryptoObject = MutableStateFlow<Cipher?>(null)
+    val cryptoObject: StateFlow<Cipher?> = _cryptoObject.asStateFlow()
+
     private val _pinSetupError = MutableStateFlow<String?>(null)
     val pinSetupError: StateFlow<String?> = _pinSetupError.asStateFlow()
 
@@ -99,6 +109,9 @@ class SecuritySettingsViewModel @Inject constructor(
     private val _pinVerifyPurpose = MutableStateFlow<PinVerifyPurpose?>(null)
     val pinVerifyPurpose: StateFlow<PinVerifyPurpose?> = _pinVerifyPurpose.asStateFlow()
 
+    private enum class AuthPurpose { CLEAR_ALL, BACKUP }
+    private var currentAuthPurpose: AuthPurpose? = null
+
     private var pendingBackupData: ByteArray? = null
     private var pendingBackupPin: String? = null
 
@@ -111,8 +124,9 @@ class SecuritySettingsViewModel @Inject constructor(
             _uiState.value = Result.Loading
 
             val status = getAuthStatusUseCase().let { if (it is Result.Success) it.data else null }
-            val notificationsEnabled = securityRepository.isNotificationsEnabled()
-            val rationaleSilenced = securityRepository.isNotificationRationaleSilenced()
+            val notificationsEnabled = settingsRepository.isNotificationsEnabled()
+            val rationaleSilenced = settingsRepository.isNotificationRationaleSilenced()
+            val hasRequested = settingsRepository.hasRequestedNotificationPermission()
 
             if (status != null) {
                 _uiState.value = Result.Success(
@@ -124,7 +138,8 @@ class SecuritySettingsViewModel @Inject constructor(
                         availableAuthMethods = status.availableMethods,
                         isAnyAuthEnabled = status.isAnyAuthEnabled,
                         isNotificationsEnabled = notificationsEnabled,
-                        isNotificationRationaleSilenced = rationaleSilenced
+                        isNotificationRationaleSilenced = rationaleSilenced,
+                        hasRequestedNotificationPermission = hasRequested
                     )
                 )
             } else {
@@ -136,10 +151,10 @@ class SecuritySettingsViewModel @Inject constructor(
     fun setNotificationsEnabled(enabled: Boolean) {
         viewModelScope.launch {
             try {
-                securityRepository.setNotificationsEnabled(enabled)
+                settingsRepository.setNotificationsEnabled(enabled)
                 if (enabled) {
                     // Reset silence when manually toggling ON so rationale can show if needed
-                    securityRepository.setNotificationRationaleSilenced(false)
+                    settingsRepository.setNotificationRationaleSilenced(false)
                 }
                 refreshAuthStatus()
             } catch (e: Exception) {
@@ -151,8 +166,15 @@ class SecuritySettingsViewModel @Inject constructor(
     fun silenceNotificationRationale() {
         viewModelScope.launch {
             // User dismissed, so we turn OFF the toggle and silence future prompts
-            securityRepository.setNotificationsEnabled(false)
-            securityRepository.setNotificationRationaleSilenced(true)
+            settingsRepository.setNotificationsEnabled(false)
+            settingsRepository.setNotificationRationaleSilenced(true)
+            refreshAuthStatus()
+        }
+    }
+
+    fun onNotificationPermissionRequested() {
+        viewModelScope.launch {
+            settingsRepository.setHasRequestedNotificationPermission(true)
             refreshAuthStatus()
         }
     }
@@ -174,7 +196,7 @@ class SecuritySettingsViewModel @Inject constructor(
     fun setPrivacyModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
             try {
-                securityRepository.setPrivacyModeEnabled(enabled)
+                settingsRepository.setPrivacyModeEnabled(enabled)
                 refreshAuthStatus()
             } catch (e: Exception) {
                 _uiEffect.emit(SecurityUiEffect.ShowSnackbar(e.message ?: "Failed to update privacy mode"))
@@ -185,7 +207,7 @@ class SecuritySettingsViewModel @Inject constructor(
     fun setRequireAuthForSend(enabled: Boolean) {
         viewModelScope.launch {
             try {
-                securityRepository.setRequireAuthForSend(enabled)
+                settingsRepository.setRequireAuthForSend(enabled)
                 refreshAuthStatus()
             } catch (e: Exception) {
                 _uiEffect.emit(SecurityUiEffect.ShowSnackbar(e.message ?: "Failed to update security preference"))
@@ -195,8 +217,9 @@ class SecuritySettingsViewModel @Inject constructor(
 
     private suspend fun refreshAuthStatus() {
         val authResult = getAuthStatusUseCase()
-        val notificationsEnabled = securityRepository.isNotificationsEnabled()
-        val rationaleSilenced = securityRepository.isNotificationRationaleSilenced()
+        val notificationsEnabled = settingsRepository.isNotificationsEnabled()
+        val rationaleSilenced = settingsRepository.isNotificationRationaleSilenced()
+        val hasRequested = settingsRepository.hasRequestedNotificationPermission()
 
         when (authResult) {
             is Result.Success -> {
@@ -212,7 +235,8 @@ class SecuritySettingsViewModel @Inject constructor(
                                 availableAuthMethods = status.availableMethods,
                                 isAnyAuthEnabled = status.isAnyAuthEnabled,
                                 isNotificationsEnabled = notificationsEnabled,
-                                isNotificationRationaleSilenced = rationaleSilenced
+                                isNotificationRationaleSilenced = rationaleSilenced,
+                                hasRequestedNotificationPermission = hasRequested
                             )
                             Result.Success(updatedState)
                         }
@@ -226,7 +250,8 @@ class SecuritySettingsViewModel @Inject constructor(
                                     availableAuthMethods = status.availableMethods,
                                     isAnyAuthEnabled = status.isAnyAuthEnabled,
                                     isNotificationsEnabled = notificationsEnabled,
-                                    isNotificationRationaleSilenced = rationaleSilenced
+                                    isNotificationRationaleSilenced = rationaleSilenced,
+                                    hasRequestedNotificationPermission = hasRequested
                                 )
                             )
                         }
@@ -297,19 +322,31 @@ class SecuritySettingsViewModel @Inject constructor(
         }
     }
 
-    private fun executeBackupOperation(pin: String) {
+    private fun executeBackupOperation(pin: String, cipher: Cipher? = null) {
         viewModelScope.launch {
             when (_pinVerifyPurpose.value) {
                 PinVerifyPurpose.BACKUP -> {
                     _operationState.value = SecurityOperation.BACKING_UP
-                    when (val result = createBackupUseCase(pin)) {
+                    pendingBackupPin = pin
+                    when (val result = createBackupUseCase(pin, cipher)) {
                         is Result.Success -> {
                             _uiEffect.emit(SecurityUiEffect.SaveBackupFile(
                                 data = result.data,
                                 fileName = "nexus_backup_${System.currentTimeMillis()}.bin"
                             ))
+                            pendingBackupPin = null
                         }
-                        is Result.Error -> _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                        is Result.Error -> {
+                            val authException = result.throwable as? com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
+                            if (authException != null) {
+                                // Trigger biometric auth
+                                _cryptoObject.value = authException.cryptoObject?.cipher
+                                currentAuthPurpose = AuthPurpose.BACKUP
+                                _authRequest.value = System.currentTimeMillis()
+                            } else {
+                                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                            }
+                        }
                         else -> {}
                     }
                     _operationState.value = SecurityOperation.IDLE
@@ -336,8 +373,12 @@ class SecuritySettingsViewModel @Inject constructor(
                 }
                 null -> {}
             }
-            _pinVerifyPurpose.value = null
-            pendingBackupData = null
+
+            // Only clear purpose and data if we are not waiting for biometric auth
+            if (currentAuthPurpose == null) {
+                _pinVerifyPurpose.value = null
+                pendingBackupData = null
+            }
         }
     }
 
@@ -445,7 +486,7 @@ class SecuritySettingsViewModel @Inject constructor(
             wallet.evmTokens.map { it.symbol }
         }.distinct()
 
-        val currency = securityRepository.observeSelectedCurrency().first()
+        val currency = settingsRepository.observeSelectedCurrency().first()
         val pricesResult = getSimplePricesUseCase(allSymbols, currency)
         val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
 
@@ -519,12 +560,30 @@ class SecuritySettingsViewModel @Inject constructor(
         _showClearAllDataDialog.value = false
         
         // Trigger authentication request for the UI
+        currentAuthPurpose = AuthPurpose.CLEAR_ALL
         _authRequest.value = System.currentTimeMillis()
     }
 
-    fun onClearAllAuthSuccess() {
+    fun onAuthSuccess(cipher: Cipher? = null) {
         _authRequest.value = null
-        clearAllData()
+        _cryptoObject.value = null
+        val purpose = currentAuthPurpose
+        currentAuthPurpose = null
+
+        when (purpose) {
+            AuthPurpose.CLEAR_ALL -> clearAllData()
+            AuthPurpose.BACKUP -> {
+                val pin = pendingBackupPin
+                if (pin != null) {
+                    executeBackupOperation(pin, cipher)
+                }
+            }
+            null -> {}
+        }
+    }
+
+    fun onClearAllAuthSuccess() {
+        onAuthSuccess()
     }
 
     private fun clearAllData() {

@@ -4,7 +4,7 @@ import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 
-interface SecurityRepository {
+interface SettingsRepository {
     // Authentication
     suspend fun storePinHash(pinHash: String)
     suspend fun getPinHash(): String?
@@ -44,6 +44,9 @@ interface SecurityRepository {
     suspend fun setNotificationRationaleSilenced(silenced: Boolean)
     suspend fun isNotificationRationaleSilenced(): Boolean
     fun observeNotificationRationaleSilenced(): Flow<Boolean>
+
+    suspend fun setHasRequestedNotificationPermission(requested: Boolean)
+    suspend fun hasRequestedNotificationPermission(): Boolean
 
     suspend fun clearAll()
 }
