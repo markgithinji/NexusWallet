@@ -26,7 +26,8 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **BIP39 mnemonic generation** with 12-word seed phrases and verification step
 - **Secure Wallet Import** - Industry-standard BIP39 restoration with real-time word validation
 - **Hierarchical Deterministic (HD) wallet derivation** for multiple cryptocurrencies
-- **Android KeyStore encryption** for secure seed phrase and private key storage
+- **Android KeyStore encryption** - Hardware-backed security using **TEE (Trusted Execution Environment)** and **StrongBox** (where available) to ensure keys are isolated from the main OS.
+- **Biometric-Locked Keys** - Uses `setUserAuthenticationRequired(true)` so that sensitive keys can only be decrypted immediately following a successful biometric event, providing military-grade protection even on compromised devices.
 - **Biometric authentication** (fingerprint/face ID) with PIN fallback
 - **Encrypted local storage** using AndroidX Security Crypto for sensitive data
 - **Offline-first architecture** with caching for balances, transactions, and wallet data; works without internet connection
@@ -47,9 +48,8 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Multi-Chain Live Subscriptions** - Real-time balance updates using WebSockets for Bitcoin (Mempool.space), Ethereum (Alchemy), and Solana (Helius); app reacts instantly to on-chain activity without manual polling.
 
 ### 🔌 **Real-time Data & WebSocket Integration**
-- **Unified WebSocket Repository** - Centralized management of persistent connections for both market data and blockchain events.
-- **Price Streaming** - Real-time price updates for 60+ assets via Binance WebSocket API.
 - **Address Tracking** - Instant detection of transactions via `accountSubscribe` (Solana), `eth_subscribe` (Ethereum), and `track-address` (Bitcoin).
+- **Unified Messaging** - Centralized management of persistent connections for both market data and blockchain events using services and repositories.
 - **Automatic Reconnection** - Robust handling of network switches and drops using exponential backoff.
 - **Reactive UI** - Balance "ticking" and portfolio animations that update without manual refresh.
 - **Background Data Sync** - Efficient event-driven updates using Coroutine Flows to minimize API usage.
@@ -76,6 +76,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Local Encrypted Backup** - Export all wallets and settings into a secure, portable file encrypted with your PIN (AES-GCM)
 - **Wallet restoration** - Seamlessly import existing wallets from any BIP39-compliant app (MetaMask, Trust Wallet, etc.) or restore from a Nexus backup file
 - **Wallet deletion** - Secure wallet removal
+- **Address Book** - Save frequently used addresses with aliases (e.g., "Exchange", "Cold Wallet") to reduce copy-paste errors across all supported chains
 
 ### Transaction Capabilities
 - **Send transactions** - Native ETH, BTC, SOL, and ERC-20/SPL tokens
@@ -85,6 +86,8 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Max amount support** - Send entire balance minus network fees
 - **Transaction history** - View recent and all transactions
 - **Transaction details** - View transaction hash, fees, and explorer links
+- **Address Book Integration** - Quick access to saved contacts during the send flow to prevent errors
+- **Transaction Monitoring** - Real-time background monitoring for outgoing transactions with local notifications upon confirmation
 
 ### Security Features
 - **Biometric authentication** - Fingerprint or Face ID for app access and sensitive operations
@@ -92,7 +95,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Privacy Mode** - Toggle to hide sensitive balances on the main dashboard
 - **Transaction Security** - Optional setting to require re-authentication for every outgoing transaction
 - **Portable Backups** - Industry-standard AES-GCM encryption for wallet exports, allowing secure migration between devices using a PIN-derived key
-- **Secure Key Storage** - Private keys are encrypted using Android KeyStore and never stored in plain text
+- **Secure Key Storage** - Keys are secured in the hardware-backed **TEE or StrongBox** and are biometric-locked; they are never stored in plain text and never touch non-secure RAM.
 - **Transaction Validation** - Real-time address validation, balance checks, and self-send protection
 - **Secure Data Management** - Option to wipe all sensitive data and keys from the device
 
@@ -159,8 +162,9 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 | ✅ Privacy Mode | Complete | Hide balances from the main screen |
 | ✅ Multi-Currency | Complete | Support for USD, EUR, GBP, KES, etc. |
 | ✅ Local Backup | Complete | AES-GCM encrypted export/import via user PIN |
+| ✅ Address Book | Complete | Manage saved addresses with aliases for easy sending |
+| ✅ Transaction Notifications | Complete | Background monitoring and local notifications for confirmed transactions |
 | 🔄 Cloud Backup | Planned | Encrypted backup to Google Drive |
-| 🔄 Push Notifications | Planned | Transaction confirmations |
 
 ---
 
