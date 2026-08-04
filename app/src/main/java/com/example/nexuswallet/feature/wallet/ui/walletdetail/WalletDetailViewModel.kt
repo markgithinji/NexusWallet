@@ -12,7 +12,7 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
@@ -55,7 +55,7 @@ class WalletDetailViewModel @Inject constructor(
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
     private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
     private val formatBalanceUseCase: FormatBalanceUseCase,
-    private val securityRepository: SecurityRepository,
+    private val settingsRepository: SettingsRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
@@ -75,7 +75,7 @@ class WalletDetailViewModel @Inject constructor(
 
     private fun observeSelectedCurrency() {
         viewModelScope.launch {
-            securityRepository.observeSelectedCurrency().collect { currency ->
+            settingsRepository.observeSelectedCurrency().collect { currency ->
                 val previousCurrency = _uiState.value.selectedCurrency
                 _uiState.update { it.copy(selectedCurrency = currency) }
 

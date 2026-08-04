@@ -1,6 +1,6 @@
 package com.example.nexuswallet.feature.settings.domain.usecase
 
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
 import kotlinx.coroutines.flow.Flow
@@ -12,11 +12,11 @@ import javax.inject.Singleton
 
 @Singleton
 class IsPinSetUseCase @Inject constructor(
-    private val securityRepository: SecurityRepository,
+    private val settingsRepository: SettingsRepository,
     private val logger: Logger
 ) {
     operator fun invoke(): Flow<Boolean> =
-        securityRepository.observePinHash()
+        settingsRepository.observePinHash()
             .map { pinHash -> pinHash != null }
             .onStart {
                 logger.d(TAG, "Starting PIN set flow")

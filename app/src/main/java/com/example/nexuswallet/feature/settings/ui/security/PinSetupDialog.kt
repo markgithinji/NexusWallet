@@ -122,7 +122,7 @@ fun PinSetupDialog(
                 // Subtitle
                 Text(
                     text = if (!isConfirmStep) subtitle else stringResource(R.string.confirm_pin_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )

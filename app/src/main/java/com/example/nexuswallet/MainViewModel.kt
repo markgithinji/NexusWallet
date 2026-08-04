@@ -3,7 +3,7 @@ package com.example.nexuswallet
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import com.example.nexuswallet.feature.settings.domain.usecase.IsBiometricEnabledUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.IsPinSetUseCase
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
@@ -15,14 +15,14 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val securityRepository: SecurityRepository,
+    private val settingsRepository: SettingsRepository,
     private val walletRepository: WalletRepository,
     private val isPinSetUseCase: IsPinSetUseCase,
     private val isBiometricEnabledUseCase: IsBiometricEnabledUseCase
 ) : ViewModel() {
 
     // Theme state
-    val themeMode: StateFlow<ThemeMode> = securityRepository.observeThemeMode()
+    val themeMode: StateFlow<ThemeMode> = settingsRepository.observeThemeMode()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -79,7 +79,7 @@ class MainViewModel @Inject constructor(
 
     private fun observePrivacyMode() {
         viewModelScope.launch {
-            securityRepository.observePrivacyModeEnabled().collect { isEnabled ->
+            settingsRepository.observePrivacyModeEnabled().collect { isEnabled ->
                 _isPrivacyModeEnabled.value = isEnabled
             }
         }
@@ -87,7 +87,7 @@ class MainViewModel @Inject constructor(
 
     private fun observeTransactionSecurity() {
         viewModelScope.launch {
-            securityRepository.observeRequireAuthForSend().collect { isEnabled ->
+            settingsRepository.observeRequireAuthForSend().collect { isEnabled ->
                 _isRequireAuthForSendEnabled.value = isEnabled
             }
         }

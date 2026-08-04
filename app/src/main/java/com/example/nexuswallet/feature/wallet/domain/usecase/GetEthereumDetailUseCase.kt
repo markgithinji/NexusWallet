@@ -15,7 +15,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
@@ -29,7 +29,7 @@ class GetEthereumDetailUseCase @Inject constructor(
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
-    private val securityRepository: SecurityRepository,
+    private val settingsRepository: SettingsRepository,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -106,7 +106,7 @@ class GetEthereumDetailUseCase @Inject constructor(
 
         // 4.5. Sync fresh balances
         try {
-            val currency = securityRepository.getSelectedCurrency()
+            val currency = settingsRepository.getSelectedCurrency()
             val pricesResult = getSimplePricesUseCase(wallet.evmTokens.map { it.symbol }, currency)
             val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
             

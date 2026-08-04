@@ -15,7 +15,7 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.GetBitcoinDetailUse
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetEthereumDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetSolanaDetailUseCase
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,7 +30,7 @@ class CoinDetailViewModel @Inject constructor(
     private val getEthereumDetailUseCase: GetEthereumDetailUseCase,
     private val getSolanaDetailUseCase: GetSolanaDetailUseCase,
     private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
-    private val securityRepository: SecurityRepository
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CoinDetailState())
@@ -42,7 +42,7 @@ class CoinDetailViewModel @Inject constructor(
 
     private fun observeSelectedCurrency() {
         viewModelScope.launch {
-            securityRepository.observeSelectedCurrency().collect { currency ->
+            settingsRepository.observeSelectedCurrency().collect { currency ->
                 val previousCurrency = _state.value.selectedCurrency
                 _state.update { it.copy(selectedCurrency = currency) }
                 if (previousCurrency != currency && _state.value.walletId.isNotEmpty() && _state.value.coin != null) {

@@ -10,7 +10,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.nexuswallet.R
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -18,7 +18,7 @@ import javax.inject.Singleton
 @Singleton
 class NotificationService @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val securityRepository: SecurityRepository
+    private val settingsRepository: SettingsRepository
 ) {
 
     init {
@@ -45,7 +45,7 @@ class NotificationService @Inject constructor(
         message: String,
         txHash: String
     ) {
-        if (!securityRepository.isNotificationsEnabled()) return
+        if (!settingsRepository.isNotificationsEnabled()) return
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID_TRANSACTIONS)
             .setSmallIcon(R.drawable.ic_launcher_foreground)

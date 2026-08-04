@@ -2,7 +2,7 @@ package com.example.nexuswallet.feature.settings.domain.usecase
 
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
@@ -14,7 +14,7 @@ import javax.inject.Singleton
 
 @Singleton
 class ClearAllSecurityDataUseCase @Inject constructor(
-    private val securityRepository: SecurityRepository,
+    private val settingsRepository: SettingsRepository,
     private val vaultRepository: VaultRepository,
     private val keyStoreRepository: KeyStoreRepository,
     private val walletRepository: WalletRepository,
@@ -22,7 +22,7 @@ class ClearAllSecurityDataUseCase @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     suspend operator fun invoke(): Result<Unit> = withContext(ioDispatcher) {
-        securityRepository.clearAll()
+        settingsRepository.clearAll()
         vaultRepository.clearVault()
         keyStoreRepository.clearKey()
         walletRepository.clearAllData()

@@ -11,7 +11,7 @@ import com.example.nexuswallet.feature.settings.domain.model.BackupBundle
 import com.example.nexuswallet.feature.settings.domain.model.RestoreSelection
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,7 +20,7 @@ import javax.inject.Singleton
 class RestoreBackupUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val vaultRepository: VaultRepository,
-    private val securityRepository: SecurityRepository,
+    private val settingsRepository: SettingsRepository,
     private val keyStoreRepository: KeyStoreRepository
 ) {
     suspend operator fun invoke(bundle: BackupBundle, selection: RestoreSelection): Result<Unit> {
@@ -91,10 +91,10 @@ class RestoreBackupUseCase @Inject constructor(
             }
             
             // 3. Restore Global Settings
-            securityRepository.setThemeMode(ThemeMode.valueOf(bundle.settings.themeMode))
-            securityRepository.setSelectedCurrency(SupportedCurrency.fromCode(bundle.settings.selectedCurrency))
-            securityRepository.setPrivacyModeEnabled(bundle.settings.privacyModeEnabled)
-            securityRepository.setRequireAuthForSend(bundle.settings.requireAuthForSend)
+            settingsRepository.setThemeMode(ThemeMode.valueOf(bundle.settings.themeMode))
+            settingsRepository.setSelectedCurrency(SupportedCurrency.fromCode(bundle.settings.selectedCurrency))
+            settingsRepository.setPrivacyModeEnabled(bundle.settings.privacyModeEnabled)
+            settingsRepository.setRequireAuthForSend(bundle.settings.requireAuthForSend)
             
             Result.Success(Unit)
         } catch (e: Exception) {

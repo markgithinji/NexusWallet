@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
 import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDetailDisplayUseCase
@@ -28,7 +28,7 @@ class TransactionDetailViewModel @Inject constructor(
     private val getTransactionDetailUseCase: GetTransactionDetailUseCase,
     private val formatTransactionDetailDisplayUseCase: FormatTransactionDetailDisplayUseCase,
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
-    private val securityRepository: SecurityRepository
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(TransactionDetailState())
@@ -52,7 +52,7 @@ class TransactionDetailViewModel @Inject constructor(
                     val displayInfo = formatTransactionDetailDisplayUseCase(transaction)
 
                     // Get real price
-                    val currency = securityRepository.getSelectedCurrency()
+                    val currency = settingsRepository.getSelectedCurrency()
                     val priceResult = getSimplePricesUseCase(listOf(transaction.coin.symbol), currency)
                     val price = if (priceResult is Result.Success) {
                         priceResult.data[transaction.coin.symbol] ?: 0.0

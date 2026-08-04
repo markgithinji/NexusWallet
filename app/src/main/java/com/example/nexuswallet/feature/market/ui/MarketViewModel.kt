@@ -8,7 +8,7 @@ import com.example.nexuswallet.feature.market.domain.model.Token
 import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
 import com.example.nexuswallet.feature.market.domain.repository.CoinGeckoRepository
 import com.example.nexuswallet.feature.market.domain.repository.WebSocketRepository
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -28,7 +28,7 @@ import javax.inject.Inject
 class MarketViewModel @Inject constructor(
     private val coinGeckoRepository: CoinGeckoRepository,
     private val webSocketRepository: WebSocketRepository,
-    private val securityRepository: SecurityRepository
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(MarketUiState(isLoading = true))
@@ -58,7 +58,7 @@ class MarketViewModel @Inject constructor(
 
     private fun observeSelectedCurrency() {
         viewModelScope.launch {
-            securityRepository.observeSelectedCurrency().collect { currency ->
+            settingsRepository.observeSelectedCurrency().collect { currency ->
                 val previousCurrency = _uiState.value.selectedCurrency
                 _uiState.update { it.copy(selectedCurrency = currency) }
                 if (previousCurrency != currency || !isInitialDataLoaded) {

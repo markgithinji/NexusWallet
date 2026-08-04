@@ -10,7 +10,7 @@ import com.example.nexuswallet.feature.market.domain.model.ChartDuration
 import com.example.nexuswallet.feature.market.domain.model.TokenDetail
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
-import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +21,7 @@ import javax.inject.Inject
 @HiltViewModel
 class TokenDetailViewModel @Inject constructor(
     private val marketRepository: MarketRepository,
-    private val securityRepository: SecurityRepository,
+    private val settingsRepository: SettingsRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -52,7 +52,7 @@ class TokenDetailViewModel @Inject constructor(
 
     private fun observeSelectedCurrency() {
         viewModelScope.launch {
-            securityRepository.observeSelectedCurrency().collect { currency ->
+            settingsRepository.observeSelectedCurrency().collect { currency ->
                 loadTokenDetails(currency)
             }
         }
@@ -85,7 +85,7 @@ class TokenDetailViewModel @Inject constructor(
             _chartState.value = Result.Loading
             _selectedDuration.value = duration
             
-            val currency = securityRepository.getSelectedCurrency()
+            val currency = settingsRepository.getSelectedCurrency()
 
             when (val result = marketRepository.getMarketChart(tokenId, duration, currency)) {
                 is Result.Success -> {
@@ -131,7 +131,7 @@ class TokenDetailViewModel @Inject constructor(
 
     fun retryLoading() {
         viewModelScope.launch {
-            val currency = securityRepository.getSelectedCurrency()
+            val currency = settingsRepository.getSelectedCurrency()
             when {
                 _uiState.value is Result.Error -> loadTokenDetails(currency)
                 _chartState.value is Result.Error -> loadChartData(_selectedDuration.value)
@@ -142,7 +142,7 @@ class TokenDetailViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            val currency = securityRepository.getSelectedCurrency()
+            val currency = settingsRepository.getSelectedCurrency()
             hasLoadedNews = false // Reset to allow news to load again
             loadTokenDetails(currency)
             loadChartData(_selectedDuration.value)
