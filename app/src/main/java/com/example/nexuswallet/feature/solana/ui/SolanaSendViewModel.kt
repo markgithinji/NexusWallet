@@ -164,7 +164,11 @@ class SolanaSendViewModel @Inject constructor(
             
             _state.update { it.copy(isFeeLoading = true) }
             
-            val result = getFeeUseCase(currentState.feeLevel, currentState.network)
+            val result = getFeeUseCase(
+                feeLevel = currentState.feeLevel,
+                network = currentState.network,
+                toAddress = currentState.toAddress.takeIf { it.isNotBlank() }
+            )
             
             if (result is Result.Success) {
                 _state.update { it.copy(feeEstimate = result.data, isFeeLoading = false) }

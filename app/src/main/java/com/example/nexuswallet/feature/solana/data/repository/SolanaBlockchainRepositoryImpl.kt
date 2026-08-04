@@ -141,7 +141,8 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
 
     override suspend fun getFeeEstimate(
         feeLevel: FeeLevel,
-        network: SolanaNetwork
+        network: SolanaNetwork,
+        toAddress: String?
     ): Result<SolanaFeeEstimate> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val baseFeeLamports = SOLANA_FIXED_FEE_LAMPORTS
@@ -153,7 +154,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
             }
 
             val priorityFeeRate = if (percentile > 0) {
-                val result = getRecommendedPriorityFee(percentile, emptyList(), network)
+                val result = getRecommendedPriorityFee(percentile, toAddress, network)
                 if (result is Result.Success) result.data else DEFAULT_PRIORITY_FEE
             } else DEFAULT_PRIORITY_FEE
 
@@ -192,17 +193,21 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
 
     private suspend fun getRecommendedPriorityFee(
         percentile: Int,
-        accounts: List<PublicKey> = emptyList(),
+        toAddress: String?,
         network: SolanaNetwork
     ): Result<Int> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val connection = getRpcConnection(network)
 
-            val recentFees = if (accounts.isNotEmpty()) {
-                connection.getRecentPrioritizationFees(accounts)
-            } else {
-                connection.getRecentPrioritizationFees(emptyList())
-            }
+            val accounts = toAddress?.let {
+                try {
+                    listOf(PublicKey(it))
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            } ?: emptyList()
+
+            val recentFees = connection.getRecentPrioritizationFees(accounts)
 
             if (recentFees.isEmpty()) {
                 return@make DEFAULT_PRIORITY_FEE

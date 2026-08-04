@@ -34,7 +34,8 @@ interface SolanaBlockchainRepository {
 
     suspend fun getFeeEstimate(
         feeLevel: FeeLevel,
-        network: SolanaNetwork
+        network: SolanaNetwork,
+        toAddress: String? = null
     ): Result<SolanaFeeEstimate>
 
     suspend fun createAndSignTransaction(
