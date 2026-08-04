@@ -115,7 +115,7 @@ class ImportWalletViewModel @Inject constructor(
         }
 
         // Validate mnemonic (temporarily using String conversion for the validator library)
-        if (!validateMnemonicUseCase(words.map { String(it) })) {
+        if (!validateMnemonicUseCase(words)) {
             _uiState.value = WalletCreationUiState.Error("Invalid mnemonic phrase")
             return
         }

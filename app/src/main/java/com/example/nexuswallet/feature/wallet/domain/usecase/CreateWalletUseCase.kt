@@ -74,25 +74,18 @@ class CreateWalletUseCase @Inject constructor(
             // Process Bitcoin networks
             val bitcoinNetworks = selectedNetworks.filterIsInstance<BitcoinNetwork>()
             
-            // Temporary localized mnemonic strings for bitcoinj (which requires List<String>)
-            val mnemonicStrings = mnemonic.map { String(it) }
-            
-            try {
-                bitcoinNetworks.forEach { network ->
-                    createBitcoinCoin(mnemonicStrings, network)?.let { coin ->
-                        bitcoinCoins.add(coin)
-                        val keyType = if (network == BitcoinNetwork.Mainnet) KEY_BITCOIN_MAINNET else KEY_BITCOIN_TESTNET
-                        deriveBitcoinPrivateKey(mnemonicStrings, network)?.let { rawKeys ->
-                            rawPrivateKeys[keyType] = rawKeys
-                        }
-                        logger.d(TAG, "Bitcoin ${network.name} coin derived")
-                    } ?: run {
-                        logger.e(TAG, "Failed to create Bitcoin ${network.name} coin")
-                        return@withContext Result.Error("Failed to create Bitcoin ${network.name} coin")
+            bitcoinNetworks.forEach { network ->
+                createBitcoinCoin(mnemonic, network)?.let { coin ->
+                    bitcoinCoins.add(coin)
+                    val keyType = if (network == BitcoinNetwork.Mainnet) KEY_BITCOIN_MAINNET else KEY_BITCOIN_TESTNET
+                    deriveBitcoinPrivateKey(mnemonic, network)?.let { rawKeys ->
+                        rawPrivateKeys[keyType] = rawKeys
                     }
+                    logger.d(TAG, "Bitcoin ${network.name} coin derived")
+                } ?: run {
+                    logger.e(TAG, "Failed to create Bitcoin ${network.name} coin")
+                    return@withContext Result.Error("Failed to create Bitcoin ${network.name} coin")
                 }
-            } finally {
-                // We can't wipe Strings, but mnemonicStrings goes out of scope here
             }
 
             // Process Ethereum networks
@@ -277,32 +270,37 @@ class CreateWalletUseCase @Inject constructor(
     }
 
     private fun createBitcoinCoin(
-        mnemonic: List<String>,
+        mnemonic: List<CharArray>,
         network: BitcoinNetwork
-    ): BitcoinCoin? = try {
-        val params = when (network) {
-            BitcoinNetwork.Mainnet -> MainNetParams.get()
-            BitcoinNetwork.Testnet -> TestNet3Params.get()
+    ): BitcoinCoin? {
+        // SECURITY: Convert to Strings only at the point of use for the library call
+        val mnemonicStrings = mnemonic.map { String(it) }
+        
+        return try {
+            val params = when (network) {
+                BitcoinNetwork.Mainnet -> MainNetParams.get()
+                BitcoinNetwork.Testnet -> TestNet3Params.get()
+            }
+
+            Context.propagate(Context(params))
+            val seed = DeterministicSeed(mnemonicStrings, null, "", 0L)
+            val wallet = org.bitcoinj.wallet.Wallet.fromSeed(params, seed, Script.ScriptType.P2PKH)
+
+            val address = wallet.freshReceiveAddress().toString()
+            val xpub = wallet.watchingKey.serializePubB58(params)
+
+            BitcoinCoin(
+                address = address,
+                publicKey = wallet.watchingKey.pubKey.toString(),
+                network = network,
+                xpub = xpub
+            ).also {
+                logger.d(TAG, "Bitcoin ${network.name} address generated: ${address.take(8)}...")
+            }
+        } catch (e: Exception) {
+            logger.e(TAG, "Bitcoin address generation failed | network=${network.name}, error=${e.message}")
+            null
         }
-
-        Context.propagate(Context(params))
-        val seed = DeterministicSeed(mnemonic, null, "", 0L)
-        val wallet = org.bitcoinj.wallet.Wallet.fromSeed(params, seed, Script.ScriptType.P2PKH)
-
-        val address = wallet.freshReceiveAddress().toString()
-        val xpub = wallet.watchingKey.serializePubB58(params)
-
-        BitcoinCoin(
-            address = address,
-            publicKey = wallet.watchingKey.pubKey.toString(),
-            network = network,
-            xpub = xpub
-        ).also {
-            logger.d(TAG, "Bitcoin ${network.name} address generated: ${address.take(8)}...")
-        }
-    } catch (e: Exception) {
-        logger.e(TAG, "Bitcoin address generation failed | network=${network.name}, error=${e.message}")
-        null
     }
 
     private fun createUSDCToken(nativeEth: NativeETH): USDCToken {
@@ -323,12 +321,15 @@ class CreateWalletUseCase @Inject constructor(
         )
     }
 
-    private fun deriveBitcoinPrivateKey(mnemonic: List<String>, network: BitcoinNetwork): ByteArray? {
+    private fun deriveBitcoinPrivateKey(mnemonic: List<CharArray>, network: BitcoinNetwork): ByteArray? {
         val originalContext = try {
             Context.get()
         } catch (e: IllegalStateException) {
             null
         }
+
+        // SECURITY: Convert to Strings only at the point of use for the library call
+        val mnemonicStrings = mnemonic.map { String(it) }
 
         return try {
             val params = when (network) {
@@ -339,7 +340,7 @@ class CreateWalletUseCase @Inject constructor(
             val context = Context(params)
             Context.propagate(context)
 
-            val seed = DeterministicSeed(mnemonic, null, "", 0L)
+            val seed = DeterministicSeed(mnemonicStrings, null, "", 0L)
             val wallet = org.bitcoinj.wallet.Wallet.fromSeed(params, seed, Script.ScriptType.P2PKH)
             val key = wallet.currentReceiveKey()
             key.privKeyBytes

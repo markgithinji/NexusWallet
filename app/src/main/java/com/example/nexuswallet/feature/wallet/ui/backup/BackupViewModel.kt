@@ -18,8 +18,8 @@ class BackupViewModel @Inject constructor(
     private val getMnemonicUseCase: GetMnemonicUseCase
 ) : ViewModel() {
 
-    private val _mnemonic = MutableStateFlow<List<String>?>(null)
-    val mnemonic: StateFlow<List<String>?> = _mnemonic.asStateFlow()
+    private val _mnemonic = MutableStateFlow<List<CharArray>?>(null)
+    val mnemonic: StateFlow<List<CharArray>?> = _mnemonic.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()

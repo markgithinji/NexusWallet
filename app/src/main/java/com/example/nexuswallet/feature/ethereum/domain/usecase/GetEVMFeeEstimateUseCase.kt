@@ -35,7 +35,6 @@ class GetEVMFeeEstimateUseCase @Inject constructor(
         logger.d(TAG, "Getting fee estimate for $feeLevel on ${network.name} (isToken=$isToken)")
 
         // 1. Get gas limit - try dynamic estimation if we have data
-        // Optimization: repository adds a 20% safety buffer to dynamic estimates to prevent "Out of Gas" errors.
         val gasLimitResult = if (fromAddress != null && toAddress != null && amount != null) {
             evmBlockchainRepository.estimateGas(
                 fromAddress = fromAddress,
@@ -51,11 +50,10 @@ class GetEVMFeeEstimateUseCase @Inject constructor(
         val gasLimit = when (gasLimitResult) {
             is Result.Success -> gasLimitResult.data
             else -> {
-                // Granular Fallback logic: If dynamic estimation fails (common for 0 balance),
-                // use network-specific constants.
+                // Fallback logic: If dynamic estimation fails, use safe defaults
                 when {
                     !isToken -> BigInteger.valueOf(GAS_LIMIT_STANDARD) // 21,000 for ETH
-                    // USDT has higher complexity and needs at least 78,000 gas.
+                    // USDT fallback (78,000) to prevent "Out of Gas" errors
                     tokenContract?.equals(network.usdtContractAddress, ignoreCase = true) == true -> 
                         BigInteger.valueOf(USDT_GAS_LIMIT)
                     else -> BigInteger.valueOf(DEFAULT_TOKEN_GAS_LIMIT) // 65,000 for standard ERC-20
@@ -63,7 +61,7 @@ class GetEVMFeeEstimateUseCase @Inject constructor(
             }
         }
 
-        // 2. Get current gas price in Gwei from repository
+        // 2. Get current gas price
         return when (val gasPriceResult = evmBlockchainRepository.getCurrentGasPrice(network)) {
             is Result.Success -> {
                 val gasPrice = gasPriceResult.data
@@ -77,27 +75,10 @@ class GetEVMFeeEstimateUseCase @Inject constructor(
                         FeeLevel.FAST -> BigDecimal(gasPrice.fastPriorityFee!!)
                     }
 
-                    // Max Fee = (Base Fee * 2) + Priority Fee
                     val maxFeeGwei = baseFeeGwei.multiply(BigDecimal("2")).add(priorityFeeGwei)
-
-                    // Convert to Wei
                     val maxFeeWei = maxFeeGwei.multiply(BigDecimal(GWEI_TO_WEI)).toBigInteger()
-
-                    // Total fee (estimated max)
                     val totalFeeWei = maxFeeWei.multiply(gasLimit)
-
-                    // Convert to ETH for display
-                    val totalFeeEth = BigDecimal(totalFeeWei).divide(
-                        BigDecimal(WEI_PER_ETH),
-                        18,
-                        RoundingMode.HALF_UP
-                    ).toPlainString()
-
-                    val estimatedTime = when (feeLevel) {
-                        FeeLevel.SLOW -> ESTIMATED_TIME_SLOW
-                        FeeLevel.NORMAL -> ESTIMATED_TIME_NORMAL
-                        FeeLevel.FAST -> ESTIMATED_TIME_FAST
-                    }
+                    val totalFeeEth = BigDecimal(totalFeeWei).divide(BigDecimal(WEI_PER_ETH), 18, RoundingMode.HALF_UP).toPlainString()
 
                     Result.Success(
                         EVMFeeEstimate(
@@ -106,7 +87,7 @@ class GetEVMFeeEstimateUseCase @Inject constructor(
                             gasLimit = gasLimit.toLong(),
                             totalFeeWei = totalFeeWei.toString(),
                             totalFeeEth = totalFeeEth,
-                            estimatedTime = estimatedTime,
+                            estimatedTime = getEstimatedTime(feeLevel),
                             priority = feeLevel,
                             baseFee = baseFeeGwei.setScale(6, RoundingMode.HALF_UP).toString(),
                             maxPriorityFeeGwei = priorityFeeGwei.setScale(6, RoundingMode.HALF_UP).toString(),
@@ -114,30 +95,15 @@ class GetEVMFeeEstimateUseCase @Inject constructor(
                         )
                     )
                 } else {
-                    // Legacy fallback
                     val gasPriceGwei = when (feeLevel) {
                         FeeLevel.SLOW -> gasPrice.safe
                         FeeLevel.NORMAL -> gasPrice.propose
                         FeeLevel.FAST -> gasPrice.fast
                     }
 
-                    val gasPriceWei = BigDecimal(gasPriceGwei)
-                        .multiply(BigDecimal(GWEI_TO_WEI))
-                        .toBigInteger()
-
+                    val gasPriceWei = BigDecimal(gasPriceGwei).multiply(BigDecimal(GWEI_TO_WEI)).toBigInteger()
                     val totalFeeWei = gasPriceWei.multiply(gasLimit)
-
-                    val totalFeeEth = BigDecimal(totalFeeWei).divide(
-                        BigDecimal(WEI_PER_ETH),
-                        18,
-                        RoundingMode.HALF_UP
-                    ).toPlainString()
-
-                    val estimatedTime = when (feeLevel) {
-                        FeeLevel.SLOW -> ESTIMATED_TIME_SLOW
-                        FeeLevel.NORMAL -> ESTIMATED_TIME_NORMAL
-                        FeeLevel.FAST -> ESTIMATED_TIME_FAST
-                    }
+                    val totalFeeEth = BigDecimal(totalFeeWei).divide(BigDecimal(WEI_PER_ETH), 18, RoundingMode.HALF_UP).toPlainString()
 
                     Result.Success(
                         EVMFeeEstimate(
@@ -146,27 +112,25 @@ class GetEVMFeeEstimateUseCase @Inject constructor(
                             gasLimit = gasLimit.toLong(),
                             totalFeeWei = totalFeeWei.toString(),
                             totalFeeEth = totalFeeEth,
-                            estimatedTime = estimatedTime,
+                            estimatedTime = getEstimatedTime(feeLevel),
                             priority = feeLevel,
                             isEIP1559 = false
                         )
                     )
                 }
             }
-
-            is Result.Error -> {
-                logger.e(TAG, "Failed to get gas price: ${gasPriceResult.message}")
-                Result.Error(gasPriceResult.message, gasPriceResult.throwable)
-            }
-
-            Result.Loading -> Result.Error("Gas price request timed out")
+            is Result.Error -> Result.Error(gasPriceResult.message)
+            Result.Loading -> Result.Error("Timeout")
         }
+    }
+
+    private fun getEstimatedTime(feeLevel: FeeLevel): Int = when (feeLevel) {
+        FeeLevel.SLOW -> 120
+        FeeLevel.NORMAL -> 60
+        FeeLevel.FAST -> 30
     }
 
     companion object {
         private const val TAG = "GetFeeEstimateUC"
-        private const val ESTIMATED_TIME_SLOW = 120
-        private const val ESTIMATED_TIME_NORMAL = 60
-        private const val ESTIMATED_TIME_FAST = 30
     }
 }

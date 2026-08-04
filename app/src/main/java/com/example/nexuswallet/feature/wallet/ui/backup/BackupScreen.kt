@@ -119,7 +119,7 @@ fun BackupScreen(
 
 @Composable
 fun MnemonicDetailView(
-    mnemonic: List<String>,
+    mnemonic: List<CharArray>,
     onDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -278,7 +278,7 @@ fun AuthenticationRequiredView(
 }
 
 @Composable
-fun MnemonicWordItem(index: Int, word: String) {
+fun MnemonicWordItem(index: Int, word: CharArray) {
     Card(
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
@@ -298,7 +298,7 @@ fun MnemonicWordItem(index: Int, word: String) {
                 modifier = Modifier.width(24.dp)
             )
             Text(
-                text = word,
+                text = String(word),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Start

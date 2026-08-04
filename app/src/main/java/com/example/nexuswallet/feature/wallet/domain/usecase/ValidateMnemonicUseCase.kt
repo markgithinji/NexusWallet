@@ -10,11 +10,13 @@ class ValidateMnemonicUseCase @Inject constructor(
     private val logger: Logger
 ) {
 
-    operator fun invoke(mnemonic: List<String>): Boolean {
+    operator fun invoke(mnemonic: List<CharArray>): Boolean {
         logger.d(TAG, "Validating mnemonic with ${mnemonic.size} words")
 
         return try {
-            val isValid = MnemonicUtils.validateMnemonic(mnemonic.joinToString(" "))
+            // SECURITY: Convert to String only at the point of validation
+            val mnemonicString = mnemonic.map { String(it) }.joinToString(" ")
+            val isValid = MnemonicUtils.validateMnemonic(mnemonicString)
             logger.d(TAG, "Mnemonic validation result: $isValid")
             isValid
         } catch (e: Exception) {
