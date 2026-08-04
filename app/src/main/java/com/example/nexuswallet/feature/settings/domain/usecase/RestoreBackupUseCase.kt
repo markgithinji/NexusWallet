@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.settings.domain.usecase
 
+import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.domain.repository.KeyStoreRepository
 import com.example.nexuswallet.feature.core.domain.repository.VaultRepository
 import com.example.nexuswallet.feature.core.util.Result
@@ -23,7 +24,11 @@ class RestoreBackupUseCase @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val keyStoreRepository: KeyStoreRepository
 ) {
-    suspend operator fun invoke(bundle: BackupBundle, selection: RestoreSelection): Result<Unit> {
+    suspend operator fun invoke(
+        bundle: BackupBundle, 
+        selection: RestoreSelection,
+        cipher: javax.crypto.Cipher? = null
+    ): Result<Unit> {
         return try {
             // 1. Filter and Restore Wallets
             val selectedWallets = bundle.wallets.filter { selection.selectedWallets.contains(it.id) }
@@ -50,16 +55,22 @@ class RestoreBackupUseCase @Inject constructor(
                     }
                 )
                 
-                // Save filtered wallet to database
-                walletRepository.saveWallet(filteredWallet)
-                
                 // 2. Restore corresponding sensitive data to Vault
                 // IMPORTANT: We must re-encrypt these raw bytes with the CURRENT device's hardware key
-                val vaultEntry = bundle.vaultData.find { it.walletId == walletId }
+                val vaultEntry = bundle.vaultData.find { it.walletId.equals(walletId, ignoreCase = true) }
                 if (vaultEntry != null) {
                     // Restore Mnemonic
                     val rawMnemonic = vaultEntry.mnemonicRaw.decodeHex()
-                    val encryptMnemonicResult = keyStoreRepository.encrypt(rawMnemonic)
+                    val encryptMnemonicResult = if (cipher != null) {
+                        keyStoreRepository.encryptWithCipher(cipher, rawMnemonic)
+                    } else {
+                        keyStoreRepository.encrypt(rawMnemonic)
+                    }
+
+                    if (encryptMnemonicResult is Result.Error && encryptMnemonicResult.throwable is HardwareAuthRequiredException) {
+                        throw encryptMnemonicResult.throwable
+                    }
+
                     if (encryptMnemonicResult is Result.Success) {
                         val (encryptedData, iv) = encryptMnemonicResult.data
                         vaultRepository.storeEncryptedMnemonic(
@@ -67,6 +78,8 @@ class RestoreBackupUseCase @Inject constructor(
                             encryptedData.toHex(), 
                             iv
                         )
+                    } else if (encryptMnemonicResult is Result.Error) {
+                        throw Exception(encryptMnemonicResult.message)
                     }
                     rawMnemonic.fill(0) // Wipe raw mnemonic
                     
@@ -74,7 +87,16 @@ class RestoreBackupUseCase @Inject constructor(
                     vaultEntry.privateKeys.forEach { pk ->
                         if (isKeyRequiredForNetworks(pk.keyType, allowedNetworks)) {
                             val rawKey = pk.keyRaw.decodeHex()
-                            val encryptKeyResult = keyStoreRepository.encrypt(rawKey)
+                            val encryptKeyResult = if (cipher != null) {
+                                keyStoreRepository.encryptWithCipher(cipher, rawKey)
+                            } else {
+                                keyStoreRepository.encrypt(rawKey)
+                            }
+
+                            if (encryptKeyResult is Result.Error && encryptKeyResult.throwable is HardwareAuthRequiredException) {
+                                throw encryptKeyResult.throwable
+                            }
+
                             if (encryptKeyResult is Result.Success) {
                                 val (encryptedData, iv) = encryptKeyResult.data
                                 vaultRepository.storeEncryptedPrivateKey(
@@ -83,11 +105,16 @@ class RestoreBackupUseCase @Inject constructor(
                                     encryptedData.toHex(),
                                     iv
                                 )
+                            } else if (encryptKeyResult is Result.Error) {
+                                throw Exception(encryptKeyResult.message)
                             }
                             rawKey.fill(0) // Wipe raw key
                         }
                     }
                 }
+
+                // 3. Save filtered wallet to database ONLY after vault is secured
+                walletRepository.saveWallet(filteredWallet)
             }
             
             // 3. Restore Global Settings
@@ -97,6 +124,8 @@ class RestoreBackupUseCase @Inject constructor(
             settingsRepository.setRequireAuthForSend(bundle.settings.requireAuthForSend)
             
             Result.Success(Unit)
+        } catch (e: HardwareAuthRequiredException) {
+            Result.Error("Biometric authentication required", e)
         } catch (e: Exception) {
             Result.Error(e.message ?: "Failed to restore backup")
         }

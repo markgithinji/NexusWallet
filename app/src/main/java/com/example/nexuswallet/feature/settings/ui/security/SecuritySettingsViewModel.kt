@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.settings.ui.security
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
@@ -109,7 +110,7 @@ class SecuritySettingsViewModel @Inject constructor(
     private val _pinVerifyPurpose = MutableStateFlow<PinVerifyPurpose?>(null)
     val pinVerifyPurpose: StateFlow<PinVerifyPurpose?> = _pinVerifyPurpose.asStateFlow()
 
-    private enum class AuthPurpose { CLEAR_ALL, BACKUP }
+    private enum class AuthPurpose { CLEAR_ALL, BACKUP, RESTORE }
     private var currentAuthPurpose: AuthPurpose? = null
 
     private var pendingBackupData: ByteArray? = null
@@ -304,11 +305,28 @@ class SecuritySettingsViewModel @Inject constructor(
             _pinSetupError.value = null
             
             // For RESTORE, we use the entered PIN directly for decryption.
-            // If it's wrong, the decryption will fail in executeBackupOperation.
-            // This allows restoration on new installs where no local PIN is set yet.
             if (_pinVerifyPurpose.value == PinVerifyPurpose.RESTORE) {
-                _showPinVerifyDialog.value = false
-                executeBackupOperation(pin)
+                val data = pendingBackupData
+                if (data != null) {
+                    _operationState.value = SecurityOperation.RESTORING
+                    when (val result = backupRepository.decryptBackup(data, pin)) {
+                        is Result.Success -> {
+                            _decryptedBundle.value = result.data
+                            pendingBackupPin = pin
+                            initRestoreSelection(result.data)
+                            _showPinVerifyDialog.value = false
+                            _showRestoreSelectionDialog.value = true
+                        }
+                        is Result.Error -> {
+                            _pinSetupError.value = result.message
+                        }
+                        else -> {}
+                    }
+                    _operationState.value = SecurityOperation.IDLE
+                } else {
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar("Backup data missing. Please try again."))
+                    _showPinVerifyDialog.value = false
+                }
                 return@launch
             }
 
@@ -337,7 +355,7 @@ class SecuritySettingsViewModel @Inject constructor(
                             pendingBackupPin = null
                         }
                         is Result.Error -> {
-                            val authException = result.throwable as? com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
+                            val authException = result.throwable as? HardwareAuthRequiredException
                             if (authException != null) {
                                 // Trigger biometric auth
                                 _cryptoObject.value = authException.cryptoObject?.cipher
@@ -351,27 +369,7 @@ class SecuritySettingsViewModel @Inject constructor(
                     }
                     _operationState.value = SecurityOperation.IDLE
                 }
-                PinVerifyPurpose.RESTORE -> {
-                    val data = pendingBackupData
-                    if (data != null) {
-                        _operationState.value = SecurityOperation.RESTORING
-                        when (val result = backupRepository.decryptBackup(data, pin)) {
-                            is Result.Success -> {
-                                _decryptedBundle.value = result.data
-                                pendingBackupPin = pin
-                                // Initialize selection with everything enabled
-                                initRestoreSelection(result.data)
-                                _showRestoreSelectionDialog.value = true
-                            }
-                            is Result.Error -> {
-                                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
-                            }
-                            else -> {}
-                        }
-                        _operationState.value = SecurityOperation.IDLE
-                    }
-                }
-                null -> {}
+                else -> {}
             }
 
             // Only clear purpose and data if we are not waiting for biometric auth
@@ -439,7 +437,7 @@ class SecuritySettingsViewModel @Inject constructor(
         }
     }
 
-    fun confirmRestore() {
+    fun confirmRestore(cipher: Cipher? = null) {
         val bundle = _decryptedBundle.value ?: return
         val selection = _restoreSelection.value
         val pin = pendingBackupPin
@@ -448,7 +446,7 @@ class SecuritySettingsViewModel @Inject constructor(
             _showRestoreSelectionDialog.value = false
             _operationState.value = SecurityOperation.RESTORING
             
-            when (val result = restoreBackupUseCase(bundle, selection)) {
+            when (val result = restoreBackupUseCase(bundle, selection, cipher)) {
                 is Result.Success -> {
                     // Auto-set the PIN used for decryption as the app PIN
                     if (pin != null) {
@@ -463,16 +461,27 @@ class SecuritySettingsViewModel @Inject constructor(
 
                     _uiEffect.emit(SecurityUiEffect.ShowSnackbar("Backup restored successfully"))
                     _uiEffect.emit(SecurityUiEffect.RestoreSuccess)
+                    
+                    // Cleanup
+                    _decryptedBundle.value = null
+                    pendingBackupPin = null
+                    pendingBackupData = null
                 }
                 is Result.Error -> {
-                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                    val authException = result.throwable as? HardwareAuthRequiredException
+                    if (authException != null || result.message.contains("biometric", ignoreCase = true)) {
+                        // Trigger biometric auth
+                        _cryptoObject.value = authException?.cryptoObject?.cipher
+                        currentAuthPurpose = AuthPurpose.RESTORE
+                        _authRequest.value = System.currentTimeMillis()
+                    } else {
+                        _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                    }
                 }
                 else -> {}
             }
             
             _operationState.value = SecurityOperation.IDLE
-            _decryptedBundle.value = null
-            pendingBackupPin = null
         }
     }
 
@@ -578,6 +587,7 @@ class SecuritySettingsViewModel @Inject constructor(
                     executeBackupOperation(pin, cipher)
                 }
             }
+            AuthPurpose.RESTORE -> confirmRestore(cipher)
             null -> {}
         }
     }
@@ -667,7 +677,7 @@ class SecuritySettingsViewModel @Inject constructor(
         _showPinVerifyDialog.value = false
         _pinSetupError.value = null
         _pinVerifyPurpose.value = null
-        pendingBackupData = null
+        // Note: Don't clear pendingBackupData here to avoid race conditions with decryption
         pendingBackupPin = null
     }
 

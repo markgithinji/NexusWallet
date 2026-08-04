@@ -67,6 +67,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
+import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
 import com.example.nexuswallet.feature.settings.ui.auth.PinEntryDialog
 import com.example.nexuswallet.feature.settings.ui.security.PinVerifyPurpose
 import com.example.nexuswallet.feature.settings.ui.security.RestoreSelectionDialog
@@ -95,8 +97,25 @@ fun WelcomeScreen(
     val decryptedBundle by viewModel.decryptedBundle.collectAsStateWithLifecycle()
     val restoreSelection by viewModel.restoreSelection.collectAsStateWithLifecycle()
     val pinVerifyPurpose by viewModel.pinVerifyPurpose.collectAsStateWithLifecycle()
+    val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
+    val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
+
+    BiometricAuthHandler(
+        authRequest = authRequest,
+        cryptoObject = cryptoObject,
+        subtitle = stringResource(R.string.authentication_required),
+        onSuccess = { result -> viewModel.onAuthSuccess(result.cryptoObject?.cipher) },
+        onError = { errorCode, errString ->
+            if (!isBiometricUserCancel(errorCode)) {
+                scope.launch {
+                    snackbarHostState.showSnackbar(errString)
+                }
+            }
+        },
+        onDismiss = { viewModel.clearAuthRequest() }
+    )
 
     val selectBackupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
