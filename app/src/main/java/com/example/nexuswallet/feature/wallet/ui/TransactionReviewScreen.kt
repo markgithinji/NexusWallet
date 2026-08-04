@@ -93,6 +93,8 @@ import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.ui.SolanaSendEffect
 import com.example.nexuswallet.feature.solana.ui.SolanaSendEvent
 import com.example.nexuswallet.feature.solana.ui.SolanaSendViewModel
+import com.example.nexuswallet.feature.wallet.ui.mapper.FeeUiMapper
+import com.example.nexuswallet.feature.wallet.ui.mapper.FeeUiModel
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
@@ -618,12 +620,9 @@ fun TransactionReviewContent(
         if (isFeeLoading) {
             FeeLoadingShimmer()
         } else {
-            feeEstimate?.let {
-                when (it) {
-                    is EVMFeeEstimate -> EVMFeePreviewCard(feeEstimate = it)
-                    is BitcoinFeeEstimate -> BitcoinFeePreviewCard(feeEstimate = it)
-                    is SolanaFeeEstimate -> SolanaFeePreviewCard(feeEstimate = it)
-                }
+            val feeUiModel = feeEstimate?.let { FeeUiMapper.mapToUiModel(it) }
+            feeUiModel?.let {
+                FeePreviewCard(uiModel = it)
             }
         }
 
@@ -1059,47 +1058,8 @@ fun TransactionBottomBar(
 }
 
 @Composable
-fun EVMFeePreviewCard(feeEstimate: EVMFeeEstimate) {
-    FeePreviewCard(
-        priority = feeEstimate.priority,
-        rows = listOf(
-            stringResource(R.string.total_fee) to "${feeEstimate.totalFeeEth} ETH",
-            stringResource(R.string.gas_price) to "${feeEstimate.gasPriceGwei} Gwei",
-            stringResource(R.string.gas_limit) to feeEstimate.gasLimit.toString()
-        ),
-        estimatedTime = feeEstimate.estimatedTime
-    )
-}
-
-@Composable
-fun BitcoinFeePreviewCard(feeEstimate: BitcoinFeeEstimate) {
-    FeePreviewCard(
-        priority = feeEstimate.priority,
-        rows = listOf(
-            stringResource(R.string.total_fee) to "${feeEstimate.totalFeeBtc} BTC",
-            stringResource(R.string.fee_rate) to "${feeEstimate.feePerByte} sat/byte"
-        ),
-        estimatedTime = feeEstimate.estimatedTime
-    )
-}
-
-@Composable
-fun SolanaFeePreviewCard(feeEstimate: SolanaFeeEstimate) {
-    FeePreviewCard(
-        priority = feeEstimate.priority,
-        rows = listOf(
-            stringResource(R.string.total_fee) to "${feeEstimate.feeSol} SOL",
-            stringResource(R.string.compute_units) to feeEstimate.computeUnits.toString()
-        ),
-        estimatedTime = feeEstimate.estimatedTime
-    )
-}
-
-@Composable
 fun FeePreviewCard(
-    priority: FeeLevel,
-    rows: List<Pair<String, String>>,
-    estimatedTime: Int?
+    uiModel: FeeUiModel
 ) {
     Card(
         modifier = Modifier
@@ -1140,12 +1100,12 @@ fun FeePreviewCard(
             // Priority chip
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = getPriorityColor(priority).copy(alpha = 0.1f),
-                contentColor = getPriorityColor(priority),
+                color = uiModel.priorityColor.copy(alpha = 0.1f),
+                contentColor = uiModel.priorityColor,
                 modifier = Modifier.align(Alignment.Start)
             ) {
                 Text(
-                    text = priority.name.lowercase().replaceFirstChar { it.uppercase() },
+                    text = uiModel.priorityLabel,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
@@ -1158,7 +1118,7 @@ fun FeePreviewCard(
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                rows.forEach { (label, value) ->
+                uiModel.feeDetails.forEach { (label, value) ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1178,7 +1138,7 @@ fun FeePreviewCard(
                     }
                 }
 
-                if (estimatedTime != null) {
+                if (uiModel.estimatedTimeText != null) {
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 4.dp),
                         thickness = DividerDefaults.Thickness,
@@ -1207,7 +1167,7 @@ fun FeePreviewCard(
                             )
                         }
                         Text(
-                            text = "~${estimatedTime}s",
+                            text = uiModel.estimatedTimeText,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -1216,15 +1176,6 @@ fun FeePreviewCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun getPriorityColor(priority: FeeLevel): Color {
-    return when (priority) {
-        FeeLevel.SLOW -> MaterialTheme.colorScheme.success
-        FeeLevel.NORMAL -> MaterialTheme.colorScheme.primary
-        FeeLevel.FAST -> MaterialTheme.colorScheme.warning
     }
 }
 
