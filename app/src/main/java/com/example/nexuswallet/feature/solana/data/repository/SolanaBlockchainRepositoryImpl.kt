@@ -18,6 +18,7 @@ import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.sol4k.Base58
 import org.sol4k.Connection
@@ -280,9 +281,31 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
             val serializedTx = signedTransaction.serialize()
             val signature = connection.sendTransaction(serializedTx)
 
+            // Transaction Confirmation Loop
+            // Solana transactions can be dropped during congestion, so we poll for status.
+            // We use Helius API for polling as it provides reliable confirmation data.
+            var confirmed = false
+            repeat(15) { // Poll for ~30 seconds
+                val statusResult = getTransaction(signature, network)
+                if (statusResult is Result.Success) {
+                    val tx = statusResult.data
+                    if (tx.transactionError != null) {
+                        return@make BroadcastResult(
+                            success = false,
+                            hash = signature,
+                            error = "Transaction failed on-chain: ${tx.transactionError}"
+                        )
+                    }
+                    confirmed = true
+                    return@make BroadcastResult(success = true, hash = signature)
+                }
+                delay(2000)
+            }
+
             BroadcastResult(
-                success = true,
-                hash = signature
+                success = confirmed,
+                hash = signature,
+                error = if (!confirmed) "Transaction confirmation timed out" else null
             )
         }
     }
