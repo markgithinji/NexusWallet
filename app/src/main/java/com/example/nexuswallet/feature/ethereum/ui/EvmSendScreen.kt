@@ -73,6 +73,7 @@ fun EthereumSendScreen(
     var showMaxDialog by remember { mutableStateOf(false) }
     var showNetworkSelector by remember { mutableStateOf(false) }
     var showTokenSelector by remember { mutableStateOf(false) }
+    var showAddressBook by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
     val addressFocusRequester = remember { FocusRequester() }
@@ -177,6 +178,18 @@ fun EthereumSendScreen(
                 )
             }
 
+            // Address Book Dialog
+            if (showAddressBook) {
+                com.example.nexuswallet.feature.core.ui.AddressBookSelectorDialog(
+                    entries = state.addressBookEntries.filter { it.chain == "Ethereum" },
+                    onEntrySelected = { entry ->
+                        viewModel.onEvent(EVMSendEvent.ToAddressChanged(entry.address))
+                        showAddressBook = false
+                    },
+                    onDismiss = { showAddressBook = false }
+                )
+            }
+
             // Scrollable content
             Column(
                 modifier = Modifier
@@ -266,6 +279,7 @@ fun EthereumSendScreen(
                         addressTouched = true
                         viewModel.onEvent(EVMSendEvent.ToAddressChanged(pastedText))
                     },
+                    onAddressBookClick = { showAddressBook = true },
                     focusRequester = addressFocusRequester
                 )
 

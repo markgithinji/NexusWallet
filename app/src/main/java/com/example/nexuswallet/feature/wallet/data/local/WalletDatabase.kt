@@ -11,6 +11,7 @@ import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionDao
 import com.example.nexuswallet.feature.ethereum.data.local.EVMTransactionEntity
 import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionDao
 import com.example.nexuswallet.feature.solana.data.local.SolanaTransactionEntity
+import com.example.nexuswallet.feature.wallet.data.local.dao.AddressBookDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.BitcoinBalanceDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.BitcoinCoinDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.EVMBalanceDao
@@ -19,6 +20,7 @@ import com.example.nexuswallet.feature.wallet.data.local.dao.SPLTokenDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaBalanceDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaCoinDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.WalletDao
+import com.example.nexuswallet.feature.wallet.data.local.entity.AddressBookEntryEntity
 import com.example.nexuswallet.feature.wallet.data.local.entity.BitcoinBalanceEntity
 import com.example.nexuswallet.feature.wallet.data.local.entity.BitcoinCoinEntity
 import com.example.nexuswallet.feature.wallet.data.local.entity.EVMBalanceEntity
@@ -27,8 +29,7 @@ import com.example.nexuswallet.feature.wallet.data.local.entity.SPLTokenEntity
 import com.example.nexuswallet.feature.wallet.data.local.entity.SolanaBalanceEntity
 import com.example.nexuswallet.feature.wallet.data.local.entity.SolanaCoinEntity
 import com.example.nexuswallet.feature.wallet.data.local.entity.WalletEntity
-import com.example.nexuswallet.feature.wallet.data.local.migration.MIGRATION_1_2
-import com.example.nexuswallet.feature.wallet.data.local.migration.MIGRATION_2_3
+import com.example.nexuswallet.feature.wallet.data.local.migration.*
 
 @Database(
     entities = [
@@ -51,15 +52,21 @@ import com.example.nexuswallet.feature.wallet.data.local.migration.MIGRATION_2_3
         // EVM
         EVMTokenEntity::class,
         EVMBalanceEntity::class,
-        EVMTransactionEntity::class
+        EVMTransactionEntity::class,
+
+        // Address Book
+        AddressBookEntryEntity::class
     ],
-    version = 1,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class WalletDatabase : RoomDatabase() {
     // Wallet DAOs
     abstract fun walletDao(): WalletDao
+
+    // Address Book DAO
+    abstract fun addressBookDao(): AddressBookDao
 
     // Bitcoin DAOs
     abstract fun bitcoinCoinDao(): BitcoinCoinDao

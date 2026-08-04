@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NetworkCheck
@@ -55,6 +56,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
@@ -67,6 +69,7 @@ import com.example.nexuswallet.feature.settings.ui.util.getDisplayNameRes
 fun SettingsScreen(
     onNavigateToSecurity: () -> Unit,
     onNavigateToAbout: () -> Unit,
+    onNavigateToAddressBook: () -> Unit,
     padding: PaddingValues = PaddingValues(0.dp),
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
@@ -145,6 +148,14 @@ fun SettingsScreen(
                     description = stringResource(R.string.security_description),
                     icon = Icons.Outlined.Security,
                     onClick = onNavigateToSecurity
+                )
+
+                // Address Book
+                SettingsItem(
+                    title = "Address Book",
+                    description = "Save and manage frequently used addresses",
+                    icon = Icons.Outlined.Contacts,
+                    onClick = onNavigateToAddressBook
                 )
 
                 // Currency Settings
@@ -431,7 +442,7 @@ fun SettingsItem(
                 )
                 Text(
                     text = description,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 16.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

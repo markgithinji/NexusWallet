@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.ethereum.ui
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
+import com.example.nexuswallet.feature.wallet.domain.model.AddressBookEntry
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import java.math.BigDecimal
@@ -31,6 +32,7 @@ data class EVMSendUiState(
     val isFeeLoading: Boolean = false,
     val isInitialized: Boolean = false,
     val balancesLoaded: Boolean = false,
+    val addressBookEntries: List<AddressBookEntry> = emptyList(),
     val error: String? = null,
     val step: String = ""
 )

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.FlashOn
@@ -81,12 +82,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
+import com.example.nexuswallet.feature.wallet.domain.model.AddressBookEntry
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
@@ -96,7 +99,9 @@ import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
+import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
+import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
 import com.example.nexuswallet.ui.theme.usdtLight
@@ -383,7 +388,11 @@ fun SendBalanceCard(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = stringResource(R.string.from_label) + ": ${address.take(6)}...${address.takeLast(4)}",
+                    text = stringResource(R.string.from_label) + ": ${address.take(6)}...${
+                        address.takeLast(
+                            4
+                        )
+                    }",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -404,6 +413,7 @@ fun SendAddressInput(
     isValid: Boolean = true,
     errorMessage: String? = null,
     onPaste: (String) -> Unit,
+    onAddressBookClick: () -> Unit = {},
     focusRequester: FocusRequester = FocusRequester()
 ) {
     val focusManager = LocalFocusManager.current
@@ -528,6 +538,27 @@ fun SendAddressInput(
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                TextButton(
+                    onClick = onAddressBookClick,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Contacts,
+                        contentDescription = "Address Book",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        "Contacts",
+                        maxLines = 1,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
             }
         }
     }
@@ -588,8 +619,9 @@ fun SendAmountInput(
                     is NativeETH -> 6
                 }
 
-                val maxBalanceFormatted = balance.setScale(maxDecimals, RoundingMode.HALF_UP).stripTrailingZeros()
-                    .toPlainString()
+                val maxBalanceFormatted =
+                    balance.setScale(maxDecimals, RoundingMode.HALF_UP).stripTrailingZeros()
+                        .toPlainString()
                 Text(
                     text = stringResource(R.string.max_label, maxBalanceFormatted, symbol),
                     style = MaterialTheme.typography.bodySmall,
@@ -1056,16 +1088,18 @@ fun MaxAmountDialog(
                         onDismiss()
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isInsufficient) MaterialTheme.colorScheme.surfaceVariant 
-                                    else MaterialTheme.colorScheme.primary
+                    containerColor = if (isInsufficient) MaterialTheme.colorScheme.surfaceVariant
+                    else MaterialTheme.colorScheme.primary
                 )
             ) {
                 Text(
-                    text = if (isInsufficient) stringResource(R.string.dismiss) 
-                           else stringResource(R.string.use_maximum),
+                    text = if (isInsufficient) stringResource(R.string.dismiss)
+                    else stringResource(R.string.use_maximum),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -1105,7 +1139,10 @@ fun MaxAmountDialog(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        border = BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(
@@ -1119,7 +1156,9 @@ fun MaxAmountDialog(
                                     modifier = Modifier.weight(1f)
                                 )
                                 Text(
-                                    text = "${balance.stripTrailingZeros().toPlainString()} $tokenSymbol",
+                                    text = "${
+                                        balance.stripTrailingZeros().toPlainString()
+                                    } $tokenSymbol",
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
@@ -1128,9 +1167,9 @@ fun MaxAmountDialog(
                                     modifier = Modifier.weight(2f)
                                 )
                             }
-                            
+
                             Spacer(modifier = Modifier.height(8.dp))
-                            
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
@@ -1157,12 +1196,12 @@ fun MaxAmountDialog(
                                     modifier = Modifier.weight(2f)
                                 )
                             }
-                            
+
                             HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 12.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant
                             )
-                            
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1179,7 +1218,9 @@ fun MaxAmountDialog(
                                     modifier = Modifier.weight(2f)
                                 ) {
                                     Text(
-                                        text = "${maxAmount.stripTrailingZeros().toPlainString()} $tokenSymbol",
+                                        text = "${
+                                            maxAmount.stripTrailingZeros().toPlainString()
+                                        } $tokenSymbol",
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.primary,
@@ -1189,7 +1230,13 @@ fun MaxAmountDialog(
                                     )
                                     val maxAmountUsd = maxAmount.toDouble() * fiatRate
                                     Text(
-                                        text = "≈ $${String.format(Locale.US, "%.2f", maxAmountUsd)} USD",
+                                        text = "≈ $${
+                                            String.format(
+                                                Locale.US,
+                                                "%.2f",
+                                                maxAmountUsd
+                                            )
+                                        } USD",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
@@ -1286,7 +1333,11 @@ fun TokenSelectorCard(
         is NativeETH -> Triple(R.drawable.ethereum, ethereumLight, selectedToken.name)
         is USDCToken -> Triple(R.drawable.usdc, usdcLight, selectedToken.name)
         is USDTToken -> Triple(R.drawable.tether, usdtLight, selectedToken.name)
-        else -> Triple(null, MaterialTheme.colorScheme.primary, stringResource(R.string.select_token))
+        else -> Triple(
+            null,
+            MaterialTheme.colorScheme.primary,
+            stringResource(R.string.select_token)
+        )
     }
 
     Card(
@@ -1410,21 +1461,12 @@ fun TokenSelectorDialog(
                                     .background(color.copy(alpha = 0.1f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (iconRes != null) {
-                                    Icon(
-                                        painter = painterResource(id = iconRes),
-                                        contentDescription = stringResource(R.string.token_icon),
-                                        tint = Color.Unspecified,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Token,
-                                        contentDescription = stringResource(R.string.token_icon),
-                                        tint = color,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
+                                Icon(
+                                    painter = painterResource(id = iconRes),
+                                    contentDescription = stringResource(R.string.token_icon),
+                                    tint = Color.Unspecified,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
@@ -1486,8 +1528,10 @@ fun rememberSendErrorState(
     addressFocused: Boolean,
     amountFocused: Boolean
 ): SendErrorState {
-    val showAddressError = !addressFocused && addressTouched && validationResult.addressError != null
-    val showSelfSendError = !addressFocused && addressTouched && validationResult.selfSendError != null
+    val showAddressError =
+        !addressFocused && addressTouched && validationResult.addressError != null
+    val showSelfSendError =
+        !addressFocused && addressTouched && validationResult.selfSendError != null
 
     val showAmountError = !amountFocused && amountTouched && validationResult.amountError != null
     val showBalanceError = !amountFocused && amountTouched && validationResult.balanceError != null
@@ -1509,14 +1553,135 @@ fun rememberSendErrorState(
         showSelfSendError = showSelfSendError,
         showGasError = showGasError,
         activeError = activeError,
-        addressErrorMessage = if (showSelfSendError) validationResult.selfSendError 
-                             else if (showAddressError) validationResult.addressError 
-                             else null,
-        amountErrorMessage = if (showGasError) validationResult.gasError 
-                            else if (showAmountError) validationResult.amountError 
-                            else if (showBalanceError) validationResult.balanceError 
-                            else null
+        addressErrorMessage = if (showSelfSendError) validationResult.selfSendError
+        else if (showAddressError) validationResult.addressError
+        else null,
+        amountErrorMessage = if (showGasError) validationResult.gasError
+        else if (showAmountError) validationResult.amountError
+        else if (showBalanceError) validationResult.balanceError
+        else null
     )
+}
+
+@Composable
+fun AddressBookSelectorDialog(
+    entries: List<AddressBookEntry>,
+    onEntrySelected: (AddressBookEntry) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Select Contact",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (entries.isEmpty()) {
+                    Text(
+                        text = "No saved addresses for this chain",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 32.dp),
+                        textAlign = TextAlign.Center
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 400.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(entries) { entry ->
+                            val color = when (entry.chain) {
+                                "Bitcoin" -> bitcoinLight
+                                "Solana" -> solanaLight
+                                else -> ethereumLight
+                            }
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onEntrySelected(entry) },
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+                                        alpha = 0.5f
+                                    )
+                                ),
+                                border = BorderStroke(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outlineVariant
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(color.copy(alpha = 0.1f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Contacts,
+                                            contentDescription = null,
+                                            tint = color,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = entry.alias,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "${entry.address.take(6)}...${
+                                                entry.address.takeLast(
+                                                    6
+                                                )
+                                            }",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Close")
+                }
+            }
+        }
+    }
 }
 
 data class SendErrorState(

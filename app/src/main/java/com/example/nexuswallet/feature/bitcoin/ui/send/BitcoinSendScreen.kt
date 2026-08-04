@@ -55,6 +55,7 @@ fun BitcoinSendScreen(
 ) {
     var showMaxDialog by remember { mutableStateOf(false) }
     var showNetworkSelector by remember { mutableStateOf(false) }
+    var showAddressBook by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
     val addressFocusRequester = remember { FocusRequester() }
@@ -117,6 +118,18 @@ fun BitcoinSendScreen(
                 )
             }
 
+            // Address Book Dialog
+            if (showAddressBook) {
+                com.example.nexuswallet.feature.core.ui.AddressBookSelectorDialog(
+                    entries = state.addressBookEntries.filter { it.chain == "Bitcoin" },
+                    onEntrySelected = { entry ->
+                        viewModel.handleEvent(BitcoinSendEvent.UpdateAddress(entry.address))
+                        showAddressBook = false
+                    },
+                    onDismiss = { showAddressBook = false }
+                )
+            }
+
             // Scrollable content
             Column(
                 modifier = Modifier
@@ -175,6 +188,7 @@ fun BitcoinSendScreen(
                         addressTouched = true
                         viewModel.handleEvent(BitcoinSendEvent.UpdateAddress(pastedText))
                     },
+                    onAddressBookClick = { showAddressBook = true },
                     focusRequester = addressFocusRequester
                 )
 

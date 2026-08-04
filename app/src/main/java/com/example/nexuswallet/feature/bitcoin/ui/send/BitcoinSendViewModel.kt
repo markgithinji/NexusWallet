@@ -17,6 +17,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetAddressBookEntriesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -38,6 +39,7 @@ class BitcoinSendViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val marketRepository: MarketRepository,
+    private val getAddressBookEntriesUseCase: GetAddressBookEntriesUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BtcSendUiState())
@@ -56,6 +58,18 @@ class BitcoinSendViewModel @Inject constructor(
                 is BitcoinSendEvent.UpdateAmount -> updateAmount(event.amount)
                 is BitcoinSendEvent.UpdateFeeLevel -> updateFeeLevel(event.feeLevel)
                 is BitcoinSendEvent.SwitchNetwork -> switchNetwork(event.network)
+            }
+        }
+    }
+
+    init {
+        observeAddressBook()
+    }
+
+    private fun observeAddressBook() {
+        viewModelScope.launch {
+            getAddressBookEntriesUseCase().collect { entries ->
+                _state.update { it.copy(addressBookEntries = entries) }
             }
         }
     }

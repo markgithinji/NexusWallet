@@ -47,6 +47,7 @@ fun MainTabScreen(
     onNavigateToTokenDetail: (String) -> Unit,
     onNavigateToSecurity: () -> Unit,
     onNavigateToAbout: () -> Unit,
+    onNavigateToAddressBook: () -> Unit,
     padding: PaddingValues
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
@@ -184,6 +185,7 @@ fun MainTabScreen(
             2 -> SettingsScreen(
                 onNavigateToSecurity = onNavigateToSecurity,
                 onNavigateToAbout = onNavigateToAbout,
+                onNavigateToAddressBook = onNavigateToAddressBook,
                 padding = PaddingValues(
                     top = scaffoldPadding.calculateTopPadding(),
                     bottom = scaffoldPadding.calculateBottomPadding()

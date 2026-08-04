@@ -55,6 +55,7 @@ fun SolanaSendScreen(
 ) {
     var showMaxDialog by remember { mutableStateOf(false) }
     var showNetworkSelector by remember { mutableStateOf(false) }
+    var showAddressBook by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
     val addressFocusRequester = remember { FocusRequester() }
@@ -118,6 +119,18 @@ fun SolanaSendScreen(
                 )
             }
 
+            // Address Book Dialog
+            if (showAddressBook) {
+                com.example.nexuswallet.feature.core.ui.AddressBookSelectorDialog(
+                    entries = state.addressBookEntries.filter { it.chain == "Solana" },
+                    onEntrySelected = { entry ->
+                        viewModel.onEvent(SolanaSendEvent.ToAddressChanged(entry.address))
+                        showAddressBook = false
+                    },
+                    onDismiss = { showAddressBook = false }
+                )
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -172,6 +185,7 @@ fun SolanaSendScreen(
                         addressTouched = true
                         viewModel.onEvent(SolanaSendEvent.ToAddressChanged(pastedText))
                     },
+                    onAddressBookClick = { showAddressBook = true },
                     focusRequester = addressFocusRequester
                 )
 

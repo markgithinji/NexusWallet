@@ -12,9 +12,11 @@ import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaCoinDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.datasource.BalanceDataSourceImpl
 import com.example.nexuswallet.feature.wallet.data.local.datasource.WalletDataSourceImpl
+import com.example.nexuswallet.feature.wallet.data.repository.AddressBookRepositoryImpl
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepositoryImpl
 import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
 import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
+import com.example.nexuswallet.feature.wallet.domain.repository.AddressBookRepository
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import dagger.Binds
 import dagger.Module
@@ -46,6 +48,12 @@ abstract class WalletDataModule {
         impl: WalletRepositoryImpl
     ): WalletRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindAddressBookRepository(
+        impl: AddressBookRepositoryImpl
+    ): AddressBookRepository
+
     companion object {
         @Provides
         @Singleton
@@ -58,6 +66,12 @@ abstract class WalletDataModule {
         @Singleton
         fun provideWalletDao(database: WalletDatabase): WalletDao {
             return database.walletDao()
+        }
+
+        @Provides
+        @Singleton
+        fun provideAddressBookDao(database: WalletDatabase): com.example.nexuswallet.feature.wallet.data.local.dao.AddressBookDao {
+            return database.addressBookDao()
         }
 
         @Provides

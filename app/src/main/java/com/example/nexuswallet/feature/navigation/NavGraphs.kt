@@ -24,6 +24,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.ui.TransactionReviewScreen
+import com.example.nexuswallet.feature.wallet.ui.addressbook.AddressBookScreen
 import com.example.nexuswallet.feature.wallet.ui.backup.BackupScreen
 import com.example.nexuswallet.feature.wallet.ui.backup.BackupViewModel
 import com.example.nexuswallet.feature.wallet.ui.coindetail.CoinDetailScreen
@@ -104,6 +105,7 @@ fun NavGraphBuilder.mainGraph(
             },
             onNavigateToSecurity = { navController.navigate(SecuritySettingsRoute) },
             onNavigateToAbout = { navController.navigate(AboutRoute) },
+            onNavigateToAddressBook = { navController.navigate(AddressBookRoute) },
             padding = PaddingValues(0.dp)
         )
     }
@@ -282,7 +284,8 @@ fun NavGraphBuilder.settingsGraph(navController: NavController) {
     composable<SettingsRoute> {
         SettingsScreen(
             onNavigateToSecurity = { navController.navigate(SecuritySettingsRoute) },
-            onNavigateToAbout = { navController.navigate(AboutRoute) }
+            onNavigateToAbout = { navController.navigate(AboutRoute) },
+            onNavigateToAddressBook = { navController.navigate(AddressBookRoute) }
         )
     }
 
@@ -292,6 +295,10 @@ fun NavGraphBuilder.settingsGraph(navController: NavController) {
 
     composable<SecuritySettingsRoute> {
         SecuritySettingsScreen(onNavigateUp = { navController.navigateUp() })
+    }
+
+    composable<AddressBookRoute> {
+        AddressBookScreen(onNavigateUp = { navController.navigateUp() })
     }
 }
 

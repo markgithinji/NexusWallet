@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.bitcoin.ui.send
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
+import com.example.nexuswallet.feature.wallet.domain.model.AddressBookEntry
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import java.math.BigDecimal
@@ -27,5 +28,6 @@ data class BtcSendUiState(
     val isLoading: Boolean = false,
     val isFeeLoading: Boolean = false,
     val isInitialized: Boolean = false,
+    val addressBookEntries: List<AddressBookEntry> = emptyList(),
     val error: String? = null
 )

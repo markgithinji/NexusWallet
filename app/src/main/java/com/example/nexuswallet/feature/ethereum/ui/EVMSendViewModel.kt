@@ -18,6 +18,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetAddressBookEntriesUseCase
 import com.example.nexuswallet.feature.wallet.util.ExplorerUrlHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -44,6 +45,7 @@ class EVMSendViewModel @Inject constructor(
     private val validateEVMSendUseCase: ValidateEVMSendUseCase,
     private val walletRepository: WalletRepository,
     private val marketRepository: MarketRepository,
+    private val getAddressBookEntriesUseCase: GetAddressBookEntriesUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EVMSendUiState())
@@ -62,6 +64,18 @@ class EVMSendViewModel @Inject constructor(
     private var evmTokensByNetwork: Map<EthereumNetwork, List<EVMToken>> = emptyMap()
     private var currentCoin: EVMToken? = null
     private var feeJob: Job? = null
+
+    init {
+        observeAddressBook()
+    }
+
+    private fun observeAddressBook() {
+        viewModelScope.launch {
+            getAddressBookEntriesUseCase().collect { entries ->
+                _uiState.update { it.copy(addressBookEntries = entries) }
+            }
+        }
+    }
 
     fun initialize(walletId: String, coin: EVMToken? = null) {
         viewModelScope.launch {

@@ -13,6 +13,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.wallet.domain.usecase.GetAddressBookEntriesUseCase
 import com.example.nexuswallet.feature.wallet.util.ExplorerUrlHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -30,7 +31,8 @@ class SolanaSendViewModel @Inject constructor(
     private val validateSolanaSendUseCase: ValidateSolanaSendUseCase,
     private val walletRepository: WalletRepository,
     private val marketRepository: MarketRepository,
-    private val solanaRepository: SolanaBlockchainRepository
+    private val solanaRepository: SolanaBlockchainRepository,
+    private val getAddressBookEntriesUseCase: GetAddressBookEntriesUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SolanaSendUIState())
@@ -47,6 +49,18 @@ class SolanaSendViewModel @Inject constructor(
 
     private var feeJob: Job? = null
     private var currentWallet: Wallet? = null
+
+    init {
+        observeAddressBook()
+    }
+
+    private fun observeAddressBook() {
+        viewModelScope.launch {
+            getAddressBookEntriesUseCase().collect { entries ->
+                _state.update { it.copy(addressBookEntries = entries) }
+            }
+        }
+    }
 
     fun init(walletId: String, coin: SolanaCoin) {
         viewModelScope.launch {
