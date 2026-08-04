@@ -1,13 +1,11 @@
-package com.example.nexuswallet.feature.wallet.data.repository
+package com.example.nexuswallet.feature.core.service
 
 import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.repository.BlockchainSubscriptionRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -35,12 +33,11 @@ import javax.inject.Singleton
 import kotlin.math.min
 
 @Singleton
-class BlockchainSubscriptionRepositoryImpl @Inject constructor(
+class BlockchainSubscriptionService @Inject constructor(
     private val okHttpClient: OkHttpClient,
     private val json: Json,
-    private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
-) : BlockchainSubscriptionRepository {
+) {
 
     /**
      * Scope for managing background WebSocket tasks.
@@ -65,7 +62,11 @@ class BlockchainSubscriptionRepositoryImpl @Inject constructor(
     private val deadNetworks = Collections.synchronizedSet(mutableSetOf<Network>())
     private val connectionMutex = Mutex()
 
-    override fun subscribeToAddressChanges(address: String, network: Network): Flow<String> {
+    /**
+     * Subscribes to changes for a specific address on a given network.
+     * Emits the address itself when a change is detected.
+     */
+    fun subscribeToAddressChanges(address: String, network: Network): Flow<String> {
         // If the circuit breaker is blown for this network, don't even try to connect.
         if (deadNetworks.contains(network)) return _addressChanges
 
@@ -82,17 +83,21 @@ class BlockchainSubscriptionRepositoryImpl @Inject constructor(
         return _addressChanges
     }
 
-    override fun unsubscribeFromAddress(address: String, network: Network) {
+    /**
+     * Unsubscribes from a specific address on a given network.
+     */
+    fun unsubscribeFromAddress(address: String, network: Network) {
         scope.launch {
             connectionMutex.withLock {
                 subscribedAddresses[network]?.remove(address)
-                // We could send an unsubscribe message here if the protocol supports it
-                // For Mempool and Solana, we usually just keep the socket open if other addresses are active
             }
         }
     }
 
-    override fun clearAllSubscriptions() {
+    /**
+     * Clears all active subscriptions and closes connections.
+     */
+    fun clearAllSubscriptions() {
         scope.launch {
             connectionMutex.withLock {
                 subscribedAddresses.clear()
@@ -163,9 +168,6 @@ class BlockchainSubscriptionRepositoryImpl @Inject constructor(
             }
 
             is EthereumNetwork -> {
-                // 1. Subscribe to logs for Native ETH transfers TO this address
-                // Native transfers are harder to track via logs, so we focus on the most likely trigger:
-                // Any transaction involving this address.
                 val logsToMessage = buildJsonObject {
                     put("jsonrpc", "2.0")
                     put("id", 1)
@@ -179,7 +181,6 @@ class BlockchainSubscriptionRepositoryImpl @Inject constructor(
                 }.toString()
                 webSocket.send(logsToMessage)
 
-                // 2. Subscribe to standard Transfer(address,address,uint256) logs for tokens
                 val tokenLogsMessage = buildJsonObject {
                     put("jsonrpc", "2.0")
                     put("id", 2)
@@ -242,11 +243,6 @@ class BlockchainSubscriptionRepositoryImpl @Inject constructor(
                 }
             } else {
                 // Circuit Breaker: Stop trying to connect to this network for this session.
-                // This prevents battery drain and excessive background work when a node is down.
-                this@BlockchainSubscriptionRepositoryImpl.logger.w(
-                    TAG,
-                    "Circuit breaker blown for ${network.name}. Giving up on WebSockets for this session."
-                )
                 deadNetworks.add(network)
             }
         }
@@ -262,22 +258,18 @@ class BlockchainSubscriptionRepositoryImpl @Inject constructor(
 
             when (network) {
                 is SolanaNetwork -> {
-                    // Solana accountNotification: Triggered on lamport or account data changes.
                     if (jsonElement is JsonObject && (jsonElement["method"]?.jsonPrimitive?.content == "accountNotification")) {
-                        // Any account notification for a subscribed address triggers a refresh for that chain.
                         _addressChanges.emit("SOLANA_SIGNAL")
                     }
                 }
 
                 is EthereumNetwork -> {
-                    // Ethereum subscription signal: Triggered by logs or heads.
                     if (jsonElement is JsonObject && (jsonElement["method"]?.jsonPrimitive?.content == "eth_subscription")) {
                         _addressChanges.emit("ETHEREUM_SIGNAL")
                     }
                 }
 
                 is BitcoinNetwork -> {
-                    // Mempool.space address signals: Triggered by incoming/outgoing txs.
                     if (jsonElement is JsonObject && (jsonElement.containsKey("address-transactions") || jsonElement.containsKey(
                             "address-utxo"
                         ))
@@ -296,7 +288,6 @@ class BlockchainSubscriptionRepositoryImpl @Inject constructor(
     }
 
     companion object {
-        private const val TAG = "BlockchainSubRepo"
         private const val MAX_RECONNECT_ATTEMPTS = 3
         private const val BASE_RECONNECT_DELAY_MS = 2000L
         private const val MAX_RECONNECT_DELAY_MS = 60000L

@@ -12,11 +12,9 @@ import com.example.nexuswallet.feature.wallet.data.local.dao.SolanaCoinDao
 import com.example.nexuswallet.feature.wallet.data.local.dao.WalletDao
 import com.example.nexuswallet.feature.wallet.data.local.datasource.BalanceDataSourceImpl
 import com.example.nexuswallet.feature.wallet.data.local.datasource.WalletDataSourceImpl
-import com.example.nexuswallet.feature.wallet.data.repository.BlockchainSubscriptionRepositoryImpl
 import com.example.nexuswallet.feature.wallet.data.repository.WalletRepositoryImpl
 import com.example.nexuswallet.feature.wallet.domain.datasource.BalanceDataSource
 import com.example.nexuswallet.feature.wallet.domain.datasource.WalletDataSource
-import com.example.nexuswallet.feature.wallet.domain.repository.BlockchainSubscriptionRepository
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import dagger.Binds
 import dagger.Module
@@ -47,12 +45,6 @@ abstract class WalletDataModule {
     abstract fun bindWalletRepository(
         impl: WalletRepositoryImpl
     ): WalletRepository
-
-    @Binds
-    @Singleton
-    abstract fun bindBlockchainSubscriptionRepository(
-        impl: BlockchainSubscriptionRepositoryImpl
-    ): BlockchainSubscriptionRepository
 
     companion object {
         @Provides

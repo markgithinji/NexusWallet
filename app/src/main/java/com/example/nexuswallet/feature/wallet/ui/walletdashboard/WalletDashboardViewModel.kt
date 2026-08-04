@@ -16,7 +16,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
-import com.example.nexuswallet.feature.wallet.domain.repository.BlockchainSubscriptionRepository
+import com.example.nexuswallet.feature.core.service.BlockchainSubscriptionService
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
@@ -50,7 +50,7 @@ class WalletDashboardViewModel @Inject constructor(
     private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
     private val settingsRepository: SettingsRepository,
-    private val subscriptionRepository: BlockchainSubscriptionRepository
+    private val subscriptionService: BlockchainSubscriptionService
 ) : ViewModel() {
 
     // State
@@ -149,7 +149,7 @@ class WalletDashboardViewModel @Inject constructor(
     }
 
     /**
-     * Listens for real-time activity signals from the BlockchainSubscriptionRepository.
+     * Listens for real-time activity signals from the BlockchainSubscriptionService.
      * Signals (like "Ethereum activity detected") trigger a granular balance refresh.
      */
     private fun observeSignals() {
@@ -219,21 +219,21 @@ class WalletDashboardViewModel @Inject constructor(
                 // Subscribe to Bitcoin
                 wallet.bitcoinCoins.forEach { coin ->
                     launch {
-                        subscriptionRepository.subscribeToAddressChanges(coin.address, coin.network)
+                        subscriptionService.subscribeToAddressChanges(coin.address, coin.network)
                             .collect { _ -> signalFlow.emit(coin.network) }
                     }
                 }
                 // Subscribe to Solana
                 wallet.solanaCoins.forEach { coin ->
                     launch {
-                        subscriptionRepository.subscribeToAddressChanges(coin.address, coin.network)
+                        subscriptionService.subscribeToAddressChanges(coin.address, coin.network)
                             .collect { _ -> signalFlow.emit(coin.network) }
                     }
                 }
                 // Subscribe to Ethereum
                 wallet.evmTokens.forEach { token ->
                     launch {
-                        subscriptionRepository.subscribeToAddressChanges(token.address, token.network)
+                        subscriptionService.subscribeToAddressChanges(token.address, token.network)
                             .collect { _ -> signalFlow.emit(token.network) }
                     }
                 }
@@ -430,6 +430,6 @@ class WalletDashboardViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        subscriptionRepository.clearAllSubscriptions()
+        subscriptionService.clearAllSubscriptions()
     }
 }
