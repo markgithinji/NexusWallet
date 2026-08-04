@@ -8,7 +8,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class GetPendingTransactionsUseCase @Inject constructor(
+class GetPendingEVMTransactionsUseCase @Inject constructor(
     private val evmTransactionRepository: EVMTransactionRepository,
     private val logger: Logger
 ) {

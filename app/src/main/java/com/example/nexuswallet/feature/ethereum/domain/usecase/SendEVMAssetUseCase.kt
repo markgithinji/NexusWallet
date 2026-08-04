@@ -33,7 +33,7 @@ class SendEVMAssetUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
-    private val getFeeEstimateUseCase: GetFeeEstimateUseCase,
+    private val getEVMFeeEstimateUseCase: GetEVMFeeEstimateUseCase,
     private val vaultRepository: VaultRepository,
     private val keyStoreRepository: KeyStoreRepository,
     private val logger: Logger,
@@ -101,7 +101,7 @@ class SendEVMAssetUseCase @Inject constructor(
         val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
 
         logger.d(TAG, "Requesting fee estimate | network=${token.network.name}")
-        val feeEstimateResult = getFeeEstimateUseCase(
+        val feeEstimateResult = getEVMFeeEstimateUseCase(
             feeLevel = feeLevel,
             network = token.network,
             isToken = token.evmTokenType != EVMTokenType.NATIVE,

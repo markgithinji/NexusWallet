@@ -7,7 +7,7 @@ import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
-import com.example.nexuswallet.feature.ethereum.domain.usecase.GetFeeEstimateUseCase
+import com.example.nexuswallet.feature.ethereum.domain.usecase.GetEVMFeeEstimateUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.SendEVMAssetUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.ValidateEVMSendUseCase
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
@@ -40,7 +40,7 @@ import javax.inject.Inject
 @HiltViewModel
 class EVMSendViewModel @Inject constructor(
     private val sendEVMAssetUseCase: SendEVMAssetUseCase,
-    private val getFeeEstimateUseCase: GetFeeEstimateUseCase,
+    private val getEVMFeeEstimateUseCase: GetEVMFeeEstimateUseCase,
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val validateEVMSendUseCase: ValidateEVMSendUseCase,
     private val walletRepository: WalletRepository,
@@ -331,7 +331,7 @@ class EVMSendViewModel @Inject constructor(
                 BigInteger.ONE // Use small amount for estimation if not entered
             }
 
-            val feeEstimateResult = getFeeEstimateUseCase(
+            val feeEstimateResult = getEVMFeeEstimateUseCase(
                 feeLevel = state.feeLevel,
                 network = state.network,
                 isToken = currentToken.evmTokenType != EVMTokenType.NATIVE,

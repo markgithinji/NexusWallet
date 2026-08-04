@@ -18,7 +18,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class GetFeeEstimateUseCase @Inject constructor(
+class GetEVMFeeEstimateUseCase @Inject constructor(
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val logger: Logger
 ) {

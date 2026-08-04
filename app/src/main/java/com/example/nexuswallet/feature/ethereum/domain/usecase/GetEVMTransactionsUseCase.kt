@@ -11,7 +11,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class GetWalletTransactionsUseCase @Inject constructor(
+class GetEVMTransactionsUseCase @Inject constructor(
     private val evmTransactionRepository: EVMTransactionRepository,
     private val logger: Logger
 ) {
