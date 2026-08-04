@@ -1,6 +1,9 @@
 package com.example.nexuswallet.feature.settings.ui.security
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricPrompt
@@ -18,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Error
@@ -38,11 +42,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
+import android.app.Activity
+import android.content.Intent
+import android.provider.Settings
+import androidx.core.app.ActivityCompat
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.settings.domain.model.BackupBundle
@@ -86,6 +95,14 @@ fun SecuritySettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var pendingBackupData by remember { mutableStateOf<ByteArray?>(null) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            viewModel.setNotificationsEnabled(true)
+        }
+    }
 
     val saveBackupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/octet-stream")
@@ -154,6 +171,142 @@ fun SecuritySettingsScreen(
                 }
                 SecurityUiEffect.RestoreSuccess -> {
                     // Maybe show an extra success state or navigate
+                }
+            }
+        }
+    }
+
+    // Permission check logic moved to UI layer
+    val isPermissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
+
+    // Notification Rationale Dialog logic
+    if (uiState is Result.Success) {
+        val state = (uiState as Result.Success<SecurityUiState>).data
+        val activity = context as? Activity
+        
+        // Decide if we should show the rationale
+        val shouldShowRationale = state.isNotificationsEnabled && 
+                                !isPermissionGranted && 
+                                !state.isNotificationRationaleSilenced
+
+        if (shouldShowRationale) {
+            // Detect if permanently denied (not granted AND should NOT show system rationale anymore)
+            val isPermanentlyDenied = activity?.let {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    !isPermissionGranted && 
+                    !ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS)
+                } else false
+            } ?: false
+
+            Dialog(onDismissRequest = { viewModel.silenceNotificationRationale() }) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(0.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Icon
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    (if (isPermanentlyDenied) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                                        .copy(alpha = 0.1f)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.NotificationsActive,
+                                contentDescription = null,
+                                tint = if (isPermanentlyDenied) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Title
+                        Text(
+                            text = if (isPermanentlyDenied) "Enable in Settings" else stringResource(R.string.enable_notifications_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Text
+                        Text(
+                            text = if (isPermanentlyDenied) 
+                                "Notifications are blocked by your phone system. Please go to App Settings to enable them for Nexus Wallet."
+                                else stringResource(R.string.notifications_rationale_message),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        // Confirm Button
+                        Button(
+                            onClick = {
+                                if (isPermanentlyDenied) {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", context.packageName, null)
+                                    }
+                                    context.startActivity(intent)
+                                } else {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = if (isPermanentlyDenied) 
+                                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                else ButtonDefaults.buttonColors()
+                        ) {
+                            Text(
+                                text = if (isPermanentlyDenied) "Open Settings" else stringResource(R.string.grant_permission),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Dismiss Button
+                        TextButton(
+                            onClick = { viewModel.silenceNotificationRationale() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = stringResource(R.string.dismiss),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -414,6 +567,17 @@ private fun SecuritySettingsContent(
             onCheckedChange = viewModel::setRequireAuthForSend,
             activeText = stringResource(R.string.always_require),
             inactiveText = stringResource(R.string.standard)
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        SecurityToggleSection(
+            title = "Notifications",
+            description = "Get alerts for transaction confirmations",
+            checked = securityState.isNotificationsEnabled,
+            onCheckedChange = { enabled ->
+                viewModel.setNotificationsEnabled(enabled)
+            }
         )
 
         Spacer(modifier = Modifier.height(16.dp))

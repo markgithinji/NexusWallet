@@ -92,7 +92,7 @@ import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.ui.SolanaSendEffect
 import com.example.nexuswallet.feature.solana.ui.SolanaSendEvent
 import com.example.nexuswallet.feature.solana.ui.SolanaSendViewModel
-import com.example.nexuswallet.feature.wallet.service.TransactionMonitorService
+import com.example.nexuswallet.feature.core.service.TransactionMonitorService
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken

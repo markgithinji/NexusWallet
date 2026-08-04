@@ -11,7 +11,6 @@ import androidx.work.ListenableWorker.Result as WorkResult
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.core.util.Result as AppResult
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
@@ -28,13 +27,10 @@ class TransactionMonitorService @AssistedInject constructor(
     private val bitcoinRepository: BitcoinBlockchainRepository,
     private val evmRepository: EVMBlockchainRepository,
     private val solanaRepository: SolanaBlockchainRepository,
-    private val notificationService: NotificationService,
-    private val logger: Logger
+    private val notificationService: NotificationService
 ) : CoroutineWorker(context, params) {
 
     companion object {
-        private const val TAG = "TxMonitorService"
-        
         const val KEY_TX_HASH = "tx_hash"
         const val KEY_NETWORK_NAME = "network_name"
         const val KEY_NETWORK_TYPE = "network_type"
@@ -78,10 +74,7 @@ class TransactionMonitorService @AssistedInject constructor(
         val coinSymbol = inputData.getString(KEY_COIN_SYMBOL) ?: ""
         val amount = inputData.getString(KEY_AMOUNT) ?: ""
 
-        logger.d(TAG, "Monitoring transaction: $txHash on $networkName")
-
         if (runAttemptCount > 30) { // Max ~30 mins
-            logger.w(TAG, "Giving up on monitoring tx $txHash after $runAttemptCount attempts")
             return WorkResult.failure()
         }
 
@@ -103,7 +96,6 @@ class TransactionMonitorService @AssistedInject constructor(
 
         return when (statusResult) {
             is AppResult.Success -> {
-                logger.d(TAG, "Transaction $txHash status: ${statusResult.data}")
                 when (statusResult.data) {
                     TransactionStatus.SUCCESS -> {
                         notificationService.showTransactionNotification(
@@ -127,7 +119,6 @@ class TransactionMonitorService @AssistedInject constructor(
                 }
             }
             is AppResult.Error -> {
-                logger.e(TAG, "Error checking status for $txHash: ${statusResult.message}")
                 WorkResult.retry()
             }
             else -> {

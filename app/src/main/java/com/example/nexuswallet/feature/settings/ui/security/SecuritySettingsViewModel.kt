@@ -110,25 +110,50 @@ class SecuritySettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = Result.Loading
 
-            when (val result = getAuthStatusUseCase()) {
-                is Result.Success -> {
-                    val status = result.data
-                    _uiState.value = Result.Success(
-                        SecurityUiState(
-                            isBiometricEnabled = status.isBiometricEnabled,
-                            isPinSet = status.isPinSet,
-                            isPrivacyModeEnabled = status.isPrivacyModeEnabled,
-                            isRequireAuthForSend = status.isRequireAuthForSend,
-                            availableAuthMethods = status.availableMethods,
-                            isAnyAuthEnabled = status.isAnyAuthEnabled
-                        )
+            val status = getAuthStatusUseCase().let { if (it is Result.Success) it.data else null }
+            val notificationsEnabled = securityRepository.isNotificationsEnabled()
+            val rationaleSilenced = securityRepository.isNotificationRationaleSilenced()
+
+            if (status != null) {
+                _uiState.value = Result.Success(
+                    SecurityUiState(
+                        isBiometricEnabled = status.isBiometricEnabled,
+                        isPinSet = status.isPinSet,
+                        isPrivacyModeEnabled = status.isPrivacyModeEnabled,
+                        isRequireAuthForSend = status.isRequireAuthForSend,
+                        availableAuthMethods = status.availableMethods,
+                        isAnyAuthEnabled = status.isAnyAuthEnabled,
+                        isNotificationsEnabled = notificationsEnabled,
+                        isNotificationRationaleSilenced = rationaleSilenced
                     )
-                }
-                is Result.Error -> {
-                    _uiState.value = Result.Error(result.message)
-                }
-                Result.Loading -> { /* Ignore */ }
+                )
+            } else {
+                _uiState.value = Result.Error("Failed to load security status")
             }
+        }
+    }
+
+    fun setNotificationsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                securityRepository.setNotificationsEnabled(enabled)
+                if (enabled) {
+                    // Reset silence when manually toggling ON so rationale can show if needed
+                    securityRepository.setNotificationRationaleSilenced(false)
+                }
+                refreshAuthStatus()
+            } catch (e: Exception) {
+                _uiEffect.emit(SecurityUiEffect.ShowSnackbar("Failed to update notifications"))
+            }
+        }
+    }
+
+    fun silenceNotificationRationale() {
+        viewModelScope.launch {
+            // User dismissed, so we turn OFF the toggle and silence future prompts
+            securityRepository.setNotificationsEnabled(false)
+            securityRepository.setNotificationRationaleSilenced(true)
+            refreshAuthStatus()
         }
     }
 
@@ -169,9 +194,13 @@ class SecuritySettingsViewModel @Inject constructor(
     }
 
     private suspend fun refreshAuthStatus() {
-        when (val result = getAuthStatusUseCase()) {
+        val authResult = getAuthStatusUseCase()
+        val notificationsEnabled = securityRepository.isNotificationsEnabled()
+        val rationaleSilenced = securityRepository.isNotificationRationaleSilenced()
+
+        when (authResult) {
             is Result.Success -> {
-                val status = result.data
+                val status = authResult.data
                 _uiState.update { currentState ->
                     when (currentState) {
                         is Result.Success -> {
@@ -181,7 +210,9 @@ class SecuritySettingsViewModel @Inject constructor(
                                 isPrivacyModeEnabled = status.isPrivacyModeEnabled,
                                 isRequireAuthForSend = status.isRequireAuthForSend,
                                 availableAuthMethods = status.availableMethods,
-                                isAnyAuthEnabled = status.isAnyAuthEnabled
+                                isAnyAuthEnabled = status.isAnyAuthEnabled,
+                                isNotificationsEnabled = notificationsEnabled,
+                                isNotificationRationaleSilenced = rationaleSilenced
                             )
                             Result.Success(updatedState)
                         }
@@ -193,7 +224,9 @@ class SecuritySettingsViewModel @Inject constructor(
                                     isPrivacyModeEnabled = status.isPrivacyModeEnabled,
                                     isRequireAuthForSend = status.isRequireAuthForSend,
                                     availableAuthMethods = status.availableMethods,
-                                    isAnyAuthEnabled = status.isAnyAuthEnabled
+                                    isAnyAuthEnabled = status.isAnyAuthEnabled,
+                                    isNotificationsEnabled = notificationsEnabled,
+                                    isNotificationRationaleSilenced = rationaleSilenced
                                 )
                             )
                         }
@@ -201,7 +234,7 @@ class SecuritySettingsViewModel @Inject constructor(
                 }
             }
             is Result.Error -> {
-                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(authResult.message))
             }
             Result.Loading -> { /* Ignore */ }
         }

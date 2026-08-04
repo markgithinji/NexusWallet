@@ -10,19 +10,16 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class NotificationService @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val securityRepository: SecurityRepository
 ) {
-
-    companion object {
-        const val CHANNEL_ID_TRANSACTIONS = "transactions_channel"
-        const val NOTIFICATION_ID_BASE = 1000
-    }
 
     init {
         createNotificationChannels()
@@ -43,11 +40,13 @@ class NotificationService @Inject constructor(
         }
     }
 
-    fun showTransactionNotification(
+    suspend fun showTransactionNotification(
         title: String,
         message: String,
         txHash: String
     ) {
+        if (!securityRepository.isNotificationsEnabled()) return
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID_TRANSACTIONS)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
@@ -64,5 +63,10 @@ class NotificationService @Inject constructor(
                 notify(NOTIFICATION_ID_BASE + (txHash.hashCode() % 10000), builder.build())
             }
         }
+    }
+
+    companion object {
+        const val CHANNEL_ID_TRANSACTIONS = "transactions_channel"
+        const val NOTIFICATION_ID_BASE = 1000
     }
 }

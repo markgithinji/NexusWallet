@@ -1,5 +1,10 @@
 package com.example.nexuswallet.feature.settings.data.repository
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -11,6 +16,7 @@ import com.example.nexuswallet.feature.core.data.util.safeGet
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
 import com.example.nexuswallet.feature.settings.domain.repository.SecurityRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -185,6 +191,46 @@ class SecurityRepositoryImpl @Inject constructor(
             }
         }
 
+    override suspend fun setNotificationsEnabled(enabled: Boolean) {
+        safeEdit {
+            dataStore.edit { preferences ->
+                preferences[NOTIFICATIONS_ENABLED_KEY] = enabled
+            }
+        }
+    }
+
+    override suspend fun isNotificationsEnabled(): Boolean {
+        return safeGet(defaultValue = false) {
+            val preferences = dataStore.data.first()
+            preferences[NOTIFICATIONS_ENABLED_KEY] ?: false
+        } ?: false
+    }
+
+    override fun observeNotificationsEnabled(): Flow<Boolean> =
+        dataStore.data.map { preferences ->
+            preferences[NOTIFICATIONS_ENABLED_KEY] ?: false
+        }
+
+    override suspend fun setNotificationRationaleSilenced(silenced: Boolean) {
+        safeEdit {
+            dataStore.edit { preferences ->
+                preferences[NOTIFICATION_RATIONALE_SILENCED_KEY] = silenced
+            }
+        }
+    }
+
+    override suspend fun isNotificationRationaleSilenced(): Boolean {
+        return safeGet(defaultValue = false) {
+            val preferences = dataStore.data.first()
+            preferences[NOTIFICATION_RATIONALE_SILENCED_KEY] ?: false
+        } ?: false
+    }
+
+    override fun observeNotificationRationaleSilenced(): Flow<Boolean> =
+        dataStore.data.map { preferences ->
+            preferences[NOTIFICATION_RATIONALE_SILENCED_KEY] ?: false
+        }
+
     override suspend fun clearAll() {
         safeEdit {
             dataStore.edit { preferences ->
@@ -201,5 +247,7 @@ class SecurityRepositoryImpl @Inject constructor(
         private val REQUIRE_AUTH_FOR_SEND_KEY = booleanPreferencesKey("require_auth_for_send")
         private val SELECTED_CURRENCY_KEY = stringPreferencesKey("selected_currency")
         private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
+        private val NOTIFICATIONS_ENABLED_KEY = booleanPreferencesKey("notifications_enabled")
+        private val NOTIFICATION_RATIONALE_SILENCED_KEY = booleanPreferencesKey("notification_rationale_silenced")
     }
 }

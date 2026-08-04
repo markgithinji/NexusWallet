@@ -334,6 +334,11 @@
     <string name="transaction_security_description">Require authentication for outgoing transactions</string>
     <string name="always_require">Always Require</string>
     <string name="standard">Standard</string>
+    <string name="notifications_title">Notifications</string>
+    <string name="notifications_description">Get alerts for transaction confirmations</string>
+    <string name="enable_notifications_title">Enable Notifications</string>
+    <string name="notifications_rationale_message">Nexus Wallet uses notifications to alert you when your transactions are confirmed on the blockchain. This helps you track your funds in real-time.</string>
+    <string name="grant_permission">Grant Permission</string>
 
     <!-- Backup Screen -->
     <string name="decrypting_recovery_phrase">Decrypting recovery phrase&#8230;</string>

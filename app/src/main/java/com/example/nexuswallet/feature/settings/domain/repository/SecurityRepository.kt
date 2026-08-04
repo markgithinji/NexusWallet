@@ -36,5 +36,14 @@ interface SecurityRepository {
     suspend fun getThemeMode(): ThemeMode
     fun observeThemeMode(): Flow<ThemeMode>
 
+    // Notifications
+    suspend fun setNotificationsEnabled(enabled: Boolean)
+    suspend fun isNotificationsEnabled(): Boolean
+    fun observeNotificationsEnabled(): Flow<Boolean>
+
+    suspend fun setNotificationRationaleSilenced(silenced: Boolean)
+    suspend fun isNotificationRationaleSilenced(): Boolean
+    fun observeNotificationRationaleSilenced(): Flow<Boolean>
+
     suspend fun clearAll()
 }

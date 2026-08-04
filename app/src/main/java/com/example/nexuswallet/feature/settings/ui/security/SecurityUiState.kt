@@ -8,5 +8,7 @@ data class SecurityUiState(
     val isPrivacyModeEnabled: Boolean = false,
     val isRequireAuthForSend: Boolean = false,
     val availableAuthMethods: List<AuthMethod> = emptyList(),
-    val isAnyAuthEnabled: Boolean = false
+    val isAnyAuthEnabled: Boolean = false,
+    val isNotificationsEnabled: Boolean = false,
+    val isNotificationRationaleSilenced: Boolean = false
 )
