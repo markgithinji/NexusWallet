@@ -70,19 +70,22 @@ class ValidateSolanaSendUseCase @Inject constructor(
         }
 
         // All validations passed
-        return SendValidationResult(isValid = true)
+        val result = SendValidationResult(isValid = true)
+        
+        // Add a warning if sending to a known program address
+        if (KNOWN_PROGRAM_IDS.contains(toAddress)) {
+            return result.copy(addressWarning = "Warning: This address belongs to a known Solana Program. Sending funds here may result in loss of access unless the program supports it.")
+        }
+
+        return result
     }
 
     private fun validateSolanaAddress(address: String): SendValidationResult {
         return try {
             // sol4k's PublicKey constructor validates the address format
-            // It will throw an exception if the address is invalid
             PublicKey(address)
-
-            // If we get here, the address is valid
             SendValidationResult(isValid = true)
         } catch (e: Exception) {
-            logger.w(TAG, "Invalid Solana address: $address", e)
             SendValidationResult(
                 isValid = false,
                 addressError = "Invalid Solana address format"
@@ -92,5 +95,15 @@ class ValidateSolanaSendUseCase @Inject constructor(
 
     companion object {
         private const val TAG = "ValidateSolanaSendUC"
+        
+        private val KNOWN_PROGRAM_IDS = setOf(
+            "11111111111111111111111111111111", // System Program
+            "TokenkegQFEZ9iYVz3kn7p5LpLxyG99m966F6LxhS", // Token Program
+            "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL", // Associated Token Program
+            "Config1111111111111111111111111111111111111", // Config Program
+            "Stake11111111111111111111111111111111111111", // Stake Program
+            "Vote111111111111111111111111111111111111111", // Vote Program
+            "BPFLoaderUpgradeab1e11111111111111111111111", // BPF Loader
+        )
     }
 }

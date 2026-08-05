@@ -417,6 +417,7 @@ fun TransactionReviewScreen(
                 selectedToken = selectedToken,
                 networkName = fullNetworkName,
                 validationErrors = if (sendError != null) listOf(sendError!!) else emptyList(),
+                validationWarnings = listOfNotNull(solanaState.value.validationResult.addressWarning),
                 onCopyAddress = { address ->
                     copyToClipboard(context, address, addressCopied)
                 },
@@ -467,6 +468,7 @@ fun TransactionReviewContent(
     selectedToken: EVMToken? = null,
     networkName: String? = null,
     validationErrors: List<String> = emptyList(),
+    validationWarnings: List<String> = emptyList(),
     onCopyAddress: (String) -> Unit,
     onViewOnExplorer: (String, String) -> Unit
 ) {
@@ -518,6 +520,57 @@ fun TransactionReviewContent(
                                 text = "• $error",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Show validation warnings if any
+        if (validationWarnings.isNotEmpty()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.warning.copy(alpha = 0.2f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.warning.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Error,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.warning,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Note:",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        validationWarnings.forEach { warning ->
+                            Text(
+                                text = "• $warning",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 2.dp)
                             )
                         }
