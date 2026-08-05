@@ -215,7 +215,11 @@ fun BitcoinSendScreen(
                         showMaxDialog = true
                     },
                     errorMessage = errorState.amountErrorMessage,
-                    focusRequester = amountFocusRequester
+                    focusRequester = amountFocusRequester,
+                    isFiatMode = state.isFiatMode,
+                    onModeToggle = {
+                        viewModel.handleEvent(BitcoinSendEvent.ToggleFiatMode(it))
+                    }
                 )
 
                 // Fee Selection

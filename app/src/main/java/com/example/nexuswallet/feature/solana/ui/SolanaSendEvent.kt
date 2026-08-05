@@ -8,4 +8,5 @@ sealed class SolanaSendEvent {
     data class FeeLevelChanged(val feeLevel: FeeLevel) : SolanaSendEvent()
     object Validate : SolanaSendEvent()
     object ClearError : SolanaSendEvent()
+    data class ToggleFiatMode(val isFiatMode: Boolean) : SolanaSendEvent()
 }

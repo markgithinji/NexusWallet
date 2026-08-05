@@ -9,4 +9,5 @@ sealed class EVMSendEvent {
     data class FeeLevelChanged(val feeLevel: FeeLevel) : EVMSendEvent()
     object Validate : EVMSendEvent()
     object ClearError : EVMSendEvent()
+    data class ToggleFiatMode(val isFiatMode: Boolean) : EVMSendEvent()
 }

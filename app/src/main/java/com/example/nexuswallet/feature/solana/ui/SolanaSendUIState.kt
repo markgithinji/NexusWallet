@@ -34,5 +34,6 @@ data class SolanaSendUIState(
     val addressBookEntries: List<AddressBookEntry> = emptyList(),
     val error: String? = null,
     val step: String = "",
-    val isValid: Boolean = false
+    val isValid: Boolean = false,
+    val isFiatMode: Boolean = false
 )

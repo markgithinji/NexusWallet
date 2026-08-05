@@ -58,6 +58,7 @@ class BitcoinSendViewModel @Inject constructor(
                 is BitcoinSendEvent.UpdateAmount -> updateAmount(event.amount)
                 is BitcoinSendEvent.UpdateFeeLevel -> updateFeeLevel(event.feeLevel)
                 is BitcoinSendEvent.SwitchNetwork -> switchNetwork(event.network)
+                is BitcoinSendEvent.ToggleFiatMode -> _state.update { it.copy(isFiatMode = event.isFiatMode) }
             }
         }
     }

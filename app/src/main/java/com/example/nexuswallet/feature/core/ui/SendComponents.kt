@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.core.ui
 
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -576,13 +577,40 @@ fun SendAmountInput(
     coinColor: Color,
     onMaxClick: () -> Unit,
     errorMessage: String? = null,
-    focusRequester: FocusRequester = FocusRequester()
+    focusRequester: FocusRequester = FocusRequester(),
+    isFiatMode: Boolean = false,
+    onModeToggle: (Boolean) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
     var focused by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(focused) {
         onFocusChange(focused)
+    }
+
+    // Determine what to show in the text field vs the "equivalent" label
+    val displayValue = if (isFiatMode) {
+        // If in fiat mode, the 'amount' from VM is crypto, so we show its USD value in the field
+        if (amount.isEmpty()) "" else try {
+            val crypto = amount.toBigDecimal()
+            val usd = crypto.toDouble() * fiatRate
+            if (usd == 0.0) "" else String.format(Locale.US, "%.2f", usd)
+        } catch (e: Exception) { "" }
+    } else {
+        amount
+    }
+
+    val equivalentLabel = if (amount.isEmpty()) "" else {
+        try {
+            val amountValue = amount.toBigDecimal()
+            if (isFiatMode) {
+                "≈ ${amountValue.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} $symbol"
+            } else {
+                val usdAmount = amountValue.toDouble() * fiatRate
+                "≈ $${String.format(Locale.US, "%.2f", usdAmount)} USD"
+            }
+        } catch (e: Exception) { "" }
     }
 
     Card(
@@ -638,10 +666,23 @@ fun SendAmountInput(
             ) {
                 Box(modifier = Modifier.weight(1f)) {
                     OutlinedTextField(
-                        value = amount,
+                        value = displayValue,
                         onValueChange = { newValue ->
                             if (newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
-                                onAmountChange(newValue)
+                                if (isFiatMode) {
+                                    // Convert USD input back to crypto for the ViewModel
+                                    val cryptoValue = try {
+                                        if (newValue.isEmpty()) "" else {
+                                            val usd = newValue.toDouble()
+                                            if (fiatRate > 0) {
+                                                BigDecimal(usd / fiatRate).setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+                                            } else "0"
+                                        }
+                                    } catch (e: Exception) { "" }
+                                    onAmountChange(cryptoValue)
+                                } else {
+                                    onAmountChange(newValue)
+                                }
                             }
                         },
                         modifier = Modifier
@@ -652,7 +693,7 @@ fun SendAmountInput(
                             },
                         placeholder = {
                             Text(
-                                stringResource(R.string.amount_placeholder),
+                                if (isFiatMode) "0.00" else stringResource(R.string.amount_placeholder),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                 maxLines = 1
@@ -661,11 +702,16 @@ fun SendAmountInput(
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         isError = errorMessage != null,
+                        prefix = {
+                            if (isFiatMode) {
+                                Text("$", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        },
                         trailingIcon = {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (amount.isNotEmpty()) {
+                                if (displayValue.isNotEmpty()) {
                                     IconButton(
                                         onClick = { onAmountChange("") },
                                         modifier = Modifier.size(32.dp)
@@ -678,10 +724,11 @@ fun SendAmountInput(
                                         )
                                     }
                                 }
+
                                 Text(
-                                    text = symbol,
+                                    text = if (isFiatMode) "USD" else symbol,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium,
+                                    fontWeight = FontWeight.Bold,
                                     color = coinColor,
                                     modifier = Modifier.padding(end = 12.dp)
                                 )
@@ -691,8 +738,6 @@ fun SendAmountInput(
                             focusedBorderColor = if (errorMessage == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                             cursorColor = MaterialTheme.colorScheme.primary,
-                            focusedTrailingIconColor = coinColor,
-                            unfocusedTrailingIconColor = coinColor
                         ),
                         keyboardOptions = KeyboardOptions.Default.copy(
                             keyboardType = KeyboardType.Decimal,
@@ -726,11 +771,18 @@ fun SendAmountInput(
                 }
             }
 
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(20.dp)
-                    .padding(start = 12.dp, top = 4.dp)
+                    .padding(horizontal = 4.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onModeToggle(!isFiatMode)
+                    }
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 if (errorMessage != null) {
                     Text(
@@ -738,30 +790,40 @@ fun SendAmountInput(
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
-                }
-            }
-
-            if (amount.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val amountValue = try {
-                    BigDecimal(amount)
-                } catch (e: Exception) {
-                    BigDecimal.ZERO
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
 
-                val usdAmount = amountValue.toDouble() * fiatRate
-
-                Text(
-                    text = "≈ $${String.format(Locale.US, "%.2f", usdAmount)} USD",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.End,
-                    maxLines = 1
-                )
+                if (equivalentLabel.isNotEmpty()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier
+                            .background(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = equivalentLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.End,
+                            maxLines = 1
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.CompareArrows,
+                            contentDescription = "Switch unit",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
         }
     }

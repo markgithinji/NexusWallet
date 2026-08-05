@@ -212,7 +212,11 @@ fun SolanaSendScreen(
                         showMaxDialog = true
                     },
                     errorMessage = errorState.amountErrorMessage,
-                    focusRequester = amountFocusRequester
+                    focusRequester = amountFocusRequester,
+                    isFiatMode = state.isFiatMode,
+                    onModeToggle = {
+                        viewModel.onEvent(SolanaSendEvent.ToggleFiatMode(it))
+                    }
                 )
 
                 // Fee Selection

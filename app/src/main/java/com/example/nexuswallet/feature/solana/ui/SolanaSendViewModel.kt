@@ -109,6 +109,9 @@ class SolanaSendViewModel @Inject constructor(
                 _state.update { it.copy(feeLevel = event.feeLevel) }
                 loadFeeEstimate()
             }
+            is SolanaSendEvent.ToggleFiatMode -> {
+                _state.update { it.copy(isFiatMode = event.isFiatMode) }
+            }
             SolanaSendEvent.Validate -> validate()
             SolanaSendEvent.ClearError -> clearError()
         }

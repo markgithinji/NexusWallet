@@ -306,7 +306,11 @@ fun EthereumSendScreen(
                         showMaxDialog = true
                     },
                     errorMessage = errorState.amountErrorMessage,
-                    focusRequester = amountFocusRequester
+                    focusRequester = amountFocusRequester,
+                    isFiatMode = state.isFiatMode,
+                    onModeToggle = {
+                        viewModel.onEvent(EVMSendEvent.ToggleFiatMode(it))
+                    }
                 )
 
                 // Fee Selection

@@ -406,6 +406,8 @@ class EVMSendViewModel @Inject constructor(
                     loadFeeEstimate()
                 }
 
+                is EVMSendEvent.ToggleFiatMode -> _uiState.update { it.copy(isFiatMode = event.isFiatMode) }
+
                 EVMSendEvent.Validate -> validateInputs()
                 EVMSendEvent.ClearError -> clearError()
             }

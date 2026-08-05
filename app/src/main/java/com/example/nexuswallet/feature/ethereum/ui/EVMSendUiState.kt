@@ -34,5 +34,6 @@ data class EVMSendUiState(
     val balancesLoaded: Boolean = false,
     val addressBookEntries: List<AddressBookEntry> = emptyList(),
     val error: String? = null,
-    val step: String = ""
+    val step: String = "",
+    val isFiatMode: Boolean = false
 )

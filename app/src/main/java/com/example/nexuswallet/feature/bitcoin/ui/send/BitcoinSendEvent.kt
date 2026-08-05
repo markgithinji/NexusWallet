@@ -10,4 +10,5 @@ sealed class BitcoinSendEvent {
     data class UpdateAmount(val amount: String) : BitcoinSendEvent()
     data class UpdateFeeLevel(val feeLevel: FeeLevel) : BitcoinSendEvent()
     data class SwitchNetwork(val network: BitcoinNetwork) : BitcoinSendEvent()
+    data class ToggleFiatMode(val isFiatMode: Boolean) : BitcoinSendEvent()
 }
