@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.solana.ui
 
+import com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
@@ -167,7 +168,9 @@ class SolanaSendViewModel @Inject constructor(
             val result = getFeeUseCase(
                 feeLevel = currentState.feeLevel,
                 network = currentState.network,
-                toAddress = currentState.toAddress.takeIf { it.isNotBlank() }
+                fromAddress = currentState.walletAddress,
+                toAddress = currentState.toAddress.takeIf { it.isNotBlank() },
+                lamports = currentState.amountValue.multiply(BigDecimal(LAMPORTS_PER_SOL)).toLong()
             )
             
             if (result is Result.Success) {

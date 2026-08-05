@@ -69,15 +69,21 @@ class SendSolanaUseCase @Inject constructor(
 
         // 1. Get fee estimate
         logger.d(TAG, "Step 1: Requesting fee estimate | network=${coin.network.name}")
-        val feeResult = solanaBlockchainRepository.getFeeEstimate(feeLevel, coin.network)
+        val lamports = amount.multiply(BigDecimal(LAMPORTS_PER_SOL)).toLong()
+        
+        val feeResult = solanaBlockchainRepository.getFeeEstimate(
+            feeLevel = feeLevel, 
+            network = coin.network,
+            fromAddress = solanaCoin.address,
+            toAddress = toAddress,
+            lamports = lamports
+        )
         if (feeResult is Result.Error) {
             logger.e(TAG, "Fee estimation failed | error=${feeResult.message}")
             return@withContext Result.Error(feeResult.message)
         }
         val feeEstimate = (feeResult as Result.Success).data
         logger.d(TAG, "Fee estimate received | totalFee=${feeEstimate.feeSol} SOL")
-
-        val lamports = amount.multiply(BigDecimal(LAMPORTS_PER_SOL)).toLong()
 
         // 2. Get private key
         val keyType = when (coin.network) {

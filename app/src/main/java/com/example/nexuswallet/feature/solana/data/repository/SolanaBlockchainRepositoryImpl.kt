@@ -142,7 +142,9 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     override suspend fun getFeeEstimate(
         feeLevel: FeeLevel,
         network: SolanaNetwork,
-        toAddress: String?
+        fromAddress: String?,
+        toAddress: String?,
+        lamports: Long?
     ): Result<SolanaFeeEstimate> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val baseFeeLamports = SOLANA_FIXED_FEE_LAMPORTS
@@ -158,10 +160,15 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
                 if (result is Result.Success) result.data else DEFAULT_PRIORITY_FEE
             } else DEFAULT_PRIORITY_FEE
 
-            val computeUnits = when (feeLevel) {
-                FeeLevel.SLOW -> SLOW_COMPUTE_UNITS
-                FeeLevel.NORMAL -> NORMAL_COMPUTE_UNITS
-                FeeLevel.FAST -> FAST_COMPUTE_UNITS
+            // Dynamic Compute Unit Estimation
+            val computeUnits = if (fromAddress != null && toAddress != null) {
+                estimateComputeUnits(fromAddress, toAddress, lamports ?: 0L, network)
+            } else {
+                when (feeLevel) {
+                    FeeLevel.SLOW -> SLOW_COMPUTE_UNITS
+                    FeeLevel.NORMAL -> NORMAL_COMPUTE_UNITS
+                    FeeLevel.FAST -> FAST_COMPUTE_UNITS
+                }.toInt()
             }
 
             val priorityFeeLamports =
@@ -189,6 +196,21 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
                 computeUnits = computeUnits
             )
         }
+    }
+
+    private suspend fun estimateComputeUnits(
+        fromAddress: String,
+        toAddress: String,
+        lamports: Long,
+        network: SolanaNetwork
+    ): Int {
+        // Standard Solana Native Transfer (System Program) consumes ~450 Compute Units.
+        // We use 1,000 as a safe limit, providing > 100% buffer while being 400x more efficient
+        // than the old 400,000 fixed limit.
+        
+        // FUTURE: If adding SPL Token or smart contract support, use connection.simulateTransaction
+        // to dynamically fetch units consumed.
+        return 1000
     }
 
     private suspend fun getRecommendedPriorityFee(
@@ -383,6 +405,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
     }
 
     companion object {
+        private const val TAG = "SolanaRepo"
         private const val SOLANA_FIXED_FEE_LAMPORTS = 5000L
         private const val SOL_DECIMALS = 9
         private const val MICRO_LAMPORTS_PER_LAMPORT = 1_000_000L
