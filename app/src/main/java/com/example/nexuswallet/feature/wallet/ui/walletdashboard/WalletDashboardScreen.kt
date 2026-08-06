@@ -261,7 +261,7 @@ fun WalletDashboardScreen(
                             .padding(top = scaffoldPadding.calculateTopPadding())
                             .padding(bottom = padding.calculateBottomPadding()),
                         onCreateWallet = onNavigateToCreateWallet,
-                        onImportWallet = onNavigateToImportWallet,
+                        onImportWallet = { showAddOptions = true },
                         isError = true,
                         errorMessage = state.message,
                         onRetry = {
@@ -277,7 +277,7 @@ fun WalletDashboardScreen(
                                 .padding(top = scaffoldPadding.calculateTopPadding())
                                 .padding(bottom = padding.calculateBottomPadding()),
                             onCreateWallet = onNavigateToCreateWallet,
-                            onImportWallet = onNavigateToImportWallet
+                            onImportWallet = { showAddOptions = true }
                         )
                     } else {
                         DashboardContent(
@@ -1170,10 +1170,10 @@ fun EmptyWalletsContent(
                         stringResource(R.string.failed_to_load_wallets)
                     else
                         stringResource(R.string.create_first_wallet_subtitle),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    lineHeight = 24.sp
+                    lineHeight = 20.sp
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
