@@ -1,6 +1,9 @@
 package com.example.nexuswallet.feature.ethereum.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.AnimatedVisibility
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -88,6 +91,12 @@ fun EthereumSendScreen(
     var amountHasBeenFocused by remember { mutableStateOf(false) }
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        if (result.contents != null) {
+            viewModel.onEvent(EVMSendEvent.ToAddressChanged(result.contents))
+        }
+    }
 
     // Initialize ViewModel
     LaunchedEffect(Unit) {
@@ -278,6 +287,16 @@ fun EthereumSendScreen(
                     onPaste = { pastedText ->
                         addressTouched = true
                         viewModel.onEvent(EVMSendEvent.ToAddressChanged(pastedText))
+                    },
+                    onScanClick = {
+                        val options = ScanOptions().apply {
+                            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                            setPrompt("Scan Ethereum Address")
+                            setBeepEnabled(false)
+                            setOrientationLocked(true)
+                            setCaptureActivity(com.example.nexuswallet.feature.core.ui.ScannerActivity::class.java)
+                        }
+                        scanLauncher.launch(options)
                     },
                     onAddressBookClick = { showAddressBook = true },
                     focusRequester = addressFocusRequester

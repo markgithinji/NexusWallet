@@ -415,6 +415,7 @@ fun SendAddressInput(
     isValid: Boolean = true,
     errorMessage: String? = null,
     onPaste: (String) -> Unit,
+    onScanClick: () -> Unit = {},
     onAddressBookClick: () -> Unit = {},
     focusRequester: FocusRequester = FocusRequester()
 ) {
@@ -494,7 +495,7 @@ fun SendAddressInput(
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(
-                    onClick = { /* Scan QR code */ },
+                    onClick = onScanClick,
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.primary
                     )

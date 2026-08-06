@@ -29,6 +29,13 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".feature.core.ui.ScannerActivity"
+            android:screenOrientation="portrait"
+            android:stateNotNeeded="true"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            tools:replace="android:screenOrientation" />
+
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"

@@ -1,6 +1,9 @@
 package com.example.nexuswallet.feature.solana.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.animateContentSize
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,6 +73,12 @@ fun SolanaSendScreen(
     var amountHasBeenFocused by remember { mutableStateOf(false) }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        if (result.contents != null) {
+            viewModel.onEvent(SolanaSendEvent.ToAddressChanged(result.contents))
+        }
+    }
 
     // Initialize ViewModel
     LaunchedEffect(Unit) {
@@ -184,6 +193,16 @@ fun SolanaSendScreen(
                     onPaste = { pastedText ->
                         addressTouched = true
                         viewModel.onEvent(SolanaSendEvent.ToAddressChanged(pastedText))
+                    },
+                    onScanClick = {
+                        val options = ScanOptions().apply {
+                            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                            setPrompt("Scan Solana Address")
+                            setBeepEnabled(false)
+                            setOrientationLocked(true)
+                            setCaptureActivity(com.example.nexuswallet.feature.core.ui.ScannerActivity::class.java)
+                        }
+                        scanLauncher.launch(options)
                     },
                     onAddressBookClick = { showAddressBook = true },
                     focusRequester = addressFocusRequester

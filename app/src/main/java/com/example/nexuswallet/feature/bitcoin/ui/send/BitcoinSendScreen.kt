@@ -1,6 +1,9 @@
 package com.example.nexuswallet.feature.bitcoin.ui.send
 
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.animateContentSize
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,6 +73,12 @@ fun BitcoinSendScreen(
     var amountHasBeenFocused by remember { mutableStateOf(false) }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        if (result.contents != null) {
+            viewModel.handleEvent(BitcoinSendEvent.UpdateAddress(result.contents))
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.handleEvent(BitcoinSendEvent.Initialize(walletId, coin as BitcoinCoin))
@@ -187,6 +196,16 @@ fun BitcoinSendScreen(
                     onPaste = { pastedText ->
                         addressTouched = true
                         viewModel.handleEvent(BitcoinSendEvent.UpdateAddress(pastedText))
+                    },
+                    onScanClick = {
+                        val options = ScanOptions().apply {
+                            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                            setPrompt("Scan Bitcoin Address")
+                            setBeepEnabled(false)
+                            setOrientationLocked(true)
+                            setCaptureActivity(com.example.nexuswallet.feature.core.ui.ScannerActivity::class.java)
+                        }
+                        scanLauncher.launch(options)
                     },
                     onAddressBookClick = { showAddressBook = true },
                     focusRequester = addressFocusRequester
