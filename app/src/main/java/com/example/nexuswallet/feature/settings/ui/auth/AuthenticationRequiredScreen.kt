@@ -64,6 +64,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.nexuswallet.ui.theme.warning
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -143,8 +144,11 @@ fun AuthenticationRequiredScreen(
         viewModel.uiEffect.collect { effect ->
             when (effect) {
                 is AuthUiEffect.Authenticated -> {
-                    onAuthenticated()
+                    // UX: Small delay to allow PIN dialog or biometric success UI 
+                    // to dismiss cleanly before navigating and starting the next screen's loading
+                    delay(300)
                     viewModel.clearState()
+                    onAuthenticated()
                 }
             }
         }

@@ -91,8 +91,10 @@ class AuthenticationViewModel @Inject constructor(
                 is Result.Success -> {
                     if (verifyResult.data) {
                         recordAuthenticationUseCase()
-                        _uiEffect.emit(AuthUiEffect.Authenticated)
+                        // SECURITY/UX: Dismiss dialog BEFORE emitting navigation effect
+                        // to ensure clean transition
                         _showPinDialog.value = false
+                        _uiEffect.emit(AuthUiEffect.Authenticated)
                     } else {
                         _errorMessage.value = "Incorrect PIN"
                     }
@@ -133,6 +135,7 @@ class AuthenticationViewModel @Inject constructor(
     }
 
     fun clearState() {
+        _showPinDialog.value = false
         _errorMessage.value = null
         _authRequest.value = null
         _cryptoObject.value = null

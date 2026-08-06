@@ -33,12 +33,13 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Offline-first architecture** with caching for balances, transactions, and wallet data; works without internet connection
 - **Self-hosted architecture** with local-only key storage, no backend server
 - **Secure transaction signing** without exposing private keys to the UI layer
+- **Mnemonic Memory Hardening** - Uses **CharArray** throughout the derivation chain to ensure seed phrases never linger in the JVM String Pool, providing defense-in-depth against memory dump attacks.
 - **Authentication middleware** for protected routes requiring biometric verification
 
 ### 🌐 **Multi-Blockchain Integration & Real-time Data**
 - **Bitcoin** - Blockstream API integration for mainnet and testnet with RPC fallback
-- **Ethereum** - Etherscan API + Web3j JSON-RPC for mainnet and Sepolia testnet
-- **Solana** - Helius RPC API + Sol4k library for mainnet and devnet transactions
+- **Ethereum** - Etherscan API + Web3j JSON-RPC with Sepolia testnet support and optimized gas handling for USDT.
+- **Solana** - Helius RPC API + Sol4k with localized priority fee estimation and robust transaction confirmation polling.
 - **ERC-20 Token Support** - USDC and USDT with proper decimal handling (6 decimals for USDC/USDT)
 - **SPL Token Support** - Solana token program integration for SPL tokens
 - **Real-time price updates** - WebSocket connection to Binance WebSocket API for live cryptocurrency prices
@@ -59,9 +60,11 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **MVVM with Repository pattern** for clean separation of concerns
 - **StateFlow/SharedFlow** for reactive state management
 - **Hilt dependency injection** for testable and modular code
+- **Fee UI Mapping** - Centralized mapping layer to decouple network-specific fee estimates from the presentation layer, ensuring UI consistency across BTC, ETH, and SOL.
 - **Navigation Component** with typed navigation and authentication middleware
 - **Room Database** for offline-first caching of balances, transactions, and wallets
 - **Coroutine Flows** for reactive data streams from database and network
+- **Unified Transaction Flow** - Generic state management for multi-chain transaction lifecycles using a single source of truth for loading, success, and error states.
 - **Type-safe serialization** with Kotlinx Serialization
 
 ---
@@ -80,6 +83,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 
 ### Transaction Capabilities
 - **Send transactions** - Native ETH, BTC, SOL, and ERC-20/SPL tokens
+- **Real-time Fiat Conversion** - Bidirectional input support (Crypto ⇄ Fiat) with instant calculation and a discoverable UI toggle for seamless switching.
 - **Receive transactions** - Generate QR codes for receiving addresses
 - **Transaction review screen** - Review transaction details before sending
 - **Fee level selection** - Slow, Normal, Fast priority fees
@@ -96,7 +100,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Transaction Security** - Optional setting to require re-authentication for every outgoing transaction
 - **Portable Backups** - Industry-standard AES-GCM encryption for wallet exports, allowing secure migration between devices using a PIN-derived key
 - **Secure Key Storage** - Keys are secured in the hardware-backed **TEE or StrongBox** and are biometric-locked; they are never stored in plain text and never touch non-secure RAM.
-- **Transaction Validation** - Real-time address validation, balance checks, and self-send protection
+- **Transaction Validation** - Real-time address validation (including Solana PDA/Program detection), balance checks, and self-send protection.
 - **Secure Data Management** - Option to wipe all sensitive data and keys from the device
 
 ### Portfolio & Settings
