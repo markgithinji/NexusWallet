@@ -516,40 +516,39 @@ private fun ChartLoadingState() {
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Line placeholder
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .shimmer()
+        // Real-world matched chart skeleton
+        PriceChartSkeleton(
+            modifier = Modifier.shimmer()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Open/Change/Close row placeholder
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            repeat(3) {
-                Column {
-                    Box(
-                        modifier = Modifier
-                            .width(40.dp)
-                            .height(12.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .shimmer()
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .width(80.dp)
-                            .height(16.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .shimmer()
-                    )
-                }
+            // Open label
+            Column {
+                Box(modifier = Modifier.width(40.dp).height(12.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(modifier = Modifier.width(80.dp).height(18.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+            }
+            
+            // Change label
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(modifier = Modifier.width(40.dp).height(12.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(modifier = Modifier.size(32.dp).clip(CircleShape).shimmer())
+            }
+
+            // Close label
+            Column(horizontalAlignment = Alignment.End) {
+                Box(modifier = Modifier.width(40.dp).height(12.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(modifier = Modifier.width(80.dp).height(18.dp).clip(RoundedCornerShape(4.dp)).shimmer())
             }
         }
     }
@@ -675,7 +674,7 @@ private fun ShimmerNewsItem() {
                 .fillMaxWidth(0.8f)
                 .height(16.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .shimmer()
         )
         Spacer(modifier = Modifier.height(4.dp))
         Box(
@@ -683,7 +682,7 @@ private fun ShimmerNewsItem() {
                 .fillMaxWidth(0.5f)
                 .height(12.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .shimmer()
         )
     }
 }

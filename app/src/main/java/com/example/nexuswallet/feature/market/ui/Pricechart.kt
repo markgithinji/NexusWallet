@@ -1,6 +1,8 @@
 package com.example.nexuswallet.feature.market.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -276,5 +278,112 @@ fun PriceLineChart(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun PriceChartSkeleton(
+    modifier: Modifier = Modifier
+) {
+    // UX: Use a slightly stronger color for the skeleton elements
+    val baseColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+    val gridColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.05f)
+    
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(200.dp)
+            .clip(RoundedCornerShape(8.dp))
+    ) {
+        val width = size.width
+        val height = size.height
+
+        val paddingBottom = 60f
+        val paddingTop = 40f
+        val paddingLeft = 110f
+
+        val chartBottom = height - paddingBottom
+        val chartTop = paddingTop
+        val usableHeight = chartBottom - chartTop
+
+        // 1. Draw Grid Lines first (Background)
+        val yAxisSteps = 4
+        for (i in 1..yAxisSteps) {
+            val y = chartBottom - (i * (usableHeight / yAxisSteps))
+            drawLine(
+                color = gridColor,
+                start = Offset(paddingLeft, y),
+                end = Offset(width, y),
+                strokeWidth = 1f
+            )
+        }
+
+        // 2. Draw Axes
+        drawLine(
+            color = baseColor,
+            start = Offset(paddingLeft, chartBottom),
+            end = Offset(width, chartBottom),
+            strokeWidth = 2f
+        )
+        drawLine(
+            color = baseColor,
+            start = Offset(paddingLeft, chartTop - 10f),
+            end = Offset(paddingLeft, chartBottom),
+            strokeWidth = 2f
+        )
+
+        // 3. Draw a wavy skeleton line
+        val segments = 50
+        val stepX = (width - paddingLeft - 20f) / (segments - 1)
+        
+        // Deterministic but volatile pattern
+        fun getYFactor(i: Int): Float {
+            val base = 0.5f
+            val wave1 = kotlin.math.sin(i * 0.4f) * 0.15f
+            val wave2 = kotlin.math.cos(i * 0.9f) * 0.08f
+            val trend = (i.toFloat() / segments) * 0.1f
+            return (base + wave1 + wave2 + trend).coerceIn(0.2f, 0.85f)
+        }
+        
+        val path = Path()
+        path.moveTo(paddingLeft, chartBottom - (usableHeight * getYFactor(0)))
+        
+        for (i in 1 until segments) {
+            val x = paddingLeft + (i * stepX)
+            val y = chartBottom - (usableHeight * getYFactor(i))
+            
+            val prevX = paddingLeft + ((i - 1) * stepX)
+            val prevY = chartBottom - (usableHeight * getYFactor(i - 1))
+
+            path.cubicTo(
+                prevX + stepX / 2f, prevY,
+                prevX + stepX / 2f, y,
+                x, y
+            )
+        }
+
+        drawPath(
+            path = path,
+            color = baseColor.copy(alpha = 0.4f), 
+            style = Stroke(
+                width = 2.5.dp.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
+        )
+        
+        // Add area fill
+        val fillPath = Path().apply {
+            addPath(path)
+            lineTo(width - 20f, chartBottom)
+            lineTo(paddingLeft, chartBottom)
+            close()
+        }
+        
+        drawPath(
+            path = fillPath,
+            color = baseColor.copy(alpha = 0.1f),
+            style = Fill
+        )
     }
 }
