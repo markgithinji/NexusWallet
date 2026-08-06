@@ -83,6 +83,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 
 ### Transaction Capabilities
 - **Send transactions** - Native ETH, BTC, SOL, and ERC-20/SPL tokens
+- **QR Code Scanning** - Modern, portrait-mode camera integration for instant recipient address entry with real-time multi-chain validation.
 - **Real-time Fiat Conversion** - Bidirectional input support (Crypto ⇄ Fiat) with instant calculation and a discoverable UI toggle for seamless switching.
 - **Receive transactions** - Generate QR codes for receiving addresses
 - **Transaction review screen** - Review transaction details before sending
@@ -118,6 +119,7 @@ It allows users to **create wallets, manage multiple cryptocurrencies, send and 
 - **Destructive action confirmation** - Confirmation dialogs for dangerous actions
 - **Pull-to-refresh** - Manual refresh of balances and transactions
 - **Skeleton loading states** - Smooth loading experience
+- **QR Code Integration** - Quick-scan for sending funds and high-quality generation for receiving addresses.
 - **Error handling** - User-friendly error messages with retry options
 - **Copy to clipboard** - Easy copying of addresses and transaction hashes
 - **Share transactions** - Share transaction details with others

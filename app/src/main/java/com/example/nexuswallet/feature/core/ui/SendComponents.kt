@@ -1504,13 +1504,19 @@ fun TokenSelectorDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onTokenSelected(token) },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = if (isSelected)
                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                             else
-                                MaterialTheme.colorScheme.surfaceVariant
-                        )
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+                        ),
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        ),
+                        elevation = CardDefaults.cardElevation(0.dp)
                     ) {
                         Row(
                             modifier = Modifier
@@ -1683,13 +1689,14 @@ fun AddressBookSelectorDialog(
                                 shape = RoundedCornerShape(16.dp),
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
-                                        alpha = 0.5f
+                                        alpha = 0.8f
                                     )
                                 ),
                                 border = BorderStroke(
                                     1.dp,
-                                    MaterialTheme.colorScheme.outlineVariant
-                                )
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                                ),
+                                elevation = CardDefaults.cardElevation(0.dp)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(12.dp),

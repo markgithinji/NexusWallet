@@ -1286,10 +1286,11 @@ private fun AssetSelectionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickableSingle { onClick() },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
@@ -1300,8 +1301,9 @@ private fun AssetSelectionRow(
         ) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape),
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
