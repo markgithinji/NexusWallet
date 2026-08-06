@@ -34,6 +34,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
@@ -649,29 +651,78 @@ fun TokenSparkline(
     Canvas(modifier = modifier) {
         if (prices.size < 2) return@Canvas
 
-        val minPrice = prices.min()
-        val maxPrice = prices.max()
+        // Downsample points if there are too many (e.g., more than 50) for a smoother sparkline
+        val maxDisplayPoints = 50
+        val sampledPrices = if (prices.size > maxDisplayPoints) {
+            val step = prices.size / maxDisplayPoints
+            prices.filterIndexed { index, _ -> index % step == 0 }.take(maxDisplayPoints)
+        } else {
+            prices
+        }
+
+        val minPrice = sampledPrices.min()
+        val maxPrice = sampledPrices.max()
         val range = (maxPrice - minPrice).coerceAtLeast(0.00000001)
 
         val width = size.width
         val height = size.height
 
         val path = Path()
-        prices.forEachIndexed { index, price ->
-            val x = index * (width / (prices.size - 1))
+        val points = sampledPrices.mapIndexed { index, price ->
+            val x = index * (width / (sampledPrices.size - 1))
             val y = height - ((price - minPrice) / range * height).toFloat()
-
-            if (index == 0) {
-                path.moveTo(x, y)
-            } else {
-                path.lineTo(x, y)
-            }
+            Offset(x, y)
         }
 
+        if (points.isEmpty()) return@Canvas
+
+        path.moveTo(points[0].x, points[0].y)
+
+        for (i in 0 until points.size - 1) {
+            val p0 = points[i]
+            val p1 = points[i + 1]
+            
+            // Cubic Bezier curve for smoothing
+            // Control points are calculated as half-way between points on the X axis
+            val controlPoint1 = Offset(p0.x + (p1.x - p0.x) / 2f, p0.y)
+            val controlPoint2 = Offset(p0.x + (p1.x - p0.x) / 2f, p1.y)
+            
+            path.cubicTo(
+                controlPoint1.x, controlPoint1.y,
+                controlPoint2.x, controlPoint2.y,
+                p1.x, p1.y
+            )
+        }
+
+        // Draw the line
         drawPath(
             path = path,
             color = color,
-            style = Stroke(width = 1.5.dp.toPx())
+            style = Stroke(
+                width = 2.dp.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
+        )
+        
+        // Add a subtle area fill below the line
+        val fillPath = Path().apply {
+            addPath(path)
+            lineTo(width, height)
+            lineTo(0f, height)
+            close()
+        }
+        
+        drawPath(
+            path = fillPath,
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    color.copy(alpha = 0.2f),
+                    color.copy(alpha = 0f)
+                ),
+                startY = 0f,
+                endY = height
+            )
         )
     }
 }

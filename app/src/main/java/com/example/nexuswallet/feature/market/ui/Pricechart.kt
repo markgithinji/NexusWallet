@@ -9,7 +9,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -139,43 +142,61 @@ fun PriceLineChart(
         }
 
         // =========================
-        // AREA FILL
+        // AREA FILL (SMOOTHED)
         // =========================
 
-        val fillPath = Path().apply {
-
-            val first = points.first()
-            val last = points.last()
-
-            moveTo(first.x, chartBottom)
-            lineTo(first.x, first.y)
-
-            for (i in 1 until points.size) {
-                lineTo(points[i].x, points[i].y)
+        val graphPath = Path().apply {
+            if (points.isNotEmpty()) {
+                moveTo(points[0].x, points[0].y)
+                for (i in 0 until points.size - 1) {
+                    val p0 = points[i]
+                    val p1 = points[i + 1]
+                    val controlPoint1 = Offset(p0.x + (p1.x - p0.x) / 2f, p0.y)
+                    val controlPoint2 = Offset(p0.x + (p1.x - p0.x) / 2f, p1.y)
+                    cubicTo(
+                        controlPoint1.x, controlPoint1.y,
+                        controlPoint2.x, controlPoint2.y,
+                        p1.x, p1.y
+                    )
+                }
             }
+        }
 
-            lineTo(last.x, chartBottom)
-            close()
+        val fillPath = Path().apply {
+            addPath(graphPath)
+            if (points.isNotEmpty()) {
+                lineTo(points.last().x, chartBottom)
+                lineTo(points.first().x, chartBottom)
+                close()
+            }
         }
 
         drawPath(
             path = fillPath,
-            color = lineColor.copy(alpha = 0.1f),
+            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                colors = listOf(
+                    lineColor.copy(alpha = 0.2f),
+                    lineColor.copy(alpha = 0f)
+                ),
+                startY = chartTop,
+                endY = chartBottom
+            ),
             style = Fill
         )
 
         // =========================
-        // LINE GRAPH
+        // LINE GRAPH (SMOOTHED)
         // =========================
 
-        for (i in 0 until points.size - 1) {
-            drawLine(
-                color = lineColor,
-                start = points[i],
-                end = points[i + 1],
-                strokeWidth = 3f
+        drawPath(
+            path = graphPath,
+            color = lineColor,
+            style = Stroke(
+                width = 3.dp.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
             )
-        }
+        )
 
         // Start / End points
         drawCircle(
