@@ -48,6 +48,8 @@ class SendSolanaUseCase @Inject constructor(
         feeLevel: FeeLevel,
         coin: SolanaCoin,
         note: String?,
+        tokenMint: String? = null,
+        tokenDecimals: Int? = null,
         cipher: Cipher? = null
     ): Result<SendSolanaResult> = withContext(ioDispatcher) {
         logger.d(TAG, "Starting Solana send | walletId=$walletId, amount=$amount SOL, target=${toAddress.take(8)}...")
@@ -132,15 +134,18 @@ class SendSolanaUseCase @Inject constructor(
             return@withContext Result.Error("Private key doesn't match wallet")
         }
 
-        // 3. Create and sign transaction
+        // 3. Create and sign transaction locally
         logger.d(TAG, "Step 3: Creating and signing transaction locally")
+        
         val signedTxResult = solanaBlockchainRepository.createAndSignTransaction(
             fromKeypair = keypair,
             toAddress = toAddress,
             lamports = lamports,
             network = coin.network,
             priorityFeeRate = feeEstimate.priorityFeeRate,
-            computeUnitLimit = feeEstimate.computeUnits
+            computeUnitLimit = feeEstimate.computeUnits,
+            tokenMint = tokenMint,
+            tokenDecimals = tokenDecimals
         )
 
         if (signedTxResult is Result.Error) {

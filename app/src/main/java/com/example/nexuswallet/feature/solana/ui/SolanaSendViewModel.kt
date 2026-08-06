@@ -83,6 +83,15 @@ class SolanaSendViewModel @Inject constructor(
                 return@launch
             }
 
+            // Populate available tokens from wallet
+            val availableSplTokens = coin.splTokens
+
+            _state.update { 
+                it.copy(
+                    availableSplTokens = availableSplTokens
+                )
+            }
+
             // Initial balance check
             refreshBalance()
             loadFiatRate()
@@ -109,6 +118,19 @@ class SolanaSendViewModel @Inject constructor(
                 _state.update { it.copy(feeLevel = event.feeLevel) }
                 loadFeeEstimate()
             }
+            is SolanaSendEvent.SelectToken -> {
+                _state.update { 
+                    it.copy(
+                        selectedSplToken = event.token,
+                        isNativeSol = event.token == null,
+                        amount = "",
+                        amountValue = BigDecimal.ZERO
+                    ) 
+                }
+                validate()
+                loadFeeEstimate()
+                loadFiatRate()
+            }
             is SolanaSendEvent.ToggleFiatMode -> {
                 _state.update { it.copy(isFiatMode = event.isFiatMode) }
             }
@@ -123,22 +145,17 @@ class SolanaSendViewModel @Inject constructor(
         loadFeeEstimate()
     }
 
-    private fun validate() {
-        val currentState = _state.value
-        val validationResult = validateSolanaSendUseCase(
-            toAddress = currentState.toAddress,
-            amountValue = currentState.amountValue,
-            walletAddress = currentState.walletAddress,
-            balance = currentState.balance,
-            feeEstimate = currentState.feeEstimate
-        )
-        
-        _state.update { it.copy(validationResult = validationResult, isValid = validationResult.isValid) }
-    }
-
     private fun loadFiatRate() {
         viewModelScope.launch {
-            when (val result = marketRepository.getTokenDetails("solana")) {
+            val currentState = _state.value
+            val tokenId = if (currentState.isNativeSol) "solana" else {
+                when (currentState.selectedSplToken?.symbol?.lowercase()) {
+                    "usdc" -> "usd-coin"
+                    "tether", "usdt" -> "tether"
+                    else -> "solana"
+                }
+            }
+            when (val result = marketRepository.getTokenDetails(tokenId)) {
                 is Result.Success -> {
                     _state.update { it.copy(fiatRate = result.data.currentPrice) }
                 }
@@ -151,9 +168,31 @@ class SolanaSendViewModel @Inject constructor(
         viewModelScope.launch {
             val currentState = _state.value
             val coin = currentState.coin ?: return@launch
-            val result = solanaRepository.getBalance(coin.address, currentState.network)
+            
+            // 1. Always fetch Native SOL balance for fees/rent
+            val solResult = solanaRepository.getBalance(coin.address, currentState.network)
+            if (solResult is Result.Success) {
+                _state.update { it.copy(solBalance = solResult.data) }
+            }
+
+            // 2. Fetch selected asset balance
+            val result = if (currentState.isNativeSol) {
+                solResult
+            } else {
+                val token = currentState.selectedSplToken!!
+                solanaRepository.getTokenBalance(coin.address, token.mintAddress, currentState.network)
+            }
+            
             if (result is Result.Success) {
-                _state.update { it.copy(balance = result.data, isLoading = false) }
+                val balance = result.data
+                val symbol = if (currentState.isNativeSol) "SOL" else currentState.selectedSplToken!!.symbol
+                _state.update { 
+                    it.copy(
+                        balance = balance, 
+                        balanceFormatted = "${balance.stripTrailingZeros().toPlainString()} $symbol",
+                        isLoading = false 
+                    ) 
+                }
                 validate()
             }
         }
@@ -168,12 +207,14 @@ class SolanaSendViewModel @Inject constructor(
             
             _state.update { it.copy(isFeeLoading = true) }
             
+            val lamports = currentState.amountValue.multiply(BigDecimal(LAMPORTS_PER_SOL)).toLong()
+            
             val result = getFeeUseCase(
                 feeLevel = currentState.feeLevel,
                 network = currentState.network,
                 fromAddress = currentState.walletAddress,
                 toAddress = currentState.toAddress.takeIf { it.isNotBlank() },
-                lamports = currentState.amountValue.multiply(BigDecimal(LAMPORTS_PER_SOL)).toLong()
+                lamports = lamports
             )
             
             if (result is Result.Success) {
@@ -183,6 +224,21 @@ class SolanaSendViewModel @Inject constructor(
                 _state.update { it.copy(isFeeLoading = false) }
             }
         }
+    }
+
+    private fun validate() {
+        val currentState = _state.value
+        val validationResult = validateSolanaSendUseCase(
+            toAddress = currentState.toAddress,
+            amountValue = currentState.amountValue,
+            walletAddress = currentState.walletAddress,
+            balance = currentState.balance,
+            solBalance = currentState.solBalance,
+            feeEstimate = currentState.feeEstimate,
+            selectedToken = currentState.selectedSplToken
+        )
+        
+        _state.update { it.copy(validationResult = validationResult, isValid = validationResult.isValid) }
     }
 
     fun send(cipher: Cipher? = null, onSuccess: (String) -> Unit = {}) {
@@ -199,6 +255,8 @@ class SolanaSendViewModel @Inject constructor(
                 feeLevel = currentState.feeLevel,
                 coin = currentCoin,
                 note = null,
+                tokenMint = currentState.selectedSplToken?.mintAddress,
+                tokenDecimals = currentState.selectedSplToken?.decimals,
                 cipher = cipher
             )
 

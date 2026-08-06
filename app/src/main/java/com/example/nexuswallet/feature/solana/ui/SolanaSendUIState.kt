@@ -20,7 +20,8 @@ data class SolanaSendUIState(
     val availableSplTokens: List<SPLToken> = emptyList(),
     val selectedSplToken: SPLToken? = null,
     val isNativeSol: Boolean = true,
-    val balance: BigDecimal = BigDecimal.ZERO,
+    val balance: BigDecimal = BigDecimal.ZERO, // Selected asset balance
+    val solBalance: BigDecimal = BigDecimal.ZERO, // Native SOL balance for fees
     val balanceFormatted: String = "0 SOL",
     val fiatRate: Double = 0.0,
     val toAddress: String = "",

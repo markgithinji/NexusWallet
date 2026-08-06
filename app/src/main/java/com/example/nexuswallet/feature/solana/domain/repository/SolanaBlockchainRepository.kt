@@ -46,7 +46,9 @@ interface SolanaBlockchainRepository {
         lamports: Long,
         network: SolanaNetwork,
         priorityFeeRate: Long = 0,
-        computeUnitLimit: Int = 0
+        computeUnitLimit: Int = 0,
+        tokenMint: String? = null,
+        tokenDecimals: Int? = null
     ): Result<SolanaSignedTransaction>
 
     suspend fun broadcastTransaction(

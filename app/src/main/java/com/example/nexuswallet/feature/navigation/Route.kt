@@ -51,7 +51,8 @@ data class ReviewRoute(
     val toAddress: String,
     val amount: String,
     val feeLevel: String? = null,
-    val coin: Coin
+    val coin: Coin,
+    val tokenMint: String? = null
 ) : Route
 
 @Serializable

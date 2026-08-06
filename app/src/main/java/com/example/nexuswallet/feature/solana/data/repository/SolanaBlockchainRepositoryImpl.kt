@@ -252,7 +252,9 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         lamports: Long,
         network: SolanaNetwork,
         priorityFeeRate: Long,
-        computeUnitLimit: Int
+        computeUnitLimit: Int,
+        tokenMint: String?,
+        tokenDecimals: Int?
     ): Result<SolanaSignedTransaction> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val connection = getRpcConnection(network)
@@ -272,7 +274,50 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
             }
 
             // 3. Add Transfer Instruction
-            instructions.add(TransferInstruction(fromKeypair.publicKey, receiver, lamports))
+            if (tokenMint == null) {
+                // Native SOL transfer
+                instructions.add(TransferInstruction(fromKeypair.publicKey, receiver, lamports))
+            } else {
+                // SPL Token transfer
+                val mint = PublicKey(tokenMint)
+                
+                // Recipient's Associated Token Account
+                val (receiverAta, _) = PublicKey.findProgramDerivedAddress(
+                    holderAddress = receiver,
+                    tokenMintAddress = mint
+                )
+
+                // Check if receiver's ATA exists
+                val receiverAtaInfo = connection.getAccountInfo(receiverAta)
+                if (receiverAtaInfo == null) {
+                    // Bundle instruction to create ATA
+                    instructions.add(
+                        org.sol4k.instruction.CreateAssociatedTokenAccountInstruction(
+                            payer = fromKeypair.publicKey,
+                            associatedToken = receiverAta,
+                            owner = receiver,
+                            mint = mint
+                        )
+                    )
+                }
+
+                // Sender's Associated Token Account
+                val (senderAta, _) = PublicKey.findProgramDerivedAddress(
+                    holderAddress = fromKeypair.publicKey,
+                    tokenMintAddress = mint
+                )
+
+                instructions.add(
+                    org.sol4k.instruction.SplTransferInstruction(
+                        from = senderAta,
+                        to = receiverAta,
+                        mint = mint,
+                        owner = fromKeypair.publicKey,
+                        amount = lamports,
+                        decimals = tokenDecimals ?: 0
+                    )
+                )
+            }
 
             val message = TransactionMessage.newMessage(
                 feePayer = fromKeypair.publicKey,

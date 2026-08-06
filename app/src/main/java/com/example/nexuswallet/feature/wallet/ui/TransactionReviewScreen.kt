@@ -100,6 +100,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
+import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.ui.common.shimmer
@@ -125,6 +126,7 @@ fun TransactionReviewScreen(
     amount: String,
     feeLevel: String? = null,
     coin: Coin,
+    tokenMint: String? = null,
     ethereumViewModel: EVMSendViewModel = hiltViewModel(),
     solanaViewModel: SolanaSendViewModel = hiltViewModel(),
     bitcoinReviewViewModel: BitcoinReviewViewModel = hiltViewModel()
@@ -290,6 +292,17 @@ fun TransactionReviewScreen(
 
             is SolanaCoin -> {
                 solanaViewModel.init(walletId, coin)
+                
+                // If a specific SPL token is being sent, select it in the ViewModel
+                tokenMint?.let { mint ->
+                    snapshotFlow { solanaState.value.availableSplTokens }
+                        .filter { it.isNotEmpty() }
+                        .firstOrNull()
+                    
+                    val token = solanaState.value.availableSplTokens.find { it.mintAddress == mint }
+                    token?.let { solanaViewModel.onEvent(SolanaSendEvent.SelectToken(it)) }
+                }
+
                 solanaViewModel.onEvent(SolanaSendEvent.ToAddressChanged(toAddress))
                 solanaViewModel.onEvent(SolanaSendEvent.AmountChanged(amount))
                 feeLevel?.let {
@@ -307,6 +320,7 @@ fun TransactionReviewScreen(
     }
 
     val selectedToken = if (coin is EVMToken) ethereumState.value.selectedToken else null
+    val selectedSolToken = if (coin is SolanaCoin) solanaState.value.selectedSplToken else null
 
     val feeEstimate = when (coin) {
         is BitcoinCoin -> bitcoinState.value.feeEstimate
@@ -415,6 +429,7 @@ fun TransactionReviewScreen(
                 iconRes = iconRes,
                 tokenIconRes = tokenIconRes,
                 selectedToken = selectedToken,
+                selectedSolToken = selectedSolToken,
                 networkName = fullNetworkName,
                 validationErrors = if (sendError != null) listOf(sendError!!) else emptyList(),
                 validationWarnings = listOfNotNull(solanaState.value.validationResult.addressWarning),
@@ -466,6 +481,7 @@ fun TransactionReviewContent(
     iconRes: Int,
     tokenIconRes: Int? = null,
     selectedToken: EVMToken? = null,
+    selectedSolToken: SPLToken? = null,
     networkName: String? = null,
     validationErrors: List<String> = emptyList(),
     validationWarnings: List<String> = emptyList(),
@@ -617,7 +633,7 @@ fun TransactionReviewContent(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = selectedToken?.symbol ?: coin.symbol,
+                        text = selectedToken?.symbol ?: selectedSolToken?.symbol ?: coin.symbol,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Medium,
                         color = coinColor,

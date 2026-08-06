@@ -211,8 +211,8 @@ fun NavGraphBuilder.walletGraph(
                     walletId = args.walletId,
                     coin = coin,
                     onNavigateUp = { navController.navigateUp() },
-                    onNavigateToReview = { walletId, toAddress, amount, feeLevel, c ->
-                        navController.navigate(ReviewRoute(walletId, toAddress, amount, feeLevel?.name, c))
+                    onNavigateToReview = { walletId, toAddress, amount, feeLevel, c, tokenMint ->
+                        navController.navigate(ReviewRoute(walletId, toAddress, amount, feeLevel?.name, c, tokenMint))
                     }
                 )
             }
@@ -227,6 +227,7 @@ fun NavGraphBuilder.walletGraph(
             amount = args.amount,
             feeLevel = args.feeLevel ?: FeeLevel.NORMAL.name,
             coin = args.coin,
+            tokenMint = args.tokenMint,
             onNavigateUp = { navController.navigateUp() },
             onDone = { walletId, coin ->
                 navController.navigate(CoinDetailRoute(walletId, coin)) {

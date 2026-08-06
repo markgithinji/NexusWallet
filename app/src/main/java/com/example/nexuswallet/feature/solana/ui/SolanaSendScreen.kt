@@ -42,23 +42,27 @@ import com.example.nexuswallet.feature.core.ui.SendBalanceCard
 import com.example.nexuswallet.feature.core.ui.SendBottomBar
 import com.example.nexuswallet.feature.core.ui.SendFeeSelection
 import com.example.nexuswallet.feature.core.ui.SendTopBar
+import com.example.nexuswallet.feature.core.ui.SolanaTokenSelectorCard
+import com.example.nexuswallet.feature.core.ui.SolanaTokenSelectorDialog
 import com.example.nexuswallet.feature.core.ui.rememberSendErrorState
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
+import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import com.example.nexuswallet.ui.theme.solanaLight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SolanaSendScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToReview: (String, String, String, FeeLevel?, Coin) -> Unit,
+    onNavigateToReview: (String, String, String, FeeLevel?, Coin, String?) -> Unit,
     walletId: String,
     coin: Coin,
     viewModel: SolanaSendViewModel = hiltViewModel()
 ) {
     var showMaxDialog by remember { mutableStateOf(false) }
     var showNetworkSelector by remember { mutableStateOf(false) }
+    var showTokenSelector by remember { mutableStateOf(false) }
     var showAddressBook by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
@@ -129,6 +133,20 @@ fun SolanaSendScreen(
                 )
             }
 
+            // Token Selector Dialog
+            if (showTokenSelector && state.availableSplTokens.isNotEmpty()) {
+                SolanaTokenSelectorDialog(
+                    availableTokens = state.availableSplTokens,
+                    selectedToken = state.selectedSplToken,
+                    nativeSymbol = "SOL",
+                    onTokenSelected = { token ->
+                        viewModel.onEvent(SolanaSendEvent.SelectToken(token))
+                        showTokenSelector = false
+                    },
+                    onDismiss = { showTokenSelector = false }
+                )
+            }
+
             // Address Book Dialog
             if (showAddressBook) {
                 com.example.nexuswallet.feature.core.ui.AddressBookSelectorDialog(
@@ -155,6 +173,15 @@ fun SolanaSendScreen(
                     currentNetwork = state.network,
                     onClick = { showNetworkSelector = true }
                 )
+
+                // Token Selector (if multiple assets available)
+                if (state.availableSplTokens.isNotEmpty()) {
+                    SolanaTokenSelectorCard(
+                        selectedToken = state.selectedSplToken,
+                        coinSymbol = "SOL",
+                        onClick = { showTokenSelector = true }
+                    )
+                }
 
                 // Balance Card
                 SendBalanceCard(
@@ -225,7 +252,7 @@ fun SolanaSendScreen(
                         }
                     },
                     balance = state.balance,
-                    symbol = coin.symbol,
+                    symbol = state.selectedSplToken?.symbol ?: "SOL",
                     coinColor = solanaLight,
                     onMaxClick = {
                         amountTouched = true
@@ -262,7 +289,8 @@ fun SolanaSendScreen(
                         state.toAddress,
                         state.amount,
                         state.feeLevel,
-                        state.coin ?: coin
+                        state.coin ?: coin,
+                        state.selectedSplToken?.mintAddress
                     )
                 },
                 modifier = Modifier.align(Alignment.BottomCenter)
