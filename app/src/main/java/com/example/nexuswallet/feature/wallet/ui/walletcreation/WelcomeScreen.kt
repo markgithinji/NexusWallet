@@ -97,6 +97,7 @@ fun WelcomeScreen(
     val decryptedBundle by viewModel.decryptedBundle.collectAsStateWithLifecycle()
     val restoreSelection by viewModel.restoreSelection.collectAsStateWithLifecycle()
     val pinVerifyPurpose by viewModel.pinVerifyPurpose.collectAsStateWithLifecycle()
+    val pinSetupError by viewModel.pinSetupError.collectAsStateWithLifecycle()
     val authRequest by viewModel.authRequest.collectAsStateWithLifecycle()
     val cryptoObject by viewModel.cryptoObject.collectAsStateWithLifecycle()
 
@@ -366,7 +367,9 @@ fun WelcomeScreen(
         subtitle = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE)
             "Enter the PIN used to encrypt this backup file"
         else stringResource(R.string.confirm_pin_subtitle),
+        errorMessage = pinSetupError,
         onPinEntered = viewModel::onPinVerified,
+        onTyping = viewModel::clearPinError,
         onDismiss = viewModel::cancelPinSetup
     )
 

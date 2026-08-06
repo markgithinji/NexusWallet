@@ -101,8 +101,12 @@ fun AuthenticationRequiredScreen(
             showDialog = showPinDialog,
             title = "Enter PIN",
             subtitle = "Enter your PIN to continue",
+            errorMessage = errorMessage,
             onPinEntered = { pin ->
                 viewModel.verifyPin(pin)
+            },
+            onTyping = {
+                viewModel.clearErrorMessage()
             },
             onDismiss = {
                 viewModel.cancelPinEntry()

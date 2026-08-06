@@ -681,6 +681,10 @@ class SecuritySettingsViewModel @Inject constructor(
         pendingBackupPin = null
     }
 
+    fun clearPinError() {
+        _pinSetupError.value = null
+    }
+
     fun clearError() {
         _uiState.update { currentState ->
             when (currentState) {

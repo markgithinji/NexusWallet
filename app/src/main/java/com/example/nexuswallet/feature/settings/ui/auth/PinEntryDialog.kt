@@ -54,16 +54,25 @@ fun PinEntryDialog(
     showDialog: Boolean,
     title: String = "Enter PIN",
     subtitle: String = "Enter your PIN to continue",
+    errorMessage: String? = null,
     maxLength: Int = PIN_MAX_LENGTH,
     onPinEntered: (String) -> Unit,
+    onTyping: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     if (!showDialog) return
 
     var pin by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val haptic = LocalHapticFeedback.current
+
+    // Clear PIN if error appears
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            pin = ""
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
 
     // Auto-request focus when dialog appears
     LaunchedEffect(showDialog) {
@@ -147,10 +156,13 @@ fun PinEntryDialog(
                             // Provide haptic feedback for each digit entered
                             if (newValue.length > pin.length) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                // UX: Clear error as soon as user starts typing a new PIN
+                                if (errorMessage != null) {
+                                    onTyping()
+                                }
                             }
 
                             pin = newValue
-                            error = false
 
                             // Auto-submit when PIN reaches max length
                             if (newValue.length == maxLength) {
@@ -175,7 +187,7 @@ fun PinEntryDialog(
                         )
                     },
                     singleLine = true,
-                    isError = error,
+                    isError = errorMessage != null,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline,
@@ -185,25 +197,32 @@ fun PinEntryDialog(
                     )
                 )
 
-                // Error message
-                if (error) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Error,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                        Text(
-                            text = "Incorrect PIN. Please try again.",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.labelSmall
-                        )
+                // Error message area with fixed height to prevent layout shifts
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(32.dp)
+                        .padding(top = 8.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (errorMessage != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Error,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                            Text(
+                                text = errorMessage,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
                     }
                 }
 
@@ -213,7 +232,6 @@ fun PinEntryDialog(
                 TextButton(
                     onClick = {
                         pin = ""
-                        error = false
                         onDismiss()
                     },
                     modifier = Modifier.fillMaxWidth()

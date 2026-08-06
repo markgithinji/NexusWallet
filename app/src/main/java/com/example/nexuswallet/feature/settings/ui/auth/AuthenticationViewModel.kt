@@ -126,8 +126,12 @@ class AuthenticationViewModel @Inject constructor(
         _authRequest.value = System.currentTimeMillis()
     }
 
-    fun setErrorMessage(message: String) {
+    fun setErrorMessage(message: String?) {
         _errorMessage.value = message
+    }
+
+    fun clearErrorMessage() {
+        _errorMessage.value = null
     }
 
     fun cancelPinEntry() {

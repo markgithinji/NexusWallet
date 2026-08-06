@@ -371,7 +371,9 @@ fun SecuritySettingsScreen(
         subtitle = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE)
             "Enter the PIN used to encrypt this backup file"
         else stringResource(R.string.confirm_pin_subtitle),
+        errorMessage = pinSetupError,
         onPinEntered = viewModel::onPinVerified,
+        onTyping = viewModel::clearPinError,
         onDismiss = viewModel::cancelPinSetup
     )
 
