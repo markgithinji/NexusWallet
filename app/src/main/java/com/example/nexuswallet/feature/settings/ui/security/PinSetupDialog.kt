@@ -49,6 +49,7 @@ import androidx.compose.ui.window.Dialog
 
 import androidx.compose.ui.res.stringResource
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.rememberHapticHelper
 
 private const val PIN_LENGTH = 6
 
@@ -68,7 +69,7 @@ fun PinSetupDialog(
     var confirmPin by remember { mutableStateOf("") }
     var isConfirmStep by remember { mutableStateOf(false) }
     var localError by remember { mutableStateOf<String?>(null) }
-    val haptic = LocalHapticFeedback.current
+    val haptic = rememberHapticHelper()
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -145,7 +146,7 @@ fun PinSetupDialog(
                                 
                                 // Provide haptic feedback for each digit entered
                                 if (newValue.length > currentPinValue.length) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    haptic.tick()
                                 }
 
                                 if (!isConfirmStep) {
@@ -238,18 +239,20 @@ fun PinSetupDialog(
 
                     Button(
                         onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            haptic.click()
                             if (!isConfirmStep) {
                                 if (pin.length == PIN_LENGTH) {
                                     isConfirmStep = true
                                 } else {
                                     localError = pinLengthError
+                                    haptic.error()
                                 }
                             } else {
                                 if (pin == confirmPin) {
                                     onPinSet(pin)
                                 } else {
                                     localError = pinMismatchError
+                                    haptic.error()
                                 }
                             }
                         },

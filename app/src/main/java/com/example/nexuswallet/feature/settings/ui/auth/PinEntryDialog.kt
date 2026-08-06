@@ -45,6 +45,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.example.nexuswallet.feature.core.ui.rememberHapticHelper
 
 private const val PIN_MAX_LENGTH = 6
 
@@ -64,13 +65,13 @@ fun PinEntryDialog(
 
     var pin by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
-    val haptic = LocalHapticFeedback.current
+    val haptic = rememberHapticHelper()
 
     // Clear PIN if error appears
     LaunchedEffect(errorMessage) {
         if (errorMessage != null) {
             pin = ""
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            haptic.error()
         }
     }
 
@@ -155,7 +156,7 @@ fun PinEntryDialog(
                         if (newValue.length <= maxLength && newValue.all { it.isDigit() }) {
                             // Provide haptic feedback for each digit entered
                             if (newValue.length > pin.length) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptic.tick()
                                 // UX: Clear error as soon as user starts typing a new PIN
                                 if (errorMessage != null) {
                                     onTyping()

@@ -63,6 +63,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.example.nexuswallet.feature.core.ui.rememberHapticHelper
 import com.example.nexuswallet.ui.theme.warning
 import kotlinx.coroutines.delay
 
@@ -344,7 +345,7 @@ private fun AuthenticationMethodsCard(
     biometricHardwareAvailable: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val haptic = LocalHapticFeedback.current
+    val haptic = rememberHapticHelper()
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -369,7 +370,7 @@ private fun AuthenticationMethodsCard(
 
             Button(
                 onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    haptic.click()
                     onBiometricClick()
                 },
                 modifier = Modifier
@@ -454,7 +455,7 @@ private fun AuthenticationMethodsCard(
 
                 OutlinedButton(
                     onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        haptic.click()
                         onPinClick()
                     },
                     modifier = Modifier

@@ -100,6 +100,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
+import com.example.nexuswallet.feature.core.ui.rememberHapticHelper
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -583,7 +584,7 @@ fun SendAmountInput(
 ) {
     val focusManager = LocalFocusManager.current
     var focused by remember { mutableStateOf(false) }
-    val haptic = LocalHapticFeedback.current
+    val haptic = rememberHapticHelper()
 
     LaunchedEffect(focused) {
         onFocusChange(focused)
@@ -777,7 +778,7 @@ fun SendAmountInput(
                     .padding(horizontal = 4.dp, vertical = 4.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .clickable {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        haptic.click()
                         onModeToggle(!isFiatMode)
                     }
                     .padding(horizontal = 8.dp, vertical = 4.dp),
@@ -976,7 +977,7 @@ fun FeeLevelButton(
     color: Color,
     modifier: Modifier = Modifier
 ) {
-    val haptic = LocalHapticFeedback.current
+    val haptic = rememberHapticHelper()
     val text = level.displayName
     val icon = when (level) {
         FeeLevel.SLOW -> Icons.Outlined.Schedule
@@ -987,7 +988,7 @@ fun FeeLevelButton(
     Card(
         modifier = modifier
             .clickable {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                haptic.click()
                 onClick()
             },
         shape = RoundedCornerShape(12.dp),
@@ -1049,7 +1050,7 @@ fun SendBottomBar(
     error: String? = null,
     onSend: () -> Unit
 ) {
-    val haptic = LocalHapticFeedback.current
+    val haptic = rememberHapticHelper()
     Surface(
         modifier = modifier
             .fillMaxWidth(),
@@ -1073,7 +1074,7 @@ fun SendBottomBar(
 
             Button(
                 onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    haptic.click()
                     onSend()
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -1120,7 +1121,7 @@ fun MaxAmountDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    val haptic = LocalHapticFeedback.current
+    val haptic = rememberHapticHelper()
     val fee = when (feeEstimate) {
         is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull()
             ?: BigDecimal("0.00001")
@@ -1144,7 +1145,7 @@ fun MaxAmountDialog(
             Button(
                 onClick = {
                     if (!isInsufficient) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        haptic.click()
                         onConfirm(maxAmount.stripTrailingZeros().toPlainString())
                     } else {
                         onDismiss()
