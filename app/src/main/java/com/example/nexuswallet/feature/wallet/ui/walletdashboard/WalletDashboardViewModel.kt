@@ -105,7 +105,7 @@ class WalletDashboardViewModel @Inject constructor(
     private var priceRefreshJob: Job? = null
     private var lastPrices: Map<String, Double> = emptyMap()
     
-    // Performance & API optimization: Tracks the last time each network was auto-refreshed
+    // racks the last time each network was auto-refreshed
     // to prevent redundant calls from high-frequency blockchains (like Ethereum blocks every 12s).
     private val lastNetworkRefreshTimes = mutableMapOf<Network, Long>()
     private val REFRESH_COOLDOWN_MS = 60_000L // 1 minute cooldown for background auto-refreshes
@@ -323,7 +323,7 @@ class WalletDashboardViewModel @Inject constructor(
 
                 coroutineScope {
                     currentWallets.map { wallet ->
-                        // OPTIMIZATION: Skip processing for entire wallets that don't match the current network signal.
+                        // Skip processing for entire wallets that don't match the current network signal.
                         if (networkFilter != null) {
                             val matchesFilter = when (networkFilter) {
                                 is BitcoinNetwork -> wallet.bitcoinCoins.any { it.network == networkFilter }

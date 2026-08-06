@@ -91,7 +91,7 @@ class AuthenticationViewModel @Inject constructor(
                 is Result.Success -> {
                     if (verifyResult.data) {
                         recordAuthenticationUseCase()
-                        // SECURITY/UX: Dismiss dialog BEFORE emitting navigation effect
+                        // Dismiss dialog BEFORE emitting navigation effect
                         // to ensure clean transition
                         _showPinDialog.value = false
                         _uiEffect.emit(AuthUiEffect.Authenticated)

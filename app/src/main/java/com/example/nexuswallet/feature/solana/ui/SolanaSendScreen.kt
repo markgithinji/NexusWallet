@@ -35,6 +35,7 @@ import com.example.nexuswallet.feature.core.ui.ErrorMessage
 import com.example.nexuswallet.feature.core.ui.MaxAmountDialog
 import com.example.nexuswallet.feature.core.ui.NetworkSelectorCard
 import com.example.nexuswallet.feature.core.ui.NetworkSelectorDialog
+import com.example.nexuswallet.feature.core.ui.ScannerActivity
 import com.example.nexuswallet.feature.core.ui.SendAddressInput
 import com.example.nexuswallet.feature.core.ui.SendAmountInput
 import com.example.nexuswallet.feature.core.ui.SendBalanceCard
@@ -200,7 +201,7 @@ fun SolanaSendScreen(
                             setPrompt("Scan Solana Address")
                             setBeepEnabled(false)
                             setOrientationLocked(true)
-                            setCaptureActivity(com.example.nexuswallet.feature.core.ui.ScannerActivity::class.java)
+                            setCaptureActivity(ScannerActivity::class.java)
                         }
                         scanLauncher.launch(options)
                     },
