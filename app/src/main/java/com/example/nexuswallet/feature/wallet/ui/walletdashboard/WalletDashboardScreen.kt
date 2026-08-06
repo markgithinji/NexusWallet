@@ -1,5 +1,7 @@
 package com.example.nexuswallet.feature.wallet.ui.walletdashboard
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateContentSize
@@ -40,10 +42,13 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,6 +57,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -59,19 +65,23 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -85,21 +95,30 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
 import com.example.nexuswallet.feature.core.ui.NexusTextField
 import com.example.nexuswallet.feature.core.ui.clickableSingle
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
+import com.example.nexuswallet.feature.settings.ui.auth.PinEntryDialog
+import com.example.nexuswallet.feature.settings.ui.security.PinVerifyPurpose
+import com.example.nexuswallet.feature.settings.ui.security.RestoreSelectionDialog
+import com.example.nexuswallet.feature.settings.ui.security.SecurityOperationOverlay
+import com.example.nexuswallet.feature.settings.ui.security.SecuritySettingsViewModel
+import com.example.nexuswallet.feature.settings.ui.security.SecurityUiEffect
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.ui.common.AssetChip
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
+import com.example.nexuswallet.feature.wallet.ui.walletcreation.ImportOptionItem
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
 import com.example.nexuswallet.ui.theme.usdcLight
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
@@ -111,7 +130,8 @@ fun WalletDashboardScreen(
     onNavigateToCreateWallet: () -> Unit,
     onNavigateToImportWallet: () -> Unit,
     padding: PaddingValues,
-    viewModel: WalletDashboardViewModel = hiltViewModel()
+    viewModel: WalletDashboardViewModel = hiltViewModel(),
+    securityViewModel: SecuritySettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val balances by viewModel.balances.collectAsStateWithLifecycle()
@@ -123,6 +143,21 @@ fun WalletDashboardScreen(
     val selectedCurrency by viewModel.selectedCurrency.collectAsStateWithLifecycle()
 
     var showRenameDialog by remember { mutableStateOf<Wallet?>(null) }
+    var showAddOptions by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Security states for backup restoration
+    val operationState by securityViewModel.operationState.collectAsStateWithLifecycle()
+    val showPinVerifyDialog by securityViewModel.showPinVerifyDialog.collectAsStateWithLifecycle()
+    val showRestoreSelectionDialog by securityViewModel.showRestoreSelectionDialog.collectAsStateWithLifecycle()
+    val decryptedBundle by securityViewModel.decryptedBundle.collectAsStateWithLifecycle()
+    val restoreSelection by securityViewModel.restoreSelection.collectAsStateWithLifecycle()
+    val pinVerifyPurpose by securityViewModel.pinVerifyPurpose.collectAsStateWithLifecycle()
+    val pinSetupError by securityViewModel.pinSetupError.collectAsStateWithLifecycle()
+    val authRequest by securityViewModel.authRequest.collectAsStateWithLifecycle()
+    val cryptoObject by securityViewModel.cryptoObject.collectAsStateWithLifecycle()
 
     LaunchedEffect(operationError) {
         operationError?.let {
@@ -146,12 +181,48 @@ fun WalletDashboardScreen(
         )
     }
 
+    // Setup file selection for backup restore
+    val selectBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            scope.launch {
+                try {
+                    val data = context.contentResolver.openInputStream(it)?.use { stream ->
+                        stream.readBytes()
+                    }
+                    if (data != null) {
+                        securityViewModel.onBackupFileSelected(data)
+                    }
+                } catch (e: Exception) {}
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        securityViewModel.uiEffect.collect { effect ->
+            when (effect) {
+                SecurityUiEffect.SelectBackupFile -> selectBackupLauncher.launch(arrayOf("*/*"))
+                SecurityUiEffect.RestoreSuccess -> viewModel.refresh()
+                else -> {}
+            }
+        }
+    }
+
+    BiometricAuthHandler(
+        authRequest = authRequest,
+        cryptoObject = cryptoObject,
+        subtitle = stringResource(R.string.authentication_required),
+        onSuccess = { result -> securityViewModel.onAuthSuccess(result.cryptoObject?.cipher) },
+        onError = { _, _ -> },
+        onDismiss = { securityViewModel.clearAuthRequest() }
+    )
+
     Scaffold(
         topBar = {
             Column {
                 DashboardTopBar(
-                    onCreateWallet = onNavigateToCreateWallet,
-                    onImportWallet = onNavigateToImportWallet
+                    onAddClick = { showAddOptions = true }
                 )
                 Box(
                     modifier = Modifier
@@ -246,18 +317,112 @@ fun WalletDashboardScreen(
                     InlineLoading(message = stringResource(R.string.processing))
                 }
             }
+            
+            SecurityOperationOverlay(operationState = operationState)
         }
+    }
+
+    if (showAddOptions) {
+        ModalBottomSheet(
+            onDismissRequest = { showAddOptions = false },
+            sheetState = sheetState,
+            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+            dragHandle = {
+                Box(
+                    modifier = Modifier
+                        .padding(vertical = 12.dp)
+                        .size(width = 40.dp, height = 4.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                )
+            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 48.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Add Wallet",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Create a new wallet or restore existing assets",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                ImportOptionItem(
+                    title = "Create New Wallet",
+                    description = "Generate a fresh 12-word recovery phrase",
+                    icon = Icons.Outlined.Add,
+                    onClick = {
+                        showAddOptions = false
+                        onNavigateToCreateWallet()
+                    }
+                )
+
+                ImportOptionItem(
+                    title = "Recovery Phrase",
+                    description = "Import using 12-word seed phrase",
+                    icon = Icons.Outlined.Shield,
+                    onClick = {
+                        showAddOptions = false
+                        onNavigateToImportWallet()
+                    }
+                )
+
+                ImportOptionItem(
+                    title = "Nexus Backup File",
+                    description = "Restore from an encrypted .bin file",
+                    icon = Icons.Outlined.FileOpen,
+                    onClick = {
+                        showAddOptions = false
+                        securityViewModel.handleRestoreBackupClick()
+                    }
+                )
+            }
+        }
+    }
+
+    PinEntryDialog(
+        showDialog = showPinVerifyDialog,
+        title = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE) "Enter Backup PIN" else stringResource(R.string.confirm_pin_title),
+        subtitle = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE) "Enter the PIN used to encrypt this backup file" else stringResource(R.string.confirm_pin_subtitle),
+        errorMessage = pinSetupError,
+        onPinEntered = securityViewModel::onPinVerified,
+        onTyping = securityViewModel::clearPinError,
+        onDismiss = securityViewModel::cancelPinSetup
+    )
+
+    if (showRestoreSelectionDialog && decryptedBundle != null) {
+        RestoreSelectionDialog(
+            bundle = decryptedBundle!!,
+            selection = restoreSelection,
+            onWalletToggle = securityViewModel::toggleWalletSelection,
+            onNetworkToggle = securityViewModel::toggleNetworkSelection,
+            onTokenToggle = securityViewModel::toggleTokenSelection,
+            onConfirm = { securityViewModel.confirmRestore() },
+            onDismiss = securityViewModel::cancelRestoreSelection
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardTopBar(
-    onCreateWallet: () -> Unit,
-    onImportWallet: () -> Unit
+    onAddClick: () -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-
     TopAppBar(
         title = {
             Row(
@@ -288,73 +453,18 @@ fun DashboardTopBar(
             }
         },
         actions = {
-            Box {
-                Surface(
-                    onClick = { showMenu = true },
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.Add,
-                            contentDescription = stringResource(R.string.create_wallet),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false },
-                    modifier = Modifier
-                        .width(200.dp)
-                        .background(MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    offset = DpOffset(x = (-16).dp, y = 8.dp)
-                ) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                stringResource(R.string.create_new_wallet),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        },
-                        onClick = {
-                            showMenu = false
-                            onCreateWallet()
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Outlined.Add,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                stringResource(R.string.import_existing_wallet),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        },
-                        onClick = {
-                            showMenu = false
-                            onImportWallet()
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Outlined.Shield,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.secondary
-                            )
-                        }
+            Surface(
+                onClick = onAddClick,
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = stringResource(R.string.create_wallet),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
