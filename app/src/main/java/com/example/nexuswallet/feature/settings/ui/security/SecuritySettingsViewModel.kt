@@ -454,10 +454,9 @@ class SecuritySettingsViewModel @Inject constructor(
                     }
                     refreshAuthStatus()
                     
-                    // Trigger balance sync for restored wallets
-                    launch {
-                        triggerRestoredBalancesSync(bundle, selection)
-                    }
+                    // UX: Wait for the initial balance sync before showing success
+                    // This ensures the "Restoring..." overlay stays visible until balances are loaded,
+                    triggerRestoredBalancesSync(bundle, selection)
 
                     _uiEffect.emit(SecurityUiEffect.ShowSnackbar("Backup restored successfully"))
                     _uiEffect.emit(SecurityUiEffect.RestoreSuccess)
