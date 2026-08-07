@@ -347,13 +347,13 @@ fun WalletDashboardScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Add Wallet",
+                    text = stringResource(R.string.add_wallet),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Create a new wallet or restore existing assets",
+                    text = stringResource(R.string.add_wallet_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -362,8 +362,8 @@ fun WalletDashboardScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 ImportOptionItem(
-                    title = "Create New Wallet",
-                    description = "Generate a fresh 12-word recovery phrase",
+                    title = stringResource(R.string.create_new_wallet),
+                    description = stringResource(R.string.create_new_wallet_desc),
                     icon = Icons.Outlined.Add,
                     onClick = {
                         showAddOptions = false
@@ -372,8 +372,8 @@ fun WalletDashboardScreen(
                 )
 
                 ImportOptionItem(
-                    title = "Recovery Phrase",
-                    description = "Import using 12-word seed phrase",
+                    title = stringResource(R.string.recovery_phrase_title),
+                    description = stringResource(R.string.recovery_phrase_desc),
                     icon = Icons.Outlined.Shield,
                     onClick = {
                         showAddOptions = false
@@ -382,8 +382,8 @@ fun WalletDashboardScreen(
                 )
 
                 ImportOptionItem(
-                    title = "Nexus Backup File",
-                    description = "Restore from an encrypted .bin file",
+                    title = stringResource(R.string.nexus_backup_file),
+                    description = stringResource(R.string.nexus_backup_file_desc),
                     icon = Icons.Outlined.FileOpen,
                     onClick = {
                         showAddOptions = false
@@ -396,9 +396,9 @@ fun WalletDashboardScreen(
 
     PinEntryDialog(
         showDialog = showPinVerifyDialog,
-        title = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE) "Enter Backup PIN" else stringResource(R.string.confirm_pin_title),
-        subtitle = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE) "Enter the PIN used to encrypt this backup file" else stringResource(R.string.confirm_pin_subtitle),
-        errorMessage = pinSetupError,
+        title = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE) stringResource(R.string.enter_backup_pin) else stringResource(R.string.confirm_pin_title),
+        subtitle = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE) stringResource(R.string.restore_backup_pin_hint) else stringResource(R.string.confirm_pin_subtitle),
+        errorMessage = pinSetupError?.asString(),
         onPinEntered = securityViewModel::onPinVerified,
         onTyping = securityViewModel::clearPinError,
         onDismiss = securityViewModel::cancelPinSetup
@@ -1066,7 +1066,7 @@ fun AnimatedPortfolioHeader(
                 ) {
                     PortfolioStatItem(
                         icon = Icons.Outlined.AccountBalanceWallet,
-                        label = "$walletCount Wallets"
+                        label = stringResource(R.string.wallet_count_plural, walletCount)
                     )
                     PortfolioStatItem(
                         icon = Icons.Outlined.Shield,

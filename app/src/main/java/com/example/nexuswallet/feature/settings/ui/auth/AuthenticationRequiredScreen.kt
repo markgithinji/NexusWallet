@@ -51,6 +51,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
 import com.example.nexuswallet.feature.core.ui.rememberHapticHelper
@@ -63,10 +66,11 @@ fun AuthenticationRequiredScreen(
     onAuthenticated: () -> Unit,
     onCancel: () -> Unit,
     canAuthenticate: Boolean,
-    title: String = "Authentication Required",
-    description: String = "Please authenticate to access this feature",
+    title: String = stringResource(R.string.authentication_required),
+    description: String = stringResource(R.string.authentication_description),
     viewModel: AuthenticationViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val showPinDialog by viewModel.showPinDialog.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
     val isPinAvailable by viewModel.isPinAvailable.collectAsStateWithLifecycle()
@@ -77,7 +81,7 @@ fun AuthenticationRequiredScreen(
     BiometricAuthHandler(
         authRequest = authRequest,
         cryptoObject = cryptoObject,
-        subtitle = "Use your fingerprint to authenticate",
+        subtitle = stringResource(R.string.biometric_subtitle),
         onSuccess = { viewModel.onBiometricSuccess() },
         onError = { errorCode, errString ->
             if (!isBiometricUserCancel(errorCode)) {
@@ -90,8 +94,8 @@ fun AuthenticationRequiredScreen(
     if (showPinDialog) {
         PinEntryDialog(
             showDialog = showPinDialog,
-            title = "Enter PIN",
-            subtitle = "Enter your PIN to continue",
+            title = stringResource(R.string.enter_pin),
+            subtitle = stringResource(R.string.enter_pin_subtitle),
             errorMessage = errorMessage,
             onPinEntered = { pin ->
                 viewModel.verifyPin(pin)
@@ -126,7 +130,7 @@ fun AuthenticationRequiredScreen(
                 if (canAuthenticate && isBiometricEnabled) {
                     viewModel.triggerBiometric()
                 } else {
-                    viewModel.setErrorMessage("Biometric authentication not available")
+                    viewModel.setErrorMessage(context.getString(R.string.biometric_not_available))
                 }
             },
             onPinClick = { viewModel.showPinDialog() },
@@ -353,8 +357,8 @@ private fun AuthenticationMethodsCard(
             // Biometric button - enabled only if hardware available & user enabled it
             val biometricEnabled = biometricHardwareAvailable && isBiometricEnabled
             val biometricError = when {
-                !biometricHardwareAvailable -> "Biometric hardware not available"
-                !isBiometricEnabled -> "Biometric not enabled in settings"
+                !biometricHardwareAvailable -> stringResource(R.string.biometric_hardware_not_available)
+                !isBiometricEnabled -> stringResource(R.string.biometric_not_enabled_in_settings)
                 else -> null
             }
 
@@ -381,7 +385,7 @@ private fun AuthenticationMethodsCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (biometricEnabled) "Use Biometric" else "Biometric Unavailable",
+                    text = if (biometricEnabled) stringResource(R.string.use_biometric) else stringResource(R.string.biometric_unavailable),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
@@ -429,7 +433,7 @@ private fun AuthenticationMethodsCard(
                         color = MaterialTheme.colorScheme.outline
                     )
                     Text(
-                        text = "OR",
+                        text = stringResource(R.string.or_divider),
                         modifier = Modifier.padding(horizontal = 16.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -465,7 +469,7 @@ private fun AuthenticationMethodsCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Use PIN",
+                        text = stringResource(R.string.use_pin),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.primary
@@ -493,7 +497,7 @@ private fun AuthenticationMethodsCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "PIN not set up. Please set a PIN in Security Settings first.",
+                            text = stringResource(R.string.pin_not_set_up_warning),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

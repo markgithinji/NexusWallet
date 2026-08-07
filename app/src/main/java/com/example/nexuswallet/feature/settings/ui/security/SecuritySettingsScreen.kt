@@ -134,9 +134,9 @@ fun SecuritySettingsScreen(
                     context.contentResolver.openOutputStream(it)?.use { stream ->
                         pendingBackupData?.let { data -> stream.write(data) }
                     }
-                    snackbarHostState.showSnackbar("Backup saved successfully")
+                    snackbarHostState.showSnackbar(context.getString(R.string.backup_saved_success))
                 } catch (e: Exception) {
-                    snackbarHostState.showSnackbar("Failed to save backup: ${e.message}")
+                    snackbarHostState.showSnackbar(context.getString(R.string.failed_to_save_backup, e.message ?: ""))
                 } finally {
                     pendingBackupData = null
                 }
@@ -157,7 +157,7 @@ fun SecuritySettingsScreen(
                         viewModel.onBackupFileSelected(data)
                     }
                 } catch (e: Exception) {
-                    snackbarHostState.showSnackbar("Failed to read backup: ${e.message}")
+                    snackbarHostState.showSnackbar(context.getString(R.string.failed_to_read_backup, e.message ?: ""))
                 }
             }
         }
@@ -182,7 +182,7 @@ fun SecuritySettingsScreen(
         viewModel.uiEffect.collect { effect ->
             when (effect) {
                 is SecurityUiEffect.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(effect.message)
+                    snackbarHostState.showSnackbar(effect.message.asString(context))
                 }
 
                 is SecurityUiEffect.SaveBackupFile -> {
@@ -278,7 +278,7 @@ fun SecuritySettingsScreen(
 
                         // Title
                         Text(
-                            text = if (isPermanentlyDenied) "Enable in Settings" else stringResource(
+                            text = if (isPermanentlyDenied) stringResource(R.string.enable_in_settings) else stringResource(
                                 R.string.enable_notifications_title
                             ),
                             style = MaterialTheme.typography.titleLarge,
@@ -292,7 +292,7 @@ fun SecuritySettingsScreen(
                         // Text
                         Text(
                             text = if (isPermanentlyDenied)
-                                "Notifications are blocked by your phone system. Please go to App Settings to enable them for Nexus Wallet."
+                                stringResource(R.string.notifications_blocked_message)
                             else stringResource(R.string.notifications_rationale_message),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -325,7 +325,7 @@ fun SecuritySettingsScreen(
                             else ButtonDefaults.buttonColors()
                         ) {
                             Text(
-                                text = if (isPermanentlyDenied) "Open Settings" else stringResource(
+                                text = if (isPermanentlyDenied) stringResource(R.string.open_settings) else stringResource(
                                     R.string.grant_permission
                                 ),
                                 style = MaterialTheme.typography.bodyLarge,
@@ -357,25 +357,24 @@ fun SecuritySettingsScreen(
         showDialog = showPinSetupDialog || showPinChangeDialog,
         title = if (showPinSetupDialog) stringResource(R.string.setup_pin) else stringResource(R.string.change_pin),
         subtitle = stringResource(R.string.pin_digits_hint, 6),
-        errorMessage = pinSetupError,
+        errorMessage = pinSetupError?.asString(),
         onPinSet = viewModel::setNewPin,
         onDismiss = viewModel::cancelPinSetup
     )
 
-    // PIN Verification Dialog for Backup/Restore
-    PinEntryDialog(
-        showDialog = showPinVerifyDialog,
-        title = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE)
-            stringResource(R.string.restore_backup)
-        else stringResource(R.string.confirm_pin_title),
-        subtitle = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE)
-            "Enter the PIN used to encrypt this backup file"
-        else stringResource(R.string.confirm_pin_subtitle),
-        errorMessage = pinSetupError,
-        onPinEntered = viewModel::onPinVerified,
-        onTyping = viewModel::clearPinError,
-        onDismiss = viewModel::cancelPinSetup
-    )
+        PinEntryDialog(
+            showDialog = showPinVerifyDialog,
+            title = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE)
+                stringResource(R.string.restore_backup)
+            else stringResource(R.string.confirm_pin_title),
+            subtitle = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE)
+                stringResource(R.string.restore_backup_pin_hint)
+            else stringResource(R.string.confirm_pin_subtitle),
+            errorMessage = pinSetupError?.asString(),
+            onPinEntered = viewModel::onPinVerified,
+            onTyping = viewModel::clearPinError,
+            onDismiss = viewModel::cancelPinSetup
+        )
 
     // Clear All Data Confirmation Dialog
     if (showClearAllDataDialog) {
@@ -616,8 +615,8 @@ private fun SecuritySettingsContent(
         Spacer(modifier = Modifier.height(12.dp))
 
         SecurityToggleSection(
-            title = "Notifications",
-            description = "Get alerts for transaction confirmations",
+            title = stringResource(R.string.notifications),
+            description = stringResource(R.string.notifications_desc),
             checked = securityState.isNotificationsEnabled,
             onCheckedChange = { enabled ->
                 viewModel.setNotificationsEnabled(enabled)
@@ -1039,7 +1038,6 @@ fun SecurityOperationOverlay(operationState: SecurityOperation) {
                             SecurityOperation.BACKING_UP -> stringResource(R.string.creating_backup)
                             SecurityOperation.RESTORING -> stringResource(R.string.restoring)
                             SecurityOperation.UPDATING -> stringResource(R.string.updating)
-                            else -> ""
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,

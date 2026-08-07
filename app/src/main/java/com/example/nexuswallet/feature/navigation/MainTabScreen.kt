@@ -34,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.market.ui.MarketScreen
 import com.example.nexuswallet.feature.settings.ui.main.SettingsScreen
 import com.example.nexuswallet.feature.wallet.ui.walletdashboard.WalletDashboardScreen
@@ -81,13 +83,13 @@ fun MainTabScreen(
                                     Icons.Filled.AccountBalanceWallet
                                 else
                                     Icons.Outlined.AccountBalanceWallet,
-                                contentDescription = "Wallets",
+                                contentDescription = stringResource(R.string.wallets_title),
                                 modifier = Modifier.size(24.dp)
                             )
                         },
                         label = {
                             Text(
-                                "Wallets",
+                                stringResource(R.string.wallets_title),
                                 style = MaterialTheme.typography.labelSmall
                             )
                         },
@@ -110,13 +112,13 @@ fun MainTabScreen(
                                     Icons.AutoMirrored.Filled.ShowChart
                                 else
                                     Icons.AutoMirrored.Outlined.ShowChart,
-                                contentDescription = "Market",
+                                contentDescription = stringResource(R.string.market_title),
                                 modifier = Modifier.size(24.dp)
                             )
                         },
                         label = {
                             Text(
-                                "Market",
+                                stringResource(R.string.market_title),
                                 style = MaterialTheme.typography.labelSmall
                             )
                         },
@@ -139,13 +141,13 @@ fun MainTabScreen(
                                     Icons.Filled.Settings
                                 else
                                     Icons.Outlined.Settings,
-                                contentDescription = "Settings",
+                                contentDescription = stringResource(R.string.settings_title),
                                 modifier = Modifier.size(24.dp)
                             )
                         },
                         label = {
                             Text(
-                                "Settings",
+                                stringResource(R.string.settings_title),
                                 style = MaterialTheme.typography.labelSmall
                             )
                         },

@@ -140,7 +140,7 @@ fun WelcomeScreen(
     LaunchedEffect(Unit) {
         viewModel.uiEffect.collect { effect ->
             when (effect) {
-                is SecurityUiEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
+                is SecurityUiEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message.asString(context))
                 SecurityUiEffect.SelectBackupFile -> selectBackupLauncher.launch(arrayOf("*/*"))
                 SecurityUiEffect.RestoreSuccess -> onRestoreSuccess()
                 else -> {}
@@ -377,12 +377,12 @@ fun WelcomeScreen(
     PinEntryDialog(
         showDialog = showPinVerifyDialog,
         title = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE)
-            "Enter Backup PIN"
+            stringResource(R.string.enter_backup_pin)
         else stringResource(R.string.confirm_pin_title),
         subtitle = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE)
-            "Enter the PIN used to encrypt this backup file"
+            stringResource(R.string.restore_backup_pin_hint)
         else stringResource(R.string.confirm_pin_subtitle),
-        errorMessage = pinSetupError,
+        errorMessage = pinSetupError?.asString(),
         onPinEntered = viewModel::onPinVerified,
         onTyping = viewModel::clearPinError,
         onDismiss = viewModel::cancelPinSetup

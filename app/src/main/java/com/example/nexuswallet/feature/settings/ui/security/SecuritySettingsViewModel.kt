@@ -2,8 +2,10 @@ package com.example.nexuswallet.feature.settings.ui.security
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequiredException
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.UiText
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.settings.domain.model.BackupBundle
@@ -96,8 +98,8 @@ class SecuritySettingsViewModel @Inject constructor(
     private val _cryptoObject = MutableStateFlow<Cipher?>(null)
     val cryptoObject: StateFlow<Cipher?> = _cryptoObject.asStateFlow()
 
-    private val _pinSetupError = MutableStateFlow<String?>(null)
-    val pinSetupError: StateFlow<String?> = _pinSetupError.asStateFlow()
+    private val _pinSetupError = MutableStateFlow<UiText?>(null)
+    val pinSetupError: StateFlow<UiText?> = _pinSetupError.asStateFlow()
 
     // Operation state for loading overlays
     private val _operationState = MutableStateFlow<SecurityOperation>(SecurityOperation.IDLE)
@@ -162,7 +164,7 @@ class SecuritySettingsViewModel @Inject constructor(
                 }
                 refreshAuthStatus()
             } catch (e: Exception) {
-                _uiEffect.emit(SecurityUiEffect.ShowSnackbar("Failed to update notifications"))
+                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.StringResource(R.string.failed_to_update_notifications)))
             }
         }
     }
@@ -191,7 +193,7 @@ class SecuritySettingsViewModel @Inject constructor(
                     loadSecurityStatus()
                 }
                 is Result.Error -> {
-                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(result.message)))
                 }
                 Result.Loading -> { /* Ignore */ }
             }
@@ -204,7 +206,7 @@ class SecuritySettingsViewModel @Inject constructor(
                 settingsRepository.setPrivacyModeEnabled(enabled)
                 refreshAuthStatus()
             } catch (e: Exception) {
-                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(e.message ?: "Failed to update privacy mode"))
+                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(e.message ?: "Failed to update privacy mode")))
             }
         }
     }
@@ -215,7 +217,7 @@ class SecuritySettingsViewModel @Inject constructor(
                 settingsRepository.setRequireAuthForSend(enabled)
                 refreshAuthStatus()
             } catch (e: Exception) {
-                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(e.message ?: "Failed to update security preference"))
+                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(e.message ?: "Failed to update security preference")))
             }
         }
     }
@@ -264,7 +266,7 @@ class SecuritySettingsViewModel @Inject constructor(
                 }
             }
             is Result.Error -> {
-                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(authResult.message))
+                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(authResult.message)))
             }
             Result.Loading -> { /* Ignore */ }
         }
@@ -277,7 +279,7 @@ class SecuritySettingsViewModel @Inject constructor(
                 action()
             } else {
                 viewModelScope.launch {
-                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar("Please set a PIN first to secure your backup"))
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.StringResource(R.string.set_pin_first_for_backup)))
                 }
             }
         }
@@ -322,13 +324,13 @@ class SecuritySettingsViewModel @Inject constructor(
                             _showRestoreSelectionDialog.value = true
                         }
                         is Result.Error -> {
-                            _pinSetupError.value = result.message
+                            _pinSetupError.value = UiText.DynamicString(result.message)
                         }
                         else -> {}
                     }
                     _operationState.value = SecurityOperation.IDLE
                 } else {
-                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar("Backup data missing. Please try again."))
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.StringResource(R.string.backup_data_missing)))
                     _showPinVerifyDialog.value = false
                 }
                 return@launch
@@ -339,7 +341,7 @@ class SecuritySettingsViewModel @Inject constructor(
                 _showPinVerifyDialog.value = false
                 executeBackupOperation(pin)
             } else {
-                _pinSetupError.value = "Incorrect PIN"
+                _pinSetupError.value = UiText.StringResource(R.string.incorrect_pin)
             }
         }
     }
@@ -366,7 +368,7 @@ class SecuritySettingsViewModel @Inject constructor(
                                 currentAuthPurpose = AuthPurpose.BACKUP
                                 _authRequest.value = System.currentTimeMillis()
                             } else {
-                                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(result.message)))
                             }
                         }
                         else -> {}
@@ -462,7 +464,7 @@ class SecuritySettingsViewModel @Inject constructor(
                     // This ensures the "Restoring..." overlay stays visible until balances are loaded,
                     triggerRestoredBalancesSync(bundle, selection)
 
-                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar("Backup restored successfully"))
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.StringResource(R.string.backup_restored_success)))
                     _uiEffect.emit(SecurityUiEffect.RestoreSuccess)
                     
                     // Cleanup
@@ -478,7 +480,7 @@ class SecuritySettingsViewModel @Inject constructor(
                         currentAuthPurpose = AuthPurpose.RESTORE
                         _authRequest.value = System.currentTimeMillis()
                     } else {
-                        _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                        _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(result.message)))
                     }
                 }
                 else -> {}
@@ -625,10 +627,10 @@ class SecuritySettingsViewModel @Inject constructor(
             when (val result = clearAllSecurityDataUseCase()) {
                 is Result.Success -> {
                     refreshAuthStatus()
-                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar("All security data cleared"))
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.StringResource(R.string.all_security_data_cleared)))
                 }
                 is Result.Error -> {
-                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(result.message)))
                 }
                 Result.Loading -> { /* Ignore */ }
             }
@@ -652,16 +654,16 @@ class SecuritySettingsViewModel @Inject constructor(
                         loadSecurityStatus()
                         _showPinSetupDialog.value = false
                         _showPinChangeDialog.value = false
-                        _uiEffect.emit(SecurityUiEffect.ShowSnackbar("PIN set successfully"))
+                        _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.StringResource(R.string.pin_set_success)))
                     } else {
-                        _pinSetupError.value = "Failed to set PIN"
+                        _pinSetupError.value = UiText.StringResource(R.string.failed_to_set_pin)
                     }
                 }
                 is Result.Error -> {
-                    _pinSetupError.value = "Failed to set PIN: ${result.message}"
+                    _pinSetupError.value = UiText.StringResource(R.string.failed_to_set_pin_error, result.message)
                 }
                 Result.Loading -> {
-                    _pinSetupError.value = "Setting PIN..."
+                    _pinSetupError.value = UiText.StringResource(R.string.setting_pin)
                 }
             }
 
@@ -682,10 +684,10 @@ class SecuritySettingsViewModel @Inject constructor(
                 is Result.Success -> {
                     // Force navigation refresh by reloading security status
                     loadSecurityStatus()
-                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar("PIN removed"))
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.StringResource(R.string.pin_removed)))
                 }
                 is Result.Error -> {
-                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
+                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(result.message)))
                 }
                 Result.Loading -> { /* Ignore */ }
             }
