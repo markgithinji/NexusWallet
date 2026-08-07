@@ -13,6 +13,7 @@ class ClearPinUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(): Result<Unit> {
         settingsRepository.clearPinHash()
+        settingsRepository.saveLastAuthenticationTime(0) // Invalidate session
         logger.d(TAG, "PIN cleared successfully")
         return Result.Success(Unit)
     }

@@ -13,6 +13,9 @@ class SetBiometricEnabledUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(enabled: Boolean): Result<Unit> {
         settingsRepository.setBiometricEnabled(enabled)
+        if (!enabled) {
+            settingsRepository.saveLastAuthenticationTime(0) // Invalidate session when disabling
+        }
         logger.d(TAG, "Biometric enabled set to: $enabled")
         return Result.Success(Unit)
     }

@@ -184,7 +184,8 @@ class SecuritySettingsViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = setBiometricEnabledUseCase(enabled)) {
                 is Result.Success -> {
-                    refreshAuthStatus()
+                    // Force navigation refresh by reloading security status
+                    loadSecurityStatus()
                 }
                 is Result.Error -> {
                     _uiEffect.emit(SecurityUiEffect.ShowSnackbar(result.message))
@@ -626,7 +627,7 @@ class SecuritySettingsViewModel @Inject constructor(
             when (val result = setPinUseCase(pin)) {
                 is Result.Success -> {
                     if (result.data) {
-                        refreshAuthStatus()
+                        loadSecurityStatus()
                         _showPinSetupDialog.value = false
                         _showPinChangeDialog.value = false
                         _uiEffect.emit(SecurityUiEffect.ShowSnackbar("PIN set successfully"))
@@ -657,7 +658,8 @@ class SecuritySettingsViewModel @Inject constructor(
 
             when (val result = clearPinUseCase()) {
                 is Result.Success -> {
-                    refreshAuthStatus()
+                    // Force navigation refresh by reloading security status
+                    loadSecurityStatus()
                     _uiEffect.emit(SecurityUiEffect.ShowSnackbar("PIN removed"))
                 }
                 is Result.Error -> {

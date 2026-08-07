@@ -56,28 +56,24 @@ class AuthenticationViewModel @Inject constructor(
     }
 
     private fun observeAuthStatus() {
-        viewModelScope.launch {
-            isPinSetUseCase()
-                .onEach { isPinSet ->
-                    _isPinAvailable.value = isPinSet
-                }
-                .catch { e ->
-                    _isPinAvailable.value = false
-                    _errorMessage.value = "Failed to check PIN status: ${e.message}"
-                }
-                .launchIn(viewModelScope)
-        }
+        isPinSetUseCase()
+            .onEach { isPinSet ->
+                _isPinAvailable.value = isPinSet
+            }
+            .catch { e ->
+                _isPinAvailable.value = false
+                _errorMessage.value = "Failed to check PIN status: ${e.message}"
+            }
+            .launchIn(viewModelScope)
 
-        viewModelScope.launch {
-            isBiometricEnabledUseCase()
-                .onEach { isEnabled ->
-                    _isBiometricEnabled.value = isEnabled
-                }
-                .catch { e ->
-                    _isBiometricEnabled.value = false
-                }
-                .launchIn(viewModelScope)
-        }
+        isBiometricEnabledUseCase()
+            .onEach { isEnabled ->
+                _isBiometricEnabled.value = isEnabled
+            }
+            .catch { e ->
+                _isBiometricEnabled.value = false
+            }
+            .launchIn(viewModelScope)
     }
 
     fun showPinDialog() {

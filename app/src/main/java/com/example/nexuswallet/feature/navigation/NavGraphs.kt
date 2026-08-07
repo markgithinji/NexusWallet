@@ -37,6 +37,7 @@ import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationSc
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationViewModel
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WelcomeScreen
 import com.example.nexuswallet.feature.wallet.ui.walletdetail.WalletDetailScreen
+import com.example.nexuswallet.MainViewModel
 import kotlin.reflect.KType
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -87,14 +88,14 @@ fun NavGraphBuilder.onboardingGraph(navController: NavController) {
 
 fun NavGraphBuilder.mainGraph(
     navController: NavController,
-    isAuthenticationRequired: Boolean
+    isAuthenticationRequired: () -> Boolean
 ) {
     composable<MainRoute> {
         MainTabScreen(
             onNavigateToCreateWallet = { navController.navigate(CreateWalletRoute) },
             onNavigateToImportWallet = { navController.navigate(ImportWalletRoute) },
             onNavigateToWalletDetail = { walletId ->
-                if (isAuthenticationRequired) {
+                if (isAuthenticationRequired()) {
                     navController.navigate(AuthenticateRoute(AuthTarget.WalletDetail(walletId)))
                 } else {
                     navController.navigate(WalletDetailRoute(walletId))
@@ -129,7 +130,7 @@ fun NavGraphBuilder.mainGraph(
 fun NavGraphBuilder.walletGraph(
     navController: NavController,
     typeMap: Map<KType, NavType<*>>,
-    isRequireAuthForSendEnabled: Boolean
+    isRequireAuthForSendEnabled: () -> Boolean
 ) {
     composable<WalletDetailRoute>(typeMap = typeMap) { backStackEntry ->
         val args = backStackEntry.toRoute<WalletDetailRoute>()
@@ -139,7 +140,7 @@ fun NavGraphBuilder.walletGraph(
             onAssetClick = { walletId, coin -> navController.navigate(CoinDetailRoute(walletId, coin)) },
             onReceiveClick = { walletId, coin -> navController.navigate(ReceiveRoute(walletId, coin)) },
             onSendClick = { walletId, coin ->
-                if (isRequireAuthForSendEnabled) {
+                if (isRequireAuthForSendEnabled()) {
                     navController.navigate(AuthenticateRoute(AuthTarget.Send(walletId, coin)))
                 } else {
                     navController.navigate(SendRoute(walletId, coin))
@@ -161,7 +162,7 @@ fun NavGraphBuilder.walletGraph(
             onNavigateUp = { navController.navigateUp() },
             onNavigateToReceive = { walletId, coin -> navController.navigate(ReceiveRoute(walletId, coin)) },
             onNavigateToSend = { walletId, coin ->
-                if (isRequireAuthForSendEnabled) {
+                if (isRequireAuthForSendEnabled()) {
                     navController.navigate(AuthenticateRoute(AuthTarget.Send(walletId, coin)))
                 } else {
                     navController.navigate(SendRoute(walletId, coin))

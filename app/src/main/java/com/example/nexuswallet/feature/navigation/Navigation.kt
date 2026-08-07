@@ -28,15 +28,16 @@ fun Navigation(
 
     val wallets by mainViewModel.wallets.collectAsStateWithLifecycle()
     val isWalletsLoading by mainViewModel.isWalletsLoading.collectAsStateWithLifecycle()
-    val isAuthenticationRequired by mainViewModel.isAuthenticationRequired.collectAsStateWithLifecycle()
-    val isRequireAuthForSendEnabled by mainViewModel.isRequireAuthForSendEnabled.collectAsStateWithLifecycle()
 
     if (isWalletsLoading) {
         FullScreenLoading(message = "Loading wallets...")
         return
     }
 
-    val startDestination = remember {
+    // Determine start destination based on wallets. 
+    // We don't remember this with wallets as a key because we want it to be stable 
+    // once the app has decided its initial state, but let's make it more robust.
+    val startDestination = remember(wallets.isEmpty()) {
         if (wallets.isNotEmpty()) MainRoute else WelcomeRoute
     }
 
@@ -56,13 +57,13 @@ fun Navigation(
         
         mainGraph(
             navController = navController,
-            isAuthenticationRequired = isAuthenticationRequired
+            isAuthenticationRequired = { mainViewModel.isAuthenticationRequired.value }
         )
         
         walletGraph(
             navController = navController,
             typeMap = typeMap,
-            isRequireAuthForSendEnabled = isRequireAuthForSendEnabled
+            isRequireAuthForSendEnabled = { mainViewModel.isRequireAuthForSendEnabled.value }
         )
         
         settingsGraph(navController)

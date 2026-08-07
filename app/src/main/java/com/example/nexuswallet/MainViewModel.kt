@@ -37,20 +37,33 @@ class MainViewModel @Inject constructor(
     val isWalletsLoading: StateFlow<Boolean> = _isWalletsLoading.asStateFlow()
 
     // Security state
-    private val _isAuthenticationRequired = MutableStateFlow(false)
-    val isAuthenticationRequired: StateFlow<Boolean> = _isAuthenticationRequired.asStateFlow()
+    val isAuthenticationRequired: StateFlow<Boolean> = combine(
+        isPinSetUseCase(),
+        isBiometricEnabledUseCase()
+    ) { isPinSet, isBiometricEnabled ->
+        isPinSet || isBiometricEnabled
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
 
-    private val _isPrivacyModeEnabled = MutableStateFlow(false)
-    val isPrivacyModeEnabled: StateFlow<Boolean> = _isPrivacyModeEnabled.asStateFlow()
+    val isPrivacyModeEnabled: StateFlow<Boolean> = settingsRepository.observePrivacyModeEnabled()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
 
-    private val _isRequireAuthForSendEnabled = MutableStateFlow(false)
-    val isRequireAuthForSendEnabled: StateFlow<Boolean> = _isRequireAuthForSendEnabled.asStateFlow()
+    val isRequireAuthForSendEnabled: StateFlow<Boolean> = settingsRepository.observeRequireAuthForSend()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
 
     init {
         observeWallets()
-        observeAuthenticationStatus()
-        observePrivacyMode()
-        observeTransactionSecurity()
     }
 
     private fun observeWallets() {
@@ -61,35 +74,6 @@ class MainViewModel @Inject constructor(
                     _wallets.value = walletsList
                     _isWalletsLoading.value = false
                 }
-        }
-    }
-
-    private fun observeAuthenticationStatus() {
-        viewModelScope.launch {
-            combine(
-                isPinSetUseCase(),
-                isBiometricEnabledUseCase()
-            ) { isPinSet, isBiometricEnabled ->
-                isPinSet || isBiometricEnabled
-            }.collect { isRequired ->
-                _isAuthenticationRequired.value = isRequired
-            }
-        }
-    }
-
-    private fun observePrivacyMode() {
-        viewModelScope.launch {
-            settingsRepository.observePrivacyModeEnabled().collect { isEnabled ->
-                _isPrivacyModeEnabled.value = isEnabled
-            }
-        }
-    }
-
-    private fun observeTransactionSecurity() {
-        viewModelScope.launch {
-            settingsRepository.observeRequireAuthForSend().collect { isEnabled ->
-                _isRequireAuthForSendEnabled.value = isEnabled
-            }
         }
     }
 }
