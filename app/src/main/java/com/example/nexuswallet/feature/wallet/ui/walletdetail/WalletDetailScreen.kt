@@ -1,9 +1,16 @@
 package com.example.nexuswallet.feature.wallet.ui.walletdetail
 
 import androidx.compose.animation.core.Animatable
+import java.math.BigDecimal
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.InfiniteRepeatableSpec
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -64,7 +71,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -86,6 +95,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
@@ -96,6 +106,7 @@ import com.example.nexuswallet.feature.wallet.ui.common.ErrorScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.TransactionItem
 import com.example.nexuswallet.feature.wallet.ui.common.shimmer
+import com.example.nexuswallet.feature.wallet.ui.common.SyncPulseIndicator
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -245,6 +256,7 @@ fun WalletDetailScreen(
                 assets = uiState.assets,
                 transactions = uiState.transactions,
                 syncErrors = uiState.syncErrors,
+                syncingNetworks = uiState.syncingNetworks,
                 totalBalance = uiState.totalBalance,
                 totalBalanceFormatted = uiState.totalBalanceFormatted,
                 hasSyncError = uiState.hasSyncError,
@@ -436,7 +448,8 @@ private fun WalletDetailContent(
     assets: List<AssetDisplayInfo>,
     transactions: List<TransactionDisplayInfo>,
     syncErrors: List<ChainSyncError>,
-    totalBalance: Double,
+    syncingNetworks: Set<Network>,
+    totalBalance: BigDecimal,
     totalBalanceFormatted: String,
     hasSyncError: Boolean,
     isLoadingBalance: Boolean,
@@ -504,6 +517,7 @@ private fun WalletDetailContent(
             AssetCard(
                 asset = asset,
                 hasError = assetError != null,
+                isSyncing = syncingNetworks.contains(asset.coin.network),
                 onClick = { onAssetClick(asset.coin) }
             )
         }
@@ -532,6 +546,7 @@ private fun getDefaultCoin(wallet: Wallet): Coin? = when {
 fun AssetCard(
     asset: AssetDisplayInfo,
     hasError: Boolean = false,
+    isSyncing: Boolean = false,
     onClick: () -> Unit
 ) {
     val (iconRes, iconColor, iconSize) = when (asset.coin) {
@@ -582,7 +597,7 @@ fun AssetCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
                         text = asset.coin.symbol,
@@ -607,7 +622,9 @@ fun AssetCard(
                         }
                     }
 
-                    if (hasError) {
+                    if (isSyncing) {
+                        SyncPulseIndicator()
+                    } else if (hasError) {
                         Icon(
                             imageVector = Icons.Outlined.Warning,
                             contentDescription = "Sync error",
@@ -665,7 +682,7 @@ fun AssetCard(
 @Composable
 fun WalletHeaderCard(
     wallet: Wallet,
-    totalBalance: Double,
+    totalBalance: BigDecimal,
     totalBalanceFormatted: String,
     hasSyncError: Boolean = false,
     isLoadingBalance: Boolean = false,
@@ -680,7 +697,7 @@ fun WalletHeaderCard(
             wallet.solanaCoins.size +
             wallet.evmTokens.size
 
-    var previousValue by remember { mutableDoubleStateOf(totalBalance) }
+    var previousValue by remember { mutableStateOf(totalBalance) }
     val animatedValue = remember { Animatable(previousValue.toFloat()) }
 
     LaunchedEffect(totalBalance) {

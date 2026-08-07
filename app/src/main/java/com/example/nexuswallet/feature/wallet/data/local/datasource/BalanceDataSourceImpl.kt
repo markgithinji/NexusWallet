@@ -48,7 +48,7 @@ class BalanceDataSourceImpl @Inject constructor(
         }
 
         // Save EVM balances
-        saveEVMBalances(balance.walletId, balance.evmBalances)
+        saveEVMBalances(balance.walletId, balance.evmBalances.values.toList())
     }
 
     override suspend fun saveBitcoinBalance(
@@ -112,8 +112,9 @@ class BalanceDataSourceImpl @Inject constructor(
         }
 
         // Load EVM balances
-        val evmBalances = evmBalanceDao.getByWalletId(walletId).map { entity ->
-            entity.toDomain()
+        val evmBalances = evmBalanceDao.getByWalletId(walletId).associate { entity ->
+            val domain = entity.toDomain()
+            "${domain.network.chainId}_${domain.contractAddress}" to domain
         }
 
         return if (bitcoinBalances.isEmpty() && solanaBalances.isEmpty() && evmBalances.isEmpty()) {
@@ -147,9 +148,12 @@ class BalanceDataSourceImpl @Inject constructor(
                 network?.let { it to balanceEntity.toDomain() }
             }.toMap()
 
-            val evmList = evmBalances.map { it.toDomain() }
+            val evmMap = evmBalances.associate { entity ->
+                val domain = entity.toDomain()
+                "${domain.network.chainId}_${domain.contractAddress}" to domain
+            }
 
-            if (btcMap.isEmpty() && solMap.isEmpty() && evmList.isEmpty()) {
+            if (btcMap.isEmpty() && solMap.isEmpty() && evmMap.isEmpty()) {
                 null
             } else {
                 WalletBalance(
@@ -157,7 +161,7 @@ class BalanceDataSourceImpl @Inject constructor(
                     lastUpdated = System.currentTimeMillis(),
                     bitcoinBalances = btcMap,
                     solanaBalances = solMap,
-                    evmBalances = evmList
+                    evmBalances = evmMap
                 )
             }
         }
@@ -184,14 +188,17 @@ class BalanceDataSourceImpl @Inject constructor(
                     coin?.network?.let { it to balanceEntity.toDomain() }
                 }.toMap()
 
-                val evmList = evmBalances.filter { it.walletId == walletId }.map { it.toDomain() }
+                val evmMap = evmBalances.filter { it.walletId == walletId }.associate { entity ->
+                    val domain = entity.toDomain()
+                    "${domain.network.chainId}_${domain.contractAddress}" to domain
+                }
 
                 walletId to WalletBalance(
                     walletId = walletId,
                     lastUpdated = System.currentTimeMillis(),
                     bitcoinBalances = btcMap,
                     solanaBalances = solMap,
-                    evmBalances = evmList
+                    evmBalances = evmMap
                 )
             }
         }

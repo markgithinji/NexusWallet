@@ -5,6 +5,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
+import java.math.BigDecimal
 
 data class CoinDetailState(
     val isLoading: Boolean = false,
@@ -15,7 +16,7 @@ data class CoinDetailState(
     val address: String = "",
     val balance: String = "0",
     val balanceFormatted: String = "",
-    val usdValue: Double? = null,
+    val usdValue: BigDecimal? = null,
     val transactions: List<TransactionDisplayInfo> = emptyList(),
     val ethGasBalance: String = "0",
     val evmTokens: List<EVMToken> = emptyList(),

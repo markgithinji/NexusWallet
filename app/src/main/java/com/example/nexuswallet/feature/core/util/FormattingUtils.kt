@@ -1,12 +1,6 @@
 package com.example.nexuswallet.feature.core.util
 
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
@@ -14,12 +8,6 @@ import java.text.SimpleDateFormat
 import java.util.Currency
 import java.util.Date
 import java.util.Locale
-
-object BigDecimalSerializer : KSerializer<BigDecimal> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("BigDecimal", PrimitiveKind.STRING)
-    override fun deserialize(decoder: Decoder): BigDecimal = BigDecimal(decoder.decodeString())
-    override fun serialize(encoder: Encoder, value: BigDecimal) = encoder.encodeString(value.toPlainString())
-}
 
 /**
  * Extension to format crypto amounts with appropriate precision based on magnitude.

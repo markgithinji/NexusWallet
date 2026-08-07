@@ -57,6 +57,9 @@ class WalletDashboardViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<Result<List<Wallet>>>(Result.Loading)
     val uiState: StateFlow<Result<List<Wallet>>> = _uiState.asStateFlow()
 
+    private val _syncingNetworks = MutableStateFlow<Set<Network>>(emptySet())
+    val syncingNetworks: StateFlow<Set<Network>> = _syncingNetworks.asStateFlow()
+
     // Balances map (reactive)
     val balances: StateFlow<Map<String, WalletBalance>> = walletRepository.observeAllBalances()
         .stateIn(
@@ -343,6 +346,7 @@ class WalletDashboardViewModel @Inject constructor(
                                 wallet.bitcoinCoins
                                     .filter { networkFilter == null || it.network == networkFilter }
                                     .forEach { coin ->
+                                        _syncingNetworks.update { it + coin.network }
                                         val (balance, errors) = syncBitcoinBalanceUseCase(
                                             wallet.id,
                                             coin,
@@ -351,6 +355,7 @@ class WalletDashboardViewModel @Inject constructor(
                                         )
                                         balance?.let { btcBalances[coin.network] = it }
                                         walletErrors.addAll(errors)
+                                        _syncingNetworks.update { it - coin.network }
                                     }
                             }
 
@@ -358,6 +363,7 @@ class WalletDashboardViewModel @Inject constructor(
                                 wallet.solanaCoins
                                     .filter { networkFilter == null || it.network == networkFilter }
                                     .forEach { coin ->
+                                        _syncingNetworks.update { it + coin.network }
                                         val (balance, errors) = syncSolanaBalanceUseCase(
                                             wallet.id,
                                             coin,
@@ -366,10 +372,13 @@ class WalletDashboardViewModel @Inject constructor(
                                         )
                                         balance?.let { solBalances[coin.network] = it }
                                         walletErrors.addAll(errors)
+                                        _syncingNetworks.update { it - coin.network }
                                     }
                             }
 
                             if (wallet.evmTokens.isNotEmpty() && (networkFilter == null || networkFilter is EthereumNetwork)) {
+                                val evmNetworks = wallet.evmTokens.map { it.network }.toSet()
+                                _syncingNetworks.update { it + evmNetworks }
                                 val (balances, errors) = syncEVMBalancesUseCase(
                                     wallet.id,
                                     wallet.evmTokens,
@@ -378,6 +387,7 @@ class WalletDashboardViewModel @Inject constructor(
                                 )
                                 evmMap.putAll(balances)
                                 walletErrors.addAll(errors)
+                                _syncingNetworks.update { it - evmNetworks }
                             }
 
                             // ATOMIC UPDATE: Merge the new chain balance with the existing cached balances for other chains.

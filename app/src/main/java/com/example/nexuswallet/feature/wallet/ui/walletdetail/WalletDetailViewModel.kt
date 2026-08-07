@@ -210,6 +210,7 @@ class WalletDetailViewModel @Inject constructor(
             val evmBalances = mutableMapOf<String, EVMBalance>()
 
             wallet.bitcoinCoins.forEach { coin ->
+                _uiState.update { it.copy(syncingNetworks = it.syncingNetworks + coin.network) }
                 val (balance, errors) = syncBitcoinBalanceUseCase(
                     wallet.id,
                     coin,
@@ -218,9 +219,11 @@ class WalletDetailViewModel @Inject constructor(
                 )
                 balance?.let { btcBalances[coin.network] = it }
                 allErrors.addAll(errors)
+                _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - coin.network) }
             }
 
             wallet.solanaCoins.forEach { coin ->
+                _uiState.update { it.copy(syncingNetworks = it.syncingNetworks + coin.network) }
                 val (balance, errors) = syncSolanaBalanceUseCase(
                     wallet.id,
                     coin,
@@ -229,9 +232,12 @@ class WalletDetailViewModel @Inject constructor(
                 )
                 balance?.let { solBalances[coin.network] = it }
                 allErrors.addAll(errors)
+                _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - coin.network) }
             }
 
             if (wallet.evmTokens.isNotEmpty()) {
+                val evmNetworks = wallet.evmTokens.map { it.network }.toSet()
+                _uiState.update { it.copy(syncingNetworks = it.syncingNetworks + evmNetworks) }
                 val (balances, errors) = syncEVMBalancesUseCase(
                     wallet.id,
                     wallet.evmTokens,
@@ -240,6 +246,7 @@ class WalletDetailViewModel @Inject constructor(
                 )
                 evmBalances.putAll(balances)
                 allErrors.addAll(errors)
+                _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - evmNetworks) }
             }
 
             // ATOMIC UPDATE: Save the full wallet balance at once
@@ -333,7 +340,7 @@ class WalletDetailViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 assets = assets,
-                totalBalance = totalUsd.toDouble(),
+                totalBalance = totalUsd,
                 totalBalanceFormatted = totalFormatted
             )
         }

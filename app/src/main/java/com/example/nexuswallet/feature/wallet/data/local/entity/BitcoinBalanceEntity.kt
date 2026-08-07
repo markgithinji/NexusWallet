@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.math.BigDecimal
 import java.util.UUID
 
 @Entity(
@@ -24,6 +25,6 @@ data class BitcoinBalanceEntity(
     val address: String,
     val satoshis: String,
     val btc: String,
-    val usdValue: Double,
+    val usdValue: BigDecimal,
     val updatedAt: Long = System.currentTimeMillis()
 )

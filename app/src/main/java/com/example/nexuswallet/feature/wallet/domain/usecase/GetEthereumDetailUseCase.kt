@@ -3,7 +3,6 @@ package com.example.nexuswallet.feature.wallet.domain.usecase
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
-import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMTransactionRepository
 import com.example.nexuswallet.feature.logging.Logger
@@ -118,18 +117,16 @@ class GetEthereumDetailUseCase @Inject constructor(
 
         // 5. Get balance (Already synced)
         val balance = walletRepository.getWalletBalance(walletId)
-        val tokenBalance = balance?.evmBalances?.find {
-            it.network == verifiedToken.network && it.evmTokenType == verifiedToken.evmTokenType
-        }
+        val lookupKey = "${verifiedToken.network.chainId}_${verifiedToken.contractAddress}"
+        val tokenBalance = balance?.evmBalances?.get(lookupKey)
 
         // 6. Get ETH balance for gas (for tokens)
         var ethGasBalance: String? = null
         if (!isEth) {
             val nativeEth = wallet.evmTokens.filterIsInstance<NativeETH>().find { it.network == network }
             ethGasBalance = nativeEth?.let { nativeToken ->
-                balance?.evmBalances?.find {
-                    it.network == nativeToken.network && it.evmTokenType == EVMTokenType.NATIVE
-                }?.balanceDecimal?.toBigDecimalOrNull()
+                val nativeLookupKey = "${nativeToken.network.chainId}_${nativeToken.contractAddress}"
+                balance?.evmBalances?.get(nativeLookupKey)?.balanceDecimal?.toBigDecimalOrNull()
             }?.stripTrailingZeros()?.toPlainString()
 
             logger.d(TAG, "ETH gas balance for ${network.name}: $ethGasBalance")
@@ -179,7 +176,7 @@ class GetEthereumDetailUseCase @Inject constructor(
             address = verifiedToken.address,
             balance = tokenBalance?.balanceDecimal ?: "0",
             balanceFormatted = balanceFormatted,
-            usdValue = tokenBalance?.usdValue ?: 0.0,
+            usdValue = tokenBalance?.usdValue ?: BigDecimal.ZERO,
             network = network,
             networkDisplayName = network.name,
             rawTransactions = filteredTxs,

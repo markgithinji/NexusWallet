@@ -6,6 +6,9 @@ import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
+import com.example.nexuswallet.feature.wallet.domain.model.Network
+
+import java.math.BigDecimal
 
 data class WalletDetailUiState(
     val wallet: Wallet? = null,
@@ -15,7 +18,7 @@ data class WalletDetailUiState(
 
     // Unified assets list
     val assets: List<AssetDisplayInfo> = emptyList(),
-    val totalBalance: Double = 0.0,
+    val totalBalance: BigDecimal = BigDecimal.ZERO,
     val totalBalanceFormatted: String = "$0.00",
     val selectedCurrency: SupportedCurrency = SupportedCurrency.USD,
 
@@ -25,6 +28,7 @@ data class WalletDetailUiState(
     val isLoadingTransactions: Boolean = false,
     val isRefreshingBalance: Boolean = false,
     val isRefreshingTransactions: Boolean = false,
+    val syncingNetworks: Set<Network> = emptySet(),
 
     // Timestamp for cache freshness
     val lastBalanceSyncTime: Long = 0,

@@ -14,6 +14,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionStatus
 import kotlinx.serialization.json.Json
+import java.math.BigDecimal
 
 class Converters {
     private val json = Json {
@@ -21,6 +22,18 @@ class Converters {
         encodeDefaults = true
         classDiscriminator = "type"
         coerceInputValues = true
+    }
+
+    // ============ BIGDECIMAL CONVERTER ============
+
+    @TypeConverter
+    fun fromBigDecimal(value: BigDecimal): String {
+        return value.toPlainString()
+    }
+
+    @TypeConverter
+    fun toBigDecimal(value: String): BigDecimal {
+        return if (value.isBlank()) BigDecimal.ZERO else BigDecimal(value)
     }
 
     // ============ NETWORK CONVERTERS ============

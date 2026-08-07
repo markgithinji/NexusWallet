@@ -103,11 +103,13 @@ import com.example.nexuswallet.feature.settings.ui.security.RestoreSelectionDial
 import com.example.nexuswallet.feature.settings.ui.security.SecurityOperationOverlay
 import com.example.nexuswallet.feature.settings.ui.security.SecuritySettingsViewModel
 import com.example.nexuswallet.feature.settings.ui.security.SecurityUiEffect
+import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import com.example.nexuswallet.feature.wallet.ui.common.AssetChip
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
+import com.example.nexuswallet.feature.wallet.ui.common.SyncPulseIndicator
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.ImportOptionItem
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
@@ -136,6 +138,7 @@ fun WalletDashboardScreen(
     val operationError by viewModel.operationError.collectAsStateWithLifecycle()
     val isPrivacyModeEnabled by viewModel.isPrivacyModeEnabled.collectAsStateWithLifecycle()
     val selectedCurrency by viewModel.selectedCurrency.collectAsStateWithLifecycle()
+    val syncingNetworks by viewModel.syncingNetworks.collectAsStateWithLifecycle()
 
     var showRenameDialog by remember { mutableStateOf<Wallet?>(null) }
     var showAddOptions by remember { mutableStateOf(false) }
@@ -279,6 +282,7 @@ fun WalletDashboardScreen(
                             wallets = state.data,
                             totalPortfolio = totalPortfolio,
                             balances = balances,
+                            syncingNetworks = syncingNetworks,
                             isPrivacyModeEnabled = isPrivacyModeEnabled,
                             selectedCurrency = selectedCurrency,
                             onWalletClick = { wallet ->
@@ -477,6 +481,7 @@ fun DashboardContent(
     wallets: List<Wallet>,
     totalPortfolio: BigDecimal,
     balances: Map<String, WalletBalance>,
+    syncingNetworks: Set<Network>,
     isPrivacyModeEnabled: Boolean,
     selectedCurrency: SupportedCurrency,
     onWalletClick: (Wallet) -> Unit,
@@ -526,6 +531,7 @@ fun DashboardContent(
                         WalletCard(
                             wallet = wallet,
                             balance = balances[wallet.id],
+                            syncingNetworks = syncingNetworks,
                             isPrivacyModeEnabled = isPrivacyModeEnabled,
                             selectedCurrency = selectedCurrency,
                             onWalletClick = { onWalletClick(wallet) },
@@ -544,6 +550,7 @@ fun DashboardContent(
                 WalletCard(
                     wallet = wallet,
                     balance = balances[wallet.id],
+                    syncingNetworks = syncingNetworks,
                     isPrivacyModeEnabled = isPrivacyModeEnabled,
                     selectedCurrency = selectedCurrency,
                     onWalletClick = { onWalletClick(wallet) },
@@ -560,6 +567,7 @@ fun DashboardContent(
 fun WalletCard(
     wallet: Wallet,
     balance: WalletBalance?,
+    syncingNetworks: Set<Network>,
     isPrivacyModeEnabled: Boolean,
     selectedCurrency: SupportedCurrency,
     onWalletClick: () -> Unit,
@@ -581,13 +589,7 @@ fun WalletCard(
         )
     }
 
-    val totalUsdValue = balance?.let {
-        var total = 0.0
-        it.bitcoinBalances.values.forEach { btc -> total += btc.usdValue }
-        it.solanaBalances.values.forEach { sol -> total += sol.usdValue }
-        it.evmBalances.forEach { evm -> total += evm.usdValue }
-        total
-    } ?: 0.0
+    val totalUsdValue = balance?.totalUsdValue?.toDouble() ?: 0.0
 
     Surface(
         modifier = modifier
@@ -731,6 +733,7 @@ fun WalletCard(
                 WalletExpandedContent(
                     wallet = wallet,
                     balance = balance,
+                    syncingNetworks = syncingNetworks,
                     isPrivacyModeEnabled = isPrivacyModeEnabled,
                     selectedCurrency = selectedCurrency,
                     onDelete = { showDeleteDialog = true },
@@ -745,6 +748,7 @@ fun WalletCard(
 fun WalletExpandedContent(
     wallet: Wallet,
     balance: WalletBalance?,
+    syncingNetworks: Set<Network>,
     isPrivacyModeEnabled: Boolean,
     selectedCurrency: SupportedCurrency,
     onDelete: () -> Unit,
@@ -775,8 +779,9 @@ fun WalletExpandedContent(
                             .format(btcBalance.btc.toDoubleOrNull() ?: 0.0)
                     } ${coin.symbol}"
                 else "0 ${coin.symbol}",
-                usdValue = btcBalance?.usdValue ?: 0.0,
+                usdValue = btcBalance?.usdValue?.toDouble() ?: 0.0,
                 color = bitcoinLight,
+                isSyncing = syncingNetworks.contains(coin.network),
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
                 selectedCurrency = selectedCurrency
             )
@@ -796,8 +801,9 @@ fun WalletExpandedContent(
                             .format(solBalance.sol.toDoubleOrNull() ?: 0.0)
                     } ${coin.symbol}"
                 else "0 ${coin.symbol}",
-                usdValue = solBalance?.usdValue ?: 0.0,
+                usdValue = solBalance?.usdValue?.toDouble() ?: 0.0,
                 color = solanaLight,
+                isSyncing = syncingNetworks.contains(coin.network),
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
                 selectedCurrency = selectedCurrency
             )
@@ -805,9 +811,9 @@ fun WalletExpandedContent(
 
         // Group EVM tokens
         wallet.evmTokens.forEach { token ->
-            val tokenBalance = balance?.evmBalances?.find {
-                it.network == token.network && it.evmTokenType == token.evmTokenType
-            }
+            val lookupKey = "${token.network.chainId}_${token.contractAddress}"
+            val tokenBalance = balance?.evmBalances?.get(lookupKey)
+            
             val (color, iconRes) = when (token.evmTokenType) {
                 EVMTokenType.NATIVE -> ethereumLight to R.drawable.ethereum
                 EVMTokenType.USDC -> usdcLight to R.drawable.usdc
@@ -824,8 +830,9 @@ fun WalletExpandedContent(
                             .format(tokenBalance.balanceDecimal.toDoubleOrNull() ?: 0.0)
                     } ${token.symbol}"
                 else "0 ${token.symbol}",
-                usdValue = tokenBalance?.usdValue ?: 0.0,
+                usdValue = tokenBalance?.usdValue?.toDouble() ?: 0.0,
                 color = color,
+                isSyncing = syncingNetworks.contains(token.network),
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
                 selectedCurrency = selectedCurrency
             )
@@ -882,6 +889,7 @@ fun SimpleBalanceRow(
     amount: String,
     usdValue: Double,
     color: Color,
+    isSyncing: Boolean = false,
     isPrivacyModeEnabled: Boolean,
     selectedCurrency: SupportedCurrency
 ) {
@@ -918,7 +926,10 @@ fun SimpleBalanceRow(
         Spacer(modifier = Modifier.width(12.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 Text(
                     text = symbol,
                     style = MaterialTheme.typography.bodyMedium,
@@ -931,6 +942,9 @@ fun SimpleBalanceRow(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
+                }
+                if (isSyncing) {
+                    SyncPulseIndicator()
                 }
             }
             Text(

@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.clickableSingle
 import com.example.nexuswallet.feature.core.util.formatCurrency
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
@@ -74,6 +75,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.ui.common.ErrorScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.TransactionItem
+import com.example.nexuswallet.feature.wallet.ui.common.SyncPulseIndicator
 import com.example.nexuswallet.feature.wallet.ui.walletdetail.EmptyTransactionsView
 import com.example.nexuswallet.feature.wallet.ui.walletdetail.QuickActionItem
 import com.example.nexuswallet.ui.theme.bitcoinLight
@@ -83,6 +85,7 @@ import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
 import com.example.nexuswallet.ui.theme.usdtLight
 import com.example.nexuswallet.ui.theme.warning
+import java.math.BigDecimal
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -272,6 +275,8 @@ private fun CoinDetailContent(
                 address = state.address,
                 coin = coin,
                 usdValue = state.usdValue,
+                selectedCurrency = state.selectedCurrency,
+                isSyncing = state.isRefreshing,
                 onCopyAddress = onCopyAddress
             )
         }
@@ -324,7 +329,9 @@ private fun CoinDetailBalanceCard(
     balanceFormatted: String,
     address: String,
     coin: Coin,
-    usdValue: Double?,
+    usdValue: BigDecimal?,
+    selectedCurrency: SupportedCurrency,
+    isSyncing: Boolean = false,
     onCopyAddress: (String) -> Unit
 ) {
     Card(
@@ -423,13 +430,22 @@ private fun CoinDetailBalanceCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            if (usdValue != null && usdValue > 0) {
-                Text(
-                    text = usdValue.formatCurrency(),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+            if (usdValue != null && usdValue > BigDecimal.ZERO) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = usdValue.formatCurrency(selectedCurrency),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    if (isSyncing) {
+                        SyncPulseIndicator()
+                    }
+                }
             }
 
             Text(

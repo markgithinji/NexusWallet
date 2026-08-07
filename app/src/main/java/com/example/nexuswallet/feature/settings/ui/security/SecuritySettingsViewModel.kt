@@ -501,7 +501,7 @@ class SecuritySettingsViewModel @Inject constructor(
         selectedWallets.forEach { wallet ->
             val btcBalances = mutableMapOf<BitcoinNetwork, BitcoinBalance>()
             val solBalances = mutableMapOf<SolanaNetwork, SolanaBalance>()
-            val evmList = mutableListOf<EVMBalance>()
+            val evmBalances = mutableMapOf<String, EVMBalance>()
 
             wallet.bitcoinCoins.forEach { coin ->
                 val (balance, _) = syncBitcoinBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
@@ -515,16 +515,16 @@ class SecuritySettingsViewModel @Inject constructor(
 
             if (wallet.evmTokens.isNotEmpty()) {
                 val (balances, _) = syncEVMBalancesUseCase(wallet.id, wallet.evmTokens, prices, saveToCache = false)
-                evmList.addAll(balances)
+                evmBalances.putAll(balances)
             }
 
-            if (btcBalances.isNotEmpty() || solBalances.isNotEmpty() || evmList.isNotEmpty()) {
+            if (btcBalances.isNotEmpty() || solBalances.isNotEmpty() || evmBalances.isNotEmpty()) {
                 val newBalance = WalletBalance(
                     walletId = wallet.id,
                     lastUpdated = System.currentTimeMillis(),
                     bitcoinBalances = btcBalances,
                     solanaBalances = solBalances,
-                    evmBalances = evmList
+                    evmBalances = evmBalances
                 )
                 walletRepository.saveWalletBalance(newBalance)
             }

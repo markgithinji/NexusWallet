@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
+import java.math.BigDecimal
 import java.util.UUID
 
 @Entity(
@@ -30,8 +31,9 @@ data class EVMBalanceEntity(
     val evmTokenType: EVMTokenType,
     val network: EthereumNetwork,
     val address: String,
+    val contractAddress: String,
     val balanceWei: String,
     val balanceDecimal: String,
-    val usdValue: Double,
+    val usdValue: BigDecimal,
     val updatedAt: Long = System.currentTimeMillis()
 )

@@ -12,6 +12,7 @@ import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.collections.forEachIndexed
@@ -25,7 +26,7 @@ class GetBitcoinDetailUseCase @Inject constructor(
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
     private val settingsRepository: SettingsRepository,
     private val logger: Logger,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
 
     suspend operator fun invoke(
@@ -103,7 +104,7 @@ class GetBitcoinDetailUseCase @Inject constructor(
             address = bitcoinCoin.address,
             balance = coinBalance?.btc ?: "0",
             balanceFormatted = "${coinBalance?.btc ?: "0"} BTC",
-            usdValue = coinBalance?.usdValue ?: 0.0,
+            usdValue = coinBalance?.usdValue ?: BigDecimal.ZERO,
             network = bitcoinCoin.network,
             networkDisplayName = bitcoinCoin.network.name,
             rawTransactions = rawTransactions,
