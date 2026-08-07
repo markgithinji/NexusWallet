@@ -29,6 +29,9 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceU
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -485,9 +488,9 @@ class SecuritySettingsViewModel @Inject constructor(
         }
     }
 
-    private suspend fun triggerRestoredBalancesSync(bundle: BackupBundle, selection: RestoreSelection) {
+    private suspend fun triggerRestoredBalancesSync(bundle: BackupBundle, selection: RestoreSelection) = coroutineScope {
         val selectedWallets = bundle.wallets.filter { selection.selectedWallets.contains(it.id) }
-        if (selectedWallets.isEmpty()) return
+        if (selectedWallets.isEmpty()) return@coroutineScope
 
         val allSymbols = selectedWallets.flatMap { wallet ->
             wallet.bitcoinCoins.map { it.symbol } +
@@ -499,37 +502,56 @@ class SecuritySettingsViewModel @Inject constructor(
         val pricesResult = getSimplePricesUseCase(allSymbols, currency)
         val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
 
-        selectedWallets.forEach { wallet ->
-            val btcBalances = mutableMapOf<BitcoinNetwork, BitcoinBalance>()
-            val solBalances = mutableMapOf<SolanaNetwork, SolanaBalance>()
-            val evmBalances = mutableMapOf<String, EVMBalance>()
+        selectedWallets.map { wallet ->
+            async {
+                val btcBalances = mutableMapOf<BitcoinNetwork, BitcoinBalance>()
+                val solBalances = mutableMapOf<SolanaNetwork, SolanaBalance>()
+                val evmBalances = mutableMapOf<String, EVMBalance>()
 
-            wallet.bitcoinCoins.forEach { coin ->
-                val (balance, _) = syncBitcoinBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
-                balance?.let { btcBalances[coin.network] = it }
-            }
+                coroutineScope {
+                    val btcDeferred = wallet.bitcoinCoins.map { coin ->
+                        async {
+                            val (balance, _) = syncBitcoinBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
+                            coin.network to balance
+                        }
+                    }
 
-            wallet.solanaCoins.forEach { coin ->
-                val (balance, _) = syncSolanaBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
-                balance?.let { solBalances[coin.network] = it }
-            }
+                    val solDeferred = wallet.solanaCoins.map { coin ->
+                        async {
+                            val (balance, _) = syncSolanaBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
+                            coin.network to balance
+                        }
+                    }
 
-            if (wallet.evmTokens.isNotEmpty()) {
-                val (balances, _) = syncEVMBalancesUseCase(wallet.id, wallet.evmTokens, prices, saveToCache = false)
-                evmBalances.putAll(balances)
-            }
+                    val evmDeferred = if (wallet.evmTokens.isNotEmpty()) {
+                        async { syncEVMBalancesUseCase(wallet.id, wallet.evmTokens, prices, saveToCache = false) }
+                    } else null
 
-            if (btcBalances.isNotEmpty() || solBalances.isNotEmpty() || evmBalances.isNotEmpty()) {
-                val newBalance = WalletBalance(
-                    walletId = wallet.id,
-                    lastUpdated = System.currentTimeMillis(),
-                    bitcoinBalances = btcBalances,
-                    solanaBalances = solBalances,
-                    evmBalances = evmBalances
-                )
-                walletRepository.saveWalletBalance(newBalance)
+                    btcDeferred.awaitAll().forEach { (network, balance) ->
+                        balance?.let { btcBalances[network] = it }
+                    }
+
+                    solDeferred.awaitAll().forEach { (network, balance) ->
+                        balance?.let { solBalances[network] = it }
+                    }
+
+                    evmDeferred?.await()?.let { (balances, _) ->
+                        evmBalances.putAll(balances)
+                    }
+                }
+
+                if (btcBalances.isNotEmpty() || solBalances.isNotEmpty() || evmBalances.isNotEmpty()) {
+                    val newBalance = WalletBalance(
+                        walletId = wallet.id,
+                        lastUpdated = System.currentTimeMillis(),
+                        bitcoinBalances = btcBalances,
+                        solanaBalances = solBalances,
+                        evmBalances = evmBalances
+                    )
+                    walletRepository.saveWalletBalance(newBalance)
+                }
             }
-        }
+        }.awaitAll()
     }
 
     fun cancelRestoreSelection() {

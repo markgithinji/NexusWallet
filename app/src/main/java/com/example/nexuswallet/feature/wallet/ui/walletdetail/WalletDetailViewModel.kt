@@ -35,6 +35,9 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUs
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -203,50 +206,75 @@ class WalletDetailViewModel @Inject constructor(
                 emptyMap()
             }
 
-            // 2. Sync balances with prices
+            // 2. Sync balances with prices in parallel
             val allErrors = mutableListOf<ChainSyncError>()
             val btcBalances = mutableMapOf<BitcoinNetwork, BitcoinBalance>()
             val solBalances = mutableMapOf<SolanaNetwork, SolanaBalance>()
             val evmBalances = mutableMapOf<String, EVMBalance>()
 
-            wallet.bitcoinCoins.forEach { coin ->
-                _uiState.update { it.copy(syncingNetworks = it.syncingNetworks + coin.network) }
-                val (balance, errors) = syncBitcoinBalanceUseCase(
-                    wallet.id,
-                    coin,
-                    prices[coin.symbol] ?: 0.0,
-                    saveToCache = false
-                )
-                balance?.let { btcBalances[coin.network] = it }
-                allErrors.addAll(errors)
-                _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - coin.network) }
-            }
+            coroutineScope {
+                val btcDeferred = wallet.bitcoinCoins.map { coin ->
+                    async {
+                        _uiState.update { it.copy(syncingNetworks = it.syncingNetworks + coin.network) }
+                        val result = syncBitcoinBalanceUseCase(
+                            wallet.id,
+                            coin,
+                            prices[coin.symbol] ?: 0.0,
+                            saveToCache = false
+                        )
+                        _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - coin.network) }
+                        coin.network to result
+                    }
+                }
 
-            wallet.solanaCoins.forEach { coin ->
-                _uiState.update { it.copy(syncingNetworks = it.syncingNetworks + coin.network) }
-                val (balance, errors) = syncSolanaBalanceUseCase(
-                    wallet.id,
-                    coin,
-                    prices[coin.symbol] ?: 0.0,
-                    saveToCache = false
-                )
-                balance?.let { solBalances[coin.network] = it }
-                allErrors.addAll(errors)
-                _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - coin.network) }
-            }
+                val solDeferred = wallet.solanaCoins.map { coin ->
+                    async {
+                        _uiState.update { it.copy(syncingNetworks = it.syncingNetworks + coin.network) }
+                        val result = syncSolanaBalanceUseCase(
+                            wallet.id,
+                            coin,
+                            prices[coin.symbol] ?: 0.0,
+                            saveToCache = false
+                        )
+                        _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - coin.network) }
+                        coin.network to result
+                    }
+                }
 
-            if (wallet.evmTokens.isNotEmpty()) {
-                val evmNetworks = wallet.evmTokens.map { it.network }.toSet()
-                _uiState.update { it.copy(syncingNetworks = it.syncingNetworks + evmNetworks) }
-                val (balances, errors) = syncEVMBalancesUseCase(
-                    wallet.id,
-                    wallet.evmTokens,
-                    prices,
-                    saveToCache = false
-                )
-                evmBalances.putAll(balances)
-                allErrors.addAll(errors)
-                _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - evmNetworks) }
+                val evmDeferred = if (wallet.evmTokens.isNotEmpty()) {
+                    async {
+                        val evmNetworks = wallet.evmTokens.map { it.network }.toSet()
+                        _uiState.update { it.copy(syncingNetworks = it.syncingNetworks + evmNetworks) }
+                        val result = syncEVMBalancesUseCase(
+                            wallet.id,
+                            wallet.evmTokens,
+                            prices,
+                            saveToCache = false
+                        )
+                        _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - evmNetworks) }
+                        result
+                    }
+                } else null
+
+                // Collect BTC results
+                btcDeferred.awaitAll().forEach { (network, result) ->
+                    val (balance, errors) = result
+                    balance?.let { btcBalances[network] = it }
+                    allErrors.addAll(errors)
+                }
+
+                // Collect Solana results
+                solDeferred.awaitAll().forEach { (network, result) ->
+                    val (balance, errors) = result
+                    balance?.let { solBalances[network] = it }
+                    allErrors.addAll(errors)
+                }
+
+                // Collect EVM results
+                evmDeferred?.await()?.let { (balances, errors) ->
+                    evmBalances.putAll(balances)
+                    allErrors.addAll(errors)
+                }
             }
 
             // ATOMIC UPDATE: Save the full wallet balance at once
