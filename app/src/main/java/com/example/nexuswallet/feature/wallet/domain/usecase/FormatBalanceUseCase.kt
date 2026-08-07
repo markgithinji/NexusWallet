@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
+import com.example.nexuswallet.feature.core.util.formatCryptoAmount
 import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.core.util.formatPercent
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
@@ -10,7 +11,6 @@ import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
 import java.math.BigDecimal
-import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,9 +41,9 @@ class FormatBalanceUseCase @Inject constructor() {
                     network = coin.network,
                     isTestnet = coin.network.isTestnet,
                     balance = coinBalance?.btc ?: "0",
-                    balanceFormatted = formatCryptoAmount(coinBalance?.btc ?: "0"),
-                    usdValue = coinBalance?.usdValue ?: 0.0,
-                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currency),
+                    balanceFormatted = (coinBalance?.btc ?: "0").formatCryptoAmount(),
+                    usdValue = coinBalance?.usdValue ?: BigDecimal.ZERO,
+                    usdValueFormatted = (coinBalance?.usdValue ?: BigDecimal.ZERO).formatCurrency(currency),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.formatPercent(),
                     address = coin.address
@@ -66,9 +66,9 @@ class FormatBalanceUseCase @Inject constructor() {
                     network = coin.network,
                     isTestnet = coin.network.isTestnet,
                     balance = coinBalance?.sol ?: "0",
-                    balanceFormatted = formatCryptoAmount(coinBalance?.sol ?: "0"),
-                    usdValue = coinBalance?.usdValue ?: 0.0,
-                    usdValueFormatted = (coinBalance?.usdValue ?: 0.0).formatCurrency(currency),
+                    balanceFormatted = (coinBalance?.sol ?: "0").formatCryptoAmount(),
+                    usdValue = coinBalance?.usdValue ?: BigDecimal.ZERO,
+                    usdValueFormatted = (coinBalance?.usdValue ?: BigDecimal.ZERO).formatCurrency(currency),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.formatPercent(),
                     tokenCount = coin.splTokens.size,
@@ -78,6 +78,8 @@ class FormatBalanceUseCase @Inject constructor() {
 
             // Add SPL tokens
             coin.splTokens.forEach { token ->
+                val tokenBalance = balance?.splBalances?.get(token.mintAddress)
+                
                 assets.add(
                     AssetDisplayInfo(
                         id = "spl_${token.mintAddress}",
@@ -87,10 +89,10 @@ class FormatBalanceUseCase @Inject constructor() {
                         symbol = token.symbol,
                         network = coin.network,
                         isTestnet = coin.network.isTestnet,
-                        balance = "0",
-                        balanceFormatted = "0",
-                        usdValue = 0.0,
-                        usdValueFormatted = (0.0).formatCurrency(currency),
+                        balance = tokenBalance?.balanceDecimal ?: "0",
+                        balanceFormatted = (tokenBalance?.balanceDecimal ?: "0").formatCryptoAmount(),
+                        usdValue = tokenBalance?.usdValue ?: BigDecimal.ZERO,
+                        usdValueFormatted = (tokenBalance?.usdValue ?: BigDecimal.ZERO).formatCurrency(currency),
                         priceChangePercentage = null,
                         priceChangeFormatted = null,
                         address = token.mintAddress
@@ -99,12 +101,10 @@ class FormatBalanceUseCase @Inject constructor() {
             }
         }
 
-        // Add EVM assets - using direct filtering instead of map
+        // Add EVM assets - using efficient map lookup
         wallet.evmTokens.forEach { token ->
-            // Find the matching balance using network and tokenType directly
-            val tokenBalance = balance?.evmBalances?.find {
-                it.network == token.network && it.evmTokenType == token.evmTokenType
-            }
+            val lookupKey = "${token.network.chainId}_${token.contractAddress}"
+            val tokenBalance = balance?.evmBalances?.get(lookupKey)
 
             val percentage = when (token) {
                 is NativeETH -> pricePercentages["ethereum"]
@@ -122,10 +122,10 @@ class FormatBalanceUseCase @Inject constructor() {
                     network = token.network,
                     isTestnet = token.network.isTestnet,
                     balance = tokenBalance?.balanceDecimal ?: "0",
-                    balanceFormatted = formatCryptoAmount(tokenBalance?.balanceDecimal ?: "0"),
-                    usdValue = tokenBalance?.usdValue ?: 0.0,
+                    balanceFormatted = (tokenBalance?.balanceDecimal ?: "0").formatCryptoAmount(),
+                    usdValue = tokenBalance?.usdValue ?: BigDecimal.ZERO,
                     usdValueFormatted = (tokenBalance?.usdValue
-                        ?: 0.0).formatCurrency(currency),
+                        ?: BigDecimal.ZERO).formatCurrency(currency),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.formatPercent(),
                     address = token.address
@@ -134,30 +134,5 @@ class FormatBalanceUseCase @Inject constructor() {
         }
 
         return assets
-    }
-
-    private fun formatCryptoAmount(amount: String): String {
-        return try {
-            val amountDecimal = amount.toBigDecimal()
-            when {
-                amountDecimal < BigDecimal("0.000001") ->
-                    amountDecimal.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros()
-                        .toPlainString()
-
-                amountDecimal < BigDecimal("0.001") ->
-                    amountDecimal.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros()
-                        .toPlainString()
-
-                amountDecimal < BigDecimal("1") ->
-                    amountDecimal.setScale(4, RoundingMode.HALF_UP).stripTrailingZeros()
-                        .toPlainString()
-
-                else ->
-                    amountDecimal.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros()
-                        .toPlainString()
-            }
-        } catch (e: Exception) {
-            amount
-        }
     }
 }

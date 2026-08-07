@@ -67,10 +67,8 @@ class WalletDashboardViewModel @Inject constructor(
 
     // Total portfolio value (reactive)
     val totalPortfolioValue: StateFlow<BigDecimal> = balances.map { balancesMap ->
-        balancesMap.values.sumOf { balance ->
-            balance.bitcoinBalances.values.sumOf { BigDecimal(it.usdValue) } +
-                    balance.solanaBalances.values.sumOf { BigDecimal(it.usdValue) } +
-                    balance.evmBalances.sumOf { BigDecimal(it.usdValue) }
+        balancesMap.values.fold(BigDecimal.ZERO) { acc, balance ->
+            acc.add(balance.totalUsdValue)
         }
     }.stateIn(
         scope = viewModelScope,
@@ -336,7 +334,7 @@ class WalletDashboardViewModel @Inject constructor(
                         async {
                             val btcBalances = mutableMapOf<BitcoinNetwork, BitcoinBalance>()
                             val solBalances = mutableMapOf<SolanaNetwork, SolanaBalance>()
-                            val evmList = mutableListOf<EVMBalance>()
+                            val evmMap = mutableMapOf<String, EVMBalance>()
                             val walletErrors = mutableListOf<ChainSyncError>()
 
                             // Only fetch chains that match the filter (or all if filter is null)
@@ -378,7 +376,7 @@ class WalletDashboardViewModel @Inject constructor(
                                     prices,
                                     saveToCache = false
                                 )
-                                evmList.addAll(balances)
+                                evmMap.putAll(balances)
                                 walletErrors.addAll(errors)
                             }
 
@@ -394,9 +392,11 @@ class WalletDashboardViewModel @Inject constructor(
                                     if (networkFilter == null || networkFilter is SolanaNetwork) putAll(solBalances)
                                 } ?: solBalances,
                                 evmBalances = if (networkFilter == null || networkFilter is EthereumNetwork) {
-                                    evmList 
+                                    existing?.evmBalances?.toMutableMap()?.apply {
+                                        putAll(evmMap)
+                                    } ?: evmMap
                                 } else {
-                                    existing?.evmBalances ?: emptyList()
+                                    existing?.evmBalances ?: emptyMap()
                                 }
                             )
                             walletRepository.saveWalletBalance(newBalance)

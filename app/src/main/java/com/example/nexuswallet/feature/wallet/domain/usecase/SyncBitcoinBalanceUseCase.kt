@@ -37,7 +37,9 @@ class SyncBitcoinBalanceUseCase @Inject constructor(
                 val btcBalance = balanceResult.data
                 val satoshiBalance =
                     (btcBalance * BigDecimal("100000000")).toBigInteger().toString()
-                val usdValue = btcBalance.toDouble() * price
+                
+                val priceBigDecimal = BigDecimal.valueOf(price)
+                val usdValue = btcBalance.multiply(priceBigDecimal)
 
                 val btcBalanceDomain = BitcoinBalance(
                     address = coin.address,

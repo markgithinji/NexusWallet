@@ -1,9 +1,72 @@
 package com.example.nexuswallet.feature.core.util
 
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.text.NumberFormat
+import java.text.SimpleDateFormat
 import java.util.Currency
+import java.util.Date
 import java.util.Locale
+
+object BigDecimalSerializer : KSerializer<BigDecimal> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("BigDecimal", PrimitiveKind.STRING)
+    override fun deserialize(decoder: Decoder): BigDecimal = BigDecimal(decoder.decodeString())
+    override fun serialize(encoder: Encoder, value: BigDecimal) = encoder.encodeString(value.toPlainString())
+}
+
+/**
+ * Extension to format crypto amounts with appropriate precision based on magnitude.
+ */
+fun String.formatCryptoAmount(): String {
+    return try {
+        val amountDecimal = this.toBigDecimal()
+        when {
+            amountDecimal < BigDecimal("0.000001") ->
+                amountDecimal.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros()
+                    .toPlainString()
+
+            amountDecimal < BigDecimal("0.001") ->
+                amountDecimal.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros()
+                    .toPlainString()
+
+            amountDecimal < BigDecimal("1") ->
+                amountDecimal.setScale(4, RoundingMode.HALF_UP).stripTrailingZeros()
+                    .toPlainString()
+
+            else ->
+                amountDecimal.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros()
+                    .toPlainString()
+        }
+    } catch (e: Exception) {
+        this
+    }
+}
+
+/**
+ * Formats a timestamp into a human-readable relative or absolute time.
+ */
+fun Long.formatTimestamp(): String {
+    val now = System.currentTimeMillis()
+    val diff = now - this
+
+    return when {
+        diff < 60_000L -> "Just now"
+        diff < 3_600_000L -> "${diff / 60_000L} min ago"
+        diff < 86_400_000L -> "${diff / 3_600_000L} hr ago"
+        else -> {
+            val locale = Locale.getDefault()
+            val formatter = SimpleDateFormat("MMM d", locale)
+            formatter.format(Date(this))
+        }
+    }
+}
 
 /**
  * Extension to format prices based on their magnitude.
@@ -49,6 +112,8 @@ fun Double.formatCurrency(currencyCode: String = "USD"): String {
 }
 
 fun Double.formatCurrency(currency: SupportedCurrency): String = formatCurrency(currency.code)
+
+fun BigDecimal.formatCurrency(currency: SupportedCurrency): String = this.toDouble().formatCurrency(currency.code)
 
 /**
  * Formats a percentage with a sign and two decimals (e.g., +5.23% or -1.10%).

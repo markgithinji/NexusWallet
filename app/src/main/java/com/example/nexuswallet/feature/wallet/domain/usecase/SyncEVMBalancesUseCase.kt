@@ -29,8 +29,8 @@ class SyncEVMBalancesUseCase @Inject constructor(
         tokens: List<EVMToken>,
         prices: Map<String, Double>,
         saveToCache: Boolean = true
-    ): Pair<List<EVMBalance>, List<ChainSyncError>> = withContext(ioDispatcher) {
-        val evmBalances = mutableListOf<EVMBalance>()
+    ): Pair<Map<String, EVMBalance>, List<ChainSyncError>> = withContext(ioDispatcher) {
+        val evmBalances = mutableMapOf<String, EVMBalance>()
         val chainErrors = mutableListOf<ChainSyncError>()
 
         coroutineScope {
@@ -61,22 +61,24 @@ class SyncEVMBalancesUseCase @Inject constructor(
                                     .toString()
                             }
 
-                            val price = prices[token.symbol] ?: 0.0
-                            val usdValue = balance.toDouble() * price
+                            val price = BigDecimal.valueOf(prices[token.symbol] ?: 0.0)
+                            val usdValue = balance.multiply(price)
 
                             logger.d(TAG, "${token.symbol} on ${token.network.name} balance updated: $balance")
                             
-                            Pair(
-                                EVMBalance(
-                                    evmTokenType = token.evmTokenType,
-                                    network = token.network,
-                                    address = token.address,
-                                    balanceWei = balanceWei,
-                                    balanceDecimal = balance.toPlainString(),
-                                    usdValue = usdValue
-                                ),
-                                null
+                            val balanceDomain = EVMBalance(
+                                evmTokenType = token.evmTokenType,
+                                network = token.network,
+                                address = token.address,
+                                contractAddress = token.contractAddress,
+                                balanceWei = balanceWei,
+                                balanceDecimal = balance.toPlainString(),
+                                usdValue = usdValue
                             )
+                            
+                            // lookup key: chainId + contractAddress
+                            val key = "${token.network.chainId}_${token.contractAddress}"
+                            Pair(key to balanceDomain, null)
                         }
 
                         is Result.Error -> {
@@ -91,15 +93,15 @@ class SyncEVMBalancesUseCase @Inject constructor(
                 }
             }
 
-            deferredBalances.awaitAll().forEach { (balance, error) ->
-                balance?.let { evmBalances.add(it) }
+            deferredBalances.awaitAll().forEach { (entry, error) ->
+                entry?.let { (key, balance) -> evmBalances[key] = balance }
                 error?.let { chainErrors.add(it) }
             }
         }
 
         // Save all EVM balances that succeeded
         if (saveToCache && evmBalances.isNotEmpty()) {
-            balanceDataSource.saveEVMBalances(walletId, evmBalances)
+            balanceDataSource.saveEVMBalances(walletId, evmBalances.values.toList())
             logger.d(TAG, "Saved ${evmBalances.size} EVM balances for wallet $walletId")
         }
 

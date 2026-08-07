@@ -1,5 +1,7 @@
 package com.example.nexuswallet.feature.wallet.domain.model
 
+import java.math.BigDecimal
+
 data class AssetDisplayInfo(
     val id: String,
     val walletId: String,
@@ -10,7 +12,7 @@ data class AssetDisplayInfo(
     val isTestnet: Boolean,
     val balance: String,
     val balanceFormatted: String,
-    val usdValue: Double,
+    val usdValue: BigDecimal,
     val usdValueFormatted: String,
     val priceChangePercentage: Double?,
     val priceChangeFormatted: String?,

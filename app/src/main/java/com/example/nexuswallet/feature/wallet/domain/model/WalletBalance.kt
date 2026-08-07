@@ -1,7 +1,20 @@
 package com.example.nexuswallet.feature.wallet.domain.model
 
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import java.math.BigDecimal
+
+object BigDecimalSerializer : KSerializer<BigDecimal> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("BigDecimal", PrimitiveKind.STRING)
+    override fun deserialize(decoder: Decoder): BigDecimal = BigDecimal(decoder.decodeString())
+    override fun serialize(encoder: Encoder, value: BigDecimal) = encoder.encodeString(value.toPlainString())
+}
 
 // ============ MAIN WALLET BALANCE ============
 
@@ -10,9 +23,20 @@ data class WalletBalance(
     val lastUpdated: Long,
     val bitcoinBalances: Map<BitcoinNetwork, BitcoinBalance> = emptyMap(),
     val solanaBalances: Map<SolanaNetwork, SolanaBalance> = emptyMap(),
-    val evmBalances: List<EVMBalance> = emptyList(),
-    val splBalances: List<SPLBalance> = emptyList()
-)
+    val evmBalances: Map<String, EVMBalance> = emptyMap(),
+    val splBalances: Map<String, SPLBalance> = emptyMap()
+) {
+    val totalUsdValue: BigDecimal
+        get() {
+            var total = BigDecimal.ZERO
+            bitcoinBalances.values.forEach { total = total.add(it.usdValue) }
+            solanaBalances.values.forEach { total = total.add(it.usdValue) }
+            evmBalances.values.forEach { total = total.add(it.usdValue) }
+            splBalances.values.forEach { total = total.add(it.usdValue) }
+            return total
+        }
+}
+
 // ============ BITCOIN BALANCE ============
 
 @Serializable
@@ -20,7 +44,8 @@ data class BitcoinBalance(
     val address: String,
     val satoshis: String,
     val btc: String,
-    val usdValue: Double
+    @Serializable(with = BigDecimalSerializer::class)
+    val usdValue: BigDecimal
 )
 
 // ============ SOLANA BALANCE ============
@@ -30,7 +55,8 @@ data class SolanaBalance(
     val address: String,
     val lamports: String,
     val sol: String,
-    val usdValue: Double
+    @Serializable(with = BigDecimalSerializer::class)
+    val usdValue: BigDecimal
 )
 
 // ============ EVM BALANCE ============
@@ -40,9 +66,11 @@ data class EVMBalance(
     val evmTokenType: EVMTokenType,
     val network: EthereumNetwork,
     val address: String,
+    val contractAddress: String,
     val balanceWei: String,
     val balanceDecimal: String,
-    val usdValue: Double,
+    @Serializable(with = BigDecimalSerializer::class)
+    val usdValue: BigDecimal
 )
 
 @Serializable
@@ -50,5 +78,6 @@ data class SPLBalance(
     val mintAddress: String,
     val address: String,
     val balanceDecimal: String,
-    val usdValue: Double
+    @Serializable(with = BigDecimalSerializer::class)
+    val usdValue: BigDecimal
 )

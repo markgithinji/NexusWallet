@@ -37,7 +37,9 @@ class SyncSolanaBalanceUseCase @Inject constructor(
                 val solBalance = solBalanceResult.data
                 val lamportsBalance =
                     (solBalance * BigDecimal("1000000000")).toBigInteger().toString()
-                val usdValue = solBalance.toDouble() * price
+                
+                val priceBigDecimal = BigDecimal.valueOf(price)
+                val usdValue = solBalance.multiply(priceBigDecimal)
 
                 val solanaBalanceDomain = SolanaBalance(
                     address = coin.address,

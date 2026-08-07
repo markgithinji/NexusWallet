@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
 import javax.inject.Inject
 
 @HiltViewModel
@@ -206,7 +207,7 @@ class WalletDetailViewModel @Inject constructor(
             val allErrors = mutableListOf<ChainSyncError>()
             val btcBalances = mutableMapOf<BitcoinNetwork, BitcoinBalance>()
             val solBalances = mutableMapOf<SolanaNetwork, SolanaBalance>()
-            val evmList = mutableListOf<EVMBalance>()
+            val evmBalances = mutableMapOf<String, EVMBalance>()
 
             wallet.bitcoinCoins.forEach { coin ->
                 val (balance, errors) = syncBitcoinBalanceUseCase(
@@ -237,18 +238,18 @@ class WalletDetailViewModel @Inject constructor(
                     prices,
                     saveToCache = false
                 )
-                evmList.addAll(balances)
+                evmBalances.putAll(balances)
                 allErrors.addAll(errors)
             }
 
             // ATOMIC UPDATE: Save the full wallet balance at once
-            if (btcBalances.isNotEmpty() || solBalances.isNotEmpty() || evmList.isNotEmpty()) {
+            if (btcBalances.isNotEmpty() || solBalances.isNotEmpty() || evmBalances.isNotEmpty()) {
                 val newBalance = WalletBalance(
                     walletId = wallet.id,
                     lastUpdated = System.currentTimeMillis(),
                     bitcoinBalances = btcBalances,
                     solanaBalances = solBalances,
-                    evmBalances = evmList
+                    evmBalances = evmBalances
                 )
                 walletRepository.saveWalletBalance(newBalance)
             }
@@ -326,13 +327,13 @@ class WalletDetailViewModel @Inject constructor(
             currency = state.selectedCurrency
         )
 
-        val totalUsd = assets.sumOf { it.usdValue }
+        val totalUsd = assets.fold(BigDecimal.ZERO) { acc, asset -> acc.add(asset.usdValue) }
         val totalFormatted = totalUsd.formatCurrency(state.selectedCurrency)
 
         _uiState.update {
             it.copy(
                 assets = assets,
-                totalBalance = totalUsd,
+                totalBalance = totalUsd.toDouble(),
                 totalBalanceFormatted = totalFormatted
             )
         }
