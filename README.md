@@ -1,4 +1,4 @@
-# Nexus Wallet 🔐 — Cryptocurrency Wallet for Android
+# Nexus Wallet , Cryptocurrency Wallet for Android
 
 **Nexus Wallet** is a self-hosted **offline-first** cryptocurrency wallet built with **Kotlin and Jetpack Compose**, showcasing advanced Android development skills in security, real-time data handling, and modern architecture. It connects to multiple blockchain APIs (Etherscan, Blockstream, Solana RPC) for secure balance checking and transaction management.
 
