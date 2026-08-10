@@ -12,6 +12,7 @@ import com.example.nexuswallet.feature.settings.domain.model.*
 import com.example.nexuswallet.feature.settings.domain.repository.BackupRepository
 import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
+import com.example.nexuswallet.feature.logging.Logger
 import kotlinx.coroutines.flow.first
 import javax.crypto.Cipher
 import javax.inject.Inject
@@ -23,15 +24,19 @@ class CreateBackupUseCase @Inject constructor(
     private val vaultRepository: VaultRepository,
     private val settingsRepository: SettingsRepository,
     private val backupRepository: BackupRepository,
-    private val keyStoreRepository: KeyStoreRepository
+    private val keyStoreRepository: KeyStoreRepository,
+    private val logger: Logger
 ) {
     suspend operator fun invoke(pin: String, cipher: Cipher? = null): Result<ByteArray> {
+        logger.d(TAG, "Starting backup creation process")
         return try {
             // 1. Collect all Wallets
             val wallets = walletRepository.observeWallets().first()
+            logger.d(TAG, "Collected ${wallets.size} wallets for backup")
             
             // 2. Collect corresponding Vault data for each wallet
             val vaultEntries = wallets.map { wallet ->
+                logger.d(TAG, "Processing vault data for wallet: ${wallet.name} (${wallet.id})")
                 // Decrypt mnemonic from hardware
                 val encryptedMnemonic = vaultRepository.getEncryptedMnemonic(wallet.id) 
                     ?: throw Exception("Mnemonic missing for wallet ${wallet.id}")
@@ -106,12 +111,22 @@ class CreateBackupUseCase @Inject constructor(
             )
             
             // 5. Encrypt Bundle via Repository
-            backupRepository.encryptBackup(bundle, pin)
+            val result = backupRepository.encryptBackup(bundle, pin)
+            if (result is Result.Success) {
+                logger.d(TAG, "Backup bundle successfully encrypted, size: ${result.data.size} bytes")
+            }
+            result
             
         } catch (e: HardwareAuthRequiredException) {
+            logger.w(TAG, "Biometric authentication required for backup")
             Result.Error("Biometric authentication required", e)
         } catch (e: Exception) {
+            logger.e(TAG, "Failed to create backup: ${e.message}", e)
             Result.Error(e.message ?: "Failed to create backup")
         }
+    }
+
+    companion object {
+        private const val TAG = "CreateBackupUC"
     }
 }

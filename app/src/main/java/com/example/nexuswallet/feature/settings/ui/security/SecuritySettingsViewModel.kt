@@ -7,7 +7,6 @@ import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequire
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.UiText
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
-import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.settings.domain.model.BackupBundle
 import com.example.nexuswallet.feature.settings.domain.model.RestoreSelection
 import com.example.nexuswallet.feature.settings.domain.repository.BackupRepository
@@ -20,27 +19,13 @@ import com.example.nexuswallet.feature.settings.domain.usecase.RestoreBackupUseC
 import com.example.nexuswallet.feature.settings.domain.usecase.SetBiometricEnabledUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.SetPinUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.VerifyPinUseCase
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
-import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
-import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
-import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceUseCase
-import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
-import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.crypto.Cipher
@@ -57,12 +42,7 @@ class SecuritySettingsViewModel @Inject constructor(
     private val clearAllSecurityDataUseCase: ClearAllSecurityDataUseCase,
     private val createBackupUseCase: CreateBackupUseCase,
     private val restoreBackupUseCase: RestoreBackupUseCase,
-    private val backupRepository: BackupRepository,
-    private val walletRepository: WalletRepository,
-    private val syncBitcoinBalanceUseCase: SyncBitcoinBalanceUseCase,
-    private val syncSolanaBalanceUseCase: SyncSolanaBalanceUseCase,
-    private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
-    private val getSimplePricesUseCase: GetSimplePricesUseCase
+    private val backupRepository: BackupRepository
 ) : ViewModel() {
 
     // UI State
@@ -116,6 +96,7 @@ class SecuritySettingsViewModel @Inject constructor(
     val pinVerifyPurpose: StateFlow<PinVerifyPurpose?> = _pinVerifyPurpose.asStateFlow()
 
     private enum class AuthPurpose { CLEAR_ALL, BACKUP, RESTORE }
+
     private var currentAuthPurpose: AuthPurpose? = null
 
     private var pendingBackupData: ByteArray? = null
@@ -192,10 +173,13 @@ class SecuritySettingsViewModel @Inject constructor(
                     // Force navigation refresh by reloading security status
                     loadSecurityStatus()
                 }
+
                 is Result.Error -> {
                     _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(result.message)))
                 }
-                Result.Loading -> { /* Ignore */ }
+
+                Result.Loading -> { /* Ignore */
+                }
             }
         }
     }
@@ -206,7 +190,13 @@ class SecuritySettingsViewModel @Inject constructor(
                 settingsRepository.setPrivacyModeEnabled(enabled)
                 refreshAuthStatus()
             } catch (e: Exception) {
-                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(e.message ?: "Failed to update privacy mode")))
+                _uiEffect.emit(
+                    SecurityUiEffect.ShowSnackbar(
+                        UiText.DynamicString(
+                            e.message ?: "Failed to update privacy mode"
+                        )
+                    )
+                )
             }
         }
     }
@@ -217,7 +207,13 @@ class SecuritySettingsViewModel @Inject constructor(
                 settingsRepository.setRequireAuthForSend(enabled)
                 refreshAuthStatus()
             } catch (e: Exception) {
-                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(e.message ?: "Failed to update security preference")))
+                _uiEffect.emit(
+                    SecurityUiEffect.ShowSnackbar(
+                        UiText.DynamicString(
+                            e.message ?: "Failed to update security preference"
+                        )
+                    )
+                )
             }
         }
     }
@@ -247,6 +243,7 @@ class SecuritySettingsViewModel @Inject constructor(
                             )
                             Result.Success(updatedState)
                         }
+
                         else -> {
                             Result.Success(
                                 SecurityUiState(
@@ -265,10 +262,13 @@ class SecuritySettingsViewModel @Inject constructor(
                     }
                 }
             }
+
             is Result.Error -> {
                 _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(authResult.message)))
             }
-            Result.Loading -> { /* Ignore */ }
+
+            Result.Loading -> { /* Ignore */
+            }
         }
     }
 
@@ -309,7 +309,7 @@ class SecuritySettingsViewModel @Inject constructor(
     fun onPinVerified(pin: String) {
         viewModelScope.launch {
             _pinSetupError.value = null
-            
+
             // For RESTORE, we use the entered PIN directly for decryption.
             if (_pinVerifyPurpose.value == PinVerifyPurpose.RESTORE) {
                 val data = pendingBackupData
@@ -323,9 +323,11 @@ class SecuritySettingsViewModel @Inject constructor(
                             _showPinVerifyDialog.value = false
                             _showRestoreSelectionDialog.value = true
                         }
+
                         is Result.Error -> {
                             _pinSetupError.value = UiText.DynamicString(result.message)
                         }
+
                         else -> {}
                     }
                     _operationState.value = SecurityOperation.IDLE
@@ -354,12 +356,15 @@ class SecuritySettingsViewModel @Inject constructor(
                     pendingBackupPin = pin
                     when (val result = createBackupUseCase(pin, cipher)) {
                         is Result.Success -> {
-                            _uiEffect.emit(SecurityUiEffect.SaveBackupFile(
-                                data = result.data,
-                                fileName = "nexus_backup_${System.currentTimeMillis()}.bin"
-                            ))
+                            _uiEffect.emit(
+                                SecurityUiEffect.SaveBackupFile(
+                                    data = result.data,
+                                    fileName = "nexus_backup_${System.currentTimeMillis()}.bin"
+                                )
+                            )
                             pendingBackupPin = null
                         }
+
                         is Result.Error -> {
                             val authException = result.throwable as? HardwareAuthRequiredException
                             if (authException != null) {
@@ -368,13 +373,21 @@ class SecuritySettingsViewModel @Inject constructor(
                                 currentAuthPurpose = AuthPurpose.BACKUP
                                 _authRequest.value = System.currentTimeMillis()
                             } else {
-                                _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(result.message)))
+                                _uiEffect.emit(
+                                    SecurityUiEffect.ShowSnackbar(
+                                        UiText.DynamicString(
+                                            result.message
+                                        )
+                                    )
+                                )
                             }
                         }
+
                         else -> {}
                     }
                     _operationState.value = SecurityOperation.IDLE
                 }
+
                 else -> {}
             }
 
@@ -393,8 +406,8 @@ class SecuritySettingsViewModel @Inject constructor(
 
         bundle.wallets.forEach { wallet ->
             val allNetworks = (wallet.bitcoinCoins.map { it.network.name } +
-                               wallet.solanaCoins.map { it.network.name } +
-                               wallet.evmTokens.map { it.network.name }).toSet()
+                    wallet.solanaCoins.map { it.network.name } +
+                    wallet.evmTokens.map { it.network.name }).toSet()
             networks[wallet.id] = allNetworks
 
             val walletTokens = mutableMapOf<String, Set<EVMTokenType>>()
@@ -413,30 +426,37 @@ class SecuritySettingsViewModel @Inject constructor(
 
     fun toggleWalletSelection(walletId: String, selected: Boolean) {
         _restoreSelection.update { current ->
-            val newWallets = if (selected) current.selectedWallets + walletId else current.selectedWallets - walletId
+            val newWallets =
+                if (selected) current.selectedWallets + walletId else current.selectedWallets - walletId
             current.copy(selectedWallets = newWallets)
         }
     }
 
     fun toggleNetworkSelection(walletId: String, networkName: String, selected: Boolean) {
         _restoreSelection.update { current ->
-            val walletNetworks = current.selectedNetworks[walletId]?.toMutableSet() ?: mutableSetOf()
+            val walletNetworks =
+                current.selectedNetworks[walletId]?.toMutableSet() ?: mutableSetOf()
             if (selected) walletNetworks.add(networkName) else walletNetworks.remove(networkName)
-            
+
             val newNetworks = current.selectedNetworks.toMutableMap()
             newNetworks[walletId] = walletNetworks
             current.copy(selectedNetworks = newNetworks)
         }
     }
 
-    fun toggleTokenSelection(walletId: String, networkName: String, tokenType: EVMTokenType, selected: Boolean) {
+    fun toggleTokenSelection(
+        walletId: String,
+        networkName: String,
+        tokenType: EVMTokenType,
+        selected: Boolean
+    ) {
         _restoreSelection.update { current ->
             val walletTokens = current.selectedTokens[walletId]?.toMutableMap() ?: mutableMapOf()
             val netTokens = walletTokens[networkName]?.toMutableSet() ?: mutableSetOf()
-            
+
             if (selected) netTokens.add(tokenType) else netTokens.remove(tokenType)
             walletTokens[networkName] = netTokens
-            
+
             val newTokens = current.selectedTokens.toMutableMap()
             newTokens[walletId] = walletTokens
             current.copy(selectedTokens = newTokens)
@@ -447,113 +467,63 @@ class SecuritySettingsViewModel @Inject constructor(
         val bundle = _decryptedBundle.value ?: return
         val selection = _restoreSelection.value
         val pin = pendingBackupPin
-        
+
         viewModelScope.launch {
+            // Optimization: Close the selection dialog immediately so the global "Restoring..." overlay can show
             _showRestoreSelectionDialog.value = false
             _operationState.value = SecurityOperation.RESTORING
-            
-            when (val result = restoreBackupUseCase(bundle, selection, cipher)) {
-                is Result.Success -> {
-                    // Auto-set the PIN used for decryption as the app PIN
-                    if (pin != null) {
-                        setPinUseCase(pin)
+
+            try {
+                // Perform the critical restore operation (DB/Vault writes)
+                when (val result = restoreBackupUseCase(bundle, selection, cipher)) {
+                    is Result.Success -> {
+                        // Auto-set the PIN used for decryption as the app PIN
+                        if (pin != null) {
+                            setPinUseCase(pin)
+                        }
+                        refreshAuthStatus()
+
+                        _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.StringResource(R.string.backup_restored_success)))
+                        _uiEffect.emit(SecurityUiEffect.RestoreSuccess)
+
+                        // Cleanup
+                        _decryptedBundle.value = null
+                        pendingBackupPin = null
+                        pendingBackupData = null
                     }
-                    refreshAuthStatus()
-                    
-                    // UX: Wait for the initial balance sync before showing success
-                    // This ensures the "Restoring..." overlay stays visible until balances are loaded,
-                    triggerRestoredBalancesSync(bundle, selection)
 
-                    _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.StringResource(R.string.backup_restored_success)))
-                    _uiEffect.emit(SecurityUiEffect.RestoreSuccess)
-                    
-                    // Cleanup
-                    _decryptedBundle.value = null
-                    pendingBackupPin = null
-                    pendingBackupData = null
-                }
-                is Result.Error -> {
-                    val authException = result.throwable as? HardwareAuthRequiredException
-                    if (authException != null || result.message.contains("biometric", ignoreCase = true)) {
-                        // Trigger biometric auth
-                        _cryptoObject.value = authException?.cryptoObject?.cipher
-                        currentAuthPurpose = AuthPurpose.RESTORE
-                        _authRequest.value = System.currentTimeMillis()
-                    } else {
-                        _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(result.message)))
-                    }
-                }
-                else -> {}
-            }
-            
-            _operationState.value = SecurityOperation.IDLE
-        }
-    }
-
-    private suspend fun triggerRestoredBalancesSync(bundle: BackupBundle, selection: RestoreSelection) = coroutineScope {
-        val selectedWallets = bundle.wallets.filter { selection.selectedWallets.contains(it.id) }
-        if (selectedWallets.isEmpty()) return@coroutineScope
-
-        val allSymbols = selectedWallets.flatMap { wallet ->
-            wallet.bitcoinCoins.map { it.symbol } +
-            wallet.solanaCoins.map { it.symbol } +
-            wallet.evmTokens.map { it.symbol }
-        }.distinct()
-
-        val currency = settingsRepository.observeSelectedCurrency().first()
-        val pricesResult = getSimplePricesUseCase(allSymbols, currency)
-        val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
-
-        selectedWallets.map { wallet ->
-            async {
-                val btcBalances = mutableMapOf<BitcoinNetwork, BitcoinBalance>()
-                val solBalances = mutableMapOf<SolanaNetwork, SolanaBalance>()
-                val evmBalances = mutableMapOf<String, EVMBalance>()
-
-                coroutineScope {
-                    val btcDeferred = wallet.bitcoinCoins.map { coin ->
-                        async {
-                            val (balance, _) = syncBitcoinBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
-                            coin.network to balance
+                    is Result.Error -> {
+                        val authException = result.throwable as? HardwareAuthRequiredException
+                        if (authException != null || result.message.contains(
+                                "biometric",
+                                ignoreCase = true
+                            )
+                        ) {
+                            // Trigger biometric auth
+                            _cryptoObject.value = authException?.cryptoObject?.cipher
+                            currentAuthPurpose = AuthPurpose.RESTORE
+                            _authRequest.value = System.currentTimeMillis()
+                        } else {
+                            _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(result.message)))
+                            // On error, we might want to let the user try again
+                            _showRestoreSelectionDialog.value = true
                         }
                     }
 
-                    val solDeferred = wallet.solanaCoins.map { coin ->
-                        async {
-                            val (balance, _) = syncSolanaBalanceUseCase(wallet.id, coin, prices[coin.symbol] ?: 0.0, saveToCache = false)
-                            coin.network to balance
-                        }
-                    }
-
-                    val evmDeferred = if (wallet.evmTokens.isNotEmpty()) {
-                        async { syncEVMBalancesUseCase(wallet.id, wallet.evmTokens, prices, saveToCache = false) }
-                    } else null
-
-                    btcDeferred.awaitAll().forEach { (network, balance) ->
-                        balance?.let { btcBalances[network] = it }
-                    }
-
-                    solDeferred.awaitAll().forEach { (network, balance) ->
-                        balance?.let { solBalances[network] = it }
-                    }
-
-                    evmDeferred?.await()?.let { (balances, _) ->
-                        evmBalances.putAll(balances)
-                    }
+                    else -> {}
                 }
-
-                if (btcBalances.isNotEmpty() || solBalances.isNotEmpty() || evmBalances.isNotEmpty()) {
-                    val newBalance = WalletBalance(
-                        walletId = wallet.id,
-                        lastUpdated = System.currentTimeMillis(),
-                        bitcoinBalances = btcBalances,
-                        solanaBalances = solBalances,
-                        evmBalances = evmBalances
+            } catch (e: Exception) {
+                _uiEffect.emit(
+                    SecurityUiEffect.ShowSnackbar(
+                        UiText.DynamicString(
+                            e.message ?: "An unexpected error occurred"
+                        )
                     )
-                    walletRepository.saveWalletBalance(newBalance)
-                }
+                )
+            } finally {
+                _operationState.value = SecurityOperation.IDLE
             }
-        }.awaitAll()
+        }
     }
 
     fun cancelRestoreSelection() {
@@ -591,7 +561,7 @@ class SecuritySettingsViewModel @Inject constructor(
             return
         }
         _showClearAllDataDialog.value = false
-        
+
         // Trigger authentication request for the UI
         currentAuthPurpose = AuthPurpose.CLEAR_ALL
         _authRequest.value = System.currentTimeMillis()
@@ -611,6 +581,7 @@ class SecuritySettingsViewModel @Inject constructor(
                     executeBackupOperation(pin, cipher)
                 }
             }
+
             AuthPurpose.RESTORE -> confirmRestore(cipher)
             null -> {}
         }
@@ -629,10 +600,13 @@ class SecuritySettingsViewModel @Inject constructor(
                     refreshAuthStatus()
                     _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.StringResource(R.string.all_security_data_cleared)))
                 }
+
                 is Result.Error -> {
                     _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(result.message)))
                 }
-                Result.Loading -> { /* Ignore */ }
+
+                Result.Loading -> { /* Ignore */
+                }
             }
 
             _operationState.value = SecurityOperation.IDLE
@@ -659,9 +633,12 @@ class SecuritySettingsViewModel @Inject constructor(
                         _pinSetupError.value = UiText.StringResource(R.string.failed_to_set_pin)
                     }
                 }
+
                 is Result.Error -> {
-                    _pinSetupError.value = UiText.StringResource(R.string.failed_to_set_pin_error, result.message)
+                    _pinSetupError.value =
+                        UiText.StringResource(R.string.failed_to_set_pin_error, result.message)
                 }
+
                 Result.Loading -> {
                     _pinSetupError.value = UiText.StringResource(R.string.setting_pin)
                 }
@@ -686,10 +663,13 @@ class SecuritySettingsViewModel @Inject constructor(
                     loadSecurityStatus()
                     _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.StringResource(R.string.pin_removed)))
                 }
+
                 is Result.Error -> {
                     _uiEffect.emit(SecurityUiEffect.ShowSnackbar(UiText.DynamicString(result.message)))
                 }
-                Result.Loading -> { /* Ignore */ }
+
+                Result.Loading -> { /* Ignore */
+                }
             }
 
             _operationState.value = SecurityOperation.IDLE

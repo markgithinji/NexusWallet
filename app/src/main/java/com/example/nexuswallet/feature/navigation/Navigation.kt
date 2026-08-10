@@ -34,10 +34,10 @@ fun Navigation(
         return
     }
 
-    // Determine start destination based on wallets. 
-    // We don't remember this with wallets as a key because we want it to be stable 
-    // once the app has decided its initial state, but let's make it more robust.
-    val startDestination = remember(wallets.isEmpty()) {
+    // Determine start destination based on wallets.
+    // We compute this ONLY ONCE when loading completes to prevent navigation
+    // from jumping while a restore operation is adding wallets to an empty database.
+    val startDestination = remember {
         if (wallets.isNotEmpty()) MainRoute else WelcomeRoute
     }
 

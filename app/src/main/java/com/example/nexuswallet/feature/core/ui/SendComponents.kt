@@ -1143,6 +1143,21 @@ fun MaxAmountDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = if (isInsufficient) Icons.Outlined.Error else Icons.Outlined.FlashOn,
+                contentDescription = null,
+                tint = if (isInsufficient) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+            )
+        },
+        title = {
+            Text(
+                text = if (isInsufficient) stringResource(R.string.error) else stringResource(R.string.use_maximum),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        },
         confirmButton = {
             Button(
                 onClick = {
@@ -1159,7 +1174,9 @@ fun MaxAmountDialog(
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isInsufficient) MaterialTheme.colorScheme.surfaceVariant
-                    else MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.primary,
+                    contentColor = if (isInsufficient) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onPrimary
                 )
             ) {
                 Text(
@@ -1202,11 +1219,11 @@ fun MaxAmountDialog(
 
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                         border = BorderStroke(
                             1.dp,
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                         )
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -1224,8 +1241,9 @@ fun MaxAmountDialog(
                                     text = "${
                                         balance.stripTrailingZeros().toPlainString()
                                     } $tokenSymbol",
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     textAlign = TextAlign.End,
@@ -1264,7 +1282,7 @@ fun MaxAmountDialog(
 
                             HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 12.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                             )
 
                             Row(
@@ -1276,6 +1294,7 @@ fun MaxAmountDialog(
                                     text = stringResource(R.string.maximum_send_label),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.weight(1f)
                                 )
                                 Column(
@@ -1286,8 +1305,8 @@ fun MaxAmountDialog(
                                         text = "${
                                             maxAmount.stripTrailingZeros().toPlainString()
                                         } $tokenSymbol",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
                                         color = MaterialTheme.colorScheme.primary,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
@@ -1316,16 +1335,16 @@ fun MaxAmountDialog(
                     Text(
                         text = stringResource(R.string.insufficient_fee_balance),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.error,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Normal
                     )
                 }
             }
         },
         shape = RoundedCornerShape(28.dp),
         containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp
+        tonalElevation = 6.dp
     )
 }
 
