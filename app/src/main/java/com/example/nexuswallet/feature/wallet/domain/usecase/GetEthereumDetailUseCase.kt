@@ -18,6 +18,7 @@ import com.example.nexuswallet.feature.settings.domain.repository.SettingsReposi
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
+import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -156,7 +157,9 @@ class GetEthereumDetailUseCase @Inject constructor(
             verifiedToken is USDCToken || verifiedToken is USDTToken -> {
                 val numericBalance = tokenBalance?.balanceDecimal?.toBigDecimalOrNull()
                 if (numericBalance != null) {
-                    "$${numericBalance.setScale(2)} ${verifiedToken.symbol}"
+                    // Show full precision (up to 6 decimals for USDT/USDC) to avoid rounding small balances to zero
+                    // and removed the redundant '$' sign as this is the token amount, not fiat value.
+                    "${numericBalance.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} ${verifiedToken.symbol}"
                 } else {
                     "0 ${verifiedToken.symbol}"
                 }

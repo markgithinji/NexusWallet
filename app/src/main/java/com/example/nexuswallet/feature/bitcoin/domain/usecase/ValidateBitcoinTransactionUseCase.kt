@@ -9,6 +9,7 @@ import org.bitcoinj.core.Address
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
 import java.math.BigDecimal
+import java.math.RoundingMode
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -108,8 +109,8 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
             logger.w(TAG, "Insufficient balance: have $balance BTC, need $totalRequired BTC")
             return SendValidationResult(
                 isValid = false,
-                balanceError = "Insufficient balance. You have ${balance.setScale(8).stripTrailingZeros().toPlainString()} BTC but need ${
-                    totalRequired.setScale(8).stripTrailingZeros().toPlainString()
+                balanceError = "Insufficient balance. You have ${balance.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} BTC but need ${
+                    totalRequired.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
                 } BTC (including fees)"
             )
         }

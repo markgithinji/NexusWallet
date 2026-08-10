@@ -232,8 +232,8 @@ fun EthereumSendScreen(
                     balance = if (selectedToken is NativeETH) state.ethBalance else state.tokenBalance,
                     balanceFormatted = when (selectedToken) {
                         is NativeETH -> "${state.ethBalance.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} ETH"
-                        is USDCToken -> "$${state.tokenBalance.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} USDC"
-                        is USDTToken -> "$${state.tokenBalance.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} USDT"
+                        is USDCToken -> "${state.tokenBalance.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} USDC"
+                        is USDTToken -> "${state.tokenBalance.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} USDT"
                         else -> "${state.tokenBalance.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} ${selectedToken?.symbol ?: "ETH"}"
                     },
                     fiatRate = state.fiatRate,
