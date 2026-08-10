@@ -154,8 +154,18 @@ class SecuritySettingsViewModel @Inject constructor(
 
     fun silenceNotificationRationale() {
         viewModelScope.launch {
-            // User dismissed, so we turn OFF the toggle and silence future prompts
+            // User explicitly dismissed/cancelled the rationale, 
+            // so we turn OFF the toggle and silence future prompts for this session/toggle-cycle.
             settingsRepository.setNotificationsEnabled(false)
+            settingsRepository.setNotificationRationaleSilenced(true)
+            refreshAuthStatus()
+        }
+    }
+
+    fun markRationaleAsShown() {
+        viewModelScope.launch {
+            // User accepted the rationale and is proceeding to system permission.
+            // We silence the rationale so it doesn't overlap with the system dialog.
             settingsRepository.setNotificationRationaleSilenced(true)
             refreshAuthStatus()
         }

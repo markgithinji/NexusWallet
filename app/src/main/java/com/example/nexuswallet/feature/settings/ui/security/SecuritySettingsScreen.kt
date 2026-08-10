@@ -122,8 +122,13 @@ fun SecuritySettingsScreen(
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
+        // Mark that we have attempted a request so we can correctly detect "Permanently Denied" later
+        viewModel.onNotificationPermissionRequested()
         if (isGranted) {
             viewModel.setNotificationsEnabled(true)
+        } else {
+            // If the user denied the system permission, force the toggle back to OFF
+            viewModel.setNotificationsEnabled(false)
         }
     }
 
@@ -315,7 +320,9 @@ fun SecuritySettingsScreen(
                                     context.startActivity(intent)
                                 } else {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                        viewModel.onNotificationPermissionRequested()
+                                        // Dismiss the rationale dialog first by silencing it in the VM
+                                        // This prevents it from staying visible behind the system dialog
+                                        viewModel.markRationaleAsShown()
                                         permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
                                 }
