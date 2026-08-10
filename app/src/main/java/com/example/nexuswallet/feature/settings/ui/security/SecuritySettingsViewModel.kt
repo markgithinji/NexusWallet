@@ -15,6 +15,7 @@ import com.example.nexuswallet.feature.settings.domain.usecase.ClearAllSecurityD
 import com.example.nexuswallet.feature.settings.domain.usecase.ClearPinUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.CreateBackupUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.GetAuthStatusUseCase
+import com.example.nexuswallet.feature.settings.domain.usecase.RecordAuthenticationUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.RestoreBackupUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.SetBiometricEnabledUseCase
 import com.example.nexuswallet.feature.settings.domain.usecase.SetPinUseCase
@@ -42,6 +43,7 @@ class SecuritySettingsViewModel @Inject constructor(
     private val clearAllSecurityDataUseCase: ClearAllSecurityDataUseCase,
     private val createBackupUseCase: CreateBackupUseCase,
     private val restoreBackupUseCase: RestoreBackupUseCase,
+    private val recordAuthenticationUseCase: RecordAuthenticationUseCase,
     private val backupRepository: BackupRepository
 ) : ViewModel() {
 
@@ -480,6 +482,8 @@ class SecuritySettingsViewModel @Inject constructor(
                         // Auto-set the PIN used for decryption as the app PIN
                         if (pin != null) {
                             setPinUseCase(pin)
+                            // Mark user as authenticated since they just used this PIN to decrypt the backup
+                            recordAuthenticationUseCase()
                         }
                         refreshAuthStatus()
 
@@ -625,6 +629,8 @@ class SecuritySettingsViewModel @Inject constructor(
             when (val result = setPinUseCase(pin)) {
                 is Result.Success -> {
                     if (result.data) {
+                        // Mark user as authenticated since they just set/verified this PIN
+                        recordAuthenticationUseCase()
                         loadSecurityStatus()
                         _showPinSetupDialog.value = false
                         _showPinChangeDialog.value = false

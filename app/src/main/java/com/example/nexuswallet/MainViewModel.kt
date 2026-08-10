@@ -44,21 +44,21 @@ class MainViewModel @Inject constructor(
         isPinSet || isBiometricEnabled
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Eagerly,
         initialValue = false
     )
 
     val isPrivacyModeEnabled: StateFlow<Boolean> = settingsRepository.observePrivacyModeEnabled()
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.Eagerly,
             initialValue = false
         )
 
     val isRequireAuthForSendEnabled: StateFlow<Boolean> = settingsRepository.observeRequireAuthForSend()
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.Eagerly,
             initialValue = false
         )
 
