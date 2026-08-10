@@ -82,7 +82,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
+import com.example.nexuswallet.feature.core.ui.NexusTextField
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
+import com.example.nexuswallet.feature.core.ui.rememberHapticHelper
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.settings.ui.auth.PinEntryDialog
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
@@ -378,55 +380,113 @@ fun SecuritySettingsScreen(
 
     // Clear All Data Confirmation Dialog
     if (showClearAllDataDialog) {
-        AlertDialog(
-            onDismissRequest = viewModel::cancelClearAllData,
-            title = {
-                Text(
-                    text = stringResource(R.string.clear_all_data_confirmation_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.error
-                )
-            },
-            text = {
-                Column {
+        val haptic = rememberHapticHelper()
+        Dialog(onDismissRequest = viewModel::cancelClearAllData) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Icon
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Error,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Title
+                    Text(
+                        text = stringResource(R.string.clear_all_data_confirmation_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Text
                     Text(
                         text = stringResource(R.string.clear_all_data_confirmation_desc),
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 18.sp
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Confirmation Field
+                    NexusTextField(
                         value = clearAllConfirmationText,
                         onValueChange = viewModel::onClearAllConfirmationTextChanged,
-                        label = { Text(stringResource(R.string.confirmation_word_placeholder)) },
+                        label = stringResource(R.string.confirmation_word_placeholder),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.error,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                        )
+                        isError = clearAllConfirmationText.isNotEmpty() && clearAllConfirmationText.trim().uppercase() != "DELETE"
                     )
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Action Buttons
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            onClick = {
+                                haptic.click()
+                                viewModel.confirmClearAllData()
+                            },
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            enabled = clearAllConfirmationText.trim().uppercase() == "DELETE",
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.5f),
+                                contentColor = MaterialTheme.colorScheme.onError
+                            )
+                        ) {
+                            Text(
+                                text = stringResource(R.string.wipe_data_button),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        TextButton(
+                            onClick = viewModel::cancelClearAllData,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = stringResource(R.string.cancel),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
-            },
-            confirmButton = {
-                Button(
-                    onClick = viewModel::confirmClearAllData,
-                    enabled = clearAllConfirmationText.trim().uppercase() == "DELETE",
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
-                    )
-                ) {
-                    Text(stringResource(R.string.wipe_data_button))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::cancelClearAllData) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-            shape = RoundedCornerShape(24.dp)
-        )
+            }
+        }
     }
 
     // Restore Selection Dialog

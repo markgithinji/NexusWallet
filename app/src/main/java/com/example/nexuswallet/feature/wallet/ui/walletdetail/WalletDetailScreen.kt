@@ -1244,7 +1244,7 @@ fun RenameWalletDialog(
         title = {
             Text(
                 text = stringResource(R.string.rename_wallet),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -1267,9 +1267,13 @@ fun RenameWalletDialog(
                     }
                 },
                 shape = RoundedCornerShape(12.dp),
-                enabled = name.isNotBlank() && name != currentName
+                enabled = name.isNotBlank() && name != currentName,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
-                Text(stringResource(R.string.save))
+                Text(stringResource(R.string.save), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
@@ -1282,7 +1286,8 @@ fun RenameWalletDialog(
             }
         },
         shape = RoundedCornerShape(20.dp),
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp
     )
 }
 

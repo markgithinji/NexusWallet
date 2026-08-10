@@ -1258,7 +1258,7 @@ fun RenameWalletDialog(
         title = {
             Text(
                 text = stringResource(R.string.rename_wallet),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -1281,21 +1281,27 @@ fun RenameWalletDialog(
                     }
                 },
                 shape = RoundedCornerShape(12.dp),
-                enabled = name.isNotBlank() && name != currentName
+                enabled = name.isNotBlank() && name != currentName,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
-                Text(stringResource(R.string.save))
+                Text(stringResource(R.string.save), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(
                     text = stringResource(R.string.cancel),
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
         shape = RoundedCornerShape(20.dp),
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp
     )
 }
 
@@ -1307,49 +1313,63 @@ fun DeleteWalletDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(28.dp),
         containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        icon = {
+            Icon(
+                imageVector = Icons.Outlined.Error,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(32.dp)
+            )
+        },
         title = {
             Text(
                 text = stringResource(R.string.delete_wallet),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
         },
         text = {
             Text(
                 text = stringResource(R.string.delete_wallet_confirmation, walletName),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                lineHeight = 20.sp
+                textAlign = TextAlign.Center,
+                lineHeight = 18.sp,
+                modifier = Modifier.fillMaxWidth()
             )
         },
         confirmButton = {
             Button(
                 onClick = onConfirm,
+                modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
                 )
             ) {
                 Text(
                     text = stringResource(R.string.delete),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onError
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
             }
         },
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = stringResource(R.string.cancel),
-                    style = MaterialTheme.typography.labelLarge
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

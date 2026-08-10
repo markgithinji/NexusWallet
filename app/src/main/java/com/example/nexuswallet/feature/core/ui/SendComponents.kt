@@ -1211,10 +1211,10 @@ fun MaxAmountDialog(
                 if (!isInsufficient) {
                     Text(
                         text = stringResource(R.string.send_all_desc),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
-                        lineHeight = 20.sp
+                        lineHeight = 18.sp
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -1358,10 +1358,10 @@ fun MaxAmountDialog(
                                     else -> "ETH"
                                 }
                             } to cover the network transaction fee. Please add more funds to continue.",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
-                            lineHeight = 20.sp
+                            lineHeight = 18.sp
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
