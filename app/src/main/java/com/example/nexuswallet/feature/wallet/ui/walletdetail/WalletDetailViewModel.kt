@@ -134,7 +134,7 @@ class WalletDetailViewModel @Inject constructor(
 
                 // STEP 5: Refresh balance if needed
                 if (!isBalanceFresh) {
-                    refreshBalanceInBackground(loadedWallet)
+                    refreshBalanceInBackground(loadedWallet, syncTransactions = true)
                 }
             }.onFailure { e ->
                 _uiState.update {
@@ -190,7 +190,7 @@ class WalletDetailViewModel @Inject constructor(
         updateAssets()
     }
 
-    private fun refreshBalanceInBackground(wallet: Wallet) {
+    private fun refreshBalanceInBackground(wallet: Wallet, syncTransactions: Boolean = false) {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshingBalance = true) }
 
@@ -287,6 +287,12 @@ class WalletDetailViewModel @Inject constructor(
                     evmBalances = evmBalances
                 )
                 walletRepository.saveWalletBalance(newBalance)
+            }
+
+            // After balances are updated in local DB, trigger transaction sync if requested
+            // This ensures transactions are synced after the balance reflects the latest state.
+            if (syncTransactions) {
+                observeTransactions(wallet.id, wallet, forceRefresh = true)
             }
 
             if (allErrors.isEmpty()) {
@@ -418,15 +424,7 @@ class WalletDetailViewModel @Inject constructor(
 
     fun refresh() {
         _uiState.value.wallet?.let { wallet ->
-            viewModelScope.launch {
-
-                // Refresh balance
-                refreshBalanceInBackground(wallet)
-
-                // Refresh transactions with forceRefresh = true
-                // This will trigger a new sync and update the UI when complete
-                observeTransactions(wallet.id, wallet, forceRefresh = true)
-            }
+            refreshBalanceInBackground(wallet, syncTransactions = true)
         }
     }
 

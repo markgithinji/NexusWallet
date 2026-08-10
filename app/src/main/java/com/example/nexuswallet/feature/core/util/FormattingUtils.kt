@@ -20,16 +20,10 @@ fun String.formatCryptoAmount(): String {
                 amountDecimal.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros()
                     .toPlainString()
 
-            amountDecimal < BigDecimal("0.001") ->
-                amountDecimal.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros()
-                    .toPlainString()
-
-            amountDecimal < BigDecimal("1") ->
-                amountDecimal.setScale(4, RoundingMode.HALF_UP).stripTrailingZeros()
-                    .toPlainString()
-
             else ->
-                amountDecimal.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros()
+                // Use up to 6 decimal places for regular balances to ensure precision 
+                // for both small fractions and stablecoin "cents".
+                amountDecimal.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros()
                     .toPlainString()
         }
     } catch (e: Exception) {
