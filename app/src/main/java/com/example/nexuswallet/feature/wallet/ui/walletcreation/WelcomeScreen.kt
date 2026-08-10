@@ -183,7 +183,7 @@ fun WelcomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.nexus_icon),
+                        painter = painterResource(id = R.drawable.nexux_icon_no_bg),
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
                         contentScale = ContentScale.Fit

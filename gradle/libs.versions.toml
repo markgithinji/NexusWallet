@@ -29,6 +29,7 @@ sol4k = "0.7.0"
 startupRuntime = "1.2.0"
 timber = "5.0.1"
 uiText = "1.10.1"
+splashscreen = "1.0.1"
 bitcoinj = "0.16.3"
 web3j = "4.9.7"
 room = "2.8.4"
@@ -94,6 +95,7 @@ androidx-hilt-compiler = { group = "androidx.hilt", name = "hilt-compiler", vers
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 zxing-android-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxingAndroidEmbedded" }
 desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar_jdk_libs" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
