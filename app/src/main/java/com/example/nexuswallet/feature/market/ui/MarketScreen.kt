@@ -100,6 +100,7 @@ fun MarketScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(bottom = padding.calculateBottomPadding())
                 .pullRefresh(refreshState)
         ) {
             Column(
@@ -130,22 +131,12 @@ fun MarketScreen(
                 Box(modifier = Modifier.weight(1f)) {
                     val mergedPadding = PaddingValues(
                         top = 8.dp,
-                        bottom = padding.calculateBottomPadding() + 16.dp,
+                        bottom = 16.dp, // Already padded by outer Box
                         start = 16.dp,
                         end = 16.dp
                     )
 
-                    if (uiState.isLoading && tokens.isEmpty()) {
-                        FullScreenLoading(message = stringResource(R.string.loading_market_data))
-                    } else if (uiState.error != null && tokens.isEmpty()) {
-                        ErrorView(
-                            message = uiState.error!!,
-                            onRetry = {
-                                isRefreshing = true
-                                viewModel.refreshData()
-                            }
-                        )
-                    } else {
+                    if (!uiState.isLoading && uiState.error == null) {
                         // Only show empty result state if we have a search query
                         if (tokens.isEmpty() && !isLoadingMore && searchQuery.isNotBlank()) {
                             EmptySearchResult()
@@ -162,6 +153,27 @@ fun MarketScreen(
                         }
                     }
                 }
+            }
+
+            // Centralized Loading and Error views for better vertical centering
+            if (uiState.isLoading && tokens.isEmpty()) {
+                FullScreenLoading(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = scaffoldPadding.calculateTopPadding()),
+                    message = stringResource(R.string.loading_market_data)
+                )
+            } else if (uiState.error != null && tokens.isEmpty()) {
+                ErrorView(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = scaffoldPadding.calculateTopPadding()),
+                    message = uiState.error!!,
+                    onRetry = {
+                        isRefreshing = true
+                        viewModel.refreshData()
+                    }
+                )
             }
 
             PullRefreshIndicator(
@@ -931,7 +943,9 @@ fun ErrorView(
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(24.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Error,
