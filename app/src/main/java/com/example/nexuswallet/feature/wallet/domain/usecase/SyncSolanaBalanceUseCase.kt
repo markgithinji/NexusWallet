@@ -26,44 +26,46 @@ class SyncSolanaBalanceUseCase @Inject constructor(
         coin: SolanaCoin,
         price: Double,
         saveToCache: Boolean = true
-    ): Pair<SolanaBalance?, List<ChainSyncError>> = withContext(ioDispatcher) {
-        val solBalanceResult = solanaBlockchainRepository.getBalance(
-            address = coin.address,
-            network = coin.network
-        )
-
-        when (solBalanceResult) {
-            is Result.Success -> {
-                val solBalance = solBalanceResult.data
-                val lamportsBalance =
-                    (solBalance * BigDecimal("1000000000")).toBigInteger().toString()
-                
-                val priceBigDecimal = BigDecimal.valueOf(price)
-                val usdValue = solBalance.multiply(priceBigDecimal)
-
-                val solanaBalanceDomain = SolanaBalance(
-                    address = coin.address,
-                    lamports = lamportsBalance,
-                    sol = solBalance.setScale(9, RoundingMode.HALF_UP).toPlainString(),
-                    usdValue = usdValue
-                )
-
-                if (saveToCache) {
-                    balanceDataSource.saveSolanaBalance(walletId, coin.network, solanaBalanceDomain)
-                }
-                logger.d(TAG, "Solana ${coin.network.name} balance updated: $solBalance SOL")
-                Pair(solanaBalanceDomain, emptyList())
-            }
-
-            is Result.Error -> {
-                logger.e(TAG, "Failed to sync Solana: ${solBalanceResult.message}")
-                Pair(null, listOf(ChainSyncError(coin.network, solBalanceResult.message, coin.symbol)))
-            }
-
-            else -> Pair(
-                null,
-                listOf(ChainSyncError(coin.network, "Unknown error syncing Solana", coin.symbol))
+    ): Result<SolanaBalance?> = withContext(ioDispatcher) {
+        try {
+            val solBalanceResult = solanaBlockchainRepository.getBalance(
+                address = coin.address,
+                network = coin.network
             )
+
+            when (solBalanceResult) {
+                is Result.Success -> {
+                    val solBalance = solBalanceResult.data
+                    val lamportsBalance =
+                        (solBalance * BigDecimal("1000000000")).toBigInteger().toString()
+
+                    val priceBigDecimal = BigDecimal.valueOf(price)
+                    val usdValue = solBalance.multiply(priceBigDecimal)
+
+                    val solanaBalanceDomain = SolanaBalance(
+                        address = coin.address,
+                        lamports = lamportsBalance,
+                        sol = solBalance.setScale(9, RoundingMode.HALF_UP).toPlainString(),
+                        usdValue = usdValue
+                    )
+
+                    if (saveToCache) {
+                        balanceDataSource.saveSolanaBalance(walletId, coin.network, solanaBalanceDomain)
+                    }
+                    logger.d(TAG, "Solana ${coin.network.name} balance updated: $solBalance SOL")
+                    Result.Success(solanaBalanceDomain)
+                }
+
+                is Result.Error -> {
+                    logger.e(TAG, "Failed to sync Solana: ${solBalanceResult.message}")
+                    Result.Error(solBalanceResult.message)
+                }
+
+                else -> Result.Error("Unknown error syncing Solana")
+            }
+        } catch (e: Exception) {
+            logger.e(TAG, "Exception syncing Solana balance", e)
+            Result.Error(e.message ?: "Sync failed")
         }
     }
 

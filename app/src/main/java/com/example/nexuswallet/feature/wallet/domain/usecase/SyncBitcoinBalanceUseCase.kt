@@ -26,44 +26,46 @@ class SyncBitcoinBalanceUseCase @Inject constructor(
         coin: BitcoinCoin,
         price: Double,
         saveToCache: Boolean = true
-    ): Pair<BitcoinBalance?, List<ChainSyncError>> = withContext(ioDispatcher) {
-        val balanceResult = bitcoinBlockchainRepository.getBalance(
-            address = coin.address,
-            network = coin.network
-        )
-
-        when (balanceResult) {
-            is Result.Success -> {
-                val btcBalance = balanceResult.data
-                val satoshiBalance =
-                    (btcBalance * BigDecimal("100000000")).toBigInteger().toString()
-                
-                val priceBigDecimal = BigDecimal.valueOf(price)
-                val usdValue = btcBalance.multiply(priceBigDecimal)
-
-                val btcBalanceDomain = BitcoinBalance(
-                    address = coin.address,
-                    satoshis = satoshiBalance,
-                    btc = btcBalance.setScale(8, RoundingMode.HALF_UP).toPlainString(),
-                    usdValue = usdValue
-                )
-
-                if (saveToCache) {
-                    balanceDataSource.saveBitcoinBalance(walletId, coin.network, btcBalanceDomain)
-                }
-                logger.d(TAG, "Bitcoin ${coin.network.name} balance updated: $btcBalance BTC")
-                Pair(btcBalanceDomain, emptyList())
-            }
-
-            is Result.Error -> {
-                logger.e(TAG, "Failed to sync Bitcoin: ${balanceResult.message}")
-                Pair(null, listOf(ChainSyncError(coin.network, balanceResult.message, coin.symbol)))
-            }
-
-            else -> Pair(
-                null,
-                listOf(ChainSyncError(coin.network, "Unknown error syncing Bitcoin", coin.symbol))
+    ): Result<BitcoinBalance?> = withContext(ioDispatcher) {
+        try {
+            val balanceResult = bitcoinBlockchainRepository.getBalance(
+                address = coin.address,
+                network = coin.network
             )
+
+            when (balanceResult) {
+                is Result.Success -> {
+                    val btcBalance = balanceResult.data
+                    val satoshiBalance =
+                        (btcBalance * BigDecimal("100000000")).toBigInteger().toString()
+
+                    val priceBigDecimal = BigDecimal.valueOf(price)
+                    val usdValue = btcBalance.multiply(priceBigDecimal)
+
+                    val btcBalanceDomain = BitcoinBalance(
+                        address = coin.address,
+                        satoshis = satoshiBalance,
+                        btc = btcBalance.setScale(8, RoundingMode.HALF_UP).toPlainString(),
+                        usdValue = usdValue
+                    )
+
+                    if (saveToCache) {
+                        balanceDataSource.saveBitcoinBalance(walletId, coin.network, btcBalanceDomain)
+                    }
+                    logger.d(TAG, "Bitcoin ${coin.network.name} balance updated: $btcBalance BTC")
+                    Result.Success(btcBalanceDomain)
+                }
+
+                is Result.Error -> {
+                    logger.e(TAG, "Failed to sync Bitcoin: ${balanceResult.message}")
+                    Result.Error(balanceResult.message)
+                }
+
+                else -> Result.Error("Unknown error syncing Bitcoin")
+            }
+        } catch (e: Exception) {
+            logger.e(TAG, "Exception syncing Bitcoin balance", e)
+            Result.Error(e.message ?: "Sync failed")
         }
     }
 

@@ -10,6 +10,7 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.WalletConstants.KEY_ETHEREUM_MAIN
 import com.example.nexuswallet.feature.core.util.decodeHex
 import com.example.nexuswallet.feature.core.util.use
+import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTransactionType
 import com.example.nexuswallet.feature.ethereum.domain.model.SendEVMResult
@@ -33,7 +34,6 @@ class SendEVMAssetUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
-    private val getEVMFeeEstimateUseCase: GetEVMFeeEstimateUseCase,
     private val vaultRepository: VaultRepository,
     private val keyStoreRepository: KeyStoreRepository,
     private val logger: Logger,
@@ -44,7 +44,7 @@ class SendEVMAssetUseCase @Inject constructor(
         walletId: String,
         toAddress: String,
         amount: BigDecimal,
-        feeLevel: FeeLevel,
+        feeEstimate: EVMFeeEstimate,
         token: EVMToken,
         note: String?,
         cipher: Cipher? = null
@@ -97,34 +97,15 @@ class SendEVMAssetUseCase @Inject constructor(
         val nonce = nonceResult.data
         logger.d(TAG, "Nonce retrieved: $nonce")
 
-        // 4. Get fee estimate (includes EIP-1559 logic)
+        // 3. Prepare amount and gas details
         val amountInWei = amount.multiply(BigDecimal.TEN.pow(token.decimals)).toBigInteger()
-
-        logger.d(TAG, "Requesting fee estimate | network=${token.network.name}")
-        val feeEstimateResult = getEVMFeeEstimateUseCase(
-            feeLevel = feeLevel,
-            network = token.network,
-            isToken = token.evmTokenType != EVMTokenType.NATIVE,
-            fromAddress = token.address,
-            toAddress = toAddress,
-            amount = amountInWei,
-            tokenContract = if (token.evmTokenType == EVMTokenType.NATIVE) null else token.contractAddress
-        )
-
-        if (feeEstimateResult !is Result.Success) {
-            val message =
-                (feeEstimateResult as? Result.Error)?.message ?: "Failed to get fee estimate"
-            logger.e(TAG, "Fee estimation failed | error=$message")
-            return@withContext Result.Error(message)
-        }
-        val feeEstimate = feeEstimateResult.data
-
         val gasLimit = BigInteger.valueOf(feeEstimate.gasLimit)
         val totalFeeWei = BigInteger(feeEstimate.totalFeeWei)
         val totalFeeEth = feeEstimate.totalFeeEth
-        logger.d(TAG, "Fee estimate received | totalFee=$totalFeeEth ETH, isEIP1559=${feeEstimate.isEIP1559}")
+        
+        logger.d(TAG, "Transaction details | amount=$amount ${token.symbol}, totalFee=$totalFeeEth ETH, isEIP1559=${feeEstimate.isEIP1559}")
 
-        // 5. Decrypt private key
+        // 4. Decrypt private key
         val decryptionResult = if (cipher != null) {
             logger.d(TAG, "Decrypting private key using provided cipher")
             keyStoreRepository.decryptWithCipher(cipher, encryptedHex.decodeHex())
@@ -140,7 +121,7 @@ class SendEVMAssetUseCase @Inject constructor(
 
         val privateKeyBytes = (decryptionResult as Result.Success).data
 
-        // 6. Create and sign transaction
+        // 5. Create and sign transaction
         logger.d(TAG, "Creating and signing transaction")
         val createResult = privateKeyBytes.use { keyBytes ->
             when (token.evmTokenType) {
@@ -244,7 +225,7 @@ class SendEVMAssetUseCase @Inject constructor(
                             status = TransactionStatus.PENDING,
                             timestamp = System.currentTimeMillis(),
                             note = note,
-                            feeLevel = feeLevel,
+                            feeLevel = feeEstimate.priority,
                             network = token.network,
                             isIncoming = false,
                             txHash = finalTxHash,
@@ -274,7 +255,7 @@ class SendEVMAssetUseCase @Inject constructor(
                             status = TransactionStatus.PENDING,
                             timestamp = System.currentTimeMillis(),
                             note = note,
-                            feeLevel = feeLevel,
+                            feeLevel = feeEstimate.priority,
                             network = token.network,
                             isIncoming = false,
                             txHash = finalTxHash,

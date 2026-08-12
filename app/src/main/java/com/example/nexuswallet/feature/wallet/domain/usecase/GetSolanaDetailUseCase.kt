@@ -22,9 +22,6 @@ class GetSolanaDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val solanaTransactionRepository: SolanaTransactionRepository,
     private val solanaBlockchainRepository: SolanaBlockchainRepository,
-    private val syncSolanaBalanceUseCase: SyncSolanaBalanceUseCase,
-    private val getSimplePricesUseCase: GetSimplePricesUseCase,
-    private val settingsRepository: SettingsRepository,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -62,8 +59,6 @@ class GetSolanaDetailUseCase @Inject constructor(
             limit = 50
         )
 
-        var savedCount = 0
-
         when (blockchainResult) {
             is Result.Success -> {
                 val transactions = blockchainResult.data
@@ -75,35 +70,19 @@ class GetSolanaDetailUseCase @Inject constructor(
                 // Save all transactions to local DB
                 transactions.forEach { transaction ->
                     solanaTransactionRepository.saveTransaction(transaction)
-                    savedCount++
                 }
 
-                logger.d(TAG, " Saved $savedCount transactions to local DB")
+                logger.d(TAG, " Saved ${transactions.size} transactions to local DB")
             }
 
             is Result.Error -> {
                 logger.e(TAG, " Blockchain repository failed: ${blockchainResult.message}")
-                // Don't return error, we'll continue with whatever we have in DB
             }
 
-            Result.Loading -> {
-                // Should not happen
-            }
+            Result.Loading -> {}
         }
 
-        // 4.5. Sync fresh balance
-        try {
-            // ALWAYS fetch prices in USD for the database "usdValue" fields
-            val pricesResult = getSimplePricesUseCase(listOf(solanaCoin.symbol), SupportedCurrency.USD)
-            val price = if (pricesResult is Result.Success) pricesResult.data[solanaCoin.symbol] ?: 0.0 else 0.0
-
-            syncSolanaBalanceUseCase(walletId, solanaCoin, price)
-            logger.d(TAG, "Synced balance for $walletId, network ${network.name}")
-        } catch (e: Exception) {
-            logger.e(TAG, "Failed to sync Solana balance", e)
-        }
-
-        // 5. Get balance (Already synced)
+        // 5. Get cached balance
         val balance = walletRepository.getWalletBalance(walletId)
         val coinBalance = balance?.solanaBalances?.get(network)
         logger.d(TAG, "Balance for ${network.name}: ${coinBalance?.sol ?: "0"} SOL")
@@ -111,11 +90,9 @@ class GetSolanaDetailUseCase @Inject constructor(
         // 6. Get transactions from local DB
         logger.d(TAG, "Getting transactions from local DB with network: ${network.name}...")
         val allTransactions = solanaTransactionRepository.getTransactionsSync(walletId, network)
-        logger.d(TAG, "Retrieved ${allTransactions.size} total transactions from DB")
-
+        
         // Filter for native SOL transactions (tokenSymbol == null)
         val solTransactions = allTransactions.filter { it.tokenSymbol == null }
-        logger.d(TAG, "Filtered to ${solTransactions.size} native SOL transactions")
 
         // 7. Prepare result with network object
         val result = SolanaDetailResult(
@@ -134,7 +111,7 @@ class GetSolanaDetailUseCase @Inject constructor(
 
         logger.d(
             TAG,
-            "=== GetSolanaDetailUseCase completed successfully with ${solTransactions.size} raw transactions on ${network.name} ==="
+            "=== GetSolanaDetailUseCase completed successfully ==="
         )
         Result.Success(result)
     }

@@ -23,8 +23,6 @@ class GetBitcoinDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
-    private val syncBitcoinBalanceUseCase: SyncBitcoinBalanceUseCase,
-    private val getSimplePricesUseCase: GetSimplePricesUseCase,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -61,43 +59,26 @@ class GetBitcoinDetailUseCase @Inject constructor(
 
                 // Delete old transactions and save new ones
                 bitcoinTransactionRepository.deleteForWalletAndNetwork(walletId, bitcoinCoin.network)
-                logger.d(TAG, "Deleted old transactions for wallet $walletId, network ${network.name}")
-
+                
                 // Save transactions directly
-                txResult.data.forEachIndexed { index, tx ->
+                txResult.data.forEach { tx ->
                     bitcoinTransactionRepository.saveTransaction(tx)
-                    logger.d(TAG, "Saved transaction $index: ${tx.txHash?.take(8) ?: "unknown"} on ${network.name}")
                 }
                 logger.d(TAG, "Synced ${txResult.data.size} transactions")
             }
             is Result.Error -> {
                 logger.e(TAG, "Failed to fetch transactions: ${txResult.message}")
-                // Continue with existing transactions in DB
             }
             Result.Loading -> {}
         }
 
-        // 3.5. Sync fresh balance
-        try {
-            // ALWAYS fetch prices in USD for the database "usdValue" fields
-            val pricesResult = getSimplePricesUseCase(listOf(bitcoinCoin.symbol), SupportedCurrency.USD)
-            val price = if (pricesResult is Result.Success) pricesResult.data[bitcoinCoin.symbol] ?: 0.0 else 0.0
-
-            syncBitcoinBalanceUseCase(walletId, bitcoinCoin, price)
-            logger.d(TAG, "Synced balance for $walletId, network ${network.name}")
-        } catch (e: Exception) {
-            logger.e(TAG, "Failed to sync Bitcoin balance", e)
-        }
-
-        // 4. Get balance (Already synced)
+        // 4. Get cached balance
         val balance = walletRepository.getWalletBalance(walletId)
         val coinBalance = balance?.bitcoinBalances?.get(bitcoinCoin.network)
         logger.d(TAG, "Balance for ${network.name}: ${coinBalance?.btc ?: "0"} BTC")
 
-        // 5. Get raw transactions from local DB
-        logger.d(TAG, "Querying transactions with walletId=$walletId, network=${network.name}")
+        // 5. Get transactions from local DB
         val rawTransactions = bitcoinTransactionRepository.getTransactionsSync(walletId, bitcoinCoin.network)
-        logger.d(TAG, "Retrieved ${rawTransactions.size} raw transactions from DB for ${network.name}")
 
         val result = BitcoinDetailResult(
             walletId = walletId,
@@ -112,7 +93,7 @@ class GetBitcoinDetailUseCase @Inject constructor(
             availableNetworks = wallet.bitcoinCoins.map { it.network }
         )
 
-        logger.d(TAG, "=== GetBitcoinDetailUseCase completed successfully with ${rawTransactions.size} raw transactions on ${network.name} ===")
+        logger.d(TAG, "=== GetBitcoinDetailUseCase completed successfully ===")
         Result.Success(result)
     }
 

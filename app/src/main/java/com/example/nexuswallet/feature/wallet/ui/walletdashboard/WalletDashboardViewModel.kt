@@ -341,14 +341,17 @@ class WalletDashboardViewModel @Inject constructor(
                                     .filter { networkFilter == null || it.network == networkFilter }
                                     .forEach { coin ->
                                         _syncingNetworks.update { it + coin.network }
-                                        val (balance, errors) = syncBitcoinBalanceUseCase(
+                                        val result = syncBitcoinBalanceUseCase(
                                             wallet.id,
                                             coin,
                                             prices[coin.symbol] ?: 0.0,
                                             saveToCache = false
                                         )
-                                        balance?.let { btcBalances[coin.network] = it }
-                                        walletErrors.addAll(errors)
+                                        if (result is Result.Success) {
+                                            result.data?.let { btcBalances[coin.network] = it }
+                                        } else if (result is Result.Error) {
+                                            walletErrors.add(ChainSyncError(coin.network, result.message, coin.symbol))
+                                        }
                                         _syncingNetworks.update { it - coin.network }
                                     }
                             }
@@ -358,14 +361,17 @@ class WalletDashboardViewModel @Inject constructor(
                                     .filter { networkFilter == null || it.network == networkFilter }
                                     .forEach { coin ->
                                         _syncingNetworks.update { it + coin.network }
-                                        val (balance, errors) = syncSolanaBalanceUseCase(
+                                        val result = syncSolanaBalanceUseCase(
                                             wallet.id,
                                             coin,
                                             prices[coin.symbol] ?: 0.0,
                                             saveToCache = false
                                         )
-                                        balance?.let { solBalances[coin.network] = it }
-                                        walletErrors.addAll(errors)
+                                        if (result is Result.Success) {
+                                            result.data?.let { solBalances[coin.network] = it }
+                                        } else if (result is Result.Error) {
+                                            walletErrors.add(ChainSyncError(coin.network, result.message, coin.symbol))
+                                        }
                                         _syncingNetworks.update { it - coin.network }
                                     }
                             }
@@ -373,14 +379,20 @@ class WalletDashboardViewModel @Inject constructor(
                             if (wallet.evmTokens.isNotEmpty() && (networkFilter == null || networkFilter is EthereumNetwork)) {
                                 val evmNetworks = wallet.evmTokens.map { it.network }.toSet()
                                 _syncingNetworks.update { it + evmNetworks }
-                                val (balances, errors) = syncEVMBalancesUseCase(
+                                val result = syncEVMBalancesUseCase(
                                     wallet.id,
                                     wallet.evmTokens,
                                     prices,
                                     saveToCache = false
                                 )
-                                evmMap.putAll(balances)
-                                walletErrors.addAll(errors)
+                                if (result is Result.Success) {
+                                    evmMap.putAll(result.data)
+                                } else if (result is Result.Error) {
+                                    // For EVM we could be more granular but for now let's just add one error per network
+                                    evmNetworks.forEach { network ->
+                                        walletErrors.add(ChainSyncError(network, result.message, "EVM"))
+                                    }
+                                }
                                 _syncingNetworks.update { it - evmNetworks }
                             }
 

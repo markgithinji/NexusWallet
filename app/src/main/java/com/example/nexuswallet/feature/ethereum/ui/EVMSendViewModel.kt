@@ -466,11 +466,16 @@ class EVMSendViewModel @Inject constructor(
 
             _uiState.update { it.copy(isLoading = true, error = null, step = "Sending...") }
 
+            val feeEstimate = state.feeEstimate ?: run {
+                _uiState.update { it.copy(isLoading = false, error = "Fee estimate not available") }
+                return@launch
+            }
+
             val result = sendEVMAssetUseCase(
                 walletId = state.walletId,
                 toAddress = state.toAddress,
                 amount = state.amountValue,
-                feeLevel = state.feeLevel,
+                feeEstimate = feeEstimate,
                 token = token,
                 note = state.note.takeIf { it.isNotEmpty() },
                 cipher = cipher

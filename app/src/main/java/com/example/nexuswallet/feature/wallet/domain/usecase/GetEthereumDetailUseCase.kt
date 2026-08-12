@@ -28,9 +28,6 @@ class GetEthereumDetailUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val evmTransactionRepository: EVMTransactionRepository,
     private val evmBlockchainRepository: EVMBlockchainRepository,
-    private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
-    private val getSimplePricesUseCase: GetSimplePricesUseCase,
-    private val settingsRepository: SettingsRepository,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -105,19 +102,7 @@ class GetEthereumDetailUseCase @Inject constructor(
             }
         }
 
-        // 4.5. Sync fresh balances
-        try {
-            // ALWAYS fetch prices in USD for the database "usdValue" fields
-            val pricesResult = getSimplePricesUseCase(wallet.evmTokens.map { it.symbol }, SupportedCurrency.USD)
-            val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
-            
-            syncEVMBalancesUseCase(walletId, wallet.evmTokens, prices)
-            logger.d(TAG, "Synced balances for wallet: $walletId")
-        } catch (e: Exception) {
-            logger.e(TAG, "Failed to sync balances", e)
-        }
-
-        // 5. Get balance (Already synced)
+        // 5. Get cached balance
         val balance = walletRepository.getWalletBalance(walletId)
         val lookupKey = "${verifiedToken.network.chainId}_${verifiedToken.contractAddress}"
         val tokenBalance = balance?.evmBalances?.get(lookupKey)
@@ -134,8 +119,7 @@ class GetEthereumDetailUseCase @Inject constructor(
             logger.d(TAG, "ETH gas balance for ${network.name}: $ethGasBalance")
         }
 
-        // 7. Get raw transactions from local DB
-        logger.d(TAG, "Querying transactions from local DB for ${network.name}...")
+        // 7. Get transactions from local DB
         val allTxs = evmTransactionRepository.getTransactionsSync(walletId)
         val filteredTxs = when {
             isEth -> {
@@ -151,15 +135,11 @@ class GetEthereumDetailUseCase @Inject constructor(
             }
         }
 
-        logger.d(TAG, "Retrieved ${filteredTxs.size} filtered transactions from DB")
-
         // Format balance based on token type
         val balanceFormatted = when {
             verifiedToken is USDCToken || verifiedToken is USDTToken -> {
                 val numericBalance = tokenBalance?.balanceDecimal?.toBigDecimalOrNull()
                 if (numericBalance != null) {
-                    // Show full precision (up to 6 decimals for USDT/USDC) to avoid rounding small balances to zero
-                    // and removed the redundant '$' sign as this is the token amount, not fiat value.
                     "${numericBalance.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} ${verifiedToken.symbol}"
                 } else {
                     "0 ${verifiedToken.symbol}"
@@ -190,7 +170,7 @@ class GetEthereumDetailUseCase @Inject constructor(
             chainId = network.chainId
         )
 
-        logger.d(TAG, "=== GetEthereumDetailUseCase completed successfully with ${filteredTxs.size} raw transactions on ${network.name} ===")
+        logger.d(TAG, "=== GetEthereumDetailUseCase completed successfully ===")
         Result.Success(result)
     }
 
