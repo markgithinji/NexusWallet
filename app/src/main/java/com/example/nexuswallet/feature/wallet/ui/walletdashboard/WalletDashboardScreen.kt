@@ -15,60 +15,16 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
-import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Error
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.FileOpen
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,9 +50,8 @@ import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
 import com.example.nexuswallet.feature.core.ui.NexusTextField
 import com.example.nexuswallet.feature.core.ui.clickableSingle
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.core.util.formatCurrency
+import com.example.nexuswallet.feature.core.util.formatAsCurrency
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
-import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.ui.auth.PinEntryDialog
 import com.example.nexuswallet.feature.settings.ui.security.PinVerifyPurpose
 import com.example.nexuswallet.feature.settings.ui.security.RestoreSelectionDialog
@@ -111,6 +66,7 @@ import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
 import com.example.nexuswallet.feature.wallet.ui.common.SyncPulseIndicator
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.ImportOptionItem
+import com.example.nexuswallet.feature.core.ui.LocalCurrency
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -137,7 +93,6 @@ fun WalletDashboardScreen(
     val isRefreshingState by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val operationError by viewModel.operationError.collectAsStateWithLifecycle()
     val isPrivacyModeEnabled by viewModel.isPrivacyModeEnabled.collectAsStateWithLifecycle()
-    val selectedCurrency by viewModel.selectedCurrency.collectAsStateWithLifecycle()
     val syncingNetworks by viewModel.syncingNetworks.collectAsStateWithLifecycle()
 
     var showRenameDialog by remember { mutableStateOf<Wallet?>(null) }
@@ -242,13 +197,13 @@ fun WalletDashboardScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(bottom = padding.calculateBottomPadding())
         ) {
             when (val state = uiState) {
                 is Result.Loading -> {
                     FullScreenLoading(
                         modifier = Modifier
-                            .padding(top = scaffoldPadding.calculateTopPadding())
-                            .padding(bottom = padding.calculateBottomPadding()),
+                            .padding(top = scaffoldPadding.calculateTopPadding()),
                         message = stringResource(R.string.loading_wallets)
                     )
                 }
@@ -256,8 +211,7 @@ fun WalletDashboardScreen(
                 is Result.Error -> {
                     EmptyWalletsContent(
                         modifier = Modifier
-                            .padding(top = scaffoldPadding.calculateTopPadding())
-                            .padding(bottom = padding.calculateBottomPadding()),
+                            .padding(top = scaffoldPadding.calculateTopPadding()),
                         onCreateWallet = onNavigateToCreateWallet,
                         onImportWallet = { showAddOptions = true },
                         isError = true,
@@ -272,8 +226,7 @@ fun WalletDashboardScreen(
                     if (state.data.isEmpty()) {
                         EmptyWalletsContent(
                             modifier = Modifier
-                                .padding(top = scaffoldPadding.calculateTopPadding())
-                                .padding(bottom = padding.calculateBottomPadding()),
+                                .padding(top = scaffoldPadding.calculateTopPadding()),
                             onCreateWallet = onNavigateToCreateWallet,
                             onImportWallet = { showAddOptions = true }
                         )
@@ -284,7 +237,6 @@ fun WalletDashboardScreen(
                             balances = balances,
                             syncingNetworks = syncingNetworks,
                             isPrivacyModeEnabled = isPrivacyModeEnabled,
-                            selectedCurrency = selectedCurrency,
                             onWalletClick = { wallet ->
                                 onNavigateToWalletDetail(wallet.id)
                             },
@@ -296,7 +248,7 @@ fun WalletDashboardScreen(
                             },
                             contentPadding = PaddingValues(
                                 top = scaffoldPadding.calculateTopPadding() + 8.dp,
-                                bottom = scaffoldPadding.calculateBottomPadding() + padding.calculateBottomPadding() + 16.dp,
+                                bottom = 16.dp,
                                 start = 16.dp,
                                 end = 16.dp
                             )
@@ -483,7 +435,6 @@ fun DashboardContent(
     balances: Map<String, WalletBalance>,
     syncingNetworks: Set<Network>,
     isPrivacyModeEnabled: Boolean,
-    selectedCurrency: SupportedCurrency,
     onWalletClick: (Wallet) -> Unit,
     onDeleteWallet: (String) -> Unit,
     onRenameWallet: (Wallet) -> Unit,
@@ -503,8 +454,7 @@ fun DashboardContent(
                 totalPortfolio = totalPortfolio,
                 walletCount = wallets.size,
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
-                isTablet = isTablet,
-                selectedCurrency = selectedCurrency
+                isTablet = isTablet
             )
         }
 
@@ -533,7 +483,6 @@ fun DashboardContent(
                             balance = balances[wallet.id],
                             syncingNetworks = syncingNetworks,
                             isPrivacyModeEnabled = isPrivacyModeEnabled,
-                            selectedCurrency = selectedCurrency,
                             onWalletClick = { onWalletClick(wallet) },
                             onDelete = { onDeleteWallet(wallet.id) },
                             onRename = { onRenameWallet(wallet) },
@@ -552,7 +501,6 @@ fun DashboardContent(
                     balance = balances[wallet.id],
                     syncingNetworks = syncingNetworks,
                     isPrivacyModeEnabled = isPrivacyModeEnabled,
-                    selectedCurrency = selectedCurrency,
                     onWalletClick = { onWalletClick(wallet) },
                     onDelete = { onDeleteWallet(wallet.id) },
                     onRename = { onRenameWallet(wallet) }
@@ -569,7 +517,6 @@ fun WalletCard(
     balance: WalletBalance?,
     syncingNetworks: Set<Network>,
     isPrivacyModeEnabled: Boolean,
-    selectedCurrency: SupportedCurrency,
     onWalletClick: () -> Unit,
     onDelete: () -> Unit,
     onRename: () -> Unit,
@@ -590,6 +537,7 @@ fun WalletCard(
     }
 
     val totalUsdValue = balance?.totalUsdValue?.toDouble() ?: 0.0
+    val currencyState = LocalCurrency.current
 
     Surface(
         modifier = modifier
@@ -651,8 +599,9 @@ fun WalletCard(
                         )
 
                         Text(
-                            text = if (isPrivacyModeEnabled) "****" else totalUsdValue.formatCurrency(
-                                selectedCurrency
+                            text = if (isPrivacyModeEnabled) "****" else totalUsdValue.formatAsCurrency(
+                                currencyState.usdToRate,
+                                currencyState.currency
                             ),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.ExtraBold,
@@ -735,7 +684,6 @@ fun WalletCard(
                     balance = balance,
                     syncingNetworks = syncingNetworks,
                     isPrivacyModeEnabled = isPrivacyModeEnabled,
-                    selectedCurrency = selectedCurrency,
                     onDelete = { showDeleteDialog = true },
                     onRename = onRename
                 )
@@ -750,7 +698,6 @@ fun WalletExpandedContent(
     balance: WalletBalance?,
     syncingNetworks: Set<Network>,
     isPrivacyModeEnabled: Boolean,
-    selectedCurrency: SupportedCurrency,
     onDelete: () -> Unit,
     onRename: () -> Unit
 ) {
@@ -782,8 +729,7 @@ fun WalletExpandedContent(
                 usdValue = btcBalance?.usdValue?.toDouble() ?: 0.0,
                 color = bitcoinLight,
                 isSyncing = syncingNetworks.contains(coin.network),
-                isPrivacyModeEnabled = isPrivacyModeEnabled,
-                selectedCurrency = selectedCurrency
+                isPrivacyModeEnabled = isPrivacyModeEnabled
             )
         }
 
@@ -804,8 +750,7 @@ fun WalletExpandedContent(
                 usdValue = solBalance?.usdValue?.toDouble() ?: 0.0,
                 color = solanaLight,
                 isSyncing = syncingNetworks.contains(coin.network),
-                isPrivacyModeEnabled = isPrivacyModeEnabled,
-                selectedCurrency = selectedCurrency
+                isPrivacyModeEnabled = isPrivacyModeEnabled
             )
         }
 
@@ -833,8 +778,7 @@ fun WalletExpandedContent(
                 usdValue = tokenBalance?.usdValue?.toDouble() ?: 0.0,
                 color = color,
                 isSyncing = syncingNetworks.contains(token.network),
-                isPrivacyModeEnabled = isPrivacyModeEnabled,
-                selectedCurrency = selectedCurrency
+                isPrivacyModeEnabled = isPrivacyModeEnabled
             )
         }
 
@@ -890,9 +834,9 @@ fun SimpleBalanceRow(
     usdValue: Double,
     color: Color,
     isSyncing: Boolean = false,
-    isPrivacyModeEnabled: Boolean,
-    selectedCurrency: SupportedCurrency
+    isPrivacyModeEnabled: Boolean
 ) {
+    val currencyState = LocalCurrency.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -955,7 +899,10 @@ fun SimpleBalanceRow(
         }
 
         Text(
-            text = if (isPrivacyModeEnabled) "****" else usdValue.formatCurrency(selectedCurrency),
+            text = if (isPrivacyModeEnabled) "****" else usdValue.formatAsCurrency(
+                currencyState.usdToRate,
+                currencyState.currency
+            ),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             color = if (usdValue > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(
@@ -970,9 +917,9 @@ fun AnimatedPortfolioHeader(
     totalPortfolio: BigDecimal,
     walletCount: Int,
     isPrivacyModeEnabled: Boolean,
-    isTablet: Boolean,
-    selectedCurrency: SupportedCurrency
+    isTablet: Boolean
 ) {
+    val currencyState = LocalCurrency.current
     var previousValue by remember { mutableStateOf(totalPortfolio) }
     val animatedValue = remember { Animatable(previousValue.toFloat()) }
 
@@ -1051,7 +998,7 @@ fun AnimatedPortfolioHeader(
 
                 Text(
                     text = if (isPrivacyModeEnabled) "****" else animatedValue.value.toDouble()
-                        .formatCurrency(selectedCurrency),
+                        .formatAsCurrency(currencyState.usdToRate, currencyState.currency),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onPrimary,

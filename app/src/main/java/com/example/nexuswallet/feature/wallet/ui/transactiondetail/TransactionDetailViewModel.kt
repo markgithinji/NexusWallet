@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDetail
@@ -51,16 +52,14 @@ class TransactionDetailViewModel @Inject constructor(
 
                     val displayInfo = formatTransactionDetailDisplayUseCase(transaction)
 
-                    // Get real price
-                    val currency = settingsRepository.getSelectedCurrency()
-                    val priceResult = getSimplePricesUseCase(listOf(transaction.coin.symbol), currency)
+                    // Get real price in USD for base value
+                    val priceResult = getSimplePricesUseCase(listOf(transaction.coin.symbol), SupportedCurrency.USD)
                     val price = if (priceResult is Result.Success) {
                         priceResult.data[transaction.coin.symbol] ?: 0.0
                     } else 0.0
 
                     val amount = transaction.amount.toDoubleOrNull() ?: 0.0
                     val usdValue = amount * price
-                    val formattedUsd = usdValue.formatCurrency(currency)
 
                     _state.update {
                         it.copy(
@@ -69,7 +68,6 @@ class TransactionDetailViewModel @Inject constructor(
                             formattedFee = TransactionFormatHelper.formatAmount(transaction.fee),
                             formattedTime = displayInfo.formattedTime,
                             usdValue = usdValue,
-                            formattedUsd = formattedUsd,
                             isLoading = false
                         )
                     }

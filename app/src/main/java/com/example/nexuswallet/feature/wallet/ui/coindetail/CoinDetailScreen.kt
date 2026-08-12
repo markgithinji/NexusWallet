@@ -5,7 +5,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,7 +30,6 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Token
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -60,9 +58,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.LocalCurrency
 import com.example.nexuswallet.feature.core.ui.clickableSingle
-import com.example.nexuswallet.feature.core.util.formatCurrency
-import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
+import com.example.nexuswallet.feature.core.util.formatAsCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
@@ -74,8 +72,8 @@ import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.ui.common.ErrorScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
-import com.example.nexuswallet.feature.wallet.ui.common.TransactionItem
 import com.example.nexuswallet.feature.wallet.ui.common.SyncPulseIndicator
+import com.example.nexuswallet.feature.wallet.ui.common.TransactionItem
 import com.example.nexuswallet.feature.wallet.ui.walletdetail.EmptyTransactionsView
 import com.example.nexuswallet.feature.wallet.ui.walletdetail.QuickActionItem
 import com.example.nexuswallet.ui.theme.bitcoinLight
@@ -275,7 +273,6 @@ private fun CoinDetailContent(
                 address = state.address,
                 coin = coin,
                 usdValue = state.usdValue,
-                selectedCurrency = state.selectedCurrency,
                 isSyncing = state.isRefreshing,
                 onCopyAddress = onCopyAddress
             )
@@ -330,10 +327,11 @@ private fun CoinDetailBalanceCard(
     address: String,
     coin: Coin,
     usdValue: BigDecimal?,
-    selectedCurrency: SupportedCurrency,
     isSyncing: Boolean = false,
     onCopyAddress: (String) -> Unit
 ) {
+    val currencyState = LocalCurrency.current
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -436,12 +434,15 @@ private fun CoinDetailBalanceCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = usdValue.formatCurrency(selectedCurrency),
+                        text = usdValue.formatAsCurrency(
+                            currencyState.usdToRate,
+                            currencyState.currency
+                        ),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    
+
                     if (isSyncing) {
                         SyncPulseIndicator()
                     }

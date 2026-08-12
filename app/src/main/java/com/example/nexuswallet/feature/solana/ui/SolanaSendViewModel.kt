@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.core.domain.exception.HardwareAuthRequire
 import com.example.nexuswallet.feature.core.domain.model.TransactionResult
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.solana.domain.repository.SolanaBlockchainRepository
 import com.example.nexuswallet.feature.solana.domain.usecase.GetSolanaFeeEstimateUseCase
 import com.example.nexuswallet.feature.solana.domain.usecase.SendSolanaUseCase
@@ -155,7 +156,9 @@ class SolanaSendViewModel @Inject constructor(
                     else -> "solana"
                 }
             }
-            when (val result = marketRepository.getTokenDetails(tokenId)) {
+            
+            // Fetch price in USD as the base for fiat conversion calculations
+            when (val result = marketRepository.getTokenDetails(tokenId, SupportedCurrency.USD)) {
                 is Result.Success -> {
                     _state.update { it.copy(fiatRate = result.data.currentPrice) }
                 }

@@ -1,7 +1,7 @@
 package com.example.nexuswallet.feature.wallet.domain.usecase
 
+import com.example.nexuswallet.feature.core.util.formatAsCurrency
 import com.example.nexuswallet.feature.core.util.formatCryptoAmount
-import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.core.util.formatPercent
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
@@ -22,7 +22,8 @@ class FormatBalanceUseCase @Inject constructor() {
         wallet: Wallet,
         balance: WalletBalance?,
         pricePercentages: Map<String, Double>,
-        currency: SupportedCurrency
+        currency: SupportedCurrency,
+        usdToRate: Double = 1.0
     ): List<AssetDisplayInfo> {
         val assets = mutableListOf<AssetDisplayInfo>()
 
@@ -43,7 +44,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     balance = coinBalance?.btc ?: "0",
                     balanceFormatted = (coinBalance?.btc ?: "0").formatCryptoAmount(),
                     usdValue = coinBalance?.usdValue ?: BigDecimal.ZERO,
-                    usdValueFormatted = (coinBalance?.usdValue ?: BigDecimal.ZERO).formatCurrency(currency),
+                    usdValueFormatted = (coinBalance?.usdValue ?: BigDecimal.ZERO).formatAsCurrency(usdToRate, currency),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.formatPercent(),
                     address = coin.address
@@ -68,7 +69,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     balance = coinBalance?.sol ?: "0",
                     balanceFormatted = (coinBalance?.sol ?: "0").formatCryptoAmount(),
                     usdValue = coinBalance?.usdValue ?: BigDecimal.ZERO,
-                    usdValueFormatted = (coinBalance?.usdValue ?: BigDecimal.ZERO).formatCurrency(currency),
+                    usdValueFormatted = (coinBalance?.usdValue ?: BigDecimal.ZERO).formatAsCurrency(usdToRate, currency),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.formatPercent(),
                     tokenCount = coin.splTokens.size,
@@ -92,7 +93,7 @@ class FormatBalanceUseCase @Inject constructor() {
                         balance = tokenBalance?.balanceDecimal ?: "0",
                         balanceFormatted = (tokenBalance?.balanceDecimal ?: "0").formatCryptoAmount(),
                         usdValue = tokenBalance?.usdValue ?: BigDecimal.ZERO,
-                        usdValueFormatted = (tokenBalance?.usdValue ?: BigDecimal.ZERO).formatCurrency(currency),
+                        usdValueFormatted = (tokenBalance?.usdValue ?: BigDecimal.ZERO).formatAsCurrency(usdToRate, currency),
                         priceChangePercentage = null,
                         priceChangeFormatted = null,
                         address = token.mintAddress
@@ -125,7 +126,7 @@ class FormatBalanceUseCase @Inject constructor() {
                     balanceFormatted = (tokenBalance?.balanceDecimal ?: "0").formatCryptoAmount(),
                     usdValue = tokenBalance?.usdValue ?: BigDecimal.ZERO,
                     usdValueFormatted = (tokenBalance?.usdValue
-                        ?: BigDecimal.ZERO).formatCurrency(currency),
+                        ?: BigDecimal.ZERO).formatAsCurrency(usdToRate, currency),
                     priceChangePercentage = percentage,
                     priceChangeFormatted = percentage?.formatPercent(),
                     address = token.address

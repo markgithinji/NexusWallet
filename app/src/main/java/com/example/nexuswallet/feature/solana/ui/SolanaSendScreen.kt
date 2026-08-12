@@ -120,198 +120,178 @@ fun SolanaSendScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Network Selector Dialog
-            if (showNetworkSelector) {
-                NetworkSelectorDialog(
-                    availableNetworks = availableNetworks,
-                    currentNetwork = state.network,
-                    onNetworkSelected = { selectedNetwork ->
-                        viewModel.switchNetwork(selectedNetwork as SolanaNetwork)
-                        showNetworkSelector = false
-                    },
-                    onDismiss = { showNetworkSelector = false }
-                )
-            }
+                // Network Selector Dialog
+                if (showNetworkSelector) {
+                    NetworkSelectorDialog(
+                        availableNetworks = availableNetworks,
+                        currentNetwork = state.network,
+                        onNetworkSelected = { selectedNetwork ->
+                            viewModel.switchNetwork(selectedNetwork as SolanaNetwork)
+                            showNetworkSelector = false
+                        },
+                        onDismiss = { showNetworkSelector = false }
+                    )
+                }
 
-            // Token Selector Dialog
-            if (showTokenSelector && state.availableSplTokens.isNotEmpty()) {
-                SolanaTokenSelectorDialog(
-                    availableTokens = state.availableSplTokens,
-                    selectedToken = state.selectedSplToken,
-                    nativeSymbol = "SOL",
-                    onTokenSelected = { token ->
-                        viewModel.onEvent(SolanaSendEvent.SelectToken(token))
-                        showTokenSelector = false
-                    },
-                    onDismiss = { showTokenSelector = false }
-                )
-            }
-
-            // Address Book Dialog
-            if (showAddressBook) {
-                com.example.nexuswallet.feature.core.ui.AddressBookSelectorDialog(
-                    entries = state.addressBookEntries.filter { it.chain == "Solana" },
-                    onEntrySelected = { entry ->
-                        viewModel.onEvent(SolanaSendEvent.ToAddressChanged(entry.address))
-                        showAddressBook = false
-                    },
-                    onDismiss = { showAddressBook = false }
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = 80.dp)
-                    .padding(vertical = 16.dp)
-                    .animateContentSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Network Selector Card
-                NetworkSelectorCard(
-                    currentNetwork = state.network,
-                    onClick = { showNetworkSelector = true }
-                )
-
-                // Token Selector (if multiple assets available)
-                if (state.availableSplTokens.isNotEmpty()) {
-                    SolanaTokenSelectorCard(
+                // Token Selector Dialog
+                if (showTokenSelector && state.availableSplTokens.isNotEmpty()) {
+                    SolanaTokenSelectorDialog(
+                        availableTokens = state.availableSplTokens,
                         selectedToken = state.selectedSplToken,
-                        coinSymbol = "SOL",
-                        onClick = { showTokenSelector = true }
+                        nativeSymbol = "SOL",
+                        onTokenSelected = { token ->
+                            viewModel.onEvent(SolanaSendEvent.SelectToken(token))
+                            showTokenSelector = false
+                        },
+                        onDismiss = { showTokenSelector = false }
                     )
                 }
 
-                // Balance Card
-                SendBalanceCard(
-                    balance = state.balance,
-                    balanceFormatted = state.balanceFormatted,
-                    fiatRate = state.fiatRate,
-                    coinColor = solanaLight,
-                    iconRes = R.drawable.solana,
-                    address = state.walletAddress,
-                    network = state.network
-                )
-
-                // Error Banner
-                if (state.error != null) {
-                    ErrorMessage(
-                        error = state.error!!,
-                        onDismiss = { viewModel.onEvent(SolanaSendEvent.ClearError) }
+                // Address Book Dialog
+                if (showAddressBook) {
+                    com.example.nexuswallet.feature.core.ui.AddressBookSelectorDialog(
+                        entries = state.addressBookEntries.filter { it.chain == "Solana" },
+                        onEntrySelected = { entry ->
+                            viewModel.onEvent(SolanaSendEvent.ToAddressChanged(entry.address))
+                            showAddressBook = false
+                        },
+                        onDismiss = { showAddressBook = false }
                     )
                 }
 
-                // Address Input
-                SendAddressInput(
-                    toAddress = state.toAddress,
-                    onAddressChange = {
-                        viewModel.onEvent(SolanaSendEvent.ToAddressChanged(it))
-                    },
-                    onFocusChange = { isFocused ->
-                        addressFocused = isFocused
-                        if (isFocused) addressHasBeenFocused = true
-                        if (!isFocused && addressHasBeenFocused) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 80.dp)
+                        .padding(vertical = 16.dp)
+                        .animateContentSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Network Selector Card
+                    NetworkSelectorCard(
+                        currentNetwork = state.network,
+                        onClick = { showNetworkSelector = true }
+                    )
+
+                    // Token Selector (if multiple assets available)
+                    if (state.availableSplTokens.isNotEmpty()) {
+                        SolanaTokenSelectorCard(
+                            selectedToken = state.selectedSplToken,
+                            coinSymbol = "SOL",
+                            onClick = { showTokenSelector = true }
+                        )
+                    }
+
+                    // Balance Card
+                    SendBalanceCard(
+                        balance = state.balance,
+                        balanceFormatted = state.balanceFormatted,
+                        fiatRate = state.fiatRate,
+                        coinColor = solanaLight,
+                        iconRes = R.drawable.solana,
+                        address = state.walletAddress,
+                        network = state.network
+                    )
+
+                    // Error Banner
+                    if (state.error != null) {
+                        ErrorMessage(
+                            error = state.error!!,
+                            onDismiss = { viewModel.onEvent(SolanaSendEvent.ClearError) }
+                        )
+                    }
+
+                    // Address Input
+                    SendAddressInput(
+                        toAddress = state.toAddress,
+                        onAddressChange = {
+                            viewModel.onEvent(SolanaSendEvent.ToAddressChanged(it))
+                        },
+                        onFocusChange = { isFocused ->
+                            addressFocused = isFocused
+                            if (isFocused) addressHasBeenFocused = true
+                            if (!isFocused && addressHasBeenFocused) {
+                                addressTouched = true
+                            }
+                        },
+                        placeholder = "Enter Solana address",
+                        isValid = !errorState.showAddressError && !errorState.showSelfSendError,
+                        errorMessage = errorState.addressErrorMessage,
+                        onPaste = { pastedText ->
                             addressTouched = true
-                        }
-                    },
-                    placeholder = "Enter Solana address",
-                    isValid = !errorState.showAddressError && !errorState.showSelfSendError,
-                    errorMessage = errorState.addressErrorMessage,
-                    onPaste = { pastedText ->
-                        addressTouched = true
-                        viewModel.onEvent(SolanaSendEvent.ToAddressChanged(pastedText))
-                    },
-                    onScanClick = {
-                        val options = ScanOptions().apply {
-                            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                            setPrompt("Scan Solana Address")
-                            setBeepEnabled(false)
-                            setOrientationLocked(true)
-                            setCaptureActivity(ScannerActivity::class.java)
-                        }
-                        scanLauncher.launch(options)
-                    },
-                    onAddressBookClick = { showAddressBook = true },
-                    focusRequester = addressFocusRequester
-                )
+                            viewModel.onEvent(SolanaSendEvent.ToAddressChanged(pastedText))
+                        },
+                        onScanClick = {
+                            val options = ScanOptions().apply {
+                                setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                                setPrompt("Scan Solana Address")
+                                setBeepEnabled(false)
+                                setOrientationLocked(true)
+                                setCaptureActivity(ScannerActivity::class.java)
+                            }
+                            scanLauncher.launch(options)
+                        },
+                        onAddressBookClick = { showAddressBook = true },
+                        focusRequester = addressFocusRequester
+                    )
 
-                // Amount Input
-                SendAmountInput(
-                    amount = state.amount,
-                    coin = coin,
-                    fiatRate = state.fiatRate,
-                    onAmountChange = {
-                        viewModel.onEvent(SolanaSendEvent.AmountChanged(it))
-                    },
-                    onFocusChange = { isFocused ->
-                        amountFocused = isFocused
-                        if (isFocused) amountHasBeenFocused = true
-                        if (!isFocused && amountHasBeenFocused) {
+                    // Amount Input
+                    SendAmountInput(
+                        amount = state.amount,
+                        coin = coin,
+                        fiatRate = state.fiatRate,
+                        onAmountChange = {
+                            viewModel.onEvent(SolanaSendEvent.AmountChanged(it))
+                        },
+                        onFocusChange = { isFocused ->
+                            amountFocused = isFocused
+                            if (isFocused) amountHasBeenFocused = true
+                            if (!isFocused && amountHasBeenFocused) {
+                                amountTouched = true
+                            }
+                        },
+                        balance = state.balance,
+                        symbol = state.selectedSplToken?.symbol ?: "SOL",
+                        coinColor = solanaLight,
+                        onMaxClick = {
                             amountTouched = true
+                            showMaxDialog = true
+                        },
+                        errorMessage = errorState.amountErrorMessage,
+                        focusRequester = amountFocusRequester,
+                        isFiatMode = state.isFiatMode,
+                        onModeToggle = {
+                            viewModel.onEvent(SolanaSendEvent.ToggleFiatMode(it))
                         }
-                    },
+                    )
+
+                    // Fee Selection
+                    SendFeeSelection(
+                        feeLevel = state.feeLevel,
+                        onFeeLevelChange = { viewModel.onEvent(SolanaSendEvent.FeeLevelChanged(it)) },
+                        feeEstimate = state.feeEstimate,
+                        coin = coin
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+            if (showMaxDialog) {
+                MaxAmountDialog(
                     balance = state.balance,
-                    symbol = state.selectedSplToken?.symbol ?: "SOL",
-                    coinColor = solanaLight,
-                    onMaxClick = {
+                    feeEstimate = state.feeEstimate,
+                    fiatRate = state.fiatRate,
+                    tokenSymbol = coin.symbol,
+                    coin = coin,
+                    onDismiss = { showMaxDialog = false },
+                    onConfirm = { maxAmount ->
                         amountTouched = true
-                        showMaxDialog = true
-                    },
-                    errorMessage = errorState.amountErrorMessage,
-                    focusRequester = amountFocusRequester,
-                    isFiatMode = state.isFiatMode,
-                    onModeToggle = {
-                        viewModel.onEvent(SolanaSendEvent.ToggleFiatMode(it))
+                        viewModel.onEvent(SolanaSendEvent.AmountChanged(maxAmount))
+                        showMaxDialog = false
                     }
                 )
-
-                // Fee Selection
-                SendFeeSelection(
-                    feeLevel = state.feeLevel,
-                    onFeeLevelChange = { viewModel.onEvent(SolanaSendEvent.FeeLevelChanged(it)) },
-                    feeEstimate = state.feeEstimate,
-                    coin = coin
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
             }
-
-            // Bottom Bar
-            SendBottomBar(
-                isValid = state.validationResult.isValid,
-                isLoading = state.isLoading || state.isFeeLoading,
-                error = errorState.activeError,
-                onSend = {
-                    focusManager.clearFocus()
-                    onNavigateToReview(
-                        walletId,
-                        state.toAddress,
-                        state.amount,
-                        state.feeLevel,
-                        state.coin ?: coin,
-                        state.selectedSplToken?.mintAddress
-                    )
-                },
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
         }
-    }
-
-    // Max Amount Dialog
-    if (showMaxDialog) {
-        MaxAmountDialog(
-            balance = state.balance,
-            feeEstimate = state.feeEstimate,
-            fiatRate = state.fiatRate,
-            tokenSymbol = coin.symbol,
-            coin = coin,
-            onDismiss = { showMaxDialog = false },
-            onConfirm = { maxAmount ->
-                amountTouched = true
-                viewModel.onEvent(SolanaSendEvent.AmountChanged(maxAmount))
-                showMaxDialog = false
-            }
-        )
     }
 }

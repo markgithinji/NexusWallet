@@ -14,6 +14,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -106,8 +107,8 @@ class GetEthereumDetailUseCase @Inject constructor(
 
         // 4.5. Sync fresh balances
         try {
-            val currency = settingsRepository.getSelectedCurrency()
-            val pricesResult = getSimplePricesUseCase(wallet.evmTokens.map { it.symbol }, currency)
+            // ALWAYS fetch prices in USD for the database "usdValue" fields
+            val pricesResult = getSimplePricesUseCase(wallet.evmTokens.map { it.symbol }, SupportedCurrency.USD)
             val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
             
             syncEVMBalancesUseCase(walletId, wallet.evmTokens, prices)

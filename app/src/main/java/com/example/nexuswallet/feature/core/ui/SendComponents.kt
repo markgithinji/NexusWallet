@@ -70,10 +70,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -100,7 +98,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
-import com.example.nexuswallet.feature.core.ui.rememberHapticHelper
+import com.example.nexuswallet.feature.core.util.formatAsCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
@@ -342,10 +340,14 @@ fun SendBalanceCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    val usdValue = String.format(Locale.US, "%.2f", balance.toDouble() * fiatRate)
+                    val usdValue = balance.toDouble() * fiatRate
+                    val currencyState = LocalCurrency.current
 
                     Text(
-                        text = "$$usdValue",
+                        text = usdValue.formatAsCurrency(
+                            currencyState.usdToRate,
+                            currencyState.currency
+                        ),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -591,6 +593,7 @@ fun SendAmountInput(
     val focusManager = LocalFocusManager.current
     var focused by remember { mutableStateOf(false) }
     val haptic = rememberHapticHelper()
+    val currencyState = LocalCurrency.current
 
     LaunchedEffect(focused) {
         onFocusChange(focused)
@@ -598,11 +601,12 @@ fun SendAmountInput(
 
     // Determine what to show in the text field vs the "equivalent" label
     val displayValue = if (isFiatMode) {
-        // If in fiat mode, the 'amount' from VM is crypto, so we show its USD value in the field
+        // If in fiat mode, the 'amount' from VM is crypto, so we show its converted fiat value in the field
         if (amount.isEmpty()) "" else try {
             val crypto = amount.toBigDecimal()
-            val usd = crypto.toDouble() * fiatRate
-            if (usd == 0.0) "" else String.format(Locale.US, "%.2f", usd)
+            val usdValue = crypto.toDouble() * fiatRate
+            val convertedValue = usdValue * currencyState.usdToRate
+            if (convertedValue == 0.0) "" else String.format(Locale.US, "%.2f", convertedValue)
         } catch (e: Exception) { "" }
     } else {
         amount
@@ -615,7 +619,7 @@ fun SendAmountInput(
                 "≈ ${amountValue.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} $symbol"
             } else {
                 val usdAmount = amountValue.toDouble() * fiatRate
-                "≈ $${String.format(Locale.US, "%.2f", usdAmount)} USD"
+                "≈ ${usdAmount.formatAsCurrency(currencyState.usdToRate, currencyState.currency)}"
             }
         } catch (e: Exception) { "" }
     }
@@ -677,12 +681,13 @@ fun SendAmountInput(
                         onValueChange = { newValue ->
                             if (newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
                                 if (isFiatMode) {
-                                    // Convert USD input back to crypto for the ViewModel
+                                    // Convert selected fiat input back to crypto for the ViewModel
                                     val cryptoValue = try {
                                         if (newValue.isEmpty()) "" else {
-                                            val usd = newValue.toDouble()
+                                            val selectedFiatAmount = newValue.toDouble()
+                                            val usdAmount = selectedFiatAmount / currencyState.usdToRate
                                             if (fiatRate > 0) {
-                                                BigDecimal(usd / fiatRate).setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+                                                BigDecimal(usdAmount / fiatRate).setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
                                             } else "0"
                                         }
                                     } catch (e: Exception) { "" }
@@ -711,7 +716,11 @@ fun SendAmountInput(
                         isError = errorMessage != null,
                         prefix = {
                             if (isFiatMode) {
-                                Text("$", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    currencyState.currency.symbol,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         },
                         trailingIcon = {
@@ -733,7 +742,7 @@ fun SendAmountInput(
                                 }
 
                                 Text(
-                                    text = if (isFiatMode) "USD" else symbol,
+                                    text = if (isFiatMode) currencyState.currency.code else symbol,
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = coinColor,
@@ -1315,14 +1324,15 @@ fun MaxAmountDialog(
                                         textAlign = TextAlign.End
                                     )
                                     val maxAmountUsd = maxAmount.toDouble() * fiatRate
+                                    val currencyState = LocalCurrency.current
+
                                     Text(
-                                        text = "≈ $${
-                                            String.format(
-                                                Locale.US,
-                                                "%.2f",
-                                                maxAmountUsd
+                                        text = "≈ ${
+                                            maxAmountUsd.formatAsCurrency(
+                                                currencyState.usdToRate,
+                                                currencyState.currency
                                             )
-                                        } USD",
+                                        }",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,

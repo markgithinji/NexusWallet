@@ -27,7 +27,7 @@ fun TransactionHistoryScreen(
     coin: Coin? = null,
     onNavigateUp: () -> Unit,
     onTransactionClick: (String, Coin) -> Unit,
-    viewModel: TransactionHistoryViewModel = hiltViewModel()
+    viewModel: TransactionHistoryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -58,10 +58,9 @@ fun TransactionHistoryScreen(
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (uiState.isLoading && uiState.transactions.isEmpty()) {
                 FullScreenLoading(
-                    modifier = Modifier.padding(padding),
                     message = stringResource(R.string.loading_transactions)
                 )
             } else if (!uiState.isLoading && uiState.transactions.isEmpty()) {
@@ -72,12 +71,7 @@ fun TransactionHistoryScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        top = padding.calculateTopPadding() + 16.dp,
-                        bottom = padding.calculateBottomPadding() + 16.dp,
-                        start = 16.dp,
-                        end = 16.dp
-                    ),
+                    contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(
@@ -99,7 +93,6 @@ fun TransactionHistoryScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(2.dp)
-                        .padding(top = padding.calculateTopPadding())
                         .align(Alignment.TopCenter)
                 )
             }

@@ -3,14 +3,8 @@ package com.example.nexuswallet.feature.wallet.ui.walletdetail
 import androidx.compose.animation.core.Animatable
 import java.math.BigDecimal
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.InfiniteRepeatableSpec
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -64,16 +58,13 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -85,9 +76,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.LocalCurrency
 import com.example.nexuswallet.feature.core.ui.NexusTextField
 import com.example.nexuswallet.feature.core.ui.clickableSingle
-import com.example.nexuswallet.feature.core.util.formatCurrency
+import com.example.nexuswallet.feature.core.util.formatAsCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.AssetDisplayInfo
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
@@ -258,7 +250,6 @@ fun WalletDetailScreen(
                 syncErrors = uiState.syncErrors,
                 syncingNetworks = uiState.syncingNetworks,
                 totalBalance = uiState.totalBalance,
-                totalBalanceFormatted = uiState.totalBalanceFormatted,
                 hasSyncError = uiState.hasSyncError,
                 isLoadingBalance = uiState.isLoadingBalance,
                 isLoadingTransactions = uiState.isLoadingTransactions,
@@ -450,7 +441,6 @@ private fun WalletDetailContent(
     syncErrors: List<ChainSyncError>,
     syncingNetworks: Set<Network>,
     totalBalance: BigDecimal,
-    totalBalanceFormatted: String,
     hasSyncError: Boolean,
     isLoadingBalance: Boolean,
     isLoadingTransactions: Boolean,
@@ -480,7 +470,6 @@ private fun WalletDetailContent(
             WalletHeaderCard(
                 wallet = wallet,
                 totalBalance = totalBalance,
-                totalBalanceFormatted = totalBalanceFormatted,
                 hasSyncError = hasSyncError,
                 isLoadingBalance = isLoadingBalance || isRefreshingBalance,
                 balanceLoadingMessage = balanceLoadingMessage,
@@ -549,6 +538,7 @@ fun AssetCard(
     isSyncing: Boolean = false,
     onClick: () -> Unit
 ) {
+    val currencyState = LocalCurrency.current
     val (iconRes, iconColor, iconSize) = when (asset.coin) {
         is BitcoinCoin -> Triple(R.drawable.bitcoin, bitcoinLight, 20.dp)
         is SolanaCoin -> Triple(R.drawable.solana, solanaLight, 20.dp)
@@ -664,7 +654,10 @@ fun AssetCard(
                 horizontalAlignment = Alignment.End
             ) {
                 Text(
-                    text = asset.usdValueFormatted,
+                    text = asset.usdValue.formatAsCurrency(
+                        currencyState.usdToRate,
+                        currencyState.currency
+                    ),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -683,7 +676,6 @@ fun AssetCard(
 fun WalletHeaderCard(
     wallet: Wallet,
     totalBalance: BigDecimal,
-    totalBalanceFormatted: String,
     hasSyncError: Boolean = false,
     isLoadingBalance: Boolean = false,
     balanceLoadingMessage: String = "",
@@ -693,6 +685,7 @@ fun WalletHeaderCard(
     onSwap: (() -> Unit)? = null,
     onMore: (() -> Unit)? = null
 ) {
+    val currencyState = LocalCurrency.current
     val assetCount = wallet.bitcoinCoins.size +
             wallet.solanaCoins.size +
             wallet.evmTokens.size
@@ -740,7 +733,10 @@ fun WalletHeaderCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = animatedValue.value.toDouble().formatCurrency(),
+                    text = animatedValue.value.toDouble().formatAsCurrency(
+                        currencyState.usdToRate,
+                        currencyState.currency
+                    ),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -925,7 +921,7 @@ fun TransactionsContainer(
                 Box(modifier = Modifier
                     .fillMaxWidth()
                     .height(24.dp)) {
-                    if (isLoading && loadingMessage.isNotEmpty() && transactions.isNotEmpty()) {
+                    if (isLoading && loadingMessage.isNotEmpty()) {
                         Text(
                             text = loadingMessage,
                             style = MaterialTheme.typography.bodySmall,

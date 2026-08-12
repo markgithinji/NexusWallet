@@ -95,6 +95,19 @@ fun Double.formatCurrency(currencyCode: String = "USD"): String {
 
 fun Double.formatCurrency(currency: SupportedCurrency): String = formatCurrency(currency.code)
 
+/**
+ * Converts a USD value to the target currency and formats it.
+ */
+fun Double.formatAsCurrency(rate: Double, currency: SupportedCurrency): String {
+    val rateSafe = if (rate <= 0.0) 1.0 else rate
+    return (this * rateSafe).formatCurrency(currency)
+}
+
+fun BigDecimal.formatAsCurrency(rate: Double, currency: SupportedCurrency): String {
+    val rateSafe = if (rate <= 0.0) 1.0 else rate
+    return (this.toDouble() * rateSafe).formatCurrency(currency)
+}
+
 fun BigDecimal.formatCurrency(currency: SupportedCurrency): String = this.toDouble().formatCurrency(currency.code)
 
 /**

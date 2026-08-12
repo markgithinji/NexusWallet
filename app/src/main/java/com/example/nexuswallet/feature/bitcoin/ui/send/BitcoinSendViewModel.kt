@@ -13,6 +13,7 @@ import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.toSatoshis
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
@@ -256,7 +257,8 @@ class BitcoinSendViewModel @Inject constructor(
     }
 
     private suspend fun loadFiatRate() {
-        when (val result = marketRepository.getTokenDetails("bitcoin")) {
+        // ALWAYS fetch price in USD as the base for fiat conversion calculations in the UI
+        when (val result = marketRepository.getTokenDetails("bitcoin", SupportedCurrency.USD)) {
             is Result.Success -> {
                 _state.update { it.copy(fiatRate = result.data.currentPrice) }
             }

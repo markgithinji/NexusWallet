@@ -32,6 +32,10 @@ interface SettingsRepository {
     suspend fun getSelectedCurrency(): SupportedCurrency
     fun observeSelectedCurrency(): Flow<SupportedCurrency>
 
+    suspend fun setUsdToRate(rate: Double)
+    fun observeUsdToRate(): Flow<Double>
+    suspend fun getUsdToRate(): Double
+
     suspend fun setThemeMode(themeMode: ThemeMode)
     suspend fun getThemeMode(): ThemeMode
     fun observeThemeMode(): Flow<ThemeMode>

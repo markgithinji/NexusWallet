@@ -20,6 +20,5 @@ data class CoinDetailState(
     val transactions: List<TransactionDisplayInfo> = emptyList(),
     val ethGasBalance: String = "0",
     val evmTokens: List<EVMToken> = emptyList(),
-    val splTokens: List<SPLToken> = emptyList(),
-    val selectedCurrency: SupportedCurrency = SupportedCurrency.USD
+    val splTokens: List<SPLToken> = emptyList()
 )

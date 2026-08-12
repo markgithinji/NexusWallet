@@ -54,20 +54,20 @@ fun Navigation(
         startDestination = startDestination
     ) {
         onboardingGraph(navController)
-        
+
         mainGraph(
             navController = navController,
             isAuthenticationRequired = { mainViewModel.isAuthenticationRequired.value }
         )
-        
+
         walletGraph(
             navController = navController,
             typeMap = typeMap,
             isRequireAuthForSendEnabled = { mainViewModel.isRequireAuthForSendEnabled.value }
         )
-        
+
         settingsGraph(navController)
-        
+
         authGraph(
             navController = navController,
             typeMap = typeMap,

@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.settings.data.repository
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -171,6 +172,26 @@ class SettingsRepositoryImpl @Inject constructor(
             SupportedCurrency.fromCode(code)
         }
 
+    override suspend fun setUsdToRate(rate: Double) {
+        safeEdit {
+            dataStore.edit { preferences ->
+                preferences[USD_TO_RATE_KEY] = rate
+            }
+        }
+    }
+
+    override fun observeUsdToRate(): Flow<Double> =
+        dataStore.data.map { preferences ->
+            preferences[USD_TO_RATE_KEY] ?: 1.0
+        }
+
+    override suspend fun getUsdToRate(): Double {
+        return safeGet(defaultValue = 1.0) {
+            val preferences = dataStore.data.first()
+            preferences[USD_TO_RATE_KEY] ?: 1.0
+        } ?: 1.0
+    }
+
     override fun observeThemeMode(): Flow<ThemeMode> =
         dataStore.data.map { preferences ->
             val themeModeName = preferences[THEME_MODE_KEY]
@@ -255,6 +276,7 @@ class SettingsRepositoryImpl @Inject constructor(
         private val PRIVACY_MODE_ENABLED_KEY = booleanPreferencesKey("privacy_mode_enabled")
         private val REQUIRE_AUTH_FOR_SEND_KEY = booleanPreferencesKey("require_auth_for_send")
         private val SELECTED_CURRENCY_KEY = stringPreferencesKey("selected_currency")
+        private val USD_TO_RATE_KEY = doublePreferencesKey("usd_to_rate")
         private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
         private val NOTIFICATIONS_ENABLED_KEY = booleanPreferencesKey("notifications_enabled")
         private val NOTIFICATION_RATIONALE_SILENCED_KEY =

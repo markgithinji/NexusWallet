@@ -12,6 +12,7 @@ import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
@@ -80,11 +81,8 @@ class WalletDetailViewModel @Inject constructor(
     private fun observeSelectedCurrency() {
         viewModelScope.launch {
             settingsRepository.observeSelectedCurrency().collect { currency ->
-                val previousCurrency = _uiState.value.selectedCurrency
-                _uiState.update { it.copy(selectedCurrency = currency) }
-
-                // If currency changed and we have a wallet, refresh to get new prices
-                if (previousCurrency != currency && _uiState.value.wallet != null) {
+                // If we have a wallet, refresh to get new prices in USD
+                if (_uiState.value.wallet != null) {
                     refresh()
                 }
             }
@@ -174,8 +172,9 @@ class WalletDetailViewModel @Inject constructor(
     }
 
     private suspend fun loadMarketPercentages() {
+        // ALWAYS fetch market percentages in USD for consistency in the database base values
         when (val percentagesResult =
-            marketRepository.getLatestPricePercentages(_uiState.value.selectedCurrency)) {
+            marketRepository.getLatestPricePercentages(SupportedCurrency.USD)) {
             is Result.Success -> {
                 _uiState.update { it.copy(pricePercentages = percentagesResult.data) }
             }
@@ -194,12 +193,12 @@ class WalletDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshingBalance = true) }
 
-            // 1. Fetch prices
+            // 1. Fetch prices in USD as the base currency for all display conversions
             val symbols = (wallet.bitcoinCoins.map { it.symbol } +
                     wallet.solanaCoins.map { it.symbol } +
                     wallet.evmTokens.map { it.symbol }).distinct()
 
-            val pricesResult = getSimplePricesUseCase(symbols, _uiState.value.selectedCurrency)
+            val pricesResult = getSimplePricesUseCase(symbols, SupportedCurrency.USD)
             val prices = if (pricesResult is Result.Success) {
                 pricesResult.data
             } else {
@@ -360,23 +359,27 @@ class WalletDetailViewModel @Inject constructor(
         val state = _uiState.value
         val wallet = state.wallet ?: return
 
-        val assets = formatBalanceUseCase(
-            walletId = wallet.id,
-            wallet = wallet,
-            balance = state.balance,
-            pricePercentages = state.pricePercentages,
-            currency = state.selectedCurrency
-        )
+        viewModelScope.launch {
+            val currency = settingsRepository.getSelectedCurrency()
+            val rate = settingsRepository.getUsdToRate()
 
-        val totalUsd = assets.fold(BigDecimal.ZERO) { acc, asset -> acc.add(asset.usdValue) }
-        val totalFormatted = totalUsd.formatCurrency(state.selectedCurrency)
-
-        _uiState.update {
-            it.copy(
-                assets = assets,
-                totalBalance = totalUsd,
-                totalBalanceFormatted = totalFormatted
+            val assets = formatBalanceUseCase(
+                walletId = wallet.id,
+                wallet = wallet,
+                balance = state.balance,
+                pricePercentages = state.pricePercentages,
+                currency = currency,
+                usdToRate = rate
             )
+
+            val totalUsd = assets.fold(BigDecimal.ZERO) { acc, asset -> acc.add(asset.usdValue) }
+
+            _uiState.update {
+                it.copy(
+                    assets = assets,
+                    totalBalance = totalUsd
+                )
+            }
         }
     }
 

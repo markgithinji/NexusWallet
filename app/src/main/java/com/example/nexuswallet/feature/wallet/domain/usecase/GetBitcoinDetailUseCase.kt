@@ -9,6 +9,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.BitcoinDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -24,7 +25,6 @@ class GetBitcoinDetailUseCase @Inject constructor(
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val syncBitcoinBalanceUseCase: SyncBitcoinBalanceUseCase,
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
-    private val settingsRepository: SettingsRepository,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -79,8 +79,8 @@ class GetBitcoinDetailUseCase @Inject constructor(
 
         // 3.5. Sync fresh balance
         try {
-            val currency = settingsRepository.getSelectedCurrency()
-            val pricesResult = getSimplePricesUseCase(listOf(bitcoinCoin.symbol), currency)
+            // ALWAYS fetch prices in USD for the database "usdValue" fields
+            val pricesResult = getSimplePricesUseCase(listOf(bitcoinCoin.symbol), SupportedCurrency.USD)
             val price = if (pricesResult is Result.Success) pricesResult.data[bitcoinCoin.symbol] ?: 0.0 else 0.0
 
             syncBitcoinBalanceUseCase(walletId, bitcoinCoin, price)

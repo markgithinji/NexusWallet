@@ -5,6 +5,8 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavType
@@ -37,7 +39,6 @@ import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationSc
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WalletCreationViewModel
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.WelcomeScreen
 import com.example.nexuswallet.feature.wallet.ui.walletdetail.WalletDetailScreen
-import com.example.nexuswallet.MainViewModel
 import kotlin.reflect.KType
 
 @RequiresApi(Build.VERSION_CODES.O)

@@ -63,6 +63,7 @@ import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.LocalCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
@@ -73,6 +74,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.ui.common.ErrorScreen
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
+import com.example.nexuswallet.feature.core.util.formatAsCurrency
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -90,6 +92,7 @@ fun TransactionDetailScreen(
     viewModel: TransactionDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val currencyState = LocalCurrency.current
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -157,12 +160,17 @@ fun TransactionDetailScreen(
             }
 
             state.transaction != null -> {
+                val formattedUsdValue = if (state.usdValue > 0) state.usdValue.formatAsCurrency(
+                    currencyState.usdToRate,
+                    currencyState.currency
+                ) else ""
+
                 TransactionDetailContent(
                     transaction = state.transaction!!,
                     formattedAmount = state.formattedAmount,
                     formattedFee = state.formattedFee,
                     formattedTime = state.formattedTime,
-                    formattedUsd = state.formattedUsd,
+                    formattedUsd = formattedUsdValue,
                     coinColor = coinColor,
                     iconRes = iconRes,
                     coin = currentCoin,

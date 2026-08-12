@@ -17,6 +17,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.feature.navigation.Navigation
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
+import com.example.nexuswallet.feature.core.ui.ProvideCurrency
 import com.example.nexuswallet.ui.theme.NexusWalletTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -39,6 +40,7 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val currencyState by viewModel.currencyState.collectAsStateWithLifecycle()
 
             val darkTheme = when (themeMode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -49,10 +51,12 @@ class MainActivity : AppCompatActivity() {
             NexusWalletTheme(
                 darkTheme = darkTheme
             ) {
-                Surface(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Navigation(canAuthenticate = canAuthenticate)
+                ProvideCurrency(state = currencyState) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Navigation(canAuthenticate = canAuthenticate)
+                    }
                 }
             }
         }

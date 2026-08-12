@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.wallet.ui.coindetail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinDetailResult
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
@@ -14,8 +15,6 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.FormatTransactionDi
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetBitcoinDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetEthereumDetailUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetSolanaDetailUseCase
-import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
-import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,22 +34,6 @@ class CoinDetailViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(CoinDetailState())
     val state: StateFlow<CoinDetailState> = _state.asStateFlow()
-
-    init {
-        observeSelectedCurrency()
-    }
-
-    private fun observeSelectedCurrency() {
-        viewModelScope.launch {
-            settingsRepository.observeSelectedCurrency().collect { currency ->
-                val previousCurrency = _state.value.selectedCurrency
-                _state.update { it.copy(selectedCurrency = currency) }
-                if (previousCurrency != currency && _state.value.walletId.isNotEmpty() && _state.value.coin != null) {
-                    loadCoinDetails(_state.value.walletId, _state.value.coin!!)
-                }
-            }
-        }
-    }
 
     fun loadCoinDetails(
         walletId: String,

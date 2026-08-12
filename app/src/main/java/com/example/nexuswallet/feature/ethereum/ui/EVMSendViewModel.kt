@@ -12,6 +12,7 @@ import com.example.nexuswallet.feature.ethereum.domain.usecase.GetEVMFeeEstimate
 import com.example.nexuswallet.feature.ethereum.domain.usecase.SendEVMAssetUseCase
 import com.example.nexuswallet.feature.ethereum.domain.usecase.ValidateEVMSendUseCase
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
@@ -205,7 +206,8 @@ class EVMSendViewModel @Inject constructor(
             else -> "ethereum"
         }
 
-        when (val result = marketRepository.getTokenDetails(tokenId)) {
+        // ALWAYS fetch price in USD as the base for fiat conversion calculations in the UI
+        when (val result = marketRepository.getTokenDetails(tokenId, SupportedCurrency.USD)) {
             is Result.Success -> {
                 _uiState.update { it.copy(fiatRate = result.data.currentPrice) }
             }

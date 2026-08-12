@@ -94,9 +94,6 @@ class WalletDashboardViewModel @Inject constructor(
     private val _isPrivacyModeEnabled = MutableStateFlow(false)
     val isPrivacyModeEnabled: StateFlow<Boolean> = _isPrivacyModeEnabled.asStateFlow()
 
-    private val _selectedCurrency = MutableStateFlow(SupportedCurrency.USD)
-    val selectedCurrency: StateFlow<SupportedCurrency> = _selectedCurrency.asStateFlow()
-
     // Tracking last refresh time
     private var lastRefreshTime = 0L
     private val refreshThreshold = 30_000L // 30 seconds
@@ -143,7 +140,7 @@ class WalletDashboardViewModel @Inject constructor(
                     wallet.evmTokens.map { it.symbol }
         }.distinct()
 
-        val pricesResult = getSimplePricesUseCase(allSymbols, _selectedCurrency.value)
+        val pricesResult = getSimplePricesUseCase(allSymbols, SupportedCurrency.USD)
         if (pricesResult is Result.Success) {
             lastPrices = pricesResult.data
         }
@@ -182,11 +179,7 @@ class WalletDashboardViewModel @Inject constructor(
     private fun observeSelectedCurrency() {
         viewModelScope.launch {
             settingsRepository.observeSelectedCurrency().collect { currency ->
-                val previousCurrency = _selectedCurrency.value
-                _selectedCurrency.value = currency
-                if (previousCurrency != currency) {
-                    refresh()
-                }
+                refresh(force = true)
             }
         }
     }
@@ -306,7 +299,8 @@ class WalletDashboardViewModel @Inject constructor(
                                 wallet.solanaCoins.map { it.symbol } +
                                 wallet.evmTokens.map { it.symbol }
                     }.distinct()
-                    val pricesResult = getSimplePricesUseCase(allSymbols, _selectedCurrency.value)
+                    // ALWAYS fetch prices in USD for the database "usdValue" fields
+                    val pricesResult = getSimplePricesUseCase(allSymbols, SupportedCurrency.USD)
                     if (pricesResult is Result.Success) {
                         lastPrices = pricesResult.data
                         pricesResult.data
