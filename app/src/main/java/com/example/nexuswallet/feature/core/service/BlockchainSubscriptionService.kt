@@ -22,12 +22,16 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import com.example.nexuswallet.feature.logging.Logger
+import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import java.net.InetAddress
 import java.util.Collections
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.min
@@ -36,8 +40,36 @@ import kotlin.math.min
 class BlockchainSubscriptionService @Inject constructor(
     private val okHttpClient: OkHttpClient,
     private val json: Json,
+    private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
+    private val TAG = "BlockchainSubService"
+
+    /**
+     * Custom DNS that prefers IPv4 to avoid ECONNREFUSED issues with IPv6 in some environments.
+     */
+    private val ipv4Dns = object : Dns {
+        override fun lookup(hostname: String): List<InetAddress> {
+            return try {
+                val addresses = Dns.SYSTEM.lookup(hostname)
+                val filtered = addresses.filter { it is java.net.Inet4Address }
+                if (filtered.isNotEmpty()) filtered else addresses
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    /**
+     * Dedicated client for WebSockets with snappier timeouts and forced IPv4.
+     */
+    private val wsClient = okHttpClient.newBuilder()
+        .dns(ipv4Dns)
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
+        .pingInterval(30, TimeUnit.SECONDS)
+        .build()
 
     /**
      * Scope for managing background WebSocket tasks.
@@ -45,8 +77,9 @@ class BlockchainSubscriptionService @Inject constructor(
      */
     private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
-    // Shared flow for all address change events. Emits generic signals like "ETHEREUM_SIGNAL".
-    private val _addressChanges = MutableSharedFlow<String>(extraBufferCapacity = 64)
+    // Shared flow for all address change events. Emits the network that triggered the signal.
+    private val _addressChanges = MutableSharedFlow<Network>(extraBufferCapacity = 64)
+    val addressChanges: Flow<Network> = _addressChanges
 
     // Manage active web sockets: Network -> WebSocket. One socket per blockchain network.
     private val activeWebSockets = Collections.synchronizedMap(mutableMapOf<Network, WebSocket>())
@@ -61,21 +94,33 @@ class BlockchainSubscriptionService @Inject constructor(
     // Blacklisted networks that have exceeded MAX_RECONNECT_ATTEMPTS.
     private val deadNetworks = Collections.synchronizedSet(mutableSetOf<Network>())
     private val connectionMutex = Mutex()
+    private var nextId = 1
 
     /**
      * Subscribes to changes for a specific address on a given network.
      * Emits the address itself when a change is detected.
      */
-    fun subscribeToAddressChanges(address: String, network: Network): Flow<String> {
+    fun subscribeToAddressChanges(address: String, network: Network): Flow<Network> {
+        // DISABLED: Bitcoin WSS is currently disabled to prevent connection issues and API rate limiting.
+        // We rely on global refreshes triggered by ETH/SOL activity to update BTC balances.
+        if (network is BitcoinNetwork) return _addressChanges
+
         // If the circuit breaker is blown for this network, don't even try to connect.
-        if (deadNetworks.contains(network)) return _addressChanges
+        if (deadNetworks.contains(network)) {
+            logger.d(TAG, "Circuit breaker is BLOWN for ${network.name}. Skipping subscription for $address")
+            return _addressChanges
+        }
 
         scope.launch {
             connectionMutex.withLock {
                 val addresses = subscribedAddresses.getOrPut(network) { mutableSetOf() }
-                if (addresses.add(address)) {
-                    // Only open the socket and send the subscription message for new addresses.
-                    ensureWebSocketConnected(network)
+                val isNewAddress = addresses.add(address)
+                
+                // ALWAYS ensure the socket is connected when someone asks for a subscription.
+                ensureWebSocketConnected(network)
+                
+                // Only send the subscription message if the address is new to this socket's state.
+                if (isNewAddress) {
                     sendSubscription(network, address)
                 }
             }
@@ -90,6 +135,27 @@ class BlockchainSubscriptionService @Inject constructor(
         scope.launch {
             connectionMutex.withLock {
                 subscribedAddresses[network]?.remove(address)
+            }
+        }
+    }
+
+    /**
+     * Clears the circuit breaker and active socket for a network, forcing a fresh connection.
+     */
+    fun reconnectNetwork(network: Network) {
+        scope.launch {
+            connectionMutex.withLock {
+                logger.d(TAG, "Force reconnecting network: ${network.name}")
+                deadNetworks.remove(network)
+                reconnectAttempts[network] = 0
+                activeWebSockets[network]?.close(1000, "Forced reconnection")
+                activeWebSockets.remove(network)
+                ensureWebSocketConnected(network)
+
+                // Resubscribe all addresses for this network
+                subscribedAddresses[network]?.forEach { address ->
+                    sendSubscription(network, address)
+                }
             }
         }
     }
@@ -113,10 +179,15 @@ class BlockchainSubscriptionService @Inject constructor(
         if (activeWebSockets.containsKey(network)) return
 
         val url = getWebSocketUrl(network) ?: return
-        val request = Request.Builder().url(url).build()
+        logger.d(TAG, "Connecting WebSocket for ${network.name} to $url")
+        
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            .build()
 
         val listener = createWebSocketListener(network)
-        val webSocket = okHttpClient.newWebSocket(request, listener)
+        val webSocket = wsClient.newWebSocket(request, listener)
         activeWebSockets[network] = webSocket
     }
 
@@ -154,7 +225,7 @@ class BlockchainSubscriptionService @Inject constructor(
             is SolanaNetwork -> {
                 val message = buildJsonObject {
                     put("jsonrpc", "2.0")
-                    put("id", 1)
+                    put("id", nextId++)
                     put("method", "accountSubscribe")
                     put("params", buildJsonArray {
                         add(address)
@@ -168,35 +239,40 @@ class BlockchainSubscriptionService @Inject constructor(
             }
 
             is EthereumNetwork -> {
-                val logsToMessage = buildJsonObject {
+                // Subscribe to INCOMING tokens (Transfer to this address)
+                val incomingTokenLogsMessage = buildJsonObject {
                     put("jsonrpc", "2.0")
-                    put("id", 1)
-                    put("method", "eth_subscribe")
-                    put("params", buildJsonArray {
-                        add("logs")
-                        add(buildJsonObject {
-                            put("address", address)
-                        })
-                    })
-                }.toString()
-                webSocket.send(logsToMessage)
-
-                val tokenLogsMessage = buildJsonObject {
-                    put("jsonrpc", "2.0")
-                    put("id", 2)
+                    put("id", nextId++)
                     put("method", "eth_subscribe")
                     put("params", buildJsonArray {
                         add("logs")
                         add(buildJsonObject {
                             put("topics", buildJsonArray {
-                                add("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+                                add("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef") // Transfer event
                                 add(null)
-                                add("0x000000000000000000000000${address.removePrefix("0x")}")
+                                add("0x000000000000000000000000${address.removePrefix("0x")}") // to: address
                             })
                         })
                     })
                 }.toString()
-                webSocket.send(tokenLogsMessage)
+                webSocket.send(incomingTokenLogsMessage)
+
+                // Subscribe to OUTGOING tokens (Transfer from this address)
+                val outgoingTokenLogsMessage = buildJsonObject {
+                    put("jsonrpc", "2.0")
+                    put("id", nextId++)
+                    put("method", "eth_subscribe")
+                    put("params", buildJsonArray {
+                        add("logs")
+                        add(buildJsonObject {
+                            put("topics", buildJsonArray {
+                                add("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef") // Transfer event
+                                add("0x000000000000000000000000${address.removePrefix("0x")}") // from: address
+                            })
+                        })
+                    })
+                }.toString()
+                webSocket.send(outgoingTokenLogsMessage)
             }
 
             is BitcoinNetwork -> {
@@ -210,7 +286,32 @@ class BlockchainSubscriptionService @Inject constructor(
 
     private fun createWebSocketListener(network: Network) = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
+            logger.d(TAG, "WebSocket OPENED for ${network.name}")
             reconnectAttempts[network] = 0
+
+            // If it's Ethereum, subscribe to newHeads to catch native ETH transfers (which don't emit logs)
+            if (network is EthereumNetwork) {
+                val newHeadsMsg = buildJsonObject {
+                    put("jsonrpc", "2.0")
+                    put("id", nextId++)
+                    put("method", "eth_subscribe")
+                    put("params", buildJsonArray { add("newHeads") })
+                }.toString()
+                webSocket.send(newHeadsMsg)
+            }
+
+            // If it's Bitcoin, send the 'want' message to initialize the stream
+            if (network is BitcoinNetwork) {
+                val initMsg = buildJsonObject {
+                    put("action", "want")
+                    put("data", buildJsonArray {
+                        add("blocks")
+                        add("mempool-blocks")
+                        add("stats")
+                    })
+                }.toString()
+                webSocket.send(initMsg)
+            }
 
             // Resubscribe all addresses for this network
             subscribedAddresses[network]?.forEach { address ->
@@ -225,6 +326,7 @@ class BlockchainSubscriptionService @Inject constructor(
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            logger.e(TAG, "WebSocket FAILURE for ${network.name}: ${t.message}")
             activeWebSockets.remove(network)
 
             val attempts = reconnectAttempts.getOrDefault(network, 0)
@@ -248,24 +350,26 @@ class BlockchainSubscriptionService @Inject constructor(
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            logger.d(TAG, "WebSocket CLOSED for ${network.name}")
             activeWebSockets.remove(network)
         }
     }
 
     private suspend fun handleMessage(network: Network, text: String) {
         try {
+            logger.d(TAG, "RAW MSG from ${network.name}: $text")
             val jsonElement = json.parseToJsonElement(text)
 
             when (network) {
                 is SolanaNetwork -> {
                     if (jsonElement is JsonObject && (jsonElement["method"]?.jsonPrimitive?.content == "accountNotification")) {
-                        _addressChanges.emit("SOLANA_SIGNAL")
+                        _addressChanges.emit(network)
                     }
                 }
 
                 is EthereumNetwork -> {
-                    if (jsonElement is JsonObject && (jsonElement["method"]?.jsonPrimitive?.content == "eth_subscription")) {
-                        _addressChanges.emit("ETHEREUM_SIGNAL")
+                    if (jsonElement is JsonObject && jsonElement["method"]?.jsonPrimitive?.content == "eth_subscription") {
+                        _addressChanges.emit(network)
                     }
                 }
 
@@ -274,7 +378,7 @@ class BlockchainSubscriptionService @Inject constructor(
                             "address-utxo"
                         ))
                     ) {
-                        _addressChanges.emit("BITCOIN_SIGNAL")
+                        _addressChanges.emit(network)
                     }
                 }
             }

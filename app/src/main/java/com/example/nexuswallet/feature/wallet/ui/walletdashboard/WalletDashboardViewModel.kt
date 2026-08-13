@@ -50,8 +50,11 @@ class WalletDashboardViewModel @Inject constructor(
     private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
     private val settingsRepository: SettingsRepository,
-    private val subscriptionService: BlockchainSubscriptionService
+    private val subscriptionService: BlockchainSubscriptionService,
+    private val logger: com.example.nexuswallet.feature.logging.Logger
 ) : ViewModel() {
+
+    private val TAG = "WalletDashboardVM"
 
     // State
     private val _uiState = MutableStateFlow<Result<List<Wallet>>>(Result.Loading)
@@ -98,15 +101,14 @@ class WalletDashboardViewModel @Inject constructor(
     private var lastRefreshTime = 0L
     private val refreshThreshold = 30_000L // 30 seconds
 
-    private val signalFlow = MutableSharedFlow<Network>(extraBufferCapacity = 10)
     private var subscriptionJob: Job? = null
     private var priceRefreshJob: Job? = null
+    private var balanceWatchdogJob: Job? = null
     private var lastPrices: Map<String, Double> = emptyMap()
     
-    // racks the last time each network was auto-refreshed
-    // to prevent redundant calls from high-frequency blockchains (like Ethereum blocks every 12s).
+    // tracks the last time each network was auto-refreshed
     private val lastNetworkRefreshTimes = mutableMapOf<Network, Long>()
-    private val REFRESH_COOLDOWN_MS = 60_000L // 1 minute cooldown for background auto-refreshes
+    private val REFRESH_COOLDOWN_MS = 5_000L // Reduced cooldown for snappier global updates
 
     init {
         observeWallets()
@@ -114,6 +116,22 @@ class WalletDashboardViewModel @Inject constructor(
         observeSelectedCurrency()
         observeSignals()
         startPriceTimer()
+        startBalanceWatchdog()
+    }
+
+    /**
+     * Periodically refreshes all balances to ensure data is fresh even if WSS signals are missed
+     * or for networks like Bitcoin where WSS is currently disabled.
+     */
+    private fun startBalanceWatchdog() {
+        balanceWatchdogJob?.cancel()
+        balanceWatchdogJob = viewModelScope.launch {
+            while (true) {
+                delay(300_000L) // Refresh balances every 5 minutes
+                logger.d(TAG, "Watchdog: Periodic balance refresh triggered.")
+                refresh(force = true)
+            }
+        }
     }
 
     /**
@@ -148,22 +166,15 @@ class WalletDashboardViewModel @Inject constructor(
 
     /**
      * Listens for real-time activity signals from the BlockchainSubscriptionService.
-     * Signals (like "Ethereum activity detected") trigger a granular balance refresh.
+     * Performs a surgical refresh of only the network that signaled activity.
      */
     private fun observeSignals() {
         viewModelScope.launch {
-            signalFlow
-                .debounce(5000L) // Groups multiple rapid events into a single refresh cycle.
+            subscriptionService.addressChanges
+                .debounce(1500L) // Groups multiple rapid events into a single refresh cycle.
                 .collect { network ->
-                    val lastRefresh = lastNetworkRefreshTimes.getOrDefault(network, 0L)
-                    val currentTime = System.currentTimeMillis()
-                    
-                    // Cooldown logic: Only auto-refresh if at least 1 minute has passed since the last one.
-                    // This prevents the app from constant fetching when blocks are fast.
-                    if (currentTime - lastRefresh >= REFRESH_COOLDOWN_MS) {
-                        lastNetworkRefreshTimes[network] = currentTime
-                        refresh(force = true, networkFilter = network)
-                    }
+                    logger.d(TAG, "Reactive Signal: ${network.name} activity. Performing surgical refresh.")
+                    refresh(force = true, networkFilter = network)
                 }
         }
     }
@@ -210,27 +221,10 @@ class WalletDashboardViewModel @Inject constructor(
         subscriptionJob?.cancel()
         subscriptionJob = viewModelScope.launch {
             wallets.forEach { wallet ->
-                // Subscribe to Bitcoin
-                wallet.bitcoinCoins.forEach { coin ->
-                    launch {
-                        subscriptionService.subscribeToAddressChanges(coin.address, coin.network)
-                            .collect { _ -> signalFlow.emit(coin.network) }
-                    }
-                }
-                // Subscribe to Solana
-                wallet.solanaCoins.forEach { coin ->
-                    launch {
-                        subscriptionService.subscribeToAddressChanges(coin.address, coin.network)
-                            .collect { _ -> signalFlow.emit(coin.network) }
-                    }
-                }
-                // Subscribe to Ethereum
-                wallet.evmTokens.forEach { token ->
-                    launch {
-                        subscriptionService.subscribeToAddressChanges(token.address, token.network)
-                            .collect { _ -> signalFlow.emit(token.network) }
-                    }
-                }
+                // Register addresses for tracking (Bitcoin is ignored inside the service)
+                wallet.bitcoinCoins.forEach { subscriptionService.subscribeToAddressChanges(it.address, it.network) }
+                wallet.solanaCoins.forEach { subscriptionService.subscribeToAddressChanges(it.address, it.network) }
+                wallet.evmTokens.forEach { subscriptionService.subscribeToAddressChanges(it.address, it.network) }
             }
         }
     }
