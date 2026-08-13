@@ -277,12 +277,31 @@ fun SolanaSendScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
+                // Bottom Bar
+                SendBottomBar(
+                    isValid = state.validationResult.isValid,
+                    isLoading = state.isLoading || state.isFeeLoading,
+                    error = errorState.activeError,
+                    onSend = {
+                        focusManager.clearFocus()
+                        onNavigateToReview(
+                            walletId,
+                            state.toAddress,
+                            state.amount,
+                            state.feeLevel,
+                            state.coin ?: coin,
+                            state.selectedSplToken?.mintAddress
+                        )
+                    },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+
             if (showMaxDialog) {
                 MaxAmountDialog(
                     balance = state.balance,
                     feeEstimate = state.feeEstimate,
                     fiatRate = state.fiatRate,
-                    tokenSymbol = coin.symbol,
+                    tokenSymbol = state.selectedSplToken?.symbol ?: coin.symbol,
                     coin = coin,
                     onDismiss = { showMaxDialog = false },
                     onConfirm = { maxAmount ->
