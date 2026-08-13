@@ -100,7 +100,6 @@ fun MarketScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
                 .pullRefresh(refreshState)
         ) {
             Column(
@@ -131,7 +130,7 @@ fun MarketScreen(
                 Box(modifier = Modifier.weight(1f)) {
                     val mergedPadding = PaddingValues(
                         top = 8.dp,
-                        bottom = 16.dp, // Already padded by outer Box
+                        bottom = padding.calculateBottomPadding() + 16.dp,
                         start = 16.dp,
                         end = 16.dp
                     )
