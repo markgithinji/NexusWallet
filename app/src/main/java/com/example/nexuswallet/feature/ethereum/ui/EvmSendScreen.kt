@@ -345,8 +345,8 @@ fun EthereumSendScreen(
 
             // Bottom Bar
             SendBottomBar(
-                isValid = state.validationResult.isValid,
-                isLoading = state.isLoading,
+                isValid = state.validationResult.isValid && !state.isLoading,
+                isLoading = state.isFeeLoading,
                 error = errorState.activeError,
                 onSend = {
                     focusManager.clearFocus()

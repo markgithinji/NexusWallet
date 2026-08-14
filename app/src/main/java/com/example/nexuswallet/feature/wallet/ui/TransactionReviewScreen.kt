@@ -342,6 +342,8 @@ fun TransactionReviewScreen(
 
     val isPreparing = when (coin) {
         is BitcoinCoin -> bitcoinState.value.isLoading && !bitcoinState.value.transactionPrepared
+        is SolanaCoin -> solanaState.value.isLoading && !solanaState.value.isFeeLoading && !isSending
+        is EVMToken -> ethereumState.value.isLoading && !ethereumState.value.isFeeLoading && !isSending
         else -> false
     }
 

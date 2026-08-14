@@ -70,6 +70,7 @@ class SolanaSendViewModel @Inject constructor(
             _state.update { 
                 it.copy(
                     isLoading = true, 
+                    isFeeLoading = true,
                     walletId = walletId, 
                     coin = coin,
                     network = coin.network,
@@ -80,7 +81,7 @@ class SolanaSendViewModel @Inject constructor(
             currentWallet = walletRepository.getWallet(walletId)
             if (currentWallet == null) {
                 _effect.emit(SolanaSendEffect.TransactionResultEffect(TransactionResult.Error("Wallet not found")))
-                _state.update { it.copy(isLoading = false, error = "Wallet not found") }
+                _state.update { it.copy(isLoading = false, isFeeLoading = false, error = "Wallet not found") }
                 return@launch
             }
 
@@ -197,18 +198,19 @@ class SolanaSendViewModel @Inject constructor(
                     ) 
                 }
                 validate()
+            } else {
+                _state.update { it.copy(isLoading = false) }
             }
         }
     }
 
     private fun loadFeeEstimate() {
         feeJob?.cancel()
+        _state.update { it.copy(isFeeLoading = true) }
         feeJob = viewModelScope.launch {
             delay(500)
             val currentState = _state.value
             val coin = currentState.coin ?: return@launch
-            
-            _state.update { it.copy(isFeeLoading = true) }
             
             val lamports = currentState.amountValue.multiply(BigDecimal(LAMPORTS_PER_SOL)).toLong()
             
