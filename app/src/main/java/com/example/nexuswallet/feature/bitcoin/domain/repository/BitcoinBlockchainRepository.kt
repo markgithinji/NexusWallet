@@ -21,7 +21,8 @@ interface BitcoinBlockchainRepository {
         feeLevel: FeeLevel,
         inputCount: Int,
         outputCount: Int,
-        network: BitcoinNetwork
+        network: BitcoinNetwork,
+        isSegwit: Boolean = true
     ): Result<BitcoinFeeEstimate>
 
     suspend fun getUnspentOutputs(
@@ -58,6 +59,7 @@ interface BitcoinBlockchainRepository {
         toAddress: String,
         satoshis: Long,
         feeLevel: FeeLevel,
-        network: BitcoinNetwork
+        network: BitcoinNetwork,
+        utxos: List<UTXO>? = null
     ): Result<Transaction>
 }

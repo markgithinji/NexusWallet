@@ -132,7 +132,7 @@ class BitcoinSendViewModel @Inject constructor(
 
                 // Load balance, fee estimate, and fiat rate after initialization
                 // We keep isLoading = true until these are done or at least started
-                loadBalance(walletInfo.walletAddress, walletInfo.network)
+                loadBalance(walletInfo.walletAddress, walletInfo.network, targetCoin.xpub)
                 loadFeeEstimate(FeeLevel.NORMAL)
                 loadFiatRate()
 
@@ -144,8 +144,8 @@ class BitcoinSendViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadBalance(address: String, network: BitcoinNetwork) {
-        when (val result = getBitcoinBalanceUseCase(address, network)) {
+    private suspend fun loadBalance(address: String, network: BitcoinNetwork, xpub: String? = null) {
+        when (val result = getBitcoinBalanceUseCase(address, network, xpub)) {
             is Result.Success -> {
                 val balance = result.data
                 _state.update {

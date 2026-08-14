@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.bitcoin.domain.model
 
+import com.example.nexuswallet.feature.bitcoin.data.model.UTXO
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import java.math.BigDecimal
@@ -17,5 +18,6 @@ data class PreparedBitcoinTransaction(
     val network: BitcoinNetwork,
     val hasPrivateKey: Boolean,
     val estimatedSize: Int,
-    val utxoCount: Int
+    val utxoCount: Int,
+    val selectedUtxos: List<UTXO>
 )

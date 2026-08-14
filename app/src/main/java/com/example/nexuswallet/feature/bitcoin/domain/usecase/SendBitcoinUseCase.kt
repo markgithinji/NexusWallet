@@ -123,7 +123,8 @@ class SendBitcoinUseCase @Inject constructor(
             toAddress = preparedTransaction.toAddress,
             satoshis = preparedTransaction.amountSatoshis,
             feeLevel = preparedTransaction.feeLevel,
-            network = bitcoinCoin.network
+            network = bitcoinCoin.network,
+            utxos = preparedTransaction.selectedUtxos
         )) {
             is Result.Success -> {
                 val signedTx = signResult.data

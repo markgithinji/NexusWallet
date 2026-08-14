@@ -18,6 +18,7 @@ import com.example.nexuswallet.feature.core.domain.model.TransactionResult
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.toSatoshis
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
+import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.util.ExplorerUrlHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -41,7 +42,8 @@ class BitcoinReviewViewModel @Inject constructor(
     private val getBitcoinBalanceUseCase: GetBitcoinBalanceUseCase,
     private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase,
     private val selectBitcoinUtxosUseCase: SelectBitcoinUtxosUseCase,
-    private val bitcoinBlockchainRepository: BitcoinBlockchainRepository
+    private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+    private val walletRepository: WalletRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BitcoinReviewUiState())
@@ -90,8 +92,10 @@ class BitcoinReviewViewModel @Inject constructor(
                         )
                     }
 
-                    // Load balance
-                    loadBalance(walletInfo.walletAddress, network)
+                    // Load balance - aggregated across Legacy and SegWit
+                    val currentWallet = walletRepository.getWallet(walletId)
+                    val xpub = currentWallet?.bitcoinCoins?.find { it.network == network }?.xpub
+                    loadBalance(walletInfo.walletAddress, network, xpub)
                 }
 
                 is Result.Error -> {
@@ -103,8 +107,8 @@ class BitcoinReviewViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadBalance(address: String, network: BitcoinNetwork) {
-        when (val result = getBitcoinBalanceUseCase(address, network)) {
+    private suspend fun loadBalance(address: String, network: BitcoinNetwork, xpub: String? = null) {
+        when (val result = getBitcoinBalanceUseCase(address, network, xpub)) {
             is Result.Success -> {
                 val balance = result.data
                 _state.update {

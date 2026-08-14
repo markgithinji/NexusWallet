@@ -284,18 +284,21 @@ class CreateWalletUseCase @Inject constructor(
 
             Context.propagate(Context(params))
             val seed = DeterministicSeed(mnemonicStrings, null, "", 0L)
-            val wallet = org.bitcoinj.wallet.Wallet.fromSeed(params, seed, Script.ScriptType.P2PKH)
+            
+            // BIP-84: Native SegWit (starts with bc1)
+            val wallet = org.bitcoinj.wallet.Wallet.fromSeed(params, seed, Script.ScriptType.P2WPKH)
 
             val address = wallet.freshReceiveAddress().toString()
             val xpub = wallet.watchingKey.serializePubB58(params)
 
             BitcoinCoin(
                 address = address,
-                publicKey = wallet.watchingKey.pubKey.toString(),
+                publicKey = wallet.watchingKey.pubKey.toHex(),
                 network = network,
-                xpub = xpub
+                xpub = xpub,
+                derivationPath = "m/84'/0'/0'/0/0"
             ).also {
-                logger.d(TAG, "Bitcoin ${network.name} address generated: ${address.take(8)}...")
+                logger.d(TAG, "Bitcoin SegWit ${network.name} address generated: ${address.take(8)}...")
             }
         } catch (e: Exception) {
             logger.e(TAG, "Bitcoin address generation failed | network=${network.name}, error=${e.message}")
@@ -341,7 +344,8 @@ class CreateWalletUseCase @Inject constructor(
             Context.propagate(context)
 
             val seed = DeterministicSeed(mnemonicStrings, null, "", 0L)
-            val wallet = org.bitcoinj.wallet.Wallet.fromSeed(params, seed, Script.ScriptType.P2PKH)
+            // Use P2WPKH to stay consistent with modern BIP-84 wallets
+            val wallet = org.bitcoinj.wallet.Wallet.fromSeed(params, seed, Script.ScriptType.P2WPKH)
             val key = wallet.currentReceiveKey()
             key.privKeyBytes
         } catch (e: Exception) {
