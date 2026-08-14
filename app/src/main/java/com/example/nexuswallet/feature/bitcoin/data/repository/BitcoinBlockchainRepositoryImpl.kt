@@ -8,7 +8,6 @@ import com.example.nexuswallet.feature.bitcoin.data.toDomain
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants
-import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DUST_LIMIT
 import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.SATOSHIS_PER_BTC
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.core.domain.model.BitcoinTransaction
@@ -21,19 +20,11 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.bitcoinj.core.Address
 import org.bitcoinj.core.Coin
-import org.bitcoinj.core.ECKey
-import org.bitcoinj.core.LegacyAddress
-import org.bitcoinj.core.SegwitAddress
 import org.bitcoinj.core.Sha256Hash
-import org.bitcoinj.core.Transaction
-import org.bitcoinj.core.TransactionInput
 import org.bitcoinj.core.TransactionOutPoint
-import org.bitcoinj.core.TransactionWitness
-import org.bitcoinj.crypto.TransactionSignature
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
 import org.bitcoinj.script.ScriptBuilder
-import org.bitcoinj.script.ScriptPattern
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
@@ -154,7 +145,7 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
     ): Long {
         return if (isSegwit) {
             // SegWit vByte estimation
-            // Header (10.5) + Inputs (27 * count) + Outputs (31 * count) + Witness (107 / 4 * count)
+            // Header (11) + Inputs (68 * count) + Outputs (31 * count)
             (11 + (inputCount * 68) + (outputCount * 31)).toLong()
         } else {
             BitcoinConstants.BASE_TX_SIZE + (inputCount * BitcoinConstants.BYTES_PER_INPUT) + (outputCount * BitcoinConstants.BYTES_PER_OUTPUT)
@@ -229,184 +220,6 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
                     )
                 }
             }
-        }
-    }
-
-
-    /**
-     * Creates and signs a Bitcoin transaction using modern SegWit standards and BIP-69.
-     */
-    override suspend fun createAndSignTransaction(
-        fromKey: ECKey,
-        toAddress: String,
-        satoshis: Long,
-        feeLevel: FeeLevel,
-        network: BitcoinNetwork,
-        utxos: List<UTXO>?
-    ): Result<Transaction> = withContext(ioDispatcher) {
-        try {
-            val networkParams = when (network) {
-                BitcoinNetwork.Mainnet -> MainNetParams.get()
-                BitcoinNetwork.Testnet -> TestNet3Params.get()
-            }
-
-            // 1. Determine address types (favor SegWit)
-            val segwitAddress = SegwitAddress.fromKey(networkParams, fromKey)
-            val legacyAddress = LegacyAddress.fromKey(networkParams, fromKey)
-
-            // 2. Get UTXOs if not provided
-            val selected: List<UTXO> = if (utxos != null) {
-                utxos
-            } else {
-                // Fetch UTXOs for both to be safe, but we favor spending SegWit
-                val fromAddresses = listOf(segwitAddress.toString(), legacyAddress.toString())
-                val allUtxos = mutableListOf<UTXO>()
-                for (addr in fromAddresses) {
-                    when (val result = getUnspentOutputs(addr, network)) {
-                        is Result.Success -> allUtxos.addAll(result.data)
-                        else -> {}
-                    }
-                }
-
-                if (allUtxos.isEmpty()) {
-                    return@withContext Result.Error("No UTXOs found")
-                }
-
-                // Get current fee rates for selection
-                val api = getApiForNetwork(network)
-                val estimates = api.getFeeEstimates()
-                val feePerByte = estimates[when (feeLevel) {
-                    FeeLevel.SLOW -> SLOW_TARGET
-                    FeeLevel.NORMAL -> NORMAL_TARGET
-                    FeeLevel.FAST -> FAST_TARGET
-                }] ?: DEFAULT_NORMAL_FEE
-
-                // Selection (Iterative)
-                val sel = mutableListOf<UTXO>()
-                var totalSelectedSatoshis = 0L
-                val sortedUtxos = allUtxos.sortedByDescending { it.value.value }
-                val outputCount = 2
-
-                for (utxo in sortedUtxos) {
-                    sel.add(utxo)
-                    totalSelectedSatoshis += utxo.value.value
-                    val isSegwitTx = sel.any { ScriptPattern.isP2WPKH(it.script) }
-                    val vSize = calculateTransactionSize(sel.size, outputCount, isSegwitTx)
-                    val currentFee = (vSize * feePerByte).toLong()
-                    if (totalSelectedSatoshis >= (satoshis + currentFee)) break
-                }
-                if (totalSelectedSatoshis < (satoshis + 0)) { // Simple check first
-                    return@withContext Result.Error("Insufficient funds")
-                }
-                sel
-            }
-
-            val totalSelectedSatoshis = selected.sumOf { it.value.value }
-
-            // 3. Get current fee rates for final calculation
-            val api = getApiForNetwork(network)
-            val estimates = api.getFeeEstimates()
-            val feePerByte = estimates[when (feeLevel) {
-                FeeLevel.SLOW -> SLOW_TARGET
-                FeeLevel.NORMAL -> NORMAL_TARGET
-                FeeLevel.FAST -> FAST_TARGET
-            }] ?: DEFAULT_NORMAL_FEE
-
-            val isSegwitTx = selected.any { ScriptPattern.isP2WPKH(it.script) }
-            val vSize = calculateTransactionSize(selected.size, 2, isSegwitTx)
-            val currentFee = (vSize * feePerByte).toLong()
-
-            if (totalSelectedSatoshis < (satoshis + currentFee)) {
-                return@withContext Result.Error("Insufficient funds for amount and fees")
-            }
-
-            // 4. Construct Transaction with BIP-69 Sorting
-            val tx = Transaction(networkParams)
-
-            // Add Outputs
-            val outputs = mutableListOf<TransactionOutputData>()
-            outputs.add(
-                TransactionOutputData(
-                    Coin.valueOf(satoshis),
-                    Address.fromString(networkParams, toAddress)
-                )
-            )
-
-            val changeValue = totalSelectedSatoshis - satoshis - currentFee
-            if (changeValue >= DUST_LIMIT) {
-                // Change goes back to SegWit address for future fee savings
-                outputs.add(TransactionOutputData(Coin.valueOf(changeValue), segwitAddress))
-            }
-
-            // Sort Outputs (BIP-69)
-            outputs.sortWith(OutputComparator())
-            for (out in outputs) {
-                tx.addOutput(out.value, out.address)
-            }
-
-            // Add Inputs
-            val inputs = selected.map { utxo ->
-                TransactionInput(networkParams, tx, utxo.script.program, utxo.outPoint, utxo.value)
-            }.toMutableList()
-
-            // Sort Inputs (BIP-69)
-            inputs.sortWith(InputComparator())
-            for (input in inputs) {
-                tx.addInput(input)
-            }
-
-            // 5. Signing
-            for (i in 0 until tx.inputs.size) {
-                val input = tx.getInput(i.toLong())
-                val utxo = selected.find { it.outPoint == input.outpoint }!!
-
-                if (ScriptPattern.isP2WPKH(utxo.script)) {
-                    // Native SegWit Signing
-                    val hash = tx.hashForWitnessSignature(
-                        i,
-                        utxo.script,
-                        utxo.value,
-                        Transaction.SigHash.ALL,
-                        false
-                    )
-                    val sig = fromKey.sign(hash)
-                    val txSig = TransactionSignature(sig, Transaction.SigHash.ALL, false)
-
-                    input.setWitness(TransactionWitness.redeemP2WPKH(txSig, fromKey))
-                    input.scriptSig = ScriptBuilder.createEmpty()
-                } else {
-                    // Legacy Signing
-                    val hash = tx.hashForSignature(i, utxo.script, Transaction.SigHash.ALL, false)
-                    val sig = fromKey.sign(hash)
-                    val txSig = TransactionSignature(sig, Transaction.SigHash.ALL, false)
-                    input.scriptSig = ScriptBuilder.createInputScript(txSig, fromKey)
-                }
-            }
-
-            tx.verify()
-            Result.Success(tx)
-        } catch (e: Exception) {
-            Result.Error("Failed to sign transaction: ${e.message}")
-        }
-    }
-
-    private data class TransactionOutputData(val value: Coin, val address: Address)
-
-    private class OutputComparator : Comparator<TransactionOutputData> {
-        override fun compare(o1: TransactionOutputData, o2: TransactionOutputData): Int {
-            val v1 = o1.value.value
-            val v2 = o2.value.value
-            if (v1 != v2) return v1.compareTo(v2)
-            return o1.address.toString().compareTo(o2.address.toString())
-        }
-    }
-
-    private class InputComparator : Comparator<TransactionInput> {
-        override fun compare(o1: TransactionInput, o2: TransactionInput): Int {
-            val hash1 = o1.outpoint.hash.toString()
-            val hash2 = o2.outpoint.hash.toString()
-            if (hash1 != hash2) return hash1.compareTo(hash2)
-            return o1.outpoint.index.compareTo(o2.outpoint.index)
         }
     }
 
@@ -497,7 +310,7 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
             if (currentSum >= target) {
                 // If we found a match that doesn't require change (sum is target or slightly over but below dust)
                 // we treat it as an exact match to save on change output size.
-                if (currentSum == target || (currentSum - target) < DUST_LIMIT) {
+                if (currentSum == target || (currentSum - target) < BitcoinConstants.DUST_LIMIT) {
                     bestSelection = ArrayList(currentSelection)
                 }
                 return

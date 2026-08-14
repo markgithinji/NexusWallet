@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.bitcoin.domain.usecase
 
+import com.example.nexuswallet.feature.bitcoin.domain.BitcoinTransactionSigner
 import com.example.nexuswallet.feature.bitcoin.domain.model.PreparedBitcoinTransaction
 import com.example.nexuswallet.feature.bitcoin.domain.model.SendBitcoinResult
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
@@ -20,8 +21,7 @@ import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.bitcoinj.core.ECKey
-import org.bitcoinj.core.LegacyAddress
-import org.bitcoinj.core.Transaction as BitcoinJTransaction
+import org.bitcoinj.core.Transaction
 import org.bitcoinj.core.Utils
 import org.bitcoinj.params.MainNetParams
 import org.bitcoinj.params.TestNet3Params
@@ -38,6 +38,7 @@ class SendBitcoinUseCase @Inject constructor(
     private val bitcoinTransactionRepository: BitcoinTransactionRepository,
     private val keyStoreRepository: KeyStoreRepository,
     private val vaultRepository: VaultRepository,
+    private val transactionSigner: BitcoinTransactionSigner,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -50,105 +51,63 @@ class SendBitcoinUseCase @Inject constructor(
     ): Result<SendBitcoinResult> = withContext(ioDispatcher) {
         logger.d(TAG, "Starting Bitcoin send | walletId=$walletId, network=$network, target=${preparedTransaction.toAddress.take(8)}...")
 
-        // Get wallet
-        val wallet = walletRepository.getWallet(walletId) ?: run {
-            logger.e(TAG, "Wallet not found | walletId=$walletId")
-            return@withContext Result.Error("Wallet not found")
-        }
+        // 1. Get wallet and key
+        val wallet = walletRepository.getWallet(walletId) ?: return@withContext Result.Error("Wallet not found")
+        val bitcoinCoin = wallet.bitcoinCoins.find { it.network == network } ?: return@withContext Result.Error("Bitcoin not enabled")
 
-        // Get the specific Bitcoin coin for this network
-        val bitcoinCoin = wallet.bitcoinCoins.find { it.network == network }
-        if (bitcoinCoin == null) {
-            logger.e(TAG, "Bitcoin not enabled for network $network in wallet: $walletId")
-            return@withContext Result.Error("Bitcoin not enabled for $network")
-        }
+        val keyType = if (bitcoinCoin.network == BitcoinNetwork.Mainnet) KEY_BITCOIN_MAINNET else KEY_BITCOIN_TESTNET
+        val encryptedData = vaultRepository.getEncryptedPrivateKey(walletId, keyType) ?: return@withContext Result.Error("No private key found")
 
-        // Get private key type
-        val keyType = when (bitcoinCoin.network) {
-            BitcoinNetwork.Mainnet -> KEY_BITCOIN_MAINNET
-            BitcoinNetwork.Testnet -> KEY_BITCOIN_TESTNET
-        }
-
-        // Get encrypted private key
-        val encryptedData = vaultRepository.getEncryptedPrivateKey(
-            walletId = walletId,
-            keyType = keyType
-        )
-
-        if (encryptedData == null) {
-            logger.e(TAG, "No private key found in vault | walletId=$walletId, keyType=$keyType")
-            return@withContext Result.Error("No private key found")
-        }
-
-        val (encryptedHex, iv) = encryptedData
-
-        // Decrypt private key
         val decryptionResult = if (cipher != null) {
-            logger.d(TAG, "Decrypting private key using provided cipher")
-            keyStoreRepository.decryptWithCipher(cipher, encryptedHex.decodeHex())
+            keyStoreRepository.decryptWithCipher(cipher, encryptedData.first.decodeHex())
         } else {
-            logger.d(TAG, "Decrypting private key using stored IV")
-            keyStoreRepository.decrypt(encryptedHex.decodeHex(), iv)
+            keyStoreRepository.decrypt(encryptedData.first.decodeHex(), encryptedData.second)
         }
 
-        if (decryptionResult is Result.Error) {
-            logger.e(TAG, "Decryption failed | error=${decryptionResult.message}")
-            return@withContext decryptionResult
-        }
+        if (decryptionResult is Result.Error) return@withContext decryptionResult
 
         val privateKeyBytes = (decryptionResult as Result.Success).data
         val ecKey = privateKeyBytes.use {
             try {
                 ECKey.fromPrivate(it)
             } catch (e: Exception) {
-                logger.e(TAG, "Invalid private key format after decryption")
                 return@withContext Result.Error("Invalid private key format")
             }
         }
 
-        // Verify key matches address
+        // 2. Sign transaction using the new dedicated Signer
         val networkParams = when (bitcoinCoin.network) {
             BitcoinNetwork.Mainnet -> MainNetParams.get()
             BitcoinNetwork.Testnet -> TestNet3Params.get()
         }
-        if (LegacyAddress.fromKey(networkParams, ecKey).toString() != bitcoinCoin.address) {
-            logger.e(TAG, "Private key mismatch | derivedAddress does not match stored address")
-            return@withContext Result.Error("Private key does not match wallet address")
+
+        logger.d(TAG, "Signing transaction using BitcoinTransactionSigner")
+        val signedTx = try {
+            transactionSigner.sign(
+                fromKey = ecKey,
+                toAddress = preparedTransaction.toAddress,
+                amountSatoshis = preparedTransaction.amountSatoshis,
+                changeAddress = preparedTransaction.fromAddress, // Returning change to sender address
+                feeSatoshis = preparedTransaction.feeSatoshis,
+                selectedUtxos = preparedTransaction.selectedUtxos,
+                networkParameters = networkParams
+            )
+        } catch (e: Exception) {
+            logger.e(TAG, "Signing failed", e)
+            return@withContext Result.Error("Failed to sign transaction: ${e.message}")
         }
 
-        // Create and sign transaction using prepared data
-        logger.d(TAG, "Signing transaction | amount=${preparedTransaction.amountSatoshis} satoshis")
-        when (val signResult = bitcoinBlockchainRepository.createAndSignTransaction(
-            fromKey = ecKey,
-            toAddress = preparedTransaction.toAddress,
-            satoshis = preparedTransaction.amountSatoshis,
-            feeLevel = preparedTransaction.feeLevel,
-            network = bitcoinCoin.network,
-            utxos = preparedTransaction.selectedUtxos
-        )) {
-            is Result.Success -> {
-                val signedTx = signResult.data
-                logger.d(TAG, "Transaction signed successfully | txId=${signedTx.txId}")
-
-                broadcastAndSaveTransaction(
-                    signedTx = signedTx,
-                    preparedTx = preparedTransaction,
-                    walletId = walletId,
-                    network = bitcoinCoin.network
-                )
-            }
-
-            is Result.Error -> {
-                logger.e(TAG, "Signing failed | error=${signResult.message}")
-                Result.Error("Failed to create signed transaction: ${signResult.message}")
-            }
-
-            else -> Result.Error("Unknown signing error")
-        }
+        // 3. Broadcast and save
+        broadcastAndSaveTransaction(
+            signedTx = signedTx,
+            preparedTx = preparedTransaction,
+            walletId = walletId,
+            network = bitcoinCoin.network
+        )
     }
 
     private suspend fun broadcastAndSaveTransaction(
-        signedTx: BitcoinJTransaction,
+        signedTx: Transaction,
         preparedTx: PreparedBitcoinTransaction,
         walletId: String,
         network: BitcoinNetwork

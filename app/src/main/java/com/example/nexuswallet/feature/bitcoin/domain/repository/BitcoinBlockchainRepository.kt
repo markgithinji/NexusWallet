@@ -52,14 +52,4 @@ interface BitcoinBlockchainRepository {
         address: String,
         network: BitcoinNetwork
     ): Result<List<BitcoinTransaction>>
-
-
-    suspend fun createAndSignTransaction(
-        fromKey: ECKey,
-        toAddress: String,
-        satoshis: Long,
-        feeLevel: FeeLevel,
-        network: BitcoinNetwork,
-        utxos: List<UTXO>? = null
-    ): Result<Transaction>
 }
