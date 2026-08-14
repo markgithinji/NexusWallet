@@ -32,6 +32,7 @@ import javax.inject.Singleton
 class PrepareBitcoinTransactionUseCase @Inject constructor(
     private val walletRepository: WalletRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
+    private val selectBitcoinUtxosUseCase: SelectBitcoinUtxosUseCase,
     private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -88,16 +89,20 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
             network
         )
 
-        val initialFeeSatoshis = when (initialFeeResult) {
-            is Result.Success -> initialFeeResult.data.totalFeeSatoshis
-            else -> 1000L // Small fallback if initial estimate fails
-        }
+        val feePerByte = if (initialFeeResult is Result.Success) initialFeeResult.data.feePerByte else 10.0
 
         // 3. Select UTXOs to cover amount + estimated fee
-        val targetSatoshis = amount.toSatoshis() + initialFeeSatoshis
-        val selectedUtxos = bitcoinBlockchainRepository.selectUtxos(allUtxos, targetSatoshis)
+        val selectedUtxos = selectBitcoinUtxosUseCase(
+            utxos = allUtxos,
+            targetSatoshis = amount.toSatoshis(),
+            feePerByte = feePerByte
+        )
 
-        val inputCount = if (selectedUtxos.isNotEmpty()) selectedUtxos.size else DEFAULT_INPUT_COUNT
+        if (selectedUtxos.isEmpty()) {
+            return@withContext Result.Error("Insufficient funds to cover amount and network fees")
+        }
+
+        val inputCount = selectedUtxos.size
         val outputCount = DEFAULT_OUTPUT_COUNT // Recipient + Change
 
         // 4. Get accurate fee estimate based on actual required inputs

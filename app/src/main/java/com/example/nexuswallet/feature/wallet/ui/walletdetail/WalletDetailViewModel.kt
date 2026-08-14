@@ -65,11 +65,9 @@ class WalletDetailViewModel @Inject constructor(
     private val formatBalanceUseCase: FormatBalanceUseCase,
     private val settingsRepository: SettingsRepository,
     private val subscriptionService: BlockchainSubscriptionService,
-    private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
-    private val TAG = "WalletDetailVM"
     private val _uiState = MutableStateFlow(WalletDetailUiState(isLoading = true))
     val uiState: StateFlow<WalletDetailUiState> = _uiState.asStateFlow()
 
@@ -87,10 +85,6 @@ class WalletDetailViewModel @Inject constructor(
                 .collect { network ->
                     val currentState = _uiState.value
                     if (currentState.wallet != null && !currentState.isRefreshingBalance) {
-                        logger.d(
-                            TAG,
-                            "Surgical Reactive Signal: ${network.name}. Syncing detail..."
-                        )
                         refresh(networkFilter = network)
                     }
                 }

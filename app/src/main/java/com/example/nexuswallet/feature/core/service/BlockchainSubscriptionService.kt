@@ -38,11 +38,8 @@ import kotlin.math.min
 class BlockchainSubscriptionService @Inject constructor(
     private val okHttpClient: OkHttpClient,
     private val json: Json,
-    private val logger: Logger,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    private val TAG = "BlockchainSubService"
-
     private val wsClient = okHttpClient.newBuilder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
@@ -208,7 +205,6 @@ class BlockchainSubscriptionService @Inject constructor(
 
     private fun createWebSocketListener(network: Network) = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            logger.d(TAG, "WebSocket OPENED for ${network.name}")
             reconnectAttempts[network] = 0
 
             if (network is BitcoinNetwork) {
@@ -231,7 +227,6 @@ class BlockchainSubscriptionService @Inject constructor(
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            logger.e(TAG, "WebSocket FAILURE for ${network.name}: ${t.message}")
             activeWebSockets.remove(network)
             val attempts = reconnectAttempts.getOrDefault(network, 0)
             if (attempts < MAX_RECONNECT_ATTEMPTS) {
@@ -245,7 +240,6 @@ class BlockchainSubscriptionService @Inject constructor(
                     }
                 }
             } else {
-                logger.e(TAG, "Circuit breaker BLOWN for ${network.name}. Silencing.")
                 deadNetworks.add(network)
             }
         }

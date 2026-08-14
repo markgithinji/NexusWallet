@@ -7,6 +7,7 @@ import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockcha
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinWalletUseCase
+import com.example.nexuswallet.feature.bitcoin.domain.usecase.SelectBitcoinUtxosUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.PrepareBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.SendBitcoinUseCase
 import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_INPUT_COUNT
@@ -39,6 +40,7 @@ class BitcoinReviewViewModel @Inject constructor(
     private val getBitcoinWalletUseCase: GetBitcoinWalletUseCase,
     private val getBitcoinBalanceUseCase: GetBitcoinBalanceUseCase,
     private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase,
+    private val selectBitcoinUtxosUseCase: SelectBitcoinUtxosUseCase,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository
 ) : ViewModel() {
 
@@ -131,23 +133,36 @@ class BitcoinReviewViewModel @Inject constructor(
     }
 
     private suspend fun loadFeeEstimate() {
-        val state = _state.value
-
         _state.update { it.copy(isFeeLoading = true) }
 
-        // Fetch UTXOs to determine input count dynamically
-        val utxosResult =
-            bitcoinBlockchainRepository.getUnspentOutputs(state.fromAddress, state.network)
+        val state = _state.value
+        // Step 1: Get base fee rate (using 1 input as placeholder)
+        val baseFeeResult = getBitcoinFeeEstimateUseCase(
+            feeLevel = state.feeLevel,
+            inputCount = DEFAULT_INPUT_COUNT,
+            outputCount = DEFAULT_OUTPUT_COUNT,
+            network = state.network
+        )
+        
+        val feePerByte = if (baseFeeResult is Result.Success) baseFeeResult.data.feePerByte else 10.0
+
+        // Step 2: Fetch UTXOs
+        val utxosResult = bitcoinBlockchainRepository.getUnspentOutputs(state.fromAddress, state.network)
+
+        // Step 3: Determine accurate input count
         val inputCount = if (utxosResult is Result.Success) {
-            val selected = bitcoinBlockchainRepository.selectUtxos(
-                utxosResult.data,
-                state.amountValue.toSatoshis()
+            val selected = selectBitcoinUtxosUseCase(
+                utxos = utxosResult.data,
+                targetSatoshis = state.amountValue.toSatoshis(),
+                feePerByte = feePerByte
             )
-            if (selected.isNotEmpty()) selected.size else DEFAULT_INPUT_COUNT
+            // If selection fails, use total count to trigger correct insufficient balance logic
+            if (selected.isNotEmpty()) selected.size else utxosResult.data.size.coerceAtLeast(DEFAULT_INPUT_COUNT)
         } else {
             DEFAULT_INPUT_COUNT
         }
 
+        // Step 4: Get final accurate fee estimate
         when (val result = getBitcoinFeeEstimateUseCase(
             feeLevel = state.feeLevel,
             inputCount = inputCount,

@@ -6,6 +6,7 @@ import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockcha
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinWalletUseCase
+import com.example.nexuswallet.feature.bitcoin.domain.usecase.SelectBitcoinUtxosUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.ValidateBitcoinTransactionUseCase
 import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_INPUT_COUNT
 import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_OUTPUT_COUNT
@@ -36,6 +37,7 @@ class BitcoinSendViewModel @Inject constructor(
     private val getBitcoinWalletUseCase: GetBitcoinWalletUseCase,
     private val getBitcoinBalanceUseCase: GetBitcoinBalanceUseCase,
     private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase,
+    private val selectBitcoinUtxosUseCase: SelectBitcoinUtxosUseCase,
     private val validateBitcoinTransactionUseCase: ValidateBitcoinTransactionUseCase,
     private val walletRepository: WalletRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
@@ -59,7 +61,7 @@ class BitcoinSendViewModel @Inject constructor(
                 is BitcoinSendEvent.UpdateAmount -> updateAmount(event.amount)
                 is BitcoinSendEvent.UpdateFeeLevel -> updateFeeLevel(event.feeLevel)
                 is BitcoinSendEvent.SwitchNetwork -> switchNetwork(event.network)
-                is BitcoinSendEvent.ToggleFiatMode -> _state.update { it.copy(isFiatMode = event.isFiatMode) }
+                is BitcoinSendEvent.ToggleFiatMode -> toggleFiatMode(event.isFiatMode)
             }
         }
     }
@@ -164,22 +166,37 @@ class BitcoinSendViewModel @Inject constructor(
     }
 
     private suspend fun loadFeeEstimate(feeLevel: FeeLevel) {
-        val state = _state.value
         _state.update { it.copy(isFeeLoading = true) }
 
-        // Fetch UTXOs to determine input count dynamically
-        val utxosResult =
-            bitcoinBlockchainRepository.getUnspentOutputs(state.walletAddress, state.network)
+        val state = _state.value
+        // Step 1: Get base fee rate (using 1 input as placeholder)
+        val baseFeeResult = getBitcoinFeeEstimateUseCase(
+            feeLevel = feeLevel,
+            inputCount = DEFAULT_INPUT_COUNT,
+            outputCount = DEFAULT_OUTPUT_COUNT,
+            network = state.network
+        )
+        
+        val feePerByte = if (baseFeeResult is Result.Success) baseFeeResult.data.feePerByte else 10.0
+
+        // Step 2: Fetch UTXOs
+        val utxosResult = bitcoinBlockchainRepository.getUnspentOutputs(state.walletAddress, state.network)
+
+        // Step 3: Determine accurate input count
         val inputCount = if (utxosResult is Result.Success) {
-            val selected = bitcoinBlockchainRepository.selectUtxos(
-                utxosResult.data,
-                state.amountValue.toSatoshis()
+            val selected = selectBitcoinUtxosUseCase(
+                utxos = utxosResult.data,
+                targetSatoshis = state.amountValue.toSatoshis(),
+                feePerByte = feePerByte
             )
-            if (selected.isNotEmpty()) selected.size else DEFAULT_INPUT_COUNT
+            // If selection fails, use the total count of UTXOs to calculate the "required" fee,
+            // which will trigger the insufficient balance error in validation.
+            if (selected.isNotEmpty()) selected.size else utxosResult.data.size.coerceAtLeast(DEFAULT_INPUT_COUNT)
         } else {
             DEFAULT_INPUT_COUNT
         }
 
+        // Step 4: Get final accurate fee estimate
         when (val result = getBitcoinFeeEstimateUseCase(
             feeLevel = feeLevel,
             inputCount = inputCount,
@@ -206,17 +223,21 @@ class BitcoinSendViewModel @Inject constructor(
     }
 
     private fun updateAmount(amount: String) {
+        if (amount == _state.value.amount) return
+
         val amountValue = try {
             amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
         } catch (e: Exception) {
             BigDecimal.ZERO
         }
+
         _state.update {
             it.copy(
                 amount = amount,
                 amountValue = amountValue
             )
         }
+
         validateInputs()
         if (amountValue > BigDecimal.ZERO) {
             refreshFeeEstimate()
@@ -268,10 +289,10 @@ class BitcoinSendViewModel @Inject constructor(
     }
 
     private fun validateInputs() {
-        val state = _state.value
         val currentWallet = wallet
 
         viewModelScope.launch {
+            val state = _state.value
             val validationResult = validateBitcoinTransactionUseCase(
                 walletId = state.walletId,
                 wallet = currentWallet,
@@ -302,6 +323,11 @@ class BitcoinSendViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    private fun toggleFiatMode(isFiat: Boolean) {
+        _state.update { it.copy(isFiatMode = isFiat) }
+        validateInputs()
     }
 
     private fun handleError(message: String) {

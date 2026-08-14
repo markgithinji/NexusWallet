@@ -50,11 +50,8 @@ class WalletDashboardViewModel @Inject constructor(
     private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
     private val settingsRepository: SettingsRepository,
-    private val subscriptionService: BlockchainSubscriptionService,
-    private val logger: com.example.nexuswallet.feature.logging.Logger
+    private val subscriptionService: BlockchainSubscriptionService
 ) : ViewModel() {
-
-    private val TAG = "WalletDashboardVM"
 
     private val _uiState = MutableStateFlow<Result<List<Wallet>>>(Result.Loading)
     val uiState: StateFlow<Result<List<Wallet>>> = _uiState.asStateFlow()
@@ -136,7 +133,6 @@ class WalletDashboardViewModel @Inject constructor(
             subscriptionService.addressChanges
                 .debounce(1500L)
                 .collect { network ->
-                    logger.d(TAG, "Surgical Reactive Signal: ${network.name}. Syncing...")
                     refresh(force = true, networkFilter = network)
                 }
         }

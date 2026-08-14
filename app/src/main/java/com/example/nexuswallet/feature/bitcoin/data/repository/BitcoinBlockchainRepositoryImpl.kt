@@ -6,6 +6,9 @@ import com.example.nexuswallet.feature.bitcoin.data.remote.api.BitcoinApi
 import com.example.nexuswallet.feature.bitcoin.data.remote.model.EsploraTransactionDto
 import com.example.nexuswallet.feature.bitcoin.data.toDomain
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
+import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants
+import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.SATOSHIS_PER_BTC
+import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DUST_LIMIT
 import com.example.nexuswallet.feature.core.domain.model.BitcoinTransaction
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
@@ -87,16 +90,34 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
             val estimates = api.getFeeEstimates()
 
             // Get fee rate based on confirmation target
-            val feePerByte = when (feeLevel) {
-                FeeLevel.SLOW -> estimates[SLOW_TARGET] ?: DEFAULT_SLOW_FEE
-                FeeLevel.NORMAL -> estimates[NORMAL_TARGET] ?: DEFAULT_NORMAL_FEE
-                FeeLevel.FAST -> estimates[FAST_TARGET] ?: DEFAULT_FAST_FEE
+            val feePerByte = estimates[when (feeLevel) {
+                FeeLevel.SLOW -> SLOW_TARGET
+                FeeLevel.NORMAL -> NORMAL_TARGET
+                FeeLevel.FAST -> FAST_TARGET
+            }] ?: run {
+                // Fallback to finding the closest available target if the exact one isn't provided by the API
+                val desiredTarget = when (feeLevel) {
+                    FeeLevel.SLOW -> SLOW_TARGET.toInt()
+                    FeeLevel.NORMAL -> NORMAL_TARGET.toInt()
+                    FeeLevel.FAST -> FAST_TARGET.toInt()
+                }
+                
+                val closestKey = estimates.keys
+                    .mapNotNull { it.toIntOrNull() }
+                    .minByOrNull { Math.abs(it - desiredTarget) }
+                    ?.toString()
+                
+                closestKey?.let { estimates[it] } ?: when (feeLevel) {
+                    FeeLevel.SLOW -> DEFAULT_SLOW_FEE
+                    FeeLevel.NORMAL -> DEFAULT_NORMAL_FEE
+                    FeeLevel.FAST -> DEFAULT_FAST_FEE
+                }
             }
 
             // Calculate actual transaction size based on inputs/outputs
             val estimatedSize = calculateTransactionSize(inputCount, outputCount)
             val totalFeeSatoshis = (estimatedSize * feePerByte).toLong()
-
+            
             val totalFeeBtc = BigDecimal(totalFeeSatoshis).divide(
                 BigDecimal(SATOSHIS_PER_BTC),
                 8,
@@ -125,7 +146,7 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
      * Calculate transaction size based on number of inputs and outputs
      */
     private fun calculateTransactionSize(inputCount: Int, outputCount: Int): Long {
-        return BASE_TX_SIZE + (inputCount * BYTES_PER_INPUT) + (outputCount * BYTES_PER_OUTPUT)
+        return BitcoinConstants.BASE_TX_SIZE + (inputCount * BitcoinConstants.BYTES_PER_INPUT) + (outputCount * BitcoinConstants.BYTES_PER_OUTPUT)
     }
 
     /**
@@ -219,10 +240,26 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
             // 1. Get current fee rates
             val api = getApiForNetwork(network)
             val estimates = api.getFeeEstimates()
-            val feePerByte = when (feeLevel) {
-                FeeLevel.SLOW -> estimates[SLOW_TARGET] ?: DEFAULT_SLOW_FEE
-                FeeLevel.NORMAL -> estimates[NORMAL_TARGET] ?: DEFAULT_NORMAL_FEE
-                FeeLevel.FAST -> estimates[FAST_TARGET] ?: DEFAULT_FAST_FEE
+            val feePerByte = estimates[when (feeLevel) {
+                FeeLevel.SLOW -> SLOW_TARGET
+                FeeLevel.NORMAL -> NORMAL_TARGET
+                FeeLevel.FAST -> FAST_TARGET
+            }] ?: run {
+                val desiredTarget = when (feeLevel) {
+                    FeeLevel.SLOW -> SLOW_TARGET.toInt()
+                    FeeLevel.NORMAL -> NORMAL_TARGET.toInt()
+                    FeeLevel.FAST -> FAST_TARGET.toInt()
+                }
+                val closestKey = estimates.keys
+                    .mapNotNull { it.toIntOrNull() }
+                    .minByOrNull { Math.abs(it - desiredTarget) }
+                    ?.toString()
+                
+                closestKey?.let { estimates[it] } ?: when (feeLevel) {
+                    FeeLevel.SLOW -> DEFAULT_SLOW_FEE
+                    FeeLevel.NORMAL -> DEFAULT_NORMAL_FEE
+                    FeeLevel.FAST -> DEFAULT_FAST_FEE
+                }
             }
 
             // 2. Derive sender address and fetch all UTXOs
@@ -455,15 +492,6 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
     }
 
     companion object {
-        // Bitcoin constants
-        private const val SATOSHIS_PER_BTC = 100_000_000L
-        private const val DUST_LIMIT = 546L
-
-        // Transaction size constants (in bytes)
-        private const val BASE_TX_SIZE = 10L
-        private const val BYTES_PER_INPUT = 148L
-        private const val BYTES_PER_OUTPUT = 34L
-
         // Fee estimate targets (in blocks)
         // 144 blocks = ~24 hours, 6 blocks = ~1 hour, 2 blocks = ~20 minutes
         private const val SLOW_TARGET = "144"
