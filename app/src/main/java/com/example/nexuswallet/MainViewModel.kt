@@ -3,7 +3,6 @@ package com.example.nexuswallet
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
@@ -24,8 +23,7 @@ class MainViewModel @Inject constructor(
     private val walletRepository: WalletRepository,
     private val isPinSetUseCase: IsPinSetUseCase,
     private val isBiometricEnabledUseCase: IsBiometricEnabledUseCase,
-    private val getSimplePricesUseCase: GetSimplePricesUseCase,
-    private val logger: Logger
+    private val getSimplePricesUseCase: GetSimplePricesUseCase
 ) : ViewModel() {
 
     // Theme state
@@ -88,7 +86,6 @@ class MainViewModel @Inject constructor(
     private fun observeCurrencyChanges() {
         viewModelScope.launch {
             settingsRepository.observeSelectedCurrency().collect { currency ->
-                logger.d("MainViewModel", "Currency change detected: $currency")
                 updateExchangeRate(currency)
             }
         }
@@ -96,7 +93,6 @@ class MainViewModel @Inject constructor(
 
     private fun updateExchangeRate(currency: SupportedCurrency) {
         if (currency == SupportedCurrency.USD) {
-            logger.d("MainViewModel", "Setting rate to 1.0 for USD")
             viewModelScope.launch {
                 settingsRepository.setUsdToRate(1.0)
             }
@@ -104,8 +100,6 @@ class MainViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            logger.d("MainViewModel", "Fetching exchange rate for $currency...")
-            
             // 1. Try fetching BTC price in both USD and target currency to derive the rate
             // This is more reliable for fiat currencies like KES
             val btcInTargetResult = getSimplePricesUseCase(listOf("BTC"), currency)
@@ -119,7 +113,6 @@ class MainViewModel @Inject constructor(
                 
                 if (btcInUsd > 0) {
                     rate = btcInTarget / btcInUsd
-                    logger.d("MainViewModel", "Derived rate via BTC proxy: $rate")
                 }
             }
 
@@ -128,7 +121,6 @@ class MainViewModel @Inject constructor(
                 val usdcResult = getSimplePricesUseCase(listOf("USDC"), currency)
                 if (usdcResult is Result.Success) {
                     rate = usdcResult.data["USDC"] ?: 0.0
-                    logger.d("MainViewModel", "Derived rate via USDC: $rate")
                 }
             }
             
@@ -141,13 +133,11 @@ class MainViewModel @Inject constructor(
                     val ethInUsd = ethUsdResult.data["ETH"] ?: 0.0
                     if (ethInUsd > 0) {
                         rate = ethInTarget / ethInUsd
-                        logger.d("MainViewModel", "Derived rate via ETH proxy: $rate")
                     }
                 }
             }
 
             if (rate > 0) {
-                logger.d("MainViewModel", "Successfully determined rate for $currency: $rate")
                 settingsRepository.setUsdToRate(rate)
             } else {
                 // If dynamic fetch failed, check for specific hardcoded fallbacks for unsupported fiat
@@ -157,11 +147,9 @@ class MainViewModel @Inject constructor(
                 }
 
                 if (fallbackRate > 0) {
-                    logger.w("MainViewModel", "Using hardcoded fallback for $currency: $fallbackRate")
                     settingsRepository.setUsdToRate(fallbackRate)
                 } else {
                     val currentRate = settingsRepository.getUsdToRate()
-                    logger.e("MainViewModel", "Could not determine exchange rate for $currency. Current rate is: $currentRate")
                     if (currentRate <= 0.0) {
                         settingsRepository.setUsdToRate(1.0)
                     }

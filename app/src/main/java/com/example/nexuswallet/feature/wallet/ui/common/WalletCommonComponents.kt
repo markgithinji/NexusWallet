@@ -11,12 +11,37 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -181,14 +206,14 @@ fun TokenToggleCard(
     onSelectedChange: (Boolean) -> Unit
 ) {
     val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected && networkEnabled) color.copy(alpha = 0.12f) 
-                     else if (!networkEnabled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                     else MaterialTheme.colorScheme.surface,
+        targetValue = if (isSelected && networkEnabled) color.copy(alpha = 0.12f)
+        else if (!networkEnabled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        else MaterialTheme.colorScheme.surface,
         label = "token_card_bg"
     )
     val borderColor by animateColorAsState(
-        targetValue = if (isSelected && networkEnabled) color 
-                     else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+        targetValue = if (isSelected && networkEnabled) color
+        else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
         label = "token_card_border"
     )
 
@@ -212,7 +237,7 @@ fun TokenToggleCard(
                     .size(48.dp)
                     .clip(CircleShape)
                     .background(
-                        if (isSelected && networkEnabled) color.copy(alpha = 0.2f) 
+                        if (isSelected && networkEnabled) color.copy(alpha = 0.2f)
                         else if (!networkEnabled) Color.Transparent
                         else color.copy(alpha = 0.05f)
                     ),
@@ -242,7 +267,9 @@ fun TokenToggleCard(
                 Text(
                     text = "$tokenSymbol on ${network.name}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (!networkEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    color = if (!networkEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                        alpha = 0.5f
+                    )
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -319,9 +346,9 @@ fun AssetSummaryCard(
                     // Networks
                     selectedNetworks.forEach { network ->
                         val (name, color) = when (network) {
-                            is BitcoinNetwork -> "BTC" to bitcoinLight
-                            is EthereumNetwork -> "ETH" to ethereumLight
-                            is SolanaNetwork -> "SOL" to solanaLight
+                            is BitcoinNetwork -> network.nativeSymbol to bitcoinLight
+                            is EthereumNetwork -> network.nativeSymbol to ethereumLight
+                            is SolanaNetwork -> network.nativeSymbol to solanaLight
                         }
                         val type = if (network.isTestnet) {
                             if (network is SolanaNetwork) " (Dev)" else " (Test)"
@@ -648,11 +675,11 @@ fun SimpleWordChip(
     Surface(
         onClick = { if (isEnabled) onClick() },
         shape = RoundedCornerShape(12.dp),
-        color = if (isEnabled) MaterialTheme.colorScheme.surface 
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        color = if (isEnabled) MaterialTheme.colorScheme.surface
+        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         border = BorderStroke(
-            1.dp, 
-            if (isEnabled) MaterialTheme.colorScheme.outlineVariant 
+            1.dp,
+            if (isEnabled) MaterialTheme.colorScheme.outlineVariant
             else Color.Transparent
         ),
         enabled = isEnabled
@@ -662,8 +689,8 @@ fun SimpleWordChip(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            color = if (isEnabled) MaterialTheme.colorScheme.onSurface 
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            color = if (isEnabled) MaterialTheme.colorScheme.onSurface
+            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
     }
 }
@@ -677,11 +704,11 @@ fun SafetyConfirmationItem(
     Surface(
         onClick = { onCheckedChange(!checked) },
         shape = RoundedCornerShape(12.dp),
-        color = if (checked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
-                else Color.Transparent,
+        color = if (checked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        else Color.Transparent,
         border = BorderStroke(
-            1.dp, 
-            if (checked) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) 
+            1.dp,
+            if (checked) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
             else MaterialTheme.colorScheme.outlineVariant
         )
     ) {

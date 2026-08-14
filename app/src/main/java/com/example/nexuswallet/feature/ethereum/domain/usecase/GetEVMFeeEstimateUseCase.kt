@@ -75,7 +75,7 @@ class GetEVMFeeEstimateUseCase @Inject constructor(
                         FeeLevel.FAST -> BigDecimal(gasPrice.fastPriorityFee!!)
                     }
 
-                    val maxFeeGwei = baseFeeGwei.multiply(BigDecimal("2")).add(priorityFeeGwei)
+                    val maxFeeGwei = baseFeeGwei.multiply(BigDecimal("1.25")).add(priorityFeeGwei)
                     val maxFeeWei = maxFeeGwei.multiply(BigDecimal(GWEI_TO_WEI)).toBigInteger()
                     val totalFeeWei = maxFeeWei.multiply(gasLimit)
                     val totalFeeEth = BigDecimal(totalFeeWei).divide(BigDecimal(WEI_PER_ETH), 18, RoundingMode.HALF_UP).toPlainString()

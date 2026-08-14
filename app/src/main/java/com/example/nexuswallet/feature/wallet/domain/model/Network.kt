@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 sealed interface Network {
     val name: String
     val isTestnet: Boolean
+    val nativeSymbol: String
 }
 
 @Serializable
@@ -14,6 +15,7 @@ sealed interface Network {
 sealed class SolanaNetwork : Network {
     abstract override val name: String
     abstract override val isTestnet: Boolean
+    override val nativeSymbol = "SOL"
 
     @Serializable
     @SerialName("SolanaMainnet")
@@ -35,6 +37,7 @@ sealed class SolanaNetwork : Network {
 sealed class BitcoinNetwork : Network {
     abstract override val name: String
     abstract override val isTestnet: Boolean
+    override val nativeSymbol = "BTC"
 
     @Serializable
     @SerialName("BitcoinMainnet")
@@ -59,6 +62,7 @@ sealed class EthereumNetwork : Network {
     abstract val usdtContractAddress: String
     abstract override val name: String
     abstract override val isTestnet: Boolean
+    override val nativeSymbol = "ETH"
 
     @Serializable
     @SerialName("Mainnet")

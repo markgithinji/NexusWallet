@@ -1,6 +1,5 @@
 package com.example.nexuswallet.feature.core.ui
 
-import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -24,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -86,6 +86,7 @@ import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
 import com.example.nexuswallet.feature.core.domain.model.SendValidationResult
+import com.example.nexuswallet.feature.core.util.formatAsCurrency
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.wallet.domain.model.AddressBookEntry
@@ -95,11 +96,10 @@ import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
 import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
-import com.example.nexuswallet.feature.core.util.formatAsCurrency
-import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -607,7 +607,9 @@ fun SendAmountInput(
             val usdValue = crypto.toDouble() * fiatRate
             val convertedValue = usdValue * currencyState.usdToRate
             if (convertedValue == 0.0) "" else String.format(Locale.US, "%.2f", convertedValue)
-        } catch (e: Exception) { "" }
+        } catch (e: Exception) {
+            ""
+        }
     } else {
         amount
     }
@@ -616,12 +618,17 @@ fun SendAmountInput(
         try {
             val amountValue = amount.toBigDecimal()
             if (isFiatMode) {
-                "≈ ${amountValue.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} $symbol"
+                "≈ ${
+                    amountValue.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros()
+                        .toPlainString()
+                } $symbol"
             } else {
                 val usdAmount = amountValue.toDouble() * fiatRate
                 "≈ ${usdAmount.formatAsCurrency(currencyState.usdToRate, currencyState.currency)}"
             }
-        } catch (e: Exception) { "" }
+        } catch (e: Exception) {
+            ""
+        }
     }
 
     Card(
@@ -685,12 +692,18 @@ fun SendAmountInput(
                                     val cryptoValue = try {
                                         if (newValue.isEmpty()) "" else {
                                             val selectedFiatAmount = newValue.toDouble()
-                                            val usdAmount = selectedFiatAmount / currencyState.usdToRate
+                                            val usdAmount =
+                                                selectedFiatAmount / currencyState.usdToRate
                                             if (fiatRate > 0) {
-                                                BigDecimal(usdAmount / fiatRate).setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+                                                BigDecimal(usdAmount / fiatRate).setScale(
+                                                    8,
+                                                    RoundingMode.HALF_UP
+                                                ).stripTrailingZeros().toPlainString()
                                             } else "0"
                                         }
-                                    } catch (e: Exception) { "" }
+                                    } catch (e: Exception) {
+                                        ""
+                                    }
                                     onAmountChange(cryptoValue)
                                 } else {
                                     onAmountChange(newValue)
@@ -1151,8 +1164,21 @@ fun MaxAmountDialog(
         }
     }
 
-    val maxAmount = balance - fee
-    val isInsufficient = maxAmount <= BigDecimal.ZERO
+    val isNative = when (coin) {
+        is BitcoinCoin -> true
+        is SolanaCoin -> true
+        is NativeETH -> true
+        else -> false
+    }
+
+    // Use higher precision for internal subtraction to avoid leaving dust
+    val maxAmount = if (isNative) {
+        (balance - fee).setScale(18, RoundingMode.DOWN)
+    } else {
+        balance
+    }
+
+    val isInsufficient = if (isNative) maxAmount <= BigDecimal.ZERO else balance <= BigDecimal.ZERO
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1275,15 +1301,15 @@ fun MaxAmountDialog(
                                     modifier = Modifier.weight(1f)
                                 )
                                 Text(
-                                    text = "- ${fee.stripTrailingZeros().toPlainString()} ${
-                                        when (coin) {
-                                            is BitcoinCoin -> "BTC"
-                                            is SolanaCoin -> "SOL"
-                                            else -> "ETH"
-                                        }
-                                    }",
+                                    text = if (isNative) {
+                                        "- ${
+                                            fee.stripTrailingZeros().toPlainString()
+                                        } ${coin.symbol}"
+                                    } else {
+                                        "Paid in ${coin.network.nativeSymbol}"
+                                    },
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.error,
+                                    color = if (isNative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     textAlign = TextAlign.End,
@@ -1452,7 +1478,11 @@ fun SolanaTokenSelectorCard(
     onClick: () -> Unit
 ) {
     val (iconRes, color, displayName) = if (selectedToken != null) {
-        Triple(R.drawable.solana, solanaLight, selectedToken.name) // Use default solana icon for now or lookup by mint
+        Triple(
+            R.drawable.solana,
+            solanaLight,
+            selectedToken.name
+        ) // Use default solana icon for now or lookup by mint
     } else {
         Triple(R.drawable.solana, solanaLight, coinSymbol)
     }
@@ -1903,9 +1933,10 @@ fun rememberSendErrorState(
     // OR if there's no syntax error in the amount itself (i.e. it's a valid non-zero amount).
     // This ensures that fee-related insufficient balance warnings appear immediately when fees change.
     val hasValidAmount = validationResult.amountError == null
-    
+
     val showAmountError = !amountFocused && amountTouched && validationResult.amountError != null
-    val showBalanceError = (amountTouched || hasValidAmount) && validationResult.balanceError != null
+    val showBalanceError =
+        (amountTouched || hasValidAmount) && validationResult.balanceError != null
     val showGasError = (amountTouched || hasValidAmount) && validationResult.gasError != null
 
     val activeError = when {
