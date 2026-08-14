@@ -38,6 +38,7 @@ import kotlin.math.min
 class BlockchainSubscriptionService @Inject constructor(
     private val okHttpClient: OkHttpClient,
     private val json: Json,
+    private val notificationService: NotificationService,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     private val wsClient = okHttpClient.newBuilder()
@@ -252,17 +253,79 @@ class BlockchainSubscriptionService @Inject constructor(
     private suspend fun handleMessage(network: Network, text: String) {
         try {
             val jsonElement = json.parseToJsonElement(text)
-            if (jsonElement is JsonObject) {
-                val method = jsonElement["method"]?.jsonPrimitive?.content
-                if (method == "accountNotification" || method == "eth_subscription") {
-                    _addressChanges.emit(network)
-                } else if (network is BitcoinNetwork) {
-                    if (jsonElement.containsKey("address-transactions") || jsonElement.containsKey("address-utxo")) {
-                        _addressChanges.emit(network)
-                    }
+            if (jsonElement !is JsonObject) return
+
+            val method = jsonElement["method"]?.jsonPrimitive?.content
+
+            when {
+                method == "eth_subscription" && network is EthereumNetwork -> {
+                    handleEthereumSubscription(network, jsonElement)
+                }
+
+                method == "accountNotification" && network is SolanaNetwork -> {
+                    handleSolanaNotification(network)
+                }
+
+                network is BitcoinNetwork -> {
+                    handleBitcoinMessage(network, jsonElement)
                 }
             }
         } catch (_: Exception) {
+        }
+    }
+
+    private suspend fun handleEthereumSubscription(network: EthereumNetwork, jsonObject: JsonObject) {
+        val params = jsonObject["params"]?.let { it as? JsonObject }
+        val result = params?.get("result")?.let { it as? JsonObject }
+
+        // 1. Native ETH (Alchemy Mined Transaction)
+        val tx = result?.get("transaction")?.let { it as? JsonObject }
+        if (tx != null) {
+            val toAddress = tx["to"]?.jsonPrimitive?.content
+            val txHash = tx["hash"]?.jsonPrimitive?.content ?: ""
+
+            val ourAddresses = subscribedAddresses[network] ?: emptySet()
+            if (ourAddresses.any { it.equals(toAddress, ignoreCase = true) }) {
+                notificationService.showTransactionNotification(
+                    title = "Funds Received!",
+                    message = "A new transaction was detected on ${network.name}",
+                    txHash = txHash
+                )
+            }
+        }
+
+        // 2. Tokens (Alchemy Logs)
+        val topics = result?.get("topics")?.let { it as? kotlinx.serialization.json.JsonArray }
+        if (topics != null && topics.size >= 3) {
+            val txHash = result["transactionHash"]?.jsonPrimitive?.content ?: ""
+            _addressChanges.emit(network)
+            notificationService.showTransactionNotification(
+                title = "Token Received!",
+                message = "A new token transfer was detected on ${network.name}",
+                txHash = txHash
+            )
+        } else {
+            _addressChanges.emit(network)
+        }
+    }
+
+    private suspend fun handleSolanaNotification(network: SolanaNetwork) {
+        _addressChanges.emit(network)
+        notificationService.showTransactionNotification(
+            title = "Solana Activity",
+            message = "Your balance has been updated on ${network.name}",
+            txHash = "sol_${System.currentTimeMillis()}"
+        )
+    }
+
+    private suspend fun handleBitcoinMessage(network: BitcoinNetwork, jsonObject: JsonObject) {
+        if (jsonObject.containsKey("address-transactions") || jsonObject.containsKey("address-utxo")) {
+            _addressChanges.emit(network)
+            notificationService.showTransactionNotification(
+                title = "Bitcoin Activity",
+                message = "New activity detected on your Bitcoin wallet",
+                txHash = "btc_${System.currentTimeMillis()}"
+            )
         }
     }
 
