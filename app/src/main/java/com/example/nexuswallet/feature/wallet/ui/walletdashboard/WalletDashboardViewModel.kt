@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.wallet.ui.walletdashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nexuswallet.feature.core.service.BlockchainSubscriptionService
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
@@ -10,24 +11,23 @@ import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Network
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
 import com.example.nexuswallet.feature.wallet.domain.model.WalletBalance
-import com.example.nexuswallet.feature.core.service.BlockchainSubscriptionService
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -56,14 +56,12 @@ class WalletDashboardViewModel @Inject constructor(
 
     private val TAG = "WalletDashboardVM"
 
-    // State
     private val _uiState = MutableStateFlow<Result<List<Wallet>>>(Result.Loading)
     val uiState: StateFlow<Result<List<Wallet>>> = _uiState.asStateFlow()
 
     private val _syncingNetworks = MutableStateFlow<Set<Network>>(emptySet())
     val syncingNetworks: StateFlow<Set<Network>> = _syncingNetworks.asStateFlow()
 
-    // Balances map (reactive)
     val balances: StateFlow<Map<String, WalletBalance>> = walletRepository.observeAllBalances()
         .stateIn(
             scope = viewModelScope,
@@ -71,7 +69,6 @@ class WalletDashboardViewModel @Inject constructor(
             initialValue = emptyMap()
         )
 
-    // Total portfolio value (reactive)
     val totalPortfolioValue: StateFlow<BigDecimal> = balances.map { balancesMap ->
         balancesMap.values.fold(BigDecimal.ZERO) { acc, balance ->
             acc.add(balance.totalUsdValue)
@@ -82,33 +79,24 @@ class WalletDashboardViewModel @Inject constructor(
         initialValue = BigDecimal.ZERO
     )
 
-    // Loading state for background sync/refresh
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    // Loading state for specific critical operations (delete)
     private val _isOperationLoading = MutableStateFlow(false)
     val isOperationLoading: StateFlow<Boolean> = _isOperationLoading.asStateFlow()
 
-    // Operation error state
     private val _operationError = MutableStateFlow<String?>(null)
     val operationError: StateFlow<String?> = _operationError.asStateFlow()
 
     private val _isPrivacyModeEnabled = MutableStateFlow(false)
     val isPrivacyModeEnabled: StateFlow<Boolean> = _isPrivacyModeEnabled.asStateFlow()
 
-    // Tracking last refresh time
     private var lastRefreshTime = 0L
-    private val refreshThreshold = 30_000L // 30 seconds
+    private val refreshThreshold = 30_000L
 
     private var subscriptionJob: Job? = null
     private var priceRefreshJob: Job? = null
-    private var balanceWatchdogJob: Job? = null
     private var lastPrices: Map<String, Double> = emptyMap()
-    
-    // tracks the last time each network was auto-refreshed
-    private val lastNetworkRefreshTimes = mutableMapOf<Network, Long>()
-    private val REFRESH_COOLDOWN_MS = 5_000L // Reduced cooldown for snappier global updates
 
     init {
         observeWallets()
@@ -116,28 +104,8 @@ class WalletDashboardViewModel @Inject constructor(
         observeSelectedCurrency()
         observeSignals()
         startPriceTimer()
-        startBalanceWatchdog()
     }
 
-    /**
-     * Periodically refreshes all balances to ensure data is fresh even if WSS signals are missed
-     * or for networks like Bitcoin where WSS is currently disabled.
-     */
-    private fun startBalanceWatchdog() {
-        balanceWatchdogJob?.cancel()
-        balanceWatchdogJob = viewModelScope.launch {
-            while (true) {
-                delay(300_000L) // Refresh balances every 5 minutes
-                logger.d(TAG, "Watchdog: Periodic balance refresh triggered.")
-                refresh(force = true)
-            }
-        }
-    }
-
-    /**
-     * Periodically refreshes fiat prices (USD/EUR) on a slow timer.
-     * Prices are decoupled from balance updates to avoid hitting CoinGecko rate limits.
-     */
     private fun startPriceTimer() {
         priceRefreshJob?.cancel()
         priceRefreshJob = viewModelScope.launch {
@@ -151,29 +119,24 @@ class WalletDashboardViewModel @Inject constructor(
     private suspend fun refreshPrices() {
         val wallets = (_uiState.value as? Result.Success)?.data ?: return
         if (wallets.isEmpty()) return
-
         val allSymbols = wallets.flatMap { wallet ->
             wallet.bitcoinCoins.map { it.symbol } +
                     wallet.solanaCoins.map { it.symbol } +
                     wallet.evmTokens.map { it.symbol }
         }.distinct()
-
         val pricesResult = getSimplePricesUseCase(allSymbols, SupportedCurrency.USD)
         if (pricesResult is Result.Success) {
             lastPrices = pricesResult.data
         }
     }
 
-    /**
-     * Listens for real-time activity signals from the BlockchainSubscriptionService.
-     * Performs a surgical refresh of only the network that signaled activity.
-     */
+    @OptIn(FlowPreview::class)
     private fun observeSignals() {
         viewModelScope.launch {
             subscriptionService.addressChanges
-                .debounce(1500L) // Groups multiple rapid events into a single refresh cycle.
+                .debounce(1500L)
                 .collect { network ->
-                    logger.d(TAG, "Reactive Signal: ${network.name} activity. Performing surgical refresh.")
+                    logger.d(TAG, "Surgical Reactive Signal: ${network.name}. Syncing...")
                     refresh(force = true, networkFilter = network)
                 }
         }
@@ -189,7 +152,7 @@ class WalletDashboardViewModel @Inject constructor(
 
     private fun observeSelectedCurrency() {
         viewModelScope.launch {
-            settingsRepository.observeSelectedCurrency().collect { currency ->
+            settingsRepository.observeSelectedCurrency().collect {
                 refresh(force = true)
             }
         }
@@ -204,14 +167,10 @@ class WalletDashboardViewModel @Inject constructor(
                 .collectLatest { walletsList ->
                     val previousState = _uiState.value
                     _uiState.value = Result.Success(walletsList)
-
-                    // Automatically trigger refresh if a new wallet was added
                     val previousWallets = (previousState as? Result.Success)?.data ?: emptyList()
                     if (walletsList.isNotEmpty() && walletsList.size > previousWallets.size) {
                         refresh(force = true)
                     }
-
-                    // Update subscriptions when wallets change
                     updateSubscriptions(walletsList)
                 }
         }
@@ -221,53 +180,30 @@ class WalletDashboardViewModel @Inject constructor(
         subscriptionJob?.cancel()
         subscriptionJob = viewModelScope.launch {
             wallets.forEach { wallet ->
-                // Register addresses for tracking (Bitcoin is ignored inside the service)
-                wallet.bitcoinCoins.forEach { subscriptionService.subscribeToAddressChanges(it.address, it.network) }
-                wallet.solanaCoins.forEach { subscriptionService.subscribeToAddressChanges(it.address, it.network) }
-                wallet.evmTokens.forEach { subscriptionService.subscribeToAddressChanges(it.address, it.network) }
+                wallet.bitcoinCoins.forEach {
+                    subscriptionService.subscribeToAddressChanges(
+                        it.address,
+                        it.network
+                    )
+                }
+                wallet.solanaCoins.forEach {
+                    subscriptionService.subscribeToAddressChanges(
+                        it.address,
+                        it.network
+                    )
+                }
+                wallet.evmTokens.forEach {
+                    subscriptionService.subscribeToAddressChanges(
+                        it.address,
+                        it.network
+                    )
+                }
             }
         }
     }
 
-    fun deleteWallet(walletId: String) {
-        viewModelScope.launch {
-            _isOperationLoading.update { true }
-            _operationError.update { null }
-
-            runCatching {
-                walletRepository.deleteWallet(walletId)
-            }.onFailure { e ->
-                _operationError.update { "Failed to delete wallet: ${e.message}" }
-            }
-
-            _isOperationLoading.update { false }
-        }
-    }
-
-    fun renameWallet(walletId: String, newName: String) {
-        viewModelScope.launch {
-            _isOperationLoading.update { true }
-            _operationError.update { null }
-
-            runCatching {
-                walletRepository.updateWalletName(walletId, newName)
-            }.onFailure { e ->
-                _operationError.update { "Failed to rename wallet: ${e.message}" }
-            }
-
-            _isOperationLoading.update { false }
-        }
-    }
-
-    /**
-     * Primary data synchronization engine.
-     * 
-     * @param force If true, bypasses the internal rate-limit threshold.
-     * @param networkFilter If provided, only syncs the specific blockchain network that signaled a change.
-     */
     fun refresh(force: Boolean = false, networkFilter: Network? = null) {
         val currentTime = System.currentTimeMillis()
-        // Threshold: Only allow one "Global" refresh every 30 seconds to save battery and data.
         if (!force && networkFilter == null) {
             if (currentTime - lastRefreshTime < refreshThreshold && _isRefreshing.value) return
             if (currentTime - lastRefreshTime < refreshThreshold && _uiState.value !is Result.Error) {
@@ -283,25 +219,17 @@ class WalletDashboardViewModel @Inject constructor(
 
             val currentWallets = (_uiState.value as? Result.Success)?.data ?: emptyList()
             if (currentWallets.isNotEmpty()) {
-                
-                // DECISION: Should we hit the Price API?
-                // Price updates are expensive and rate-limited. We only fetch on manual refresh (networkFilter == null)
-                // or if we have no price data yet. Otherwise, we use the cached values.
-                val prices = if (networkFilter == null || lastPrices.isEmpty()) {
+                val prices = if (lastPrices.isEmpty() || force) {
                     val allSymbols = currentWallets.flatMap { wallet ->
                         wallet.bitcoinCoins.map { it.symbol } +
                                 wallet.solanaCoins.map { it.symbol } +
                                 wallet.evmTokens.map { it.symbol }
                     }.distinct()
-                    // ALWAYS fetch prices in USD for the database "usdValue" fields
                     val pricesResult = getSimplePricesUseCase(allSymbols, SupportedCurrency.USD)
                     if (pricesResult is Result.Success) {
                         lastPrices = pricesResult.data
                         pricesResult.data
                     } else {
-                        if (pricesResult is Result.Error) {
-                            _operationError.update { "Price fetch failed: ${pricesResult.message}" }
-                        }
                         lastPrices
                     }
                 } else {
@@ -312,7 +240,6 @@ class WalletDashboardViewModel @Inject constructor(
 
                 coroutineScope {
                     currentWallets.map { wallet ->
-                        // Skip processing for entire wallets that don't match the current network signal.
                         if (networkFilter != null) {
                             val matchesFilter = when (networkFilter) {
                                 is BitcoinNetwork -> wallet.bitcoinCoins.any { it.network == networkFilter }
@@ -328,8 +255,6 @@ class WalletDashboardViewModel @Inject constructor(
                             val evmMap = mutableMapOf<String, EVMBalance>()
                             val walletErrors = mutableListOf<ChainSyncError>()
 
-                            // Only fetch chains that match the filter (or all if filter is null)
-                            // This ensures that an Ethereum change doesn't hit the rate-limited Bitcoin API.
                             if (networkFilter == null || networkFilter is BitcoinNetwork) {
                                 wallet.bitcoinCoins
                                     .filter { networkFilter == null || it.network == networkFilter }
@@ -342,9 +267,15 @@ class WalletDashboardViewModel @Inject constructor(
                                             saveToCache = false
                                         )
                                         if (result is Result.Success) {
-                                            result.data?.let { btcBalances[coin.network] = it }
+                                            btcBalances[coin.network] = result.data!!
                                         } else if (result is Result.Error) {
-                                            walletErrors.add(ChainSyncError(coin.network, result.message, coin.symbol))
+                                            walletErrors.add(
+                                                ChainSyncError(
+                                                    coin.network,
+                                                    result.message,
+                                                    coin.symbol
+                                                )
+                                            )
                                         }
                                         _syncingNetworks.update { it - coin.network }
                                     }
@@ -362,9 +293,15 @@ class WalletDashboardViewModel @Inject constructor(
                                             saveToCache = false
                                         )
                                         if (result is Result.Success) {
-                                            result.data?.let { solBalances[coin.network] = it }
+                                            solBalances[coin.network] = result.data!!
                                         } else if (result is Result.Error) {
-                                            walletErrors.add(ChainSyncError(coin.network, result.message, coin.symbol))
+                                            walletErrors.add(
+                                                ChainSyncError(
+                                                    coin.network,
+                                                    result.message,
+                                                    coin.symbol
+                                                )
+                                            )
                                         }
                                         _syncingNetworks.update { it - coin.network }
                                     }
@@ -382,29 +319,36 @@ class WalletDashboardViewModel @Inject constructor(
                                 if (result is Result.Success) {
                                     evmMap.putAll(result.data)
                                 } else if (result is Result.Error) {
-                                    // For EVM we could be more granular but for now let's just add one error per network
                                     evmNetworks.forEach { network ->
-                                        walletErrors.add(ChainSyncError(network, result.message, "EVM"))
+                                        walletErrors.add(
+                                            ChainSyncError(
+                                                network,
+                                                result.message,
+                                                "EVM"
+                                            )
+                                        )
                                     }
                                 }
                                 _syncingNetworks.update { it - evmNetworks }
                             }
 
-                            // ATOMIC UPDATE: Merge the new chain balance with the existing cached balances for other chains.
                             val existing = walletRepository.getWalletBalance(wallet.id)
                             val newBalance = WalletBalance(
                                 walletId = wallet.id,
                                 lastUpdated = System.currentTimeMillis(),
                                 bitcoinBalances = existing?.bitcoinBalances?.toMutableMap()?.apply {
-                                    if (networkFilter == null || networkFilter is BitcoinNetwork) putAll(btcBalances)
+                                    if (networkFilter == null || networkFilter is BitcoinNetwork) putAll(
+                                        btcBalances
+                                    )
                                 } ?: btcBalances,
                                 solanaBalances = existing?.solanaBalances?.toMutableMap()?.apply {
-                                    if (networkFilter == null || networkFilter is SolanaNetwork) putAll(solBalances)
+                                    if (networkFilter == null || networkFilter is SolanaNetwork) putAll(
+                                        solBalances
+                                    )
                                 } ?: solBalances,
                                 evmBalances = if (networkFilter == null || networkFilter is EthereumNetwork) {
-                                    existing?.evmBalances?.toMutableMap()?.apply {
-                                        putAll(evmMap)
-                                    } ?: evmMap
+                                    existing?.evmBalances?.toMutableMap()?.apply { putAll(evmMap) }
+                                        ?: evmMap
                                 } else {
                                     existing?.evmBalances ?: emptyMap()
                                 }
@@ -412,25 +356,33 @@ class WalletDashboardViewModel @Inject constructor(
                             walletRepository.saveWalletBalance(newBalance)
                             walletErrors
                         }
-                    }.awaitAll().forEach { errors ->
-                        allErrors.addAll(errors)
-                    }
+                    }.awaitAll().forEach { errors -> allErrors.addAll(errors) }
                 }
 
                 if (allErrors.isNotEmpty()) {
                     val errorString =
                         allErrors.distinctBy { "${it.network.name}-${it.assetSymbol}" }
-                            .joinToString("\n") { error ->
-                                val assetPrefix = error.assetSymbol?.let { "$it on " } ?: ""
-                                "• $assetPrefix${error.network.name}: ${error.message}"
-                            }
-                    val existingError = _operationError.value
-                    val newError = "Partial sync failure:\n$errorString"
-                    _operationError.update { if (existingError != null) "$existingError\n\n$newError" else newError }
+                            .joinToString("\n") { error -> "• ${error.assetSymbol?.let { "$it on " } ?: ""}${error.network.name}: ${error.message}" }
+                    _operationError.update { if (it != null) "$it\n\n$errorString" else "Partial sync failure:\n$errorString" }
                 }
             }
-
             _isRefreshing.update { false }
+        }
+    }
+
+    fun deleteWallet(walletId: String) {
+        viewModelScope.launch {
+            _isOperationLoading.update { true }
+            runCatching { walletRepository.deleteWallet(walletId) }
+            _isOperationLoading.update { false }
+        }
+    }
+
+    fun renameWallet(walletId: String, newName: String) {
+        viewModelScope.launch {
+            _isOperationLoading.update { true }
+            runCatching { walletRepository.updateWalletName(walletId, newName) }
+            _isOperationLoading.update { false }
         }
     }
 

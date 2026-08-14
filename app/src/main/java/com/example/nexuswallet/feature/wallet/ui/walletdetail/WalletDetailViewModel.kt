@@ -8,20 +8,21 @@ import com.example.nexuswallet.feature.core.domain.model.NativeETHTransaction
 import com.example.nexuswallet.feature.core.domain.model.SolanaTransaction
 import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.core.domain.model.Transaction
+import com.example.nexuswallet.feature.core.service.BlockchainSubscriptionService
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.core.util.formatCurrency
+import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinBalance
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
-import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.ChainSyncError
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMBalance
-import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaBalance
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.TransactionDisplayInfo
@@ -34,16 +35,12 @@ import com.example.nexuswallet.feature.wallet.domain.usecase.GetAllTransactionsU
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncEVMBalancesUseCase
 import com.example.nexuswallet.feature.wallet.domain.usecase.SyncSolanaBalanceUseCase
-import com.example.nexuswallet.feature.core.service.BlockchainSubscriptionService
-import com.example.nexuswallet.feature.logging.Logger
-import com.example.nexuswallet.feature.wallet.domain.model.Network
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -77,42 +74,23 @@ class WalletDetailViewModel @Inject constructor(
     val uiState: StateFlow<WalletDetailUiState> = _uiState.asStateFlow()
 
     private var transactionsJob: Job? = null
-    private var balanceWatchdogJob: Job? = null
 
     init {
         observeSelectedCurrency()
         observeSignals()
-        startBalanceWatchdog()
     }
 
-    /**
-     * Periodically refreshes all balances to ensure data is fresh even if WSS signals are missed
-     * or for networks like Bitcoin where WSS is currently disabled.
-     */
-    private fun startBalanceWatchdog() {
-        balanceWatchdogJob?.cancel()
-        balanceWatchdogJob = viewModelScope.launch {
-            while (true) {
-                delay(300_000L) // Refresh every 5 minutes
-                _uiState.value.wallet?.let {
-                    logger.d(TAG, "Watchdog: Periodic balance refresh triggered.")
-                    refresh() // Full refresh (no networkFilter)
-                }
-            }
-        }
-    }
-
-    /**
-     * Listens for real-time blockchain activity signals.
-     * Only refreshes the specific network that signaled a change to save API quota.
-     */
     private fun observeSignals() {
         viewModelScope.launch {
             subscriptionService.addressChanges
-                .debounce(2000L) // Prevent rapid redundant refreshes
+                .debounce(2000L)
                 .collect { network ->
-                    if (_uiState.value.wallet != null && !_uiState.value.isRefreshingBalance) {
-                        logger.d(TAG, "Reactive Signal: ${network.name} activity. Performing surgical refresh.")
+                    val currentState = _uiState.value
+                    if (currentState.wallet != null && !currentState.isRefreshingBalance) {
+                        logger.d(
+                            TAG,
+                            "Surgical Reactive Signal: ${network.name}. Syncing detail..."
+                        )
                         refresh(networkFilter = network)
                     }
                 }
@@ -121,29 +99,14 @@ class WalletDetailViewModel @Inject constructor(
 
     private fun observeSelectedCurrency() {
         viewModelScope.launch {
-            settingsRepository.observeSelectedCurrency().collect { currency ->
-                // If we have a wallet, refresh to get new prices in USD
-                if (_uiState.value.wallet != null) {
-                    refresh()
-                }
+            settingsRepository.observeSelectedCurrency().collect {
+                if (_uiState.value.wallet != null) refresh()
             }
         }
     }
 
     fun loadWallet(walletId: String) {
         viewModelScope.launch {
-            val now = System.currentTimeMillis()
-            val currentState = _uiState.value
-
-            // Check balance cache freshness
-            val isBalanceFresh = now - currentState.lastBalanceSyncTime < BALANCE_CACHE_TIME
-
-            // If we already have wallet data and balance is fresh, don't show loading
-            if (currentState.wallet != null && isBalanceFresh) {
-                return@launch
-            }
-
-            // Set initial loading state only if we don't have wallet yet
             _uiState.update {
                 it.copy(
                     isLoading = it.wallet == null,
@@ -151,33 +114,15 @@ class WalletDetailViewModel @Inject constructor(
                     hasSyncError = false
                 )
             }
-
             runCatching {
-                // STEP 1: Load wallet from repository
                 val loadedWallet = walletRepository.getWallet(walletId)
                     ?: throw IllegalStateException("Wallet not found")
-
-                // Update wallet immediately
                 _uiState.update { it.copy(wallet = loadedWallet) }
-
-                // STEP 2: Register subscriptions for real-time updates
                 registerSubscriptions(loadedWallet)
-
-                // STEP 3: Observe balance reactively from local DB
                 observeWalletBalance(walletId)
-
-                // STEP 4: Load market percentages
-                launch {
-                    loadMarketPercentages()
-                }
-
-                // STEP 5: Observe transactions
+                launch { loadMarketPercentages() }
                 observeTransactions(walletId, loadedWallet, forceRefresh = false)
-
-                // STEP 6: Refresh balance if needed
-                if (!isBalanceFresh) {
-                    refreshBalanceInBackground(loadedWallet, syncTransactions = true)
-                }
+                refreshBalanceInBackground(loadedWallet, syncTransactions = true)
             }.onFailure { e ->
                 _uiState.update {
                     it.copy(
@@ -190,15 +135,28 @@ class WalletDetailViewModel @Inject constructor(
     }
 
     private fun registerSubscriptions(wallet: Wallet) {
-        logger.d(TAG, "Registering WebSocket subscriptions for wallet: ${wallet.id}")
-        wallet.bitcoinCoins.forEach { subscriptionService.subscribeToAddressChanges(it.address, it.network) }
-        wallet.solanaCoins.forEach { subscriptionService.subscribeToAddressChanges(it.address, it.network) }
-        wallet.evmTokens.forEach { subscriptionService.subscribeToAddressChanges(it.address, it.network) }
+        wallet.bitcoinCoins.forEach {
+            subscriptionService.subscribeToAddressChanges(
+                it.address,
+                it.network
+            )
+        }
+        wallet.solanaCoins.forEach {
+            subscriptionService.subscribeToAddressChanges(
+                it.address,
+                it.network
+            )
+        }
+        wallet.evmTokens.forEach {
+            subscriptionService.subscribeToAddressChanges(
+                it.address,
+                it.network
+            )
+        }
     }
 
     private fun observeWalletBalance(walletId: String) {
         _uiState.update { it.copy(isLoadingBalance = true) }
-
         viewModelScope.launch {
             walletRepository.observeWalletBalance(walletId)
                 .catch { e ->
@@ -210,32 +168,16 @@ class WalletDetailViewModel @Inject constructor(
                     }
                 }
                 .collect { loadedBalance ->
-                    _uiState.update {
-                        it.copy(
-                            balance = loadedBalance,
-                            isLoadingBalance = false,
-                            lastBalanceSyncTime = System.currentTimeMillis()
-                        )
-                    }
+                    _uiState.update { it.copy(balance = loadedBalance, isLoadingBalance = false) }
                     updateAssets()
                 }
         }
     }
 
     private suspend fun loadMarketPercentages() {
-        // ALWAYS fetch market percentages in USD for consistency in the database base values
-        when (val percentagesResult =
-            marketRepository.getLatestPricePercentages(SupportedCurrency.USD)) {
-            is Result.Success -> {
-                _uiState.update { it.copy(pricePercentages = percentagesResult.data) }
-            }
-
-            is Result.Error -> {
-                _uiState.update { it.copy(pricePercentages = emptyMap()) }
-            }
-
-            Result.Loading -> { /* Ignored since this will be omitted */
-            }
+        when (val res = marketRepository.getLatestPricePercentages(SupportedCurrency.USD)) {
+            is Result.Success -> _uiState.update { it.copy(pricePercentages = res.data) }
+            else -> _uiState.update { it.copy(pricePercentages = emptyMap()) }
         }
         updateAssets()
     }
@@ -247,109 +189,92 @@ class WalletDetailViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshingBalance = true) }
+            val symbols =
+                (wallet.bitcoinCoins.map { it.symbol } + wallet.solanaCoins.map { it.symbol } + wallet.evmTokens.map { it.symbol }).distinct()
+            val pricesRes = getSimplePricesUseCase(symbols, SupportedCurrency.USD)
+            val prices = if (pricesRes is Result.Success) pricesRes.data else emptyMap()
 
-            // 1. Fetch prices in USD as the base currency for all display conversions
-            val symbols = (wallet.bitcoinCoins.map { it.symbol } +
-                    wallet.solanaCoins.map { it.symbol } +
-                    wallet.evmTokens.map { it.symbol }).distinct()
-
-            val pricesResult = getSimplePricesUseCase(symbols, SupportedCurrency.USD)
-            val prices = if (pricesResult is Result.Success) {
-                pricesResult.data
-            } else {
-                emptyMap()
-            }
-
-            // 2. Sync balances in parallel, respecting the network filter
             val allErrors = mutableListOf<ChainSyncError>()
             val btcBalances = mutableMapOf<BitcoinNetwork, BitcoinBalance>()
             val solBalances = mutableMapOf<SolanaNetwork, SolanaBalance>()
             val evmBalances = mutableMapOf<String, EVMBalance>()
 
             coroutineScope {
-                // Bitcoin: Only if no filter or Bitcoin signal (currently disabled in WSS)
-                val btcDeferred = if (networkFilter == null || networkFilter is BitcoinNetwork) {
+                val btcDef = if (networkFilter == null || networkFilter is BitcoinNetwork) {
                     wallet.bitcoinCoins.map { coin ->
                         async {
                             _uiState.update { it.copy(syncingNetworks = it.syncingNetworks + coin.network) }
-                            val result = syncBitcoinBalanceUseCase(
+                            val res = syncBitcoinBalanceUseCase(
                                 wallet.id,
                                 coin,
                                 prices[coin.symbol] ?: 0.0,
                                 saveToCache = false
                             )
                             _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - coin.network) }
-                            coin.network to result
+                            coin.network to res
                         }
                     }
                 } else emptyList()
 
-                // Solana: Only if no filter or Solana signal
-                val solDeferred = if (networkFilter == null || networkFilter is SolanaNetwork) {
+                val solDef = if (networkFilter == null || networkFilter is SolanaNetwork) {
                     wallet.solanaCoins.map { coin ->
                         async {
                             _uiState.update { it.copy(syncingNetworks = it.syncingNetworks + coin.network) }
-                            val result = syncSolanaBalanceUseCase(
+                            val res = syncSolanaBalanceUseCase(
                                 wallet.id,
                                 coin,
                                 prices[coin.symbol] ?: 0.0,
                                 saveToCache = false
                             )
                             _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - coin.network) }
-                            coin.network to result
+                            coin.network to res
                         }
                     }
                 } else emptyList()
 
-                // EVM: Only if no filter or Ethereum signal
-                val evmDeferred = if (wallet.evmTokens.isNotEmpty() && (networkFilter == null || networkFilter is EthereumNetwork)) {
-                    async {
-                        val evmNetworks = wallet.evmTokens.map { it.network }.toSet()
-                        _uiState.update { it.copy(syncingNetworks = it.syncingNetworks + evmNetworks) }
-                        val result = syncEVMBalancesUseCase(
-                            wallet.id,
-                            wallet.evmTokens,
-                            prices,
-                            saveToCache = false
-                        )
-                        _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - evmNetworks) }
-                        result
-                    }
-                } else null
-
-                // Collect BTC results
-                btcDeferred.awaitAll().forEach { (network, result) ->
-                    when (result) {
-                        is Result.Success -> result.data?.let { btcBalances[network] = it }
-                        is Result.Error -> allErrors.add(ChainSyncError(network, result.message, "BTC"))
-                        else -> {}
-                    }
-                }
-
-                // Collect Solana results
-                solDeferred.awaitAll().forEach { (network, result) ->
-                    when (result) {
-                        is Result.Success -> result.data?.let { solBalances[network] = it }
-                        is Result.Error -> allErrors.add(ChainSyncError(network, result.message, "SOL"))
-                        else -> {}
-                    }
-                }
-
-                // Collect EVM results
-                evmDeferred?.await()?.let { result ->
-                    when (result) {
-                        is Result.Success -> evmBalances.putAll(result.data)
-                        is Result.Error -> {
-                            wallet.evmTokens.map { it.network }.distinct().forEach { network ->
-                                allErrors.add(ChainSyncError(network, result.message, "EVM"))
-                            }
+                val evmDef =
+                    if (wallet.evmTokens.isNotEmpty() && (networkFilter == null || networkFilter is EthereumNetwork)) {
+                        async {
+                            val evmNets = wallet.evmTokens.map { it.network }.toSet()
+                            _uiState.update { it.copy(syncingNetworks = it.syncingNetworks + evmNets) }
+                            val res = syncEVMBalancesUseCase(
+                                wallet.id,
+                                wallet.evmTokens,
+                                prices,
+                                saveToCache = false
+                            )
+                            _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - evmNets) }
+                            res
                         }
-                        else -> {}
-                    }
+                    } else null
+
+                btcDef.awaitAll().forEach { (net, res) ->
+                    if (res is Result.Success) res.data?.let { btcBalances[net] = it }
+                    else if (res is Result.Error) allErrors.add(
+                        ChainSyncError(
+                            net,
+                            res.message,
+                            "BTC"
+                        )
+                    )
+                }
+                solDef.awaitAll().forEach { (net, res) ->
+                    if (res is Result.Success) res.data?.let { solBalances[net] = it }
+                    else if (res is Result.Error) allErrors.add(
+                        ChainSyncError(
+                            net,
+                            res.message,
+                            "SOL"
+                        )
+                    )
+                }
+                evmDef?.await()?.let { res ->
+                    if (res is Result.Success) evmBalances.putAll(res.data)
+                    else if (res is Result.Error) wallet.evmTokens.map { it.network }.distinct()
+                        .forEach { allErrors.add(ChainSyncError(it, res.message, "EVM")) }
                 }
             }
 
-            // ATOMIC MERGE: Merge the new chain balance with the existing cached balances for other chains.
             val existing = walletRepository.getWalletBalance(wallet.id)
             val newBalance = WalletBalance(
                 walletId = wallet.id,
@@ -360,40 +285,25 @@ class WalletDetailViewModel @Inject constructor(
                 solanaBalances = existing?.solanaBalances?.toMutableMap()?.apply {
                     if (networkFilter == null || networkFilter is SolanaNetwork) putAll(solBalances)
                 } ?: solBalances,
-                evmBalances = if (networkFilter == null || networkFilter is EthereumNetwork) {
-                    existing?.evmBalances?.toMutableMap()?.apply {
-                        putAll(evmBalances)
-                    } ?: evmBalances
-                } else {
-                    existing?.evmBalances ?: emptyMap()
-                }
+                evmBalances = if (networkFilter == null || networkFilter is EthereumNetwork) existing?.evmBalances?.toMutableMap()
+                    ?.apply { putAll(evmBalances) } ?: evmBalances else existing?.evmBalances
+                    ?: emptyMap()
             )
             walletRepository.saveWalletBalance(newBalance)
 
-            // After balances are updated in local DB, trigger transaction sync if requested
-            if (syncTransactions) {
-                observeTransactions(wallet.id, wallet, forceRefresh = true)
-            }
-
-            if (allErrors.isEmpty()) {
-                _uiState.update {
-                    it.copy(
-                        hasSyncError = false,
-                        syncErrorMessage = null,
-                        syncErrors = emptyList(),
-                        isRefreshingBalance = false,
-                        lastBalanceSyncTime = System.currentTimeMillis()
-                    )
-                }
-            } else {
-                _uiState.update {
-                    it.copy(
-                        hasSyncError = true,
-                        syncErrorMessage = allErrors.joinToString { error -> "${error.assetSymbol}: ${error.message}" },
-                        syncErrors = allErrors,
-                        isRefreshingBalance = false
-                    )
-                }
+            if (syncTransactions) observeTransactions(
+                wallet.id,
+                wallet,
+                forceRefresh = true,
+                networkFilter = networkFilter
+            )
+            _uiState.update {
+                it.copy(
+                    hasSyncError = allErrors.isNotEmpty(),
+                    syncErrorMessage = if (allErrors.isNotEmpty()) allErrors.joinToString { e -> "${e.assetSymbol}: ${e.message}" } else null,
+                    syncErrors = allErrors,
+                    isRefreshingBalance = false,
+                    lastBalanceSyncTime = System.currentTimeMillis())
             }
         }
     }
@@ -401,18 +311,19 @@ class WalletDetailViewModel @Inject constructor(
     private fun observeTransactions(
         walletId: String,
         wallet: Wallet,
-        forceRefresh: Boolean = false
+        forceRefresh: Boolean = false,
+        networkFilter: Network? = null
     ) {
         transactionsJob?.cancel()
         transactionsJob = viewModelScope.launch {
-            // Set loading state only if it's a manual refresh
-            if (forceRefresh) {
-                _uiState.update { it.copy(isRefreshingTransactions = true) }
-            } else if (_uiState.value.transactions.isEmpty()) {
-                _uiState.update { it.copy(isLoadingTransactions = true) }
+            if (forceRefresh) _uiState.update { it.copy(isRefreshingTransactions = true) }
+            else if (_uiState.value.transactions.isEmpty()) _uiState.update {
+                it.copy(
+                    isLoadingTransactions = true
+                )
             }
 
-            getAllTransactionsUseCase(walletId, forceRefresh)
+            getAllTransactionsUseCase(walletId, forceRefresh, networkFilter)
                 .flowOn(ioDispatcher)
                 .catch { e ->
                     _uiState.update {
@@ -423,11 +334,11 @@ class WalletDetailViewModel @Inject constructor(
                         )
                     }
                 }
-                .collect { updatedTransactions ->
-                    val displayTransactions = formatTransactionList(updatedTransactions, wallet)
+                .collect { updated ->
+                    val display = formatTransactionList(updated, wallet)
                     _uiState.update {
                         it.copy(
-                            transactions = displayTransactions,
+                            transactions = display,
                             isLoadingTransactions = false,
                             isRefreshingTransactions = false
                         )
@@ -439,92 +350,70 @@ class WalletDetailViewModel @Inject constructor(
     private fun updateAssets() {
         val state = _uiState.value
         val wallet = state.wallet ?: return
-
         viewModelScope.launch {
-            val currency = settingsRepository.getSelectedCurrency()
-            val rate = settingsRepository.getUsdToRate()
-
             val assets = formatBalanceUseCase(
-                walletId = wallet.id,
-                wallet = wallet,
-                balance = state.balance,
-                pricePercentages = state.pricePercentages,
-                currency = currency,
-                usdToRate = rate
+                wallet.id,
+                wallet,
+                state.balance,
+                state.pricePercentages,
+                settingsRepository.getSelectedCurrency(),
+                settingsRepository.getUsdToRate()
             )
-
-            val totalUsd = assets.fold(BigDecimal.ZERO) { acc, asset -> acc.add(asset.usdValue) }
-
             _uiState.update {
                 it.copy(
                     assets = assets,
-                    totalBalance = totalUsd
-                )
+                    totalBalance = assets.fold(BigDecimal.ZERO) { acc, a -> acc.add(a.usdValue) })
             }
         }
     }
 
     private fun formatTransactionList(
-        transactions: List<Transaction>,
+        txs: List<Transaction>,
         wallet: Wallet
-    ): List<TransactionDisplayInfo> {
-        return transactions.map { transaction ->
-            val coin = findCoinForTransaction(transaction, wallet)
-            formatTransactionDisplayUseCase(transaction, coin)
-        }
-    }
+    ): List<TransactionDisplayInfo> =
+        txs.map { formatTransactionDisplayUseCase(it, findCoinForTransaction(it, wallet)) }
 
-    private fun findCoinForTransaction(transaction: Transaction, wallet: Wallet): Coin {
-        return when (transaction) {
-            is BitcoinTransaction -> {
-                wallet.bitcoinCoins.find { it.network == transaction.network }
-                    ?: error("No Bitcoin coin found for network ${transaction.network.name}")
-            }
+    private fun findCoinForTransaction(tx: Transaction, wallet: Wallet): Coin = when (tx) {
+        is BitcoinTransaction -> wallet.bitcoinCoins.find { it.network == tx.network }
+            ?: error("No Bitcoin coin")
 
-            is SolanaTransaction -> {
-                wallet.solanaCoins.find { it.network == transaction.network }
-                    ?: error("No Solana coin found for network ${transaction.network.name}")
-            }
+        is SolanaTransaction -> wallet.solanaCoins.find { it.network == tx.network }
+            ?: error("No Solana coin")
 
-            is NativeETHTransaction -> {
-                wallet.evmTokens.find {
-                    it is NativeETH && it.network == transaction.network
-                } ?: error("No NativeETH found for network ${transaction.network.name}")
-            }
+        is NativeETHTransaction -> wallet.evmTokens.find { it is NativeETH && it.network == tx.network }
+            ?: error("No NativeETH")
 
-            is TokenTransaction -> {
-                findTokenForTransaction(transaction, wallet)
-            }
-        }
-    }
-
-    private fun findTokenForTransaction(transaction: TokenTransaction, wallet: Wallet): EVMToken {
-        return wallet.evmTokens.find {
-            it.network == transaction.network && it.evmTokenType == transaction.evmTokenType
-        } ?: error("No token found for ${transaction.evmTokenType} on ${transaction.network.name}")
+        is TokenTransaction -> wallet.evmTokens.find { it.network == tx.network && it.evmTokenType == tx.evmTokenType }
+            ?: error("No token")
     }
 
     fun getWalletName(): String = _uiState.value.wallet?.name ?: "Wallet Details"
-
     fun refresh(networkFilter: Network? = null) {
-        _uiState.value.wallet?.let { wallet ->
-            refreshBalanceInBackground(wallet, syncTransactions = true, networkFilter = networkFilter)
+        _uiState.value.wallet?.let {
+            refreshBalanceInBackground(
+                it,
+                syncTransactions = true,
+                networkFilter = networkFilter
+            )
         }
     }
 
     fun renameWallet(newName: String) {
-        val currentWallet = _uiState.value.wallet ?: return
+        val cur = _uiState.value.wallet ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             runCatching {
-                walletRepository.updateWalletName(currentWallet.id, newName)
-                // Reload wallet to get updated name
-                val updatedWallet = walletRepository.getWallet(currentWallet.id)
-                _uiState.update { it.copy(wallet = updatedWallet, isLoading = false) }
+                walletRepository.updateWalletName(cur.id, newName)
+                _uiState.update {
+                    it.copy(
+                        wallet = walletRepository.getWallet(cur.id),
+                        isLoading = false
+                    )
+                }
             }.onFailure { e ->
                 _uiState.update {
                     it.copy(
-                        error = "Failed to rename wallet: ${e.message}",
+                        error = "Failed: ${e.message}",
                         isLoading = false
                     )
                 }
@@ -536,8 +425,7 @@ class WalletDetailViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
-    // Cache expiration times
     private companion object {
-        const val BALANCE_CACHE_TIME = 2 * 60 * 1000      // 2 minutes
+        const val BALANCE_CACHE_TIME = 2 * 60 * 1000
     }
 }

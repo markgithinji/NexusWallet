@@ -2,6 +2,7 @@ package com.example.nexuswallet.feature.wallet.domain.usecase
 
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinTransactionRepository
+import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import com.example.nexuswallet.feature.core.domain.model.Transaction
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.ethereum.domain.repository.EVMBlockchainRepository
@@ -12,11 +13,12 @@ import com.example.nexuswallet.feature.solana.domain.repository.SolanaTransactio
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
+import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
+import com.example.nexuswallet.feature.wallet.domain.model.Network
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
-import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -49,7 +51,11 @@ class GetAllTransactionsUseCase @Inject constructor(
      * 2. Triggers a background sync as a side effect.
      * 3. Automatically emits updated data once the sync writes to the DB.
      */
-    operator fun invoke(walletId: String, forceRefresh: Boolean = false): Flow<List<Transaction>> {
+    operator fun invoke(
+        walletId: String,
+        forceRefresh: Boolean = false,
+        networkFilter: Network? = null
+    ): Flow<List<Transaction>> {
         return combine(
             bitcoinTransactionRepository.getTransactions(walletId, BitcoinNetwork.Mainnet),
             bitcoinTransactionRepository.getTransactions(walletId, BitcoinNetwork.Testnet),
@@ -63,33 +69,55 @@ class GetAllTransactionsUseCase @Inject constructor(
             .onStart {
                 // Only trigger the background sync if forceRefresh is requested
                 if (forceRefresh) {
-                    launchSyncTransactions(walletId)
+                    launchSyncTransactions(walletId, networkFilter)
                 }
             }
             .distinctUntilChanged()
     }
 
-    private fun launchSyncTransactions(walletId: String) {
+    private fun launchSyncTransactions(walletId: String, networkFilter: Network? = null) {
         CoroutineScope(ioDispatcher).launch {
             try {
-                syncTransactions(walletId)
+                syncTransactions(walletId, networkFilter)
             } catch (e: Exception) {
                 logger.e(TAG, "Background sync failed", e)
             }
         }
     }
 
-    private suspend fun syncTransactions(walletId: String) = coroutineScope {
-        val wallet = walletRepository.getWallet(walletId) ?: return@coroutineScope
+    private suspend fun syncTransactions(walletId: String, networkFilter: Network? = null) =
+        coroutineScope {
+            val wallet = walletRepository.getWallet(walletId) ?: return@coroutineScope
 
-        val jobs = mutableListOf<Job>()
+            val jobs = mutableListOf<Job>()
 
-        wallet.bitcoinCoins.forEach { jobs.add(launch { syncBitcoin(walletId, it) }) }
-        wallet.evmTokens.forEach { jobs.add(launch { syncEVM(walletId, it) }) }
-        wallet.solanaCoins.forEach { jobs.add(launch { syncSolana(walletId, it) }) }
+            // Bitcoin: Only if no filter or Bitcoin signal
+            if (networkFilter == null || networkFilter is BitcoinNetwork) {
+                wallet.bitcoinCoins
+                    .filter { networkFilter == null || it.network == networkFilter }
+                    .forEach { jobs.add(launch { syncBitcoin(walletId, it) }) }
+            }
 
-        jobs.joinAll()
-    }
+            // EVM: Only if no filter or Ethereum signal
+            if (networkFilter == null || networkFilter is EthereumNetwork) {
+                wallet.evmTokens
+                    .filter { networkFilter == null || it.network == networkFilter }
+                    .forEach { token ->
+                        jobs.add(launch {
+                            syncEVM(walletId, token)
+                        })
+                    }
+            }
+
+            // Solana: Only if no filter or Solana signal
+            if (networkFilter == null || networkFilter is SolanaNetwork) {
+                wallet.solanaCoins
+                    .filter { networkFilter == null || it.network == networkFilter }
+                    .forEach { jobs.add(launch { syncSolana(walletId, it) }) }
+            }
+
+            jobs.joinAll()
+        }
 
     // ============ BITCOIN SYNC ============
 
