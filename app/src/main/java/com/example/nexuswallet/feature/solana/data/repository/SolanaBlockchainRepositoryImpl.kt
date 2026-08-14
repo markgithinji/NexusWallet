@@ -440,15 +440,6 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun validateAddress(address: String): Result<Boolean> {
-        return try {
-            PublicKey(address)
-            Result.Success(true)
-        } catch (e: Exception) {
-            Result.Success(false)
-        }
-    }
-
     companion object {
         private const val TAG = "SolanaRepo"
         private const val SOLANA_FIXED_FEE_LAMPORTS = 5000L

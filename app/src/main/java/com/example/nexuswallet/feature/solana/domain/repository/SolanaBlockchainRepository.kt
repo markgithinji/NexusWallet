@@ -56,8 +56,6 @@ interface SolanaBlockchainRepository {
         network: SolanaNetwork
     ): Result<BroadcastResult>
 
-    fun validateAddress(address: String): Result<Boolean>
-
     suspend fun getTransactions(
         walletId: String,
         address: String,

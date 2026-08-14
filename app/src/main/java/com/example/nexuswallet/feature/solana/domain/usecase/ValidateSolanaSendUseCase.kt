@@ -13,6 +13,7 @@ import javax.inject.Singleton
 class ValidateSolanaSendUseCase @Inject constructor(
     private val logger: Logger
 ) {
+    private val solanaAddressRegex = Regex("^[1-9A-HJ-NP-Za-km-z]{32,44}$")
 
     operator fun invoke(
         toAddress: String,
@@ -26,17 +27,32 @@ class ValidateSolanaSendUseCase @Inject constructor(
 
         // Validate address is not empty
         if (toAddress.isBlank()) {
-            logger.w(TAG, "Address is empty")
             return SendValidationResult(
                 isValid = false,
                 addressError = "Please enter a recipient address"
             )
         }
 
-        // Validate Solana address format using sol4k
-        val addressValidationResult = validateSolanaAddress(toAddress)
-        if (!addressValidationResult.isValid) {
-            return addressValidationResult
+        // Validate Solana address format
+        if (!solanaAddressRegex.matches(toAddress)) {
+            val message = if (toAddress.length !in 32..44) {
+                "Invalid Solana address length (expected 32-44 characters)"
+            } else {
+                "Address contains invalid characters (0, O, I, or l are not allowed)"
+            }
+            return SendValidationResult(
+                isValid = false,
+                addressError = message
+            )
+        }
+
+        try {
+            PublicKey(toAddress)
+        } catch (_: Exception) {
+            return SendValidationResult(
+                isValid = false,
+                addressError = "Invalid Solana address format"
+            )
         }
 
         // Validate not sending to self
@@ -100,19 +116,6 @@ class ValidateSolanaSendUseCase @Inject constructor(
         }
 
         return result
-    }
-
-    private fun validateSolanaAddress(address: String): SendValidationResult {
-        return try {
-            // sol4k's PublicKey constructor validates the address format
-            PublicKey(address)
-            SendValidationResult(isValid = true)
-        } catch (e: Exception) {
-            SendValidationResult(
-                isValid = false,
-                addressError = "Invalid Solana address format"
-            )
-        }
     }
 
     companion object {
