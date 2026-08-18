@@ -37,7 +37,8 @@ interface SolanaBlockchainRepository {
         network: SolanaNetwork,
         fromAddress: String? = null,
         toAddress: String? = null,
-        lamports: Long? = null
+        lamports: Long? = null,
+        tokenMint: String? = null
     ): Result<SolanaFeeEstimate>
 
     suspend fun createAndSignTransaction(

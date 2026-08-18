@@ -144,7 +144,8 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         network: SolanaNetwork,
         fromAddress: String?,
         toAddress: String?,
-        lamports: Long?
+        lamports: Long?,
+        tokenMint: String?
     ): Result<SolanaFeeEstimate> = withContext(ioDispatcher) {
         SafeApiCall.make {
             val baseFeeLamports = SOLANA_FIXED_FEE_LAMPORTS
@@ -162,13 +163,13 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
 
             // Dynamic Compute Unit Estimation
             val computeUnits = if (fromAddress != null && toAddress != null) {
-                estimateComputeUnits(fromAddress, toAddress, lamports ?: 0L, network)
+                estimateComputeUnits(fromAddress, toAddress, lamports ?: 0L, network, tokenMint)
             } else {
                 when (feeLevel) {
                     FeeLevel.SLOW -> SLOW_COMPUTE_UNITS
                     FeeLevel.NORMAL -> NORMAL_COMPUTE_UNITS
                     FeeLevel.FAST -> FAST_COMPUTE_UNITS
-                }.toInt()
+                }
             }
 
             val priorityFeeLamports =
@@ -202,15 +203,74 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
         fromAddress: String,
         toAddress: String,
         lamports: Long,
-        network: SolanaNetwork
+        network: SolanaNetwork,
+        tokenMint: String? = null
     ): Int {
-        // Standard Solana Native Transfer (System Program) consumes ~450 Compute Units.
-        // We use 1,000 as a safe limit, providing > 100% buffer while being 400x more efficient
-        // than the old 400,000 fixed limit.
-        
-        // FUTURE: If adding SPL Token or smart contract support, use connection.simulateTransaction
-        // to dynamically fetch units consumed.
-        return 1000
+        return try {
+            val connection = getRpcConnection(network)
+            val fromPublicKey = PublicKey(fromAddress)
+            val toPublicKey = PublicKey(toAddress)
+            val blockhash = connection.getLatestBlockhash()
+
+            val instructions = mutableListOf<org.sol4k.instruction.Instruction>()
+
+            if (tokenMint == null) {
+                instructions.add(TransferInstruction(fromPublicKey, toPublicKey, lamports))
+            } else {
+                val mint = PublicKey(tokenMint)
+                val (receiverAta, _) = PublicKey.findProgramDerivedAddress(toPublicKey, mint)
+                
+                val receiverAtaInfo = connection.getAccountInfo(receiverAta)
+                if (receiverAtaInfo == null) {
+                    instructions.add(
+                        org.sol4k.instruction.CreateAssociatedTokenAccountInstruction(
+                            payer = fromPublicKey,
+                            associatedToken = receiverAta,
+                            owner = toPublicKey,
+                            mint = mint
+                        )
+                    )
+                }
+
+                val (senderAta, _) = PublicKey.findProgramDerivedAddress(fromPublicKey, mint)
+                instructions.add(
+                    org.sol4k.instruction.SplTransferInstruction(
+                        from = senderAta,
+                        to = receiverAta,
+                        mint = mint,
+                        owner = fromPublicKey,
+                        amount = lamports,
+                        decimals = 0 // Simulation doesn't strictly validate decimals for CU count
+                    )
+                )
+            }
+
+            val message = TransactionMessage.newMessage(
+                feePayer = fromPublicKey,
+                recentBlockhash = blockhash,
+                instructions = instructions
+            )
+            val transaction = VersionedTransaction(message)
+            
+            // Use sol4k simulation and parse logs for CU usage
+            val result = connection.simulateTransaction(transaction)
+            if (result is org.sol4k.api.TransactionSimulationSuccess) {
+                // Regex to find "consumed 1234 compute units" in logs
+                val cuRegex = Regex("""consumed (\d+)""")
+                val consumed = result.logs.mapNotNull { line ->
+                    cuRegex.find(line)?.groupValues?.get(1)?.toIntOrNull()
+                }.maxOrNull()
+
+                // If found, add 20% safety buffer for production reliability
+                if (consumed != null) return (consumed * 1.2).toInt()
+            }
+
+            // Fallback to safe production constants if simulation logs are ambiguous
+            if (tokenMint == null) 1000 else 50000
+        } catch (e: Exception) {
+            // Fallback to safe production constants if simulation fails
+            if (tokenMint == null) 1000 else 50000
+        }
     }
 
     private suspend fun getRecommendedPriorityFee(
@@ -355,7 +415,7 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
 
             // Transaction Confirmation Loop
             // Solana transactions can be dropped during congestion, so we poll for status.
-            // We use Helius API for polling as it provides reliable confirmation data.
+            // We use Helius API for polling
             var confirmed = false
             repeat(15) { // Poll for ~30 seconds
                 val statusResult = getTransaction(signature, network)

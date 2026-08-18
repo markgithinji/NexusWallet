@@ -20,7 +20,8 @@ class GetSolanaFeeEstimateUseCase @Inject constructor(
         network: SolanaNetwork,
         fromAddress: String? = null,
         toAddress: String? = null,
-        lamports: Long? = null
+        lamports: Long? = null,
+        tokenMint: String? = null
     ): Result<SolanaFeeEstimate> {
         logger.d(TAG, "Fetching fee estimate on $network (to: $toAddress)")
         val result = solanaBlockchainRepository.getFeeEstimate(
@@ -28,7 +29,8 @@ class GetSolanaFeeEstimateUseCase @Inject constructor(
             network = network, 
             fromAddress = fromAddress,
             toAddress = toAddress,
-            lamports = lamports
+            lamports = lamports,
+            tokenMint = tokenMint
         )
         if (result is Result.Error) {
             logger.e(TAG, "Failed to get fee estimate on $network: ${result.message}")

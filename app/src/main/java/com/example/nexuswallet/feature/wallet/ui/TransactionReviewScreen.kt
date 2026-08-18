@@ -72,11 +72,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
-import com.example.nexuswallet.feature.bitcoin.domain.model.BitcoinFeeEstimate
 import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewEffect
 import com.example.nexuswallet.feature.bitcoin.ui.review.BitcoinReviewViewModel
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
@@ -84,26 +84,24 @@ import com.example.nexuswallet.feature.core.domain.model.TransactionResult
 import com.example.nexuswallet.feature.core.service.TransactionMonitorService
 import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
 import com.example.nexuswallet.feature.core.ui.isBiometricUserCancel
-import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.ethereum.domain.model.EVMTokenType
 import com.example.nexuswallet.feature.ethereum.ui.EVMSendEffect
 import com.example.nexuswallet.feature.ethereum.ui.EVMSendEvent
 import com.example.nexuswallet.feature.ethereum.ui.EVMSendViewModel
-import com.example.nexuswallet.feature.solana.domain.model.SolanaFeeEstimate
 import com.example.nexuswallet.feature.solana.ui.SolanaSendEffect
 import com.example.nexuswallet.feature.solana.ui.SolanaSendEvent
 import com.example.nexuswallet.feature.solana.ui.SolanaSendViewModel
-import com.example.nexuswallet.feature.wallet.ui.mapper.FeeUiMapper
-import com.example.nexuswallet.feature.wallet.ui.mapper.FeeUiModel
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinCoin
 import com.example.nexuswallet.feature.wallet.domain.model.Coin
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
+import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
 import com.example.nexuswallet.feature.wallet.ui.common.shimmer
+import com.example.nexuswallet.feature.wallet.ui.mapper.FeeUiMapper
+import com.example.nexuswallet.feature.wallet.ui.mapper.FeeUiModel
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.onSuccessContainer
@@ -292,13 +290,13 @@ fun TransactionReviewScreen(
 
             is SolanaCoin -> {
                 solanaViewModel.init(walletId, coin)
-                
+
                 // If a specific SPL token is being sent, select it in the ViewModel
                 tokenMint?.let { mint ->
                     snapshotFlow { solanaState.value.availableSplTokens }
                         .filter { it.isNotEmpty() }
                         .firstOrNull()
-                    
+
                     val token = solanaState.value.availableSplTokens.find { it.mintAddress == mint }
                     token?.let { solanaViewModel.onEvent(SolanaSendEvent.SelectToken(it)) }
                 }
@@ -405,7 +403,9 @@ fun TransactionReviewScreen(
                     when (coin) {
                         is EVMToken -> ethereumViewModel.send(cipher = null, onSuccess = { })
                         is SolanaCoin -> solanaViewModel.send(cipher = null, onSuccess = { })
-                        is BitcoinCoin -> bitcoinReviewViewModel.sendTransaction(cipher = null, onSuccess = { })
+                        is BitcoinCoin -> bitcoinReviewViewModel.sendTransaction(
+                            cipher = null,
+                            onSuccess = { })
                     }
                 },
                 onDone = { onDone(walletId, coin) }
@@ -622,24 +622,41 @@ fun TransactionReviewContent(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Amount with better alignment
+
+                // Amount with responsive scaling
+                val amountTextStyle = when {
+                    amount.length > 24 -> MaterialTheme.typography.bodyLarge
+                    amount.length > 18 -> MaterialTheme.typography.titleLarge
+                    amount.length > 14 -> MaterialTheme.typography.headlineSmall
+                    else -> MaterialTheme.typography.headlineMedium
+                }
+
                 Row(
                     verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.Start
+                    horizontalArrangement = Arrangement.Start,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = amount,
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = amountTextStyle,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = selectedToken?.symbol ?: selectedSolToken?.symbol ?: coin.symbol,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontSize = when {
+                                amount.length > 24 -> 14.sp
+                                amount.length > 18 -> 18.sp
+                                else -> MaterialTheme.typography.headlineSmall.fontSize
+                            }
+                        ),
                         fontWeight = FontWeight.Medium,
                         color = coinColor,
-                        modifier = Modifier.padding(bottom = 2.dp)
+                        modifier = Modifier.padding(bottom = if (amount.length > 18) 0.dp else 2.dp),
+                        maxLines = 1
                     )
                 }
 
@@ -1077,7 +1094,10 @@ fun TransactionBottomBar(
                             .padding(bottom = 12.dp),
                         shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
+                        border = BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                        )
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -1115,7 +1135,11 @@ fun TransactionBottomBar(
                 ) {
                     Text(
                         if (isSending || isPreparing) {
-                            if (isPreparing) stringResource(R.string.preparing) else txStatus.ifEmpty { stringResource(R.string.sending) }
+                            if (isPreparing) stringResource(R.string.preparing) else txStatus.ifEmpty {
+                                stringResource(
+                                    R.string.sending
+                                )
+                            }
                         } else {
                             stringResource(R.string.confirm_and_send)
                         },

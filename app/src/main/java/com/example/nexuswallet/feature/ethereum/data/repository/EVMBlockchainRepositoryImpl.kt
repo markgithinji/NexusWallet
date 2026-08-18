@@ -552,7 +552,7 @@ class EVMBlockchainRepositoryImpl @Inject constructor(
 
         // Price multipliers
         private val SLOW_PRICE_MULTIPLIER = BigDecimal("0.9")
-        private val FAST_PRICE_MULTIPLIER = BigDecimal("1.25") // Increased for faster confirmation
+        private val FAST_PRICE_MULTIPLIER = BigDecimal("1.25")
 
         // Cache TTL (30 seconds)
         private const val GAS_PRICE_CACHE_TTL_MS = 30000L

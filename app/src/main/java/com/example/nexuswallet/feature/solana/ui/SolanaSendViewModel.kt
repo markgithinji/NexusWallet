@@ -219,7 +219,8 @@ class SolanaSendViewModel @Inject constructor(
                 network = currentState.network,
                 fromAddress = currentState.walletAddress,
                 toAddress = currentState.toAddress.takeIf { it.isNotBlank() },
-                lamports = lamports
+                lamports = lamports,
+                tokenMint = currentState.selectedSplToken?.mintAddress
             )
             
             if (result is Result.Success) {
