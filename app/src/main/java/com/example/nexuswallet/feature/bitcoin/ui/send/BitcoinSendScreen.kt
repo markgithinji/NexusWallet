@@ -163,7 +163,8 @@ fun BitcoinSendScreen(
                     coinColor = bitcoinLight,
                     iconRes = R.drawable.bitcoin,
                     address = state.walletAddress,
-                    network = state.network
+                    network = state.network,
+                    isLoading = state.isLoading
                 )
 
                 // Error Banner
@@ -238,7 +239,8 @@ fun BitcoinSendScreen(
                     isFiatMode = state.isFiatMode,
                     onModeToggle = {
                         viewModel.handleEvent(BitcoinSendEvent.ToggleFiatMode(it))
-                    }
+                    },
+                    isLoading = state.isLoading
                 )
 
                 // Fee Selection
@@ -248,7 +250,8 @@ fun BitcoinSendScreen(
                         viewModel.handleEvent(BitcoinSendEvent.UpdateFeeLevel(it))
                     },
                     feeEstimate = state.feeEstimate,
-                    coin = coin
+                    coin = coin,
+                    isLoading = state.isFeeLoading
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -287,7 +290,8 @@ fun BitcoinSendScreen(
                 amountTouched = true
                 viewModel.handleEvent(BitcoinSendEvent.UpdateAmount(maxAmount))
                 showMaxDialog = false
-            }
+            },
+            isLoading = state.isFeeLoading
         )
     }
 }

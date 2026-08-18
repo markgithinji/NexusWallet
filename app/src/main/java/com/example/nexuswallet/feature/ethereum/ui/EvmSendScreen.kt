@@ -240,7 +240,8 @@ fun EthereumSendScreen(
                     coinColor = coinColor,
                     iconRes = iconRes,
                     address = state.fromAddress,
-                    network = state.network
+                    network = state.network,
+                    isLoading = state.isLoading
                 )
 
                 // Show ETH balance for gas if this is a token
@@ -329,7 +330,8 @@ fun EthereumSendScreen(
                     isFiatMode = state.isFiatMode,
                     onModeToggle = {
                         viewModel.onEvent(EVMSendEvent.ToggleFiatMode(it))
-                    }
+                    },
+                    isLoading = state.isLoading
                 )
 
                 // Fee Selection
@@ -337,7 +339,8 @@ fun EthereumSendScreen(
                     feeLevel = state.feeLevel,
                     onFeeLevelChange = { viewModel.onEvent(EVMSendEvent.FeeLevelChanged(it)) },
                     feeEstimate = state.feeEstimate,
-                    coin = selectedToken ?: coin
+                    coin = selectedToken ?: coin,
+                    isLoading = state.isFeeLoading
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -376,7 +379,8 @@ fun EthereumSendScreen(
                 amountTouched = true
                 viewModel.onEvent(EVMSendEvent.AmountChanged(maxAmount))
                 showMaxDialog = false
-            }
+            },
+            isLoading = state.isFeeLoading
         )
     }
 }

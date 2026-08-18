@@ -100,6 +100,7 @@ import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.USDCToken
 import com.example.nexuswallet.feature.wallet.domain.model.USDTToken
+import com.example.nexuswallet.feature.wallet.ui.common.shimmer
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -175,6 +176,7 @@ fun NetworkSelectorCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(20.dp))
             .clickable { onClick() }
             .animateContentSize(),
         shape = RoundedCornerShape(20.dp),
@@ -250,6 +252,7 @@ fun NetworkSelectorDialog(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
                             .clickable { onNetworkSelected(network) },
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
@@ -312,7 +315,8 @@ fun SendBalanceCard(
     coinColor: Color,
     iconRes: Int,
     address: String,
-    network: Network? = null
+    network: Network? = null,
+    isLoading: Boolean = false
 ) {
     Card(
         modifier = Modifier
@@ -343,21 +347,55 @@ fun SendBalanceCard(
                     val usdValue = balance.toDouble() * fiatRate
                     val currencyState = LocalCurrency.current
 
-                    Text(
-                        text = usdValue.formatAsCurrency(
-                            currencyState.usdToRate,
-                            currencyState.currency
-                        ),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    // Fixed-height container for USD Balance (headlineSmall: 32dp)
+                    Box(
+                        modifier = Modifier.height(32.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (isLoading) {
+                            Box(
+                                modifier = Modifier
+                                    .width(120.dp)
+                                    .height(24.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .shimmer()
+                            )
+                        } else {
+                            Text(
+                                text = usdValue.formatAsCurrency(
+                                    currencyState.usdToRate,
+                                    currencyState.currency
+                                ),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1
+                            )
+                        }
+                    }
 
-                    Text(
-                        text = balanceFormatted,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = coinColor
-                    )
+                    // Fixed-height container for Crypto Balance (bodyMedium: 20dp)
+                    Box(
+                        modifier = Modifier.height(20.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (isLoading) {
+                            Box(
+                                modifier = Modifier
+                                    .width(80.dp)
+                                    .height(14.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .shimmer()
+                            )
+                        } else {
+                            Text(
+                                text = balanceFormatted,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = coinColor,
+                                maxLines = 1
+                            )
+                        }
+                    }
 
                     if (network != null && network.isTestnet) {
                         Text(
@@ -588,7 +626,8 @@ fun SendAmountInput(
     errorMessage: String? = null,
     focusRequester: FocusRequester = FocusRequester(),
     isFiatMode: Boolean = false,
-    onModeToggle: (Boolean) -> Unit = {}
+    onModeToggle: (Boolean) -> Unit = {},
+    isLoading: Boolean = false
 ) {
     val focusManager = LocalFocusManager.current
     var focused by remember { mutableStateOf(false) }
@@ -668,13 +707,30 @@ fun SendAmountInput(
                 val maxBalanceFormatted =
                     balance.setScale(maxDecimals, RoundingMode.HALF_UP).stripTrailingZeros()
                         .toPlainString()
-                Text(
-                    text = stringResource(R.string.max_label, maxBalanceFormatted, symbol),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                
+                // Fixed-height container for Max Label (bodySmall: 16dp)
+                Box(
+                    modifier = Modifier.height(16.dp),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier
+                                .width(100.dp)
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .shimmer()
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.max_label, maxBalanceFormatted, symbol),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -837,14 +893,30 @@ fun SendAmountInput(
                             )
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Text(
-                            text = equivalentLabel,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.End,
-                            maxLines = 1
-                        )
+                        // Fixed-height container for Equivalent Label (labelMedium: 16dp)
+                        Box(
+                            modifier = Modifier.height(16.dp),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            if (isLoading) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(60.dp)
+                                        .height(12.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .shimmer()
+                                )
+                            } else {
+                                Text(
+                                    text = equivalentLabel,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.End,
+                                    maxLines = 1
+                                )
+                            }
+                        }
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.CompareArrows,
                             contentDescription = "Switch unit",
@@ -863,7 +935,8 @@ fun SendFeeSelection(
     feeLevel: FeeLevel,
     onFeeLevelChange: (FeeLevel) -> Unit,
     feeEstimate: Any?,
-    coin: Coin
+    coin: Coin,
+    isLoading: Boolean = false
 ) {
     Card(
         modifier = Modifier
@@ -897,65 +970,69 @@ fun SendFeeSelection(
 
             when (coin) {
                 is BitcoinCoin -> {
-                    (feeEstimate as? BitcoinFeeEstimate)?.let { fee ->
-                        FeeDetailsRow(
-                            label = stringResource(R.string.network_fee_label).removeSuffix(":"),
-                            value = "${fee.totalFeeBtc} BTC"
-                        )
-                        FeeDetailsRow(
-                            label = stringResource(R.string.fee_rate),
-                            value = "${fee.feePerByte} sat/byte"
-                        )
-                    }
+                    val fee = feeEstimate as? BitcoinFeeEstimate
+                    FeeDetailsRow(
+                        label = stringResource(R.string.network_fee_label).removeSuffix(":"),
+                        value = fee?.totalFeeBtc?.let { "$it BTC" } ?: "",
+                        isLoading = isLoading || fee == null
+                    )
+                    FeeDetailsRow(
+                        label = stringResource(R.string.fee_rate),
+                        value = fee?.feePerByte?.let { "$it sat/byte" } ?: "",
+                        isLoading = isLoading || fee == null
+                    )
                 }
 
                 is NativeETH -> {
-                    (feeEstimate as? EVMFeeEstimate)?.let { fee ->
-                        FeeDetailsRow(
-                            label = stringResource(R.string.network_fee_label).removeSuffix(":"),
-                            value = "${fee.totalFeeEth} ETH"
-                        )
-                        FeeDetailsRow(
-                            label = stringResource(R.string.gas_price),
-                            value = "${fee.gasPriceGwei} Gwei"
-                        )
-                        FeeDetailsRow(
-                            label = stringResource(R.string.gas_limit),
-                            value = fee.gasLimit.toString()
-                        )
-                    }
+                    val fee = feeEstimate as? EVMFeeEstimate
+                    FeeDetailsRow(
+                        label = stringResource(R.string.network_fee_label).removeSuffix(":"),
+                        value = fee?.totalFeeEth?.let { "$it ETH" } ?: "",
+                        isLoading = isLoading || fee == null
+                    )
+                    FeeDetailsRow(
+                        label = stringResource(R.string.gas_price),
+                        value = fee?.gasPriceGwei?.let { "$it Gwei" } ?: "",
+                        isLoading = isLoading || fee == null
+                    )
+                    FeeDetailsRow(
+                        label = stringResource(R.string.gas_limit),
+                        value = fee?.gasLimit?.toString() ?: "",
+                        isLoading = isLoading || fee == null
+                    )
                 }
 
                 is USDCToken, is USDTToken -> {
-                    (feeEstimate as? EVMFeeEstimate)?.let { fee ->
-                        FeeDetailsRow(
-                            label = stringResource(R.string.network_fee_label).removeSuffix(":"),
-                            value = "${fee.totalFeeEth} ETH"
-                        )
-                        FeeDetailsRow(
-                            label = stringResource(R.string.gas_price),
-                            value = "${fee.gasPriceGwei} Gwei"
-                        )
-                        FeeDetailsRow(
-                            label = stringResource(R.string.gas_limit),
-                            value = fee.gasLimit.toString()
-                        )
-                    }
+                    val fee = feeEstimate as? EVMFeeEstimate
+                    FeeDetailsRow(
+                        label = stringResource(R.string.network_fee_label).removeSuffix(":"),
+                        value = fee?.totalFeeEth?.let { "$it ETH" } ?: "",
+                        isLoading = isLoading || fee == null
+                    )
+                    FeeDetailsRow(
+                        label = stringResource(R.string.gas_price),
+                        value = fee?.gasPriceGwei?.let { "$it Gwei" } ?: "",
+                        isLoading = isLoading || fee == null
+                    )
+                    FeeDetailsRow(
+                        label = stringResource(R.string.gas_limit),
+                        value = fee?.gasLimit?.toString() ?: "",
+                        isLoading = isLoading || fee == null
+                    )
                 }
 
                 is SolanaCoin -> {
-                    (feeEstimate as? SolanaFeeEstimate)?.let { fee ->
-                        FeeDetailsRow(
-                            label = stringResource(R.string.network_fee_label).removeSuffix(":"),
-                            value = "${fee.feeSol} SOL"
-                        )
-                        if (fee.computeUnits > 0) {
-                            FeeDetailsRow(
-                                label = stringResource(R.string.compute_units),
-                                value = fee.computeUnits.toString()
-                            )
-                        }
-                    }
+                    val fee = feeEstimate as? SolanaFeeEstimate
+                    FeeDetailsRow(
+                        label = stringResource(R.string.network_fee_label).removeSuffix(":"),
+                        value = fee?.feeSol?.let { "$it SOL" } ?: "",
+                        isLoading = isLoading || fee == null
+                    )
+                    FeeDetailsRow(
+                        label = stringResource(R.string.compute_units),
+                        value = fee?.computeUnits?.toString() ?: "0",
+                        isLoading = isLoading || (fee == null && coin is SolanaCoin)
+                    )
                 }
             }
         }
@@ -1015,6 +1092,7 @@ fun FeeLevelButton(
 
     Card(
         modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
             .clickable {
                 haptic.click()
                 onClick()
@@ -1050,23 +1128,46 @@ fun FeeLevelButton(
 @Composable
 fun FeeDetailsRow(
     label: String,
-    value: String
+    value: String,
+    isLoading: Boolean = false
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(20.dp), // Fixed height for the entire row to prevent jumping
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
         )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        
+        // Fixed-height container for the value (bodySmall: 16dp)
+        Box(
+            modifier = Modifier.height(16.dp),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .width(80.dp)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .shimmer()
+                )
+            } else {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1
+                )
+            }
+        }
     }
 }
 
@@ -1147,7 +1248,8 @@ fun MaxAmountDialog(
     tokenSymbol: String,
     coin: Coin,
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+    onConfirm: (String) -> Unit,
+    isLoading: Boolean = false
 ) {
     val haptic = rememberHapticHelper()
     val fee = when (feeEstimate) {
@@ -1211,17 +1313,26 @@ fun MaxAmountDialog(
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
+                enabled = !isLoading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                Text(
-                    text = if (isInsufficient) stringResource(R.string.dismiss)
-                    else stringResource(R.string.use_maximum),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text(
+                        text = if (isInsufficient) stringResource(R.string.dismiss)
+                        else stringResource(R.string.use_maximum),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         },
         dismissButton = {
@@ -1300,21 +1411,31 @@ fun MaxAmountDialog(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.weight(1f)
                                 )
-                                Text(
-                                    text = if (isNative) {
-                                        "- ${
-                                            fee.stripTrailingZeros().toPlainString()
-                                        } ${coin.symbol}"
-                                    } else {
-                                        "Paid in ${coin.network.nativeSymbol}"
-                                    },
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = if (isNative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    textAlign = TextAlign.End,
-                                    modifier = Modifier.weight(2f)
-                                )
+                                if (isLoading) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(80.dp)
+                                            .height(16.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .shimmer()
+                                    )
+                                } else {
+                                    Text(
+                                        text = if (isNative) {
+                                            "- ${
+                                                fee.stripTrailingZeros().toPlainString()
+                                            } ${coin.symbol}"
+                                        } else {
+                                            "Paid in ${coin.network.nativeSymbol}"
+                                        },
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (isNative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.End,
+                                        modifier = Modifier.weight(2f)
+                                    )
+                                }
                             }
 
                             HorizontalDivider(
@@ -1338,33 +1459,51 @@ fun MaxAmountDialog(
                                     horizontalAlignment = Alignment.End,
                                     modifier = Modifier.weight(2f)
                                 ) {
-                                    Text(
-                                        text = "${
-                                            maxAmount.stripTrailingZeros().toPlainString()
-                                        } $tokenSymbol",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.End
-                                    )
-                                    val maxAmountUsd = maxAmount.toDouble() * fiatRate
-                                    val currencyState = LocalCurrency.current
+                                    if (isLoading) {
+                                        Box(
+                                            modifier = Modifier
+                                                .width(100.dp)
+                                                .height(24.dp) // titleMedium line height is 24.sp
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .shimmer()
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .width(60.dp)
+                                                .height(16.dp) // labelSmall line height
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .shimmer()
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "${
+                                                maxAmount.stripTrailingZeros().toPlainString()
+                                            } $tokenSymbol",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            textAlign = TextAlign.End
+                                        )
+                                        val maxAmountUsd = maxAmount.toDouble() * fiatRate
+                                        val currencyState = LocalCurrency.current
 
-                                    Text(
-                                        text = "≈ ${
-                                            maxAmountUsd.formatAsCurrency(
-                                                currencyState.usdToRate,
-                                                currencyState.currency
-                                            )
-                                        }",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.End
-                                    )
+                                        Text(
+                                            text = "≈ ${
+                                                maxAmountUsd.formatAsCurrency(
+                                                    currencyState.usdToRate,
+                                                    currencyState.currency
+                                                )
+                                            }",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            textAlign = TextAlign.End
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1491,6 +1630,7 @@ fun SolanaTokenSelectorCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(20.dp))
             .clickable { onClick() }
             .animateContentSize(),
         shape = RoundedCornerShape(20.dp),
@@ -1574,6 +1714,7 @@ fun SolanaTokenSelectorDialog(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
                             .clickable { onTokenSelected(null) },
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
@@ -1633,6 +1774,7 @@ fun SolanaTokenSelectorDialog(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
                             .clickable { onTokenSelected(token) },
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
@@ -1730,6 +1872,7 @@ fun TokenSelectorCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(20.dp))
             .clickable { onClick() }
             .animateContentSize(),
         shape = RoundedCornerShape(20.dp),
@@ -1826,6 +1969,7 @@ fun TokenSelectorDialog(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
                             .clickable { onTokenSelected(token) },
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
@@ -2018,6 +2162,7 @@ fun AddressBookSelectorDialog(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
                                     .clickable { onEntrySelected(entry) },
                                 shape = RoundedCornerShape(16.dp),
                                 colors = CardDefaults.cardColors(

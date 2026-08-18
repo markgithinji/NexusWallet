@@ -191,7 +191,8 @@ fun SolanaSendScreen(
                         coinColor = solanaLight,
                         iconRes = R.drawable.solana,
                         address = state.walletAddress,
-                        network = state.network
+                        network = state.network,
+                        isLoading = state.isLoading
                     )
 
                     // Error Banner
@@ -263,7 +264,8 @@ fun SolanaSendScreen(
                         isFiatMode = state.isFiatMode,
                         onModeToggle = {
                             viewModel.onEvent(SolanaSendEvent.ToggleFiatMode(it))
-                        }
+                        },
+                        isLoading = state.isLoading
                     )
 
                     // Fee Selection
@@ -271,7 +273,8 @@ fun SolanaSendScreen(
                         feeLevel = state.feeLevel,
                         onFeeLevelChange = { viewModel.onEvent(SolanaSendEvent.FeeLevelChanged(it)) },
                         feeEstimate = state.feeEstimate,
-                        coin = coin
+                        coin = coin,
+                        isLoading = state.isFeeLoading
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -308,7 +311,8 @@ fun SolanaSendScreen(
                         amountTouched = true
                         viewModel.onEvent(SolanaSendEvent.AmountChanged(maxAmount))
                         showMaxDialog = false
-                    }
+                    },
+                    isLoading = state.isFeeLoading
                 )
             }
         }
