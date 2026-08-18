@@ -8,6 +8,7 @@ import com.example.nexuswallet.feature.market.data.model.toTokenDetail
 import com.example.nexuswallet.feature.market.data.remote.CoinGeckoApi
 import com.example.nexuswallet.feature.market.data.remote.CoinStatsApi
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
+import com.example.nexuswallet.feature.market.domain.model.AssetPriceData
 import com.example.nexuswallet.feature.market.domain.model.ChartData
 import com.example.nexuswallet.feature.market.domain.model.ChartDuration
 import com.example.nexuswallet.feature.market.domain.model.NewsArticle
@@ -84,14 +85,21 @@ class MarketRepositoryImpl @Inject constructor(
     override suspend fun getSimplePrices(
         ids: List<String>,
         currency: SupportedCurrency
-    ): Result<Map<String, Double>> {
+    ): Result<Map<String, AssetPriceData>> {
         return SafeApiCall.make {
             val currencyCode = currency.code.lowercase()
+            val changeKey = "${currencyCode}_24h_change"
             val response = coinGeckoApi.getSimplePrice(
                 ids = ids.joinToString(","),
-                vsCurrencies = currencyCode
+                vsCurrencies = currencyCode,
+                include24hChange = true
             )
-            response.mapValues { it.value[currencyCode] ?: 0.0 }
+            response.mapValues { entry ->
+                AssetPriceData(
+                    price = entry.value[currencyCode] ?: 0.0,
+                    change24h = entry.value[changeKey] ?: 0.0
+                )
+            }
         }
     }
 

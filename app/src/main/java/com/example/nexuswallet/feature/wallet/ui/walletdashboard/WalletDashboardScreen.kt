@@ -15,16 +15,61 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.FileOpen
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +92,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.BiometricAuthHandler
+import com.example.nexuswallet.feature.core.ui.LocalCurrency
 import com.example.nexuswallet.feature.core.ui.NexusTextField
 import com.example.nexuswallet.feature.core.ui.clickableSingle
 import com.example.nexuswallet.feature.core.util.Result
@@ -66,7 +112,6 @@ import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.InlineLoading
 import com.example.nexuswallet.feature.wallet.ui.common.SyncPulseIndicator
 import com.example.nexuswallet.feature.wallet.ui.walletcreation.ImportOptionItem
-import com.example.nexuswallet.feature.core.ui.LocalCurrency
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
@@ -89,6 +134,7 @@ fun WalletDashboardScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val balances by viewModel.balances.collectAsStateWithLifecycle()
     val totalPortfolio by viewModel.totalPortfolioValue.collectAsStateWithLifecycle()
+    val portfolioChangePercentage by viewModel.portfolioChangePercentage.collectAsStateWithLifecycle()
     val isOperationLoading by viewModel.isOperationLoading.collectAsStateWithLifecycle()
     val isRefreshingState by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val operationError by viewModel.operationError.collectAsStateWithLifecycle()
@@ -147,7 +193,8 @@ fun WalletDashboardScreen(
                     if (data != null) {
                         securityViewModel.onBackupFileSelected(data)
                     }
-                } catch (e: Exception) {}
+                } catch (e: Exception) {
+                }
             }
         }
     }
@@ -234,6 +281,7 @@ fun WalletDashboardScreen(
                         DashboardContent(
                             wallets = state.data,
                             totalPortfolio = totalPortfolio,
+                            portfolioChangePercentage = portfolioChangePercentage,
                             balances = balances,
                             syncingNetworks = syncingNetworks,
                             isPrivacyModeEnabled = isPrivacyModeEnabled,
@@ -268,7 +316,7 @@ fun WalletDashboardScreen(
                     InlineLoading(message = stringResource(R.string.processing))
                 }
             }
-            
+
             SecurityOperationOverlay(operationState = operationState)
         }
     }
@@ -348,8 +396,12 @@ fun WalletDashboardScreen(
 
     PinEntryDialog(
         showDialog = showPinVerifyDialog,
-        title = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE) stringResource(R.string.enter_backup_pin) else stringResource(R.string.confirm_pin_title),
-        subtitle = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE) stringResource(R.string.restore_backup_pin_hint) else stringResource(R.string.confirm_pin_subtitle),
+        title = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE) stringResource(R.string.enter_backup_pin) else stringResource(
+            R.string.confirm_pin_title
+        ),
+        subtitle = if (pinVerifyPurpose == PinVerifyPurpose.RESTORE) stringResource(R.string.restore_backup_pin_hint) else stringResource(
+            R.string.confirm_pin_subtitle
+        ),
         errorMessage = pinSetupError?.asString(),
         onPinEntered = securityViewModel::onPinVerified,
         onTyping = securityViewModel::clearPinError,
@@ -417,6 +469,7 @@ fun DashboardTopBar(
 fun DashboardContent(
     wallets: List<Wallet>,
     totalPortfolio: BigDecimal,
+    portfolioChangePercentage: String,
     balances: Map<String, WalletBalance>,
     syncingNetworks: Set<Network>,
     isPrivacyModeEnabled: Boolean,
@@ -437,6 +490,7 @@ fun DashboardContent(
         item {
             AnimatedPortfolioHeader(
                 totalPortfolio = totalPortfolio,
+                portfolioChangePercentage = portfolioChangePercentage,
                 walletCount = wallets.size,
                 isPrivacyModeEnabled = isPrivacyModeEnabled,
                 isTablet = isTablet
@@ -743,7 +797,7 @@ fun WalletExpandedContent(
         wallet.evmTokens.forEach { token ->
             val lookupKey = "${token.network.chainId}_${token.contractAddress}"
             val tokenBalance = balance?.evmBalances?.get(lookupKey)
-            
+
             val (color, iconRes) = when (token.evmTokenType) {
                 EVMTokenType.NATIVE -> ethereumLight to R.drawable.ethereum
                 EVMTokenType.USDC -> usdcLight to R.drawable.usdc
@@ -900,6 +954,7 @@ fun SimpleBalanceRow(
 @Composable
 fun AnimatedPortfolioHeader(
     totalPortfolio: BigDecimal,
+    portfolioChangePercentage: String,
     walletCount: Int,
     isPrivacyModeEnabled: Boolean,
     isTablet: Boolean
@@ -917,6 +972,12 @@ fun AnimatedPortfolioHeader(
             previousValue = totalPortfolio
         }
     }
+
+    val isPositive =
+        !portfolioChangePercentage.startsWith("-") && portfolioChangePercentage != "0.0%"
+    val trendIcon =
+        if (isPositive) Icons.AutoMirrored.Outlined.TrendingUp else Icons.AutoMirrored.Outlined.TrendingDown
+    val trendColor = if (isPositive) Color(0xFF4CAF50) else Color(0xFFF44336)
 
     Surface(
         modifier = Modifier
@@ -955,7 +1016,7 @@ fun AnimatedPortfolioHeader(
                     )
 
                     Surface(
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
+                        color = trendColor.copy(alpha = 0.2f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Row(
@@ -964,16 +1025,16 @@ fun AnimatedPortfolioHeader(
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.TrendingUp,
+                                imageVector = trendIcon,
                                 contentDescription = null,
                                 modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.onPrimary
+                                tint = trendColor
                             )
                             Text(
-                                text = "+2.4%",
+                                text = portfolioChangePercentage,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimary
+                                color = trendColor
                             )
                         }
                     }
@@ -1279,7 +1340,9 @@ fun DeleteWalletDialog(
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                modifier = Modifier.fillMaxWidth().height(50.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,

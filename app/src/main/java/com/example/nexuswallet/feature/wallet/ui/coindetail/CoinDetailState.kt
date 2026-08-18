@@ -17,6 +17,7 @@ data class CoinDetailState(
     val balance: String = "0",
     val balanceFormatted: String = "",
     val usdValue: BigDecimal? = null,
+    val priceChange24h: Double = 0.0,
     val transactions: List<TransactionDisplayInfo> = emptyList(),
     val ethGasBalance: String = "0",
     val evmTokens: List<EVMToken> = emptyList(),

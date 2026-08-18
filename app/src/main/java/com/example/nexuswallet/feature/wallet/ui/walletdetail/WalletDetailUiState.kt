@@ -14,6 +14,7 @@ data class WalletDetailUiState(
     val balance: WalletBalance? = null,
     val transactions: List<TransactionDisplayInfo> = emptyList(),
     val pricePercentages: Map<String, Double> = emptyMap(),
+    val portfolioChangePercentage: String = "0.0%",
 
     // Unified assets list
     val assets: List<AssetDisplayInfo> = emptyList(),

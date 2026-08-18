@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.service.BlockchainSubscriptionService
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.market.domain.model.AssetPriceData
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
@@ -76,6 +77,9 @@ class WalletDashboardViewModel @Inject constructor(
         initialValue = BigDecimal.ZERO
     )
 
+    private val _portfolioChangePercentage = MutableStateFlow("0.0%")
+    val portfolioChangePercentage: StateFlow<String> = _portfolioChangePercentage.asStateFlow()
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
@@ -93,7 +97,7 @@ class WalletDashboardViewModel @Inject constructor(
 
     private var subscriptionJob: Job? = null
     private var priceRefreshJob: Job? = null
-    private var lastPrices: Map<String, Double> = emptyMap()
+    private var lastPrices: Map<String, AssetPriceData> = emptyMap()
 
     init {
         observeWallets()
@@ -101,6 +105,68 @@ class WalletDashboardViewModel @Inject constructor(
         observeSelectedCurrency()
         observeSignals()
         startPriceTimer()
+        observePortfolioChange()
+    }
+
+    private fun observePortfolioChange() {
+        viewModelScope.launch {
+            balances.collect { balancesMap ->
+                calculatePortfolioChange(balancesMap, lastPrices)
+            }
+        }
+    }
+
+    private fun calculatePortfolioChange(
+        balancesMap: Map<String, WalletBalance>,
+        pricesMap: Map<String, AssetPriceData>
+    ) {
+        if (balancesMap.isEmpty() || pricesMap.isEmpty()) {
+            _portfolioChangePercentage.update { "0.0%" }
+            return
+        }
+
+        var totalValue = BigDecimal.ZERO
+        var totalChangeWeighted = BigDecimal.ZERO
+
+        balancesMap.values.forEach { walletBalance ->
+            // Bitcoin
+            walletBalance.bitcoinBalances.forEach { (_, balance) ->
+                val priceData = pricesMap["BTC"]
+                if (priceData != null) {
+                    val value = balance.usdValue
+                    totalValue = totalValue.add(value)
+                    totalChangeWeighted = totalChangeWeighted.add(value.multiply(BigDecimal.valueOf(priceData.change24h)))
+                }
+            }
+
+            // Solana
+            walletBalance.solanaBalances.forEach { (_, balance) ->
+                val priceData = pricesMap["SOL"]
+                if (priceData != null) {
+                    val value = balance.usdValue
+                    totalValue = totalValue.add(value)
+                    totalChangeWeighted = totalChangeWeighted.add(value.multiply(BigDecimal.valueOf(priceData.change24h)))
+                }
+            }
+
+            // EVM
+            walletBalance.evmBalances.values.forEach { balance ->
+                val priceData = pricesMap[balance.evmTokenType.symbol]
+                if (priceData != null) {
+                    val value = balance.usdValue
+                    totalValue = totalValue.add(value)
+                    totalChangeWeighted = totalChangeWeighted.add(value.multiply(BigDecimal.valueOf(priceData.change24h)))
+                }
+            }
+        }
+
+        if (totalValue > BigDecimal.ZERO) {
+            val avgChange = totalChangeWeighted.divide(totalValue, 4, java.math.RoundingMode.HALF_UP).toDouble()
+            val sign = if (avgChange >= 0) "+" else ""
+            _portfolioChangePercentage.update { "$sign${String.format(java.util.Locale.US, "%.2f", avgChange)}%" }
+        } else {
+            _portfolioChangePercentage.update { "0.0%" }
+        }
     }
 
     private fun startPriceTimer() {
@@ -124,6 +190,7 @@ class WalletDashboardViewModel @Inject constructor(
         val pricesResult = getSimplePricesUseCase(allSymbols, SupportedCurrency.USD)
         if (pricesResult is Result.Success) {
             lastPrices = pricesResult.data
+            calculatePortfolioChange(balances.value, lastPrices)
         }
     }
 
@@ -224,6 +291,7 @@ class WalletDashboardViewModel @Inject constructor(
                     val pricesResult = getSimplePricesUseCase(allSymbols, SupportedCurrency.USD)
                     if (pricesResult is Result.Success) {
                         lastPrices = pricesResult.data
+                        calculatePortfolioChange(balances.value, lastPrices)
                         pricesResult.data
                     } else {
                         lastPrices
@@ -259,7 +327,7 @@ class WalletDashboardViewModel @Inject constructor(
                                         val result = syncBitcoinBalanceUseCase(
                                             wallet.id,
                                             coin,
-                                            prices[coin.symbol] ?: 0.0,
+                                            prices[coin.symbol]?.price ?: 0.0,
                                             saveToCache = false
                                         )
                                         if (result is Result.Success) {
@@ -285,7 +353,7 @@ class WalletDashboardViewModel @Inject constructor(
                                         val result = syncSolanaBalanceUseCase(
                                             wallet.id,
                                             coin,
-                                            prices[coin.symbol] ?: 0.0,
+                                            prices[coin.symbol]?.price ?: 0.0,
                                             saveToCache = false
                                         )
                                         if (result is Result.Success) {
@@ -309,7 +377,7 @@ class WalletDashboardViewModel @Inject constructor(
                                 val result = syncEVMBalancesUseCase(
                                     wallet.id,
                                     wallet.evmTokens,
-                                    prices,
+                                    prices.mapValues { it.value.price },
                                     saveToCache = false
                                 )
                                 if (result is Result.Success) {

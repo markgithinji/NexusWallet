@@ -3,6 +3,7 @@ package com.example.nexuswallet
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.market.domain.model.AssetPriceData
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.model.ThemeMode
@@ -108,8 +109,8 @@ class MainViewModel @Inject constructor(
             var rate = 0.0
             
             if (btcInTargetResult is Result.Success && btcInUsdResult is Result.Success) {
-                val btcInTarget = btcInTargetResult.data["BTC"] ?: 0.0
-                val btcInUsd = btcInUsdResult.data["BTC"] ?: 0.0
+                val btcInTarget = btcInTargetResult.data["BTC"]?.price ?: 0.0
+                val btcInUsd = btcInUsdResult.data["BTC"]?.price ?: 0.0
                 
                 if (btcInUsd > 0) {
                     rate = btcInTarget / btcInUsd
@@ -120,7 +121,7 @@ class MainViewModel @Inject constructor(
             if (rate <= 0.0) {
                 val usdcResult = getSimplePricesUseCase(listOf("USDC"), currency)
                 if (usdcResult is Result.Success) {
-                    rate = usdcResult.data["USDC"] ?: 0.0
+                    rate = usdcResult.data["USDC"]?.price ?: 0.0
                 }
             }
             
@@ -129,8 +130,8 @@ class MainViewModel @Inject constructor(
                 val ethResult = getSimplePricesUseCase(listOf("ETH"), currency)
                 val ethUsdResult = getSimplePricesUseCase(listOf("ETH"), SupportedCurrency.USD)
                 if (ethResult is Result.Success && ethUsdResult is Result.Success) {
-                    val ethInTarget = ethResult.data["ETH"] ?: 0.0
-                    val ethInUsd = ethUsdResult.data["ETH"] ?: 0.0
+                    val ethInTarget = ethResult.data["ETH"]?.price ?: 0.0
+                    val ethInUsd = ethUsdResult.data["ETH"]?.price ?: 0.0
                     if (ethInUsd > 0) {
                         rate = ethInTarget / ethInUsd
                     }

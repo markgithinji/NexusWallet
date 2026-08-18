@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.formatCurrency
+import com.example.nexuswallet.feature.market.domain.model.AssetPriceData
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
@@ -55,7 +56,7 @@ class TransactionDetailViewModel @Inject constructor(
                     // Get real price in USD for base value
                     val priceResult = getSimplePricesUseCase(listOf(transaction.coin.symbol), SupportedCurrency.USD)
                     val price = if (priceResult is Result.Success) {
-                        priceResult.data[transaction.coin.symbol] ?: 0.0
+                        priceResult.data[transaction.coin.symbol]?.price ?: 0.0
                     } else 0.0
 
                     val amount = transaction.amount.toDoubleOrNull() ?: 0.0

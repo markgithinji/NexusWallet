@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.wallet.ui.coindetail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.market.domain.model.AssetPriceData
 import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
@@ -65,6 +66,8 @@ class CoinDetailViewModel @Inject constructor(
             // Sync balance and prices in parallel if refreshing
             if (forceRefresh) {
                 syncData(walletId, coin)
+            } else {
+                fetchPriceInfo(coin)
             }
 
             val result = when (coin) {
@@ -188,23 +191,35 @@ class CoinDetailViewModel @Inject constructor(
         _state.update { it.copy(error = null) }
     }
 
+    private suspend fun fetchPriceInfo(coin: Coin) {
+        val pricesResult = getSimplePricesUseCase(listOf(coin.symbol), SupportedCurrency.USD)
+        if (pricesResult is Result.Success) {
+            val priceData = pricesResult.data[coin.symbol]
+            if (priceData != null) {
+                _state.update { it.copy(priceChange24h = priceData.change24h) }
+            }
+        }
+    }
+
     private suspend fun syncData(walletId: String, coin: Coin) {
         // ALWAYS fetch prices in USD for the database "usdValue" fields
         val pricesResult = getSimplePricesUseCase(listOf(coin.symbol), SupportedCurrency.USD)
         val prices = if (pricesResult is Result.Success) pricesResult.data else emptyMap()
-        val currentPrice = prices[coin.symbol] ?: 0.0
+        val priceData = prices[coin.symbol] ?: AssetPriceData(0.0, 0.0)
+
+        _state.update { it.copy(priceChange24h = priceData.change24h) }
 
         when (coin) {
             is BitcoinCoin -> {
-                syncBitcoinBalanceUseCase(walletId, coin, currentPrice)
+                syncBitcoinBalanceUseCase(walletId, coin, priceData.price)
             }
 
             is SolanaCoin -> {
-                syncSolanaBalanceUseCase(walletId, coin, currentPrice)
+                syncSolanaBalanceUseCase(walletId, coin, priceData.price)
             }
 
             is EVMToken -> {
-                syncEVMBalancesUseCase(walletId, listOf(coin), prices)
+                syncEVMBalancesUseCase(walletId, listOf(coin), prices.mapValues { it.value.price })
             }
         }
     }

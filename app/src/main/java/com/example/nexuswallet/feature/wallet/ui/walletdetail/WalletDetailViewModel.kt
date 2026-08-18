@@ -11,6 +11,7 @@ import com.example.nexuswallet.feature.core.domain.model.Transaction
 import com.example.nexuswallet.feature.core.service.BlockchainSubscriptionService
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.logging.Logger
+import com.example.nexuswallet.feature.market.domain.model.AssetPriceData
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase
 import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
@@ -59,7 +60,6 @@ class WalletDetailViewModel @Inject constructor(
     private val syncSolanaBalanceUseCase: SyncSolanaBalanceUseCase,
     private val syncEVMBalancesUseCase: SyncEVMBalancesUseCase,
     private val getAllTransactionsUseCase: GetAllTransactionsUseCase,
-    private val marketRepository: MarketRepository,
     private val getSimplePricesUseCase: GetSimplePricesUseCase,
     private val formatTransactionDisplayUseCase: FormatTransactionDisplayUseCase,
     private val formatBalanceUseCase: FormatBalanceUseCase,
@@ -72,6 +72,7 @@ class WalletDetailViewModel @Inject constructor(
     val uiState: StateFlow<WalletDetailUiState> = _uiState.asStateFlow()
 
     private var transactionsJob: Job? = null
+    private var lastPrices: Map<String, AssetPriceData> = emptyMap()
 
     init {
         observeSelectedCurrency()
@@ -163,15 +164,38 @@ class WalletDetailViewModel @Inject constructor(
                 }
                 .collect { loadedBalance ->
                     _uiState.update { it.copy(balance = loadedBalance, isLoadingBalance = false) }
+                    calculatePortfolioChange(loadedBalance, lastPrices)
                     updateAssets()
                 }
         }
     }
 
     private suspend fun loadMarketPercentages() {
-        when (val res = marketRepository.getLatestPricePercentages(SupportedCurrency.USD)) {
-            is Result.Success -> _uiState.update { it.copy(pricePercentages = res.data) }
-            else -> _uiState.update { it.copy(pricePercentages = emptyMap()) }
+        val wallet = _uiState.value.wallet ?: return
+        val symbols =
+            (wallet.bitcoinCoins.map { it.symbol } + wallet.solanaCoins.map { it.symbol } + wallet.evmTokens.map { it.symbol }).distinct()
+
+        when (val res = getSimplePricesUseCase(symbols, SupportedCurrency.USD)) {
+            is Result.Success -> {
+                lastPrices = res.data
+                val mapping = mapOf(
+                    "BTC" to "bitcoin",
+                    "ETH" to "ethereum",
+                    "SOL" to "solana",
+                    "USDC" to "usd-coin",
+                    "USDT" to "tether"
+                )
+                val percentages = res.data.mapNotNull { (symbol, data) ->
+                    mapping[symbol.uppercase()]?.let { id -> id to data.change24h }
+                }.toMap()
+                _uiState.update { it.copy(pricePercentages = percentages) }
+                calculatePortfolioChange(walletRepository.getWalletBalance(wallet.id), res.data)
+            }
+
+            else -> {
+                // Fallback to repository if use case fails or return empty
+                _uiState.update { it.copy(pricePercentages = emptyMap()) }
+            }
         }
         updateAssets()
     }
@@ -186,7 +210,21 @@ class WalletDetailViewModel @Inject constructor(
             val symbols =
                 (wallet.bitcoinCoins.map { it.symbol } + wallet.solanaCoins.map { it.symbol } + wallet.evmTokens.map { it.symbol }).distinct()
             val pricesRes = getSimplePricesUseCase(symbols, SupportedCurrency.USD)
-            val prices = if (pricesRes is Result.Success) pricesRes.data else emptyMap()
+            val prices = if (pricesRes is Result.Success) {
+                lastPrices = pricesRes.data
+                val mapping = mapOf(
+                    "BTC" to "bitcoin",
+                    "ETH" to "ethereum",
+                    "SOL" to "solana",
+                    "USDC" to "usd-coin",
+                    "USDT" to "tether"
+                )
+                val percentages = pricesRes.data.mapNotNull { (symbol, data) ->
+                    mapping[symbol.uppercase()]?.let { id -> id to data.change24h }
+                }.toMap()
+                _uiState.update { it.copy(pricePercentages = percentages) }
+                pricesRes.data
+            } else lastPrices
 
             val allErrors = mutableListOf<ChainSyncError>()
             val btcBalances = mutableMapOf<BitcoinNetwork, BitcoinBalance>()
@@ -201,7 +239,7 @@ class WalletDetailViewModel @Inject constructor(
                             val res = syncBitcoinBalanceUseCase(
                                 wallet.id,
                                 coin,
-                                prices[coin.symbol] ?: 0.0,
+                                prices[coin.symbol]?.price ?: 0.0,
                                 saveToCache = false
                             )
                             _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - coin.network) }
@@ -217,7 +255,7 @@ class WalletDetailViewModel @Inject constructor(
                             val res = syncSolanaBalanceUseCase(
                                 wallet.id,
                                 coin,
-                                prices[coin.symbol] ?: 0.0,
+                                prices[coin.symbol]?.price ?: 0.0,
                                 saveToCache = false
                             )
                             _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - coin.network) }
@@ -234,7 +272,7 @@ class WalletDetailViewModel @Inject constructor(
                             val res = syncEVMBalancesUseCase(
                                 wallet.id,
                                 wallet.evmTokens,
-                                prices,
+                                prices.mapValues { it.value.price },
                                 saveToCache = false
                             )
                             _uiState.update { it.copy(syncingNetworks = it.syncingNetworks - evmNets) }
@@ -284,6 +322,7 @@ class WalletDetailViewModel @Inject constructor(
                     ?: emptyMap()
             )
             walletRepository.saveWalletBalance(newBalance)
+            calculatePortfolioChange(newBalance, prices)
 
             if (syncTransactions) observeTransactions(
                 wallet.id,
@@ -366,6 +405,58 @@ class WalletDetailViewModel @Inject constructor(
         wallet: Wallet
     ): List<TransactionDisplayInfo> =
         txs.map { formatTransactionDisplayUseCase(it, findCoinForTransaction(it, wallet)) }
+
+    private fun calculatePortfolioChange(
+        balances: WalletBalance?,
+        pricesMap: Map<String, AssetPriceData>
+    ) {
+        if (balances == null || pricesMap.isEmpty()) {
+            _uiState.update { it.copy(portfolioChangePercentage = "0.0%") }
+            return
+        }
+
+        var totalValue = BigDecimal.ZERO
+        var totalChangeWeighted = BigDecimal.ZERO
+
+        // Bitcoin
+        balances.bitcoinBalances.forEach { (_, balance) ->
+            val priceData = pricesMap["BTC"]
+            if (priceData != null) {
+                val value = balance.usdValue
+                totalValue = totalValue.add(value)
+                totalChangeWeighted = totalChangeWeighted.add(value.multiply(BigDecimal.valueOf(priceData.change24h)))
+            }
+        }
+
+        // Solana
+        balances.solanaBalances.forEach { (_, balance) ->
+            val priceData = pricesMap["SOL"]
+            if (priceData != null) {
+                val value = balance.usdValue
+                totalValue = totalValue.add(value)
+                totalChangeWeighted = totalChangeWeighted.add(value.multiply(BigDecimal.valueOf(priceData.change24h)))
+            }
+        }
+
+        // EVM
+        balances.evmBalances.values.forEach { balance ->
+            val priceData = pricesMap[balance.evmTokenType.symbol]
+            if (priceData != null) {
+                val value = balance.usdValue
+                totalValue = totalValue.add(value)
+                totalChangeWeighted = totalChangeWeighted.add(value.multiply(BigDecimal.valueOf(priceData.change24h)))
+            }
+        }
+
+        if (totalValue > BigDecimal.ZERO) {
+            val avgChange = totalChangeWeighted.divide(totalValue, 4, java.math.RoundingMode.HALF_UP).toDouble()
+            val sign = if (avgChange >= 0) "+" else ""
+            val formatted = "$sign${String.format(java.util.Locale.US, "%.2f", avgChange)}%"
+            _uiState.update { it.copy(portfolioChangePercentage = formatted) }
+        } else {
+            _uiState.update { it.copy(portfolioChangePercentage = "0.0%") }
+        }
+    }
 
     private fun findCoinForTransaction(tx: Transaction, wallet: Wallet): Coin = when (tx) {
         is BitcoinTransaction -> wallet.bitcoinCoins.find { it.network == tx.network }
