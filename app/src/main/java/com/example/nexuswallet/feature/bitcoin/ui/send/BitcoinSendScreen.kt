@@ -56,9 +56,9 @@ fun BitcoinSendScreen(
     coin: Coin,
     viewModel: BitcoinSendViewModel = hiltViewModel()
 ) {
-    var showMaxDialog by remember { mutableStateOf(false) }
     var showNetworkSelector by remember { mutableStateOf(false) }
     var showAddressBook by remember { mutableStateOf(false) }
+    var showMaxDialog by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
     val addressFocusRequester = remember { FocusRequester() }
@@ -223,7 +223,6 @@ fun BitcoinSendScreen(
                     symbol = coin.symbol,
                     coinColor = bitcoinLight,
                     onMaxClick = {
-                        amountTouched = true
                         showMaxDialog = true
                     },
                     errorMessage = errorState.amountErrorMessage,
@@ -269,7 +268,6 @@ fun BitcoinSendScreen(
         }
     }
 
-    // Max Amount Dialog
     if (showMaxDialog) {
         MaxAmountDialog(
             balance = state.balance,

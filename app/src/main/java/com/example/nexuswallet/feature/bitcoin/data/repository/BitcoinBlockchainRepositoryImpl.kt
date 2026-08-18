@@ -144,10 +144,11 @@ class BitcoinBlockchainRepositoryImpl @Inject constructor(
         isSegwit: Boolean
     ): Long {
         return if (isSegwit) {
-            // SegWit vByte estimation
+            // SegWit vByte estimation (Native SegWit P2WPKH)
             // Header (11) + Inputs (68 * count) + Outputs (31 * count)
             (11 + (inputCount * 68) + (outputCount * 31)).toLong()
         } else {
+            // Legacy estimation
             BitcoinConstants.BASE_TX_SIZE + (inputCount * BitcoinConstants.BYTES_PER_INPUT) + (outputCount * BitcoinConstants.BYTES_PER_OUTPUT)
         }
     }

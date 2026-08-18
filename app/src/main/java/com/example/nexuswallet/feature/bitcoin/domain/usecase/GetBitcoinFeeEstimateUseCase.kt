@@ -19,13 +19,20 @@ class GetBitcoinFeeEstimateUseCase @Inject constructor(
         feeLevel: FeeLevel,
         inputCount: Int,
         outputCount: Int,
-        network: BitcoinNetwork
+        network: BitcoinNetwork,
+        isSegwit: Boolean = true
     ): Result<BitcoinFeeEstimate> {
         logger.d(
             TAG,
-            "Getting fee estimate for $feeLevel ($network) with $inputCount inputs, $outputCount outputs"
+            "Getting fee estimate for $feeLevel ($network) with $inputCount inputs, $outputCount outputs, isSegwit=$isSegwit"
         )
-        return bitcoinBlockchainRepository.getFeeEstimate(feeLevel, inputCount, outputCount, network)
+        return bitcoinBlockchainRepository.getFeeEstimate(
+            feeLevel = feeLevel,
+            inputCount = inputCount,
+            outputCount = outputCount,
+            network = network,
+            isSegwit = isSegwit
+        )
     }
 
     companion object {

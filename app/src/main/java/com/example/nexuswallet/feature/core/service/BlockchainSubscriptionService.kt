@@ -2,7 +2,6 @@ package com.example.nexuswallet.feature.core.service
 
 import com.example.nexuswallet.BuildConfig
 import com.example.nexuswallet.feature.core.domain.di.IoDispatcher
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.BitcoinNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.EthereumNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Network

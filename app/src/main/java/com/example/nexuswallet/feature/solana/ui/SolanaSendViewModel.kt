@@ -15,6 +15,7 @@ import com.example.nexuswallet.feature.solana.domain.usecase.ValidateSolanaSendU
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaCoin
 import com.example.nexuswallet.feature.wallet.domain.model.SolanaNetwork
 import com.example.nexuswallet.feature.wallet.domain.model.Wallet
+import com.example.nexuswallet.feature.wallet.domain.model.SPLToken
 import com.example.nexuswallet.feature.wallet.domain.repository.WalletRepository
 import com.example.nexuswallet.feature.wallet.domain.usecase.GetAddressBookEntriesUseCase
 import com.example.nexuswallet.feature.wallet.util.ExplorerUrlHelper
@@ -24,6 +25,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.math.RoundingMode
 import javax.crypto.Cipher
 import javax.inject.Inject
 
@@ -85,7 +87,6 @@ class SolanaSendViewModel @Inject constructor(
                 return@launch
             }
 
-            // Populate available tokens from wallet
             val availableSplTokens = coin.splTokens
 
             _state.update { 
@@ -94,10 +95,9 @@ class SolanaSendViewModel @Inject constructor(
                 )
             }
 
-            // Initial balance check
             refreshBalance()
             loadFiatRate()
-            loadFeeEstimate()
+            refreshFeeEstimate(immediate = true)
         }
     }
 
@@ -107,18 +107,18 @@ class SolanaSendViewModel @Inject constructor(
                 _state.update { it.copy(toAddress = event.address) }
                 validate()
                 if (event.address.length >= 32) {
-                    loadFeeEstimate()
+                    refreshFeeEstimate(immediate = false)
                 }
             }
             is SolanaSendEvent.AmountChanged -> {
                 val bigDecimalAmount = event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
                 _state.update { it.copy(amount = event.amount, amountValue = bigDecimalAmount) }
                 validate()
-                loadFeeEstimate()
+                refreshFeeEstimate(immediate = false)
             }
             is SolanaSendEvent.FeeLevelChanged -> {
                 _state.update { it.copy(feeLevel = event.feeLevel) }
-                loadFeeEstimate()
+                refreshFeeEstimate(immediate = true)
             }
             is SolanaSendEvent.SelectToken -> {
                 _state.update { 
@@ -126,25 +126,27 @@ class SolanaSendViewModel @Inject constructor(
                         selectedSplToken = event.token,
                         isNativeSol = event.token == null,
                         amount = "",
-                        amountValue = BigDecimal.ZERO
+                        amountValue = BigDecimal.ZERO,
+                        feeEstimate = null
                     ) 
                 }
                 validate()
-                loadFeeEstimate()
+                refreshFeeEstimate(immediate = true)
                 loadFiatRate()
             }
             is SolanaSendEvent.ToggleFiatMode -> {
                 _state.update { it.copy(isFiatMode = event.isFiatMode) }
             }
+            SolanaSendEvent.UseMax -> useMax()
             SolanaSendEvent.Validate -> validate()
             SolanaSendEvent.ClearError -> clearError()
         }
     }
 
     fun switchNetwork(network: SolanaNetwork) {
-        _state.update { it.copy(network = network, isLoading = true, balance = BigDecimal.ZERO) }
+        _state.update { it.copy(network = network, isLoading = true, balance = BigDecimal.ZERO, feeEstimate = null) }
         refreshBalance()
-        loadFeeEstimate()
+        refreshFeeEstimate(immediate = true)
     }
 
     private fun loadFiatRate() {
@@ -158,7 +160,6 @@ class SolanaSendViewModel @Inject constructor(
                 }
             }
             
-            // Fetch price in USD as the base for fiat conversion calculations
             when (val result = marketRepository.getTokenDetails(tokenId, SupportedCurrency.USD)) {
                 is Result.Success -> {
                     _state.update { it.copy(fiatRate = result.data.currentPrice) }
@@ -173,13 +174,11 @@ class SolanaSendViewModel @Inject constructor(
             val currentState = _state.value
             val coin = currentState.coin ?: return@launch
             
-            // 1. Always fetch Native SOL balance for fees/rent
             val solResult = solanaRepository.getBalance(coin.address, currentState.network)
             if (solResult is Result.Success) {
                 _state.update { it.copy(solBalance = solResult.data) }
             }
 
-            // 2. Fetch selected asset balance
             val result = if (currentState.isNativeSol) {
                 solResult
             } else {
@@ -204,11 +203,12 @@ class SolanaSendViewModel @Inject constructor(
         }
     }
 
-    private fun loadFeeEstimate() {
+    private fun refreshFeeEstimate(immediate: Boolean = false) {
         feeJob?.cancel()
         _state.update { it.copy(isFeeLoading = true) }
         feeJob = viewModelScope.launch {
-            delay(500)
+            if (!immediate) delay(500)
+            
             val currentState = _state.value
             val coin = currentState.coin ?: return@launch
             
@@ -229,6 +229,66 @@ class SolanaSendViewModel @Inject constructor(
             } else {
                 _state.update { it.copy(isFeeLoading = false) }
             }
+        }
+    }
+
+    private fun useMax() {
+        _state.update { it.copy(isFeeLoading = true) }
+        viewModelScope.launch {
+            val currentState = _state.value
+            val coin = currentState.coin ?: return@launch
+            
+            // 1. Fresh Balance Fetch
+            val solResult = solanaRepository.getBalance(coin.address, currentState.network)
+            val currentSolBalance = if (solResult is Result.Success) solResult.data else currentState.solBalance
+            
+            val assetResult = if (currentState.isNativeSol) {
+                solResult
+            } else {
+                val token = currentState.selectedSplToken!!
+                solanaRepository.getTokenBalance(coin.address, token.mintAddress, currentState.network)
+            }
+            val currentAssetBalance = if (assetResult is Result.Success) assetResult.data else currentState.balance
+
+            // 2. Precise Fee Calculation
+            val feeResult = getFeeUseCase(
+                feeLevel = currentState.feeLevel,
+                network = currentState.network,
+                fromAddress = currentState.walletAddress,
+                toAddress = currentState.toAddress.takeIf { it.isNotBlank() },
+                lamports = 0L, // Dummy for estimation
+                tokenMint = currentState.selectedSplToken?.mintAddress
+            )
+
+            if (feeResult is Result.Success) {
+                val feeEstimate = feeResult.data
+                val totalFeeSol = BigDecimal(feeEstimate.feeSol)
+                
+                // 3. Atomic Sweep Calculation
+                val maxAmount = if (currentState.isNativeSol) {
+                    (currentAssetBalance - totalFeeSol).setScale(9, RoundingMode.DOWN)
+                } else {
+                    currentAssetBalance
+                }
+                
+                if (maxAmount > BigDecimal.ZERO) {
+                    _state.update { 
+                        it.copy(
+                            balance = currentAssetBalance,
+                            solBalance = currentSolBalance,
+                            amount = maxAmount.setScale(9, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString(),
+                            amountValue = maxAmount,
+                            feeEstimate = feeEstimate,
+                            isFeeLoading = false
+                        )
+                    }
+                } else {
+                    _state.update { it.copy(isFeeLoading = false) }
+                }
+            } else {
+                _state.update { it.copy(isFeeLoading = false) }
+            }
+            validate()
         }
     }
 

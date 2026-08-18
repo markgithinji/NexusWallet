@@ -8,6 +8,7 @@ import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinFeeEstim
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinWalletUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.SelectBitcoinUtxosUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.ValidateBitcoinTransactionUseCase
+import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants
 import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_INPUT_COUNT
 import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants.DEFAULT_OUTPUT_COUNT
 import com.example.nexuswallet.feature.core.domain.model.FeeLevel
@@ -62,6 +63,7 @@ class BitcoinSendViewModel @Inject constructor(
                 is BitcoinSendEvent.UpdateFeeLevel -> updateFeeLevel(event.feeLevel)
                 is BitcoinSendEvent.SwitchNetwork -> switchNetwork(event.network)
                 is BitcoinSendEvent.ToggleFiatMode -> toggleFiatMode(event.isFiatMode)
+                BitcoinSendEvent.UseMax -> useMax()
             }
         }
     }
@@ -131,7 +133,6 @@ class BitcoinSendViewModel @Inject constructor(
                 }
 
                 // Load balance, fee estimate, and fiat rate after initialization
-                // We keep isLoading = true until these are done or at least started
                 loadBalance(walletInfo.walletAddress, walletInfo.network, targetCoin.xpub)
                 loadFeeEstimate(FeeLevel.NORMAL)
                 loadFiatRate()
@@ -169,39 +170,43 @@ class BitcoinSendViewModel @Inject constructor(
         _state.update { it.copy(isFeeLoading = true) }
 
         val state = _state.value
-        // Step 1: Get base fee rate (using 1 input as placeholder)
+        
+        // Detect if the current address is SegWit (starts with bc1 or tb1)
+        val isSegwitAddress = state.walletAddress.startsWith("bc1", ignoreCase = true) || 
+                             state.walletAddress.startsWith("tb1", ignoreCase = true)
+
         val baseFeeResult = getBitcoinFeeEstimateUseCase(
             feeLevel = feeLevel,
             inputCount = DEFAULT_INPUT_COUNT,
             outputCount = DEFAULT_OUTPUT_COUNT,
-            network = state.network
+            network = state.network,
+            isSegwit = isSegwitAddress
         )
         
         val feePerByte = if (baseFeeResult is Result.Success) baseFeeResult.data.feePerByte else 10.0
-
-        // Step 2: Fetch UTXOs
         val utxosResult = bitcoinBlockchainRepository.getUnspentOutputs(state.walletAddress, state.network)
 
-        // Step 3: Determine accurate input count
         val inputCount = if (utxosResult is Result.Success) {
             val selected = selectBitcoinUtxosUseCase(
                 utxos = utxosResult.data,
                 targetSatoshis = state.amountValue.toSatoshis(),
                 feePerByte = feePerByte
             )
-            // If selection fails, use the total count of UTXOs to calculate the "required" fee,
-            // which will trigger the insufficient balance error in validation.
             if (selected.isNotEmpty()) selected.size else utxosResult.data.size.coerceAtLeast(DEFAULT_INPUT_COUNT)
         } else {
             DEFAULT_INPUT_COUNT
         }
 
-        // Step 4: Get final accurate fee estimate
+        val hasSegwitUtxo = (utxosResult as? Result.Success)?.data?.any { 
+            org.bitcoinj.script.ScriptPattern.isP2WPKH(it.script) 
+        } ?: isSegwitAddress
+
         when (val result = getBitcoinFeeEstimateUseCase(
             feeLevel = feeLevel,
             inputCount = inputCount,
             outputCount = DEFAULT_OUTPUT_COUNT,
-            network = state.network
+            network = state.network,
+            isSegwit = hasSegwitUtxo
         )) {
             is Result.Success -> {
                 _state.update { it.copy(feeEstimate = result.data, isFeeLoading = false) }
@@ -217,9 +222,94 @@ class BitcoinSendViewModel @Inject constructor(
         }
     }
 
+    private fun refreshFeeEstimate(immediate: Boolean = false) {
+        feeJob?.cancel()
+        // Set loading state IMMEDIATELY to prevent clicking "Continue" with stale data
+        _state.update { it.copy(isFeeLoading = true) } 
+        feeJob = viewModelScope.launch {
+            if (!immediate) delay(500)
+            loadFeeEstimate(_state.value.feeLevel)
+        }
+    }
+
+    private suspend fun useMax() {
+        _state.update { it.copy(isFeeLoading = true) }
+        
+        val state = _state.value
+        val utxosResult = bitcoinBlockchainRepository.getUnspentOutputs(state.walletAddress, state.network)
+        
+        if (utxosResult is Result.Success) {
+            val allUtxos = utxosResult.data
+            if (allUtxos.isEmpty()) {
+                _state.update { it.copy(isFeeLoading = false) }
+                validateInputs()
+                return
+            }
+
+            // Detect SegWit and calculate mixed input size
+            val totalInputSize = allUtxos.fold(0L) { acc, item ->
+                acc + when {
+                    org.bitcoinj.script.ScriptPattern.isP2WPKH(item.script) -> BitcoinConstants.BYTES_PER_INPUT_SEGWIT
+                    org.bitcoinj.script.ScriptPattern.isP2SH(item.script) -> BitcoinConstants.BYTES_PER_INPUT_P2SH
+                    else -> BitcoinConstants.BYTES_PER_INPUT
+                }
+            }
+            val hasSegwit = allUtxos.any { org.bitcoinj.script.ScriptPattern.isP2WPKH(it.script) }
+            
+            // Sweep calculation usually has only 1 output (the recipient)
+            val sweepOutputCount = 1
+            val baseSize = if (hasSegwit) 11L else BitcoinConstants.BASE_TX_SIZE
+            val outputSize = if (hasSegwit) (sweepOutputCount * BitcoinConstants.BYTES_PER_OUTPUT_SEGWIT) else (sweepOutputCount * BitcoinConstants.BYTES_PER_OUTPUT)
+            val totalSize = baseSize + totalInputSize + outputSize
+
+            // Get current fee rate
+            val feePerByteResult = bitcoinBlockchainRepository.getFeeEstimate(
+                feeLevel = state.feeLevel,
+                inputCount = 1, // Ballpark call just to get rate
+                outputCount = 2,
+                network = state.network,
+                isSegwit = hasSegwit
+            )
+
+            if (feePerByteResult is Result.Success) {
+                val feePerByte = feePerByteResult.data.feePerByte
+                val totalFeeSatoshis = (totalSize * feePerByte).toLong()
+                val totalFee = BigDecimal(totalFeeSatoshis).divide(BigDecimal(BitcoinConstants.SATOSHIS_PER_BTC), 8, RoundingMode.HALF_UP)
+                
+                // Sweep calculation: Amount = Balance - Fee
+                val maxAmount = (state.balance - totalFee).setScale(8, RoundingMode.DOWN)
+                
+                if (maxAmount > BigDecimal.ZERO) {
+                    _state.update { 
+                        it.copy(
+                            amount = maxAmount.stripTrailingZeros().toPlainString(),
+                            amountValue = maxAmount,
+                            feeEstimate = feePerByteResult.data.copy(
+                                totalFeeBtc = totalFee.toPlainString(),
+                                totalFeeSatoshis = totalFeeSatoshis,
+                                estimatedSize = totalSize
+                            ),
+                            isFeeLoading = false
+                        ) 
+                    }
+                } else {
+                    _state.update { it.copy(isFeeLoading = false) }
+                }
+            } else {
+                _state.update { it.copy(isFeeLoading = false) }
+            }
+        } else {
+            _state.update { it.copy(isFeeLoading = false) }
+        }
+        validateInputs()
+    }
+
     private fun updateAddress(address: String) {
         _state.update { it.copy(toAddress = address) }
         validateInputs()
+        if (address.length >= 26) {
+            refreshFeeEstimate(immediate = false)
+        }
     }
 
     private fun updateAmount(amount: String) {
@@ -240,21 +330,13 @@ class BitcoinSendViewModel @Inject constructor(
 
         validateInputs()
         if (amountValue > BigDecimal.ZERO) {
-            refreshFeeEstimate()
+            refreshFeeEstimate(immediate = false)
         }
     }
 
-    private fun refreshFeeEstimate() {
-        feeJob?.cancel()
-        feeJob = viewModelScope.launch {
-            delay(500)
-            loadFeeEstimate(_state.value.feeLevel)
-        }
-    }
-
-    private suspend fun updateFeeLevel(feeLevel: FeeLevel) {
+    private fun updateFeeLevel(feeLevel: FeeLevel) {
         _state.update { it.copy(feeLevel = feeLevel) }
-        loadFeeEstimate(feeLevel)
+        refreshFeeEstimate(immediate = true)
     }
 
     private suspend fun switchNetwork(network: BitcoinNetwork) {
@@ -278,19 +360,16 @@ class BitcoinSendViewModel @Inject constructor(
     }
 
     private suspend fun loadFiatRate() {
-        // ALWAYS fetch price in USD as the base for fiat conversion calculations in the UI
         when (val result = marketRepository.getTokenDetails("bitcoin", SupportedCurrency.USD)) {
             is Result.Success -> {
                 _state.update { it.copy(fiatRate = result.data.currentPrice) }
             }
-
             else -> {}
         }
     }
 
     private fun validateInputs() {
         val currentWallet = wallet
-
         viewModelScope.launch {
             val state = _state.value
             val validationResult = validateBitcoinTransactionUseCase(
@@ -317,7 +396,6 @@ class BitcoinSendViewModel @Inject constructor(
                                 ?: validationResult.networkError
                                 ?: "Invalid transaction"
                         }
-
                         else -> null
                     }
                 )

@@ -10,4 +10,5 @@ sealed class SolanaSendEvent {
     object Validate : SolanaSendEvent()
     object ClearError : SolanaSendEvent()
     data class ToggleFiatMode(val isFiatMode: Boolean) : SolanaSendEvent()
+    object UseMax : SolanaSendEvent()
 }

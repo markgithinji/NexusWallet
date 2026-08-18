@@ -91,14 +91,12 @@ class EVMSendViewModel @Inject constructor(
                 )
             }
 
-            // Load wallet
             wallet = walletRepository.getWallet(walletId)
             if (wallet == null) {
                 _uiState.update { it.copy(error = "Wallet not found", isLoading = false) }
                 return@launch
             }
 
-            // Group EVM tokens by network
             evmTokensByNetwork = wallet!!.evmTokens.groupBy { it.network }
             val availableNetworks = evmTokensByNetwork.keys.toList()
             val allTokens = wallet!!.evmTokens
@@ -108,7 +106,6 @@ class EVMSendViewModel @Inject constructor(
                 return@launch
             }
 
-            // Determine target coin
             val targetCoin =
                 coin ?: allTokens.firstOrNull { it is NativeETH } ?: allTokens.firstOrNull()
 
@@ -134,9 +131,8 @@ class EVMSendViewModel @Inject constructor(
                 )
             }
 
-            // Load balance and fee estimate for the initial token
             loadBalances()
-            loadFeeEstimate()
+            refreshFeeEstimate(immediate = true)
             loadFiatRate(targetCoin)
         }
     }
@@ -173,7 +169,7 @@ class EVMSendViewModel @Inject constructor(
             }
 
             loadBalances()
-            loadFeeEstimate()
+            refreshFeeEstimate(immediate = true)
             loadFiatRate(newToken)
         }
     }
@@ -189,11 +185,12 @@ class EVMSendViewModel @Inject constructor(
                     fromAddress = token.address,
                     balancesLoaded = false,
                     tokenBalance = BigDecimal.ZERO,
+                    feeEstimate = null,
                     validationResult = SendValidationResult(isValid = false)
                 )
             }
             loadBalances()
-            loadFeeEstimate()
+            refreshFeeEstimate(immediate = true)
             loadFiatRate(token)
         }
     }
@@ -206,12 +203,10 @@ class EVMSendViewModel @Inject constructor(
             else -> "ethereum"
         }
 
-        // ALWAYS fetch price in USD as the base for fiat conversion calculations in the UI
         when (val result = marketRepository.getTokenDetails(tokenId, SupportedCurrency.USD)) {
             is Result.Success -> {
                 _uiState.update { it.copy(fiatRate = result.data.currentPrice) }
             }
-
             else -> {}
         }
     }
@@ -220,7 +215,6 @@ class EVMSendViewModel @Inject constructor(
         val state = _uiState.value
         val token = state.selectedToken ?: return
 
-        // Load ETH balance (for gas)
         val ethBalanceResult = evmBlockchainRepository.getNativeBalance(
             address = token.address,
             network = state.network
@@ -236,7 +230,6 @@ class EVMSendViewModel @Inject constructor(
                     }
                 }
             }
-
             is Result.Error -> {
                 _uiState.update { currentState ->
                     if (currentState.selectedToken == token) {
@@ -246,16 +239,13 @@ class EVMSendViewModel @Inject constructor(
                     }
                 }
             }
-
             Result.Loading -> {}
         }
 
-        // Load token balance (for the selected token)
         val tokenBalanceResult = when (token) {
             is NativeETH -> {
                 Result.Success(state.ethBalance)
             }
-
             else -> {
                 evmBlockchainRepository.getTokenBalance(
                     address = token.address,
@@ -276,7 +266,6 @@ class EVMSendViewModel @Inject constructor(
                             balanceFormatted = when (token) {
                                 is USDCToken, is USDTToken ->
                                     "${balance.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} ${token.symbol}"
-
                                 else ->
                                     "${balance.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} ${token.symbol}"
                             },
@@ -292,7 +281,6 @@ class EVMSendViewModel @Inject constructor(
                     validateInputs()
                 }
             }
-
             is Result.Error -> {
                 _uiState.update { currentState ->
                     if (currentState.selectedToken == token) {
@@ -306,32 +294,23 @@ class EVMSendViewModel @Inject constructor(
                     }
                 }
             }
-
             Result.Loading -> {}
         }
     }
 
-    private fun loadFeeEstimate() {
+    private fun refreshFeeEstimate(immediate: Boolean = false) {
         feeJob?.cancel()
+        _uiState.update { it.copy(isFeeLoading = true) }
         feeJob = viewModelScope.launch {
-            delay(500) // Debounce fee estimation
+            if (!immediate) delay(500)
+            
             val state = _uiState.value
             val currentToken = state.selectedToken ?: return@launch
-
-            // Set fee loading state
-            _uiState.update { currentState ->
-                if (currentState.selectedToken == currentToken) {
-                    currentState.copy(isFeeLoading = true)
-                } else {
-                    currentState
-                }
-            }
-
-            // Prepare parameters for dynamic estimation if available
+            
             val amountInWei = if (state.amountValue > BigDecimal.ZERO) {
                 state.amountValue.multiply(BigDecimal.TEN.pow(currentToken.decimals)).toBigInteger()
             } else {
-                BigInteger.ONE // Use small amount for estimation if not entered
+                BigInteger.ONE
             }
 
             val feeEstimateResult = getEVMFeeEstimateUseCase(
@@ -339,7 +318,7 @@ class EVMSendViewModel @Inject constructor(
                 network = state.network,
                 isToken = currentToken.evmTokenType != EVMTokenType.NATIVE,
                 fromAddress = state.fromAddress,
-                toAddress = state.toAddress.takeIf { it.length >= 40 }, // Basic check for address
+                toAddress = state.toAddress.takeIf { it.length >= 40 },
                 amount = amountInWei,
                 tokenContract = if (currentToken.evmTokenType == EVMTokenType.NATIVE) null else currentToken.contractAddress
             )
@@ -358,7 +337,6 @@ class EVMSendViewModel @Inject constructor(
                     }
                     validateInputs()
                 }
-
                 is Result.Error -> {
                     _uiState.update { currentState ->
                         if (currentState.selectedToken == currentToken) {
@@ -371,9 +349,53 @@ class EVMSendViewModel @Inject constructor(
                         }
                     }
                 }
-
                 Result.Loading -> {}
             }
+        }
+    }
+
+    private fun useMax() {
+        _uiState.update { it.copy(isFeeLoading = true) }
+        viewModelScope.launch {
+            val state = _uiState.value
+            val currentToken = state.selectedToken ?: return@launch
+
+            val feeEstimateResult = getEVMFeeEstimateUseCase(
+                feeLevel = state.feeLevel,
+                network = state.network,
+                isToken = currentToken.evmTokenType != EVMTokenType.NATIVE,
+                fromAddress = state.fromAddress,
+                toAddress = state.toAddress.takeIf { it.length >= 40 },
+                amount = BigInteger.ONE,
+                tokenContract = if (currentToken.evmTokenType == EVMTokenType.NATIVE) null else currentToken.contractAddress
+            )
+
+            if (feeEstimateResult is Result.Success) {
+                val feeEstimate = feeEstimateResult.data
+                val totalFee = BigDecimal(feeEstimate.totalFeeEth)
+                
+                val maxAmount = if (currentToken is com.example.nexuswallet.feature.wallet.domain.model.NativeETH) {
+                    (state.ethBalance - totalFee).setScale(18, RoundingMode.DOWN)
+                } else {
+                    state.tokenBalance
+                }
+
+                if (maxAmount > BigDecimal.ZERO) {
+                    _uiState.update { 
+                        it.copy(
+                            amount = maxAmount.setScale(18, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString(),
+                            amountValue = maxAmount,
+                            feeEstimate = feeEstimate,
+                            isFeeLoading = false
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isFeeLoading = false) }
+                }
+            } else {
+                _uiState.update { it.copy(isFeeLoading = false) }
+            }
+            validateInputs()
         }
     }
 
@@ -384,10 +406,9 @@ class EVMSendViewModel @Inject constructor(
                     _uiState.update { it.copy(toAddress = event.address) }
                     validateInputs()
                     if (event.address.length >= 40) {
-                        loadFeeEstimate()
+                        refreshFeeEstimate(immediate = false)
                     }
                 }
-
                 is EVMSendEvent.AmountChanged -> {
                     val amountValue = event.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
                     _uiState.update {
@@ -398,18 +419,16 @@ class EVMSendViewModel @Inject constructor(
                     }
                     validateInputs()
                     if (amountValue > BigDecimal.ZERO) {
-                        loadFeeEstimate()
+                        refreshFeeEstimate(immediate = false)
                     }
                 }
-
                 is EVMSendEvent.NoteChanged -> _uiState.update { it.copy(note = event.note) }
                 is EVMSendEvent.FeeLevelChanged -> {
                     _uiState.update { it.copy(feeLevel = event.feeLevel) }
-                    loadFeeEstimate()
+                    refreshFeeEstimate(immediate = true)
                 }
-
                 is EVMSendEvent.ToggleFiatMode -> _uiState.update { it.copy(isFiatMode = event.isFiatMode) }
-
+                EVMSendEvent.UseMax -> useMax()
                 EVMSendEvent.Validate -> validateInputs()
                 EVMSendEvent.ClearError -> clearError()
             }
@@ -443,7 +462,6 @@ class EVMSendViewModel @Inject constructor(
                             ?: validationResult.networkError
                             ?: "Invalid transaction"
                     }
-
                     else -> null
                 }
             )
@@ -513,7 +531,6 @@ class EVMSendViewModel @Inject constructor(
                         )
                     }
                 }
-
                 is Result.Error -> {
                     val authException = result.throwable as? HardwareAuthRequiredException
                     if (authException != null) {
@@ -530,7 +547,6 @@ class EVMSendViewModel @Inject constructor(
                         _effect.emit(EVMSendEffect.TransactionResultEffect(TransactionResult.Error(result.message)))
                     }
                 }
-
                 Result.Loading -> {}
             }
         }

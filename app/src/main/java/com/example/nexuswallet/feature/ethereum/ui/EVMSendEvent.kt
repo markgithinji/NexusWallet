@@ -10,4 +10,5 @@ sealed class EVMSendEvent {
     object Validate : EVMSendEvent()
     object ClearError : EVMSendEvent()
     data class ToggleFiatMode(val isFiatMode: Boolean) : EVMSendEvent()
+    object UseMax : EVMSendEvent()
 }

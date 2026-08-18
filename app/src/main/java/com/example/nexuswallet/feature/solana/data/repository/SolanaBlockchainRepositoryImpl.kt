@@ -266,7 +266,8 @@ class SolanaBlockchainRepositoryImpl @Inject constructor(
             }
 
             // Fallback to safe production constants if simulation logs are ambiguous
-            if (tokenMint == null) 1000 else 50000
+            val fallback = if (tokenMint == null) 1000 else 50000
+            fallback
         } catch (e: Exception) {
             // Fallback to safe production constants if simulation fails
             if (tokenMint == null) 1000 else 50000

@@ -10,7 +10,6 @@ import com.example.nexuswallet.feature.core.domain.model.TokenTransaction
 import com.example.nexuswallet.feature.core.domain.model.Transaction
 import com.example.nexuswallet.feature.core.service.BlockchainSubscriptionService
 import com.example.nexuswallet.feature.core.util.Result
-import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.market.domain.model.AssetPriceData
 import com.example.nexuswallet.feature.market.domain.repository.MarketRepository
 import com.example.nexuswallet.feature.market.domain.usecase.GetSimplePricesUseCase

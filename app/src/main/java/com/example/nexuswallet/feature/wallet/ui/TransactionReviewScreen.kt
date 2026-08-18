@@ -433,7 +433,28 @@ fun TransactionReviewScreen(
                 selectedToken = selectedToken,
                 selectedSolToken = selectedSolToken,
                 networkName = fullNetworkName,
-                validationErrors = if (sendError != null) listOf(sendError!!) else emptyList(),
+                validationErrors = if (sendError != null) {
+                    listOf(sendError)
+                } else {
+                    when (coin) {
+                        is SolanaCoin -> listOfNotNull(
+                            solanaState.value.validationResult.addressError,
+                            solanaState.value.validationResult.amountError,
+                            solanaState.value.validationResult.balanceError,
+                            solanaState.value.validationResult.gasError
+                        )
+                        is EVMToken -> listOfNotNull(
+                            ethereumState.value.validationResult.addressError,
+                            ethereumState.value.validationResult.amountError,
+                            ethereumState.value.validationResult.balanceError,
+                            ethereumState.value.validationResult.gasError
+                        )
+                        is BitcoinCoin -> listOfNotNull(
+                            bitcoinState.value.error
+                        )
+                        else -> emptyList()
+                    }
+                },
                 validationWarnings = listOfNotNull(solanaState.value.validationResult.addressWarning),
                 onCopyAddress = { address ->
                     copyToClipboard(context, address, addressCopied)

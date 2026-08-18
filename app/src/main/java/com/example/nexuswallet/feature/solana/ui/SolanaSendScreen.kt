@@ -60,10 +60,10 @@ fun SolanaSendScreen(
     coin: Coin,
     viewModel: SolanaSendViewModel = hiltViewModel()
 ) {
-    var showMaxDialog by remember { mutableStateOf(false) }
     var showNetworkSelector by remember { mutableStateOf(false) }
     var showTokenSelector by remember { mutableStateOf(false) }
     var showAddressBook by remember { mutableStateOf(false) }
+    var showMaxDialog by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
     val addressFocusRequester = remember { FocusRequester() }
@@ -85,7 +85,6 @@ fun SolanaSendScreen(
         }
     }
 
-    // Initialize ViewModel
     LaunchedEffect(Unit) {
         viewModel.init(walletId, coin as SolanaCoin)
     }
@@ -120,7 +119,6 @@ fun SolanaSendScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-                // Network Selector Dialog
                 if (showNetworkSelector) {
                     NetworkSelectorDialog(
                         availableNetworks = availableNetworks,
@@ -133,7 +131,6 @@ fun SolanaSendScreen(
                     )
                 }
 
-                // Token Selector Dialog
                 if (showTokenSelector && state.availableSplTokens.isNotEmpty()) {
                     SolanaTokenSelectorDialog(
                         availableTokens = state.availableSplTokens,
@@ -147,7 +144,6 @@ fun SolanaSendScreen(
                     )
                 }
 
-                // Address Book Dialog
                 if (showAddressBook) {
                     com.example.nexuswallet.feature.core.ui.AddressBookSelectorDialog(
                         entries = state.addressBookEntries.filter { it.chain == "Solana" },
@@ -168,13 +164,11 @@ fun SolanaSendScreen(
                         .animateContentSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Network Selector Card
                     NetworkSelectorCard(
                         currentNetwork = state.network,
                         onClick = { showNetworkSelector = true }
                     )
 
-                    // Token Selector (if multiple assets available)
                     if (state.availableSplTokens.isNotEmpty()) {
                         SolanaTokenSelectorCard(
                             selectedToken = state.selectedSplToken,
@@ -183,7 +177,6 @@ fun SolanaSendScreen(
                         )
                     }
 
-                    // Balance Card
                     SendBalanceCard(
                         balance = state.balance,
                         balanceFormatted = state.balanceFormatted,
@@ -195,7 +188,6 @@ fun SolanaSendScreen(
                         isLoading = state.isLoading
                     )
 
-                    // Address Input
                     SendAddressInput(
                         toAddress = state.toAddress,
                         onAddressChange = {
@@ -229,7 +221,6 @@ fun SolanaSendScreen(
                         focusRequester = addressFocusRequester
                     )
 
-                    // Amount Input
                     SendAmountInput(
                         amount = state.amount,
                         coin = coin,
@@ -248,7 +239,6 @@ fun SolanaSendScreen(
                         symbol = state.selectedSplToken?.symbol ?: "SOL",
                         coinColor = solanaLight,
                         onMaxClick = {
-                            amountTouched = true
                             showMaxDialog = true
                         },
                         errorMessage = errorState.amountErrorMessage,
@@ -260,7 +250,6 @@ fun SolanaSendScreen(
                         isLoading = state.isLoading
                     )
 
-                    // Fee Selection
                     SendFeeSelection(
                         feeLevel = state.feeLevel,
                         onFeeLevelChange = { viewModel.onEvent(SolanaSendEvent.FeeLevelChanged(it)) },
@@ -272,7 +261,6 @@ fun SolanaSendScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // Bottom Bar
                 SendBottomBar(
                     isValid = state.validationResult.isValid && !state.isLoading,
                     isLoading = state.isFeeLoading,
@@ -290,23 +278,23 @@ fun SolanaSendScreen(
                     },
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
-
-            if (showMaxDialog) {
-                MaxAmountDialog(
-                    balance = state.balance,
-                    feeEstimate = state.feeEstimate,
-                    fiatRate = state.fiatRate,
-                    tokenSymbol = state.selectedSplToken?.symbol ?: coin.symbol,
-                    coin = coin,
-                    onDismiss = { showMaxDialog = false },
-                    onConfirm = { maxAmount ->
-                        amountTouched = true
-                        viewModel.onEvent(SolanaSendEvent.AmountChanged(maxAmount))
-                        showMaxDialog = false
-                    },
-                    isLoading = state.isFeeLoading
-                )
-            }
         }
+    }
+
+    if (showMaxDialog) {
+        MaxAmountDialog(
+            balance = state.balance,
+            feeEstimate = state.feeEstimate,
+            fiatRate = state.fiatRate,
+            tokenSymbol = state.selectedSplToken?.symbol ?: "SOL",
+            coin = state.coin ?: coin,
+            onDismiss = { showMaxDialog = false },
+            onConfirm = { maxAmount ->
+                amountTouched = true
+                viewModel.onEvent(SolanaSendEvent.AmountChanged(maxAmount))
+                showMaxDialog = false
+            },
+            isLoading = state.isFeeLoading
+        )
     }
 }

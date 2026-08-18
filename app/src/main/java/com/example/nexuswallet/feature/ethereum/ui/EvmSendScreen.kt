@@ -73,10 +73,10 @@ fun EthereumSendScreen(
     coin: Coin,
     viewModel: EVMSendViewModel = hiltViewModel()
 ) {
-    var showMaxDialog by remember { mutableStateOf(false) }
     var showNetworkSelector by remember { mutableStateOf(false) }
     var showTokenSelector by remember { mutableStateOf(false) }
     var showAddressBook by remember { mutableStateOf(false) }
+    var showMaxDialog by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
     val addressFocusRequester = remember { FocusRequester() }
@@ -98,7 +98,6 @@ fun EthereumSendScreen(
         }
     }
 
-    // Initialize ViewModel
     LaunchedEffect(Unit) {
         viewModel.initialize(walletId, coin as EVMToken)
 
@@ -161,7 +160,6 @@ fun EthereumSendScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Network Selector Dialog
             if (showNetworkSelector) {
                 NetworkSelectorDialog(
                     availableNetworks = availableNetworks,
@@ -174,7 +172,6 @@ fun EthereumSendScreen(
                 )
             }
 
-            // Token Selector Dialog
             if (showTokenSelector && state.availableTokens.size > 1) {
                 TokenSelectorDialog(
                     availableTokens = state.availableTokens,
@@ -187,7 +184,6 @@ fun EthereumSendScreen(
                 )
             }
 
-            // Address Book Dialog
             if (showAddressBook) {
                 com.example.nexuswallet.feature.core.ui.AddressBookSelectorDialog(
                     entries = state.addressBookEntries.filter { it.chain == "Ethereum" },
@@ -199,7 +195,6 @@ fun EthereumSendScreen(
                 )
             }
 
-            // Scrollable content
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -209,13 +204,11 @@ fun EthereumSendScreen(
                     .animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Network Selector Card
                 NetworkSelectorCard(
                     currentNetwork = state.network,
                     onClick = { showNetworkSelector = true }
                 )
 
-                // Token Selector (if multiple tokens available)
                 AnimatedVisibility(
                     visible = state.availableTokens.size > 1,
                     enter = expandVertically() + fadeIn(),
@@ -227,7 +220,6 @@ fun EthereumSendScreen(
                     )
                 }
 
-                // Balance Card
                 SendBalanceCard(
                     balance = if (selectedToken is NativeETH) state.ethBalance else state.tokenBalance,
                     balanceFormatted = when (selectedToken) {
@@ -244,7 +236,6 @@ fun EthereumSendScreen(
                     isLoading = state.isLoading
                 )
 
-                // Show ETH balance for gas if this is a token
                 AnimatedVisibility(
                     visible = selectedToken !is NativeETH,
                     enter = expandVertically() + fadeIn(),
@@ -261,7 +252,6 @@ fun EthereumSendScreen(
                     )
                 }
 
-                // Address Input
                 SendAddressInput(
                     toAddress = state.toAddress,
                     onAddressChange = {
@@ -295,7 +285,6 @@ fun EthereumSendScreen(
                     focusRequester = addressFocusRequester
                 )
 
-                // Amount Input
                 SendAmountInput(
                     amount = state.amount,
                     coin = selectedToken ?: coin,
@@ -314,7 +303,6 @@ fun EthereumSendScreen(
                     symbol = selectedToken?.symbol ?: "ETH",
                     coinColor = coinColor,
                     onMaxClick = {
-                        amountTouched = true
                         showMaxDialog = true
                     },
                     errorMessage = errorState.amountErrorMessage,
@@ -326,7 +314,6 @@ fun EthereumSendScreen(
                     isLoading = state.isLoading
                 )
 
-                // Fee Selection
                 SendFeeSelection(
                     feeLevel = state.feeLevel,
                     onFeeLevelChange = { viewModel.onEvent(EVMSendEvent.FeeLevelChanged(it)) },
@@ -338,7 +325,6 @@ fun EthereumSendScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Bottom Bar
             SendBottomBar(
                 isValid = state.validationResult.isValid && !state.isLoading,
                 isLoading = state.isFeeLoading,
@@ -358,7 +344,6 @@ fun EthereumSendScreen(
         }
     }
 
-    // Max Amount Dialog
     if (showMaxDialog) {
         MaxAmountDialog(
             balance = if (selectedToken is NativeETH) state.ethBalance else state.tokenBalance,

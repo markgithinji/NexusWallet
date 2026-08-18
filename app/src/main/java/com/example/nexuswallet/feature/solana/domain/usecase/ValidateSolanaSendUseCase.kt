@@ -75,19 +75,41 @@ class ValidateSolanaSendUseCase @Inject constructor(
 
         // 1. Check selected asset balance (SOL or Token)
         val symbol = selectedToken?.symbol ?: "SOL"
-        val feeSol = feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal("0.000005")
         
+        // If fee estimate is null, it's likely still loading. We use 0 as fallback 
+        // to avoid false "Insufficient funds" error while the fee is being calculated.
+        // The UI already disables the send button while isFeeLoading is true.
+        val feeSol = feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal.ZERO
+        
+        val rentExemptThreshold = BigDecimal(com.example.nexuswallet.feature.solana.util.SolanaConstants.RENT_EXEMPT_MINIMUM_LAMPORTS)
+            .divide(BigDecimal(com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL), 9, java.math.RoundingMode.HALF_UP)
+
         if (selectedToken == null) {
             // SOL Transfer
             val totalRequired = amountValue + feeSol
+            
+            // To be safe, the remaining balance after sending should either be 0 (full sweep)
+            // or >= rent-exempt threshold.
+            val remaining = solBalance - totalRequired
+            
+            logger.d(TAG, "SOL Validation: Amount=$amountValue, Fee=$feeSol, TotalRequired=$totalRequired, Balance=$solBalance, Remaining=$remaining")
+            
             if (totalRequired > solBalance) {
                 return SendValidationResult(
                     isValid = false,
                     balanceError = "Insufficient SOL. You need at least ${totalRequired.stripTrailingZeros().toPlainString()} SOL (including fees)"
                 )
             }
+            
+            if (remaining > BigDecimal.ZERO && remaining < rentExemptThreshold) {
+                return SendValidationResult(
+                    isValid = false,
+                    balanceError = "The remaining balance must be at least ${rentExemptThreshold.toPlainString()} SOL for rent exemption, or send your entire balance."
+                )
+            }
         } else {
             // SPL Token Transfer
+            logger.d(TAG, "Token Validation: Asset=$symbol, Amount=$amountValue, Balance=$balance, Fee=$feeSol, SOLBalance=$solBalance")
             if (amountValue > balance) {
                 return SendValidationResult(
                     isValid = false,
@@ -99,6 +121,8 @@ class ValidateSolanaSendUseCase @Inject constructor(
             val rentExemption = BigDecimal("0.00204") // Typical rent for Token account
             val solRequired = feeSol + rentExemption 
             
+            logger.d(TAG, "Token Gas Check: SolRequired=$solRequired, SOLBalance=$solBalance")
+
             if (solBalance < solRequired) {
                 return SendValidationResult(
                     isValid = false,

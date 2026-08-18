@@ -93,29 +93,55 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
         }
 
         // 2. Initial fee estimate to get a ballpark for UTXO selection
+        // Detect if we have any SegWit UTXOs to determine calculation base
+        val containsSegwit = allUtxos.any { ScriptPattern.isP2WPKH(it.script) }
+        
         val initialFeeResult = bitcoinBlockchainRepository.getFeeEstimate(
             feeLevel = feeLevel,
             inputCount = DEFAULT_INPUT_COUNT,
             outputCount = DEFAULT_OUTPUT_COUNT,
             network = network,
-            isSegwit = true
+            isSegwit = containsSegwit
         )
 
         val feePerByte = if (initialFeeResult is Result.Success) initialFeeResult.data.feePerByte else 10.0
 
         // 3. Select UTXOs
-        val selectedUtxos = selectBitcoinUtxosUseCase(
+        val targetSats = amount.toSatoshis()
+        logger.d(TAG, "Selecting UTXOs for $targetSats sats with feePerByte=$feePerByte from ${allUtxos.size} UTXOs")
+        
+        // Strategy: First try with 2 outputs (recipient + change)
+        var selectedUtxos = selectBitcoinUtxosUseCase(
             utxos = allUtxos,
-            targetSatoshis = amount.toSatoshis(),
-            feePerByte = feePerByte
+            targetSatoshis = targetSats,
+            feePerByte = feePerByte,
+            outputCount = 2
         )
+        
+        var finalOutputCount = 2
 
         if (selectedUtxos.isEmpty()) {
+            // If it failed, try with 1 output (Sweep/Max case)
+            logger.d(TAG, "Selection with 2 outputs failed, trying with 1 output (Sweep)")
+            selectedUtxos = selectBitcoinUtxosUseCase(
+                utxos = allUtxos,
+                targetSatoshis = targetSats,
+                feePerByte = feePerByte,
+                outputCount = 1
+            )
+            
+            if (selectedUtxos.isNotEmpty()) {
+                finalOutputCount = 1
+            }
+        }
+
+        if (selectedUtxos.isEmpty()) {
+            val totalAvailable = allUtxos.map { it.value.value }.sum()
+            logger.e(TAG, "Insufficient funds: targetSats=$targetSats, totalAvailable=$totalAvailable, feePerByte=$feePerByte")
             return@withContext Result.Error("Insufficient funds to cover amount and network fees")
         }
 
         val inputCount = selectedUtxos.size
-        val outputCount = DEFAULT_OUTPUT_COUNT 
 
         // 4. Get accurate fee estimate based on actual required inputs and script types
         val isSegwitTx = selectedUtxos.any { ScriptPattern.isP2WPKH(it.script) }
@@ -123,7 +149,7 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
         val apiFeeResult = bitcoinBlockchainRepository.getFeeEstimate(
             feeLevel = feeLevel,
             inputCount = inputCount,
-            outputCount = outputCount,
+            outputCount = finalOutputCount,
             network = network,
             isSegwit = isSegwitTx
         )
@@ -131,15 +157,28 @@ class PrepareBitcoinTransactionUseCase @Inject constructor(
         val result = when (apiFeeResult) {
             is Result.Success -> {
                 val feeEstimate = apiFeeResult.data
-                prepareTransaction(
-                    bitcoinCoin = bitcoinCoin,
-                    toAddress = toAddress,
-                    amount = amount,
-                    feeEstimate = feeEstimate,
-                    feeLevel = feeLevel,
-                    inputCount = inputCount,
-                    selectedUtxos = selectedUtxos
-                )
+                
+                // Final safety check: Total Required vs Total Available
+                val totalRequiredSats = targetSats + feeEstimate.totalFeeSatoshis
+                val totalAvailableSats = selectedUtxos.sumOf { it.value.value }
+                
+                logger.d(TAG, "Final Check: Target=$targetSats, Fee=${feeEstimate.totalFeeSatoshis}, TotalRequired=$totalRequiredSats, Available=$totalAvailableSats")
+                
+                if (totalRequiredSats > totalAvailableSats) {
+                    val shortfall = totalRequiredSats - totalAvailableSats
+                    logger.e(TAG, "Insufficient funds after final estimation: short by $shortfall sats")
+                    Result.Error("Insufficient funds to cover fees ($shortfall sats short)")
+                } else {
+                    prepareTransaction(
+                        bitcoinCoin = bitcoinCoin,
+                        toAddress = toAddress,
+                        amount = amount,
+                        feeEstimate = feeEstimate,
+                        feeLevel = feeLevel,
+                        inputCount = inputCount,
+                        selectedUtxos = selectedUtxos
+                    )
+                }
             }
 
             is Result.Error -> {

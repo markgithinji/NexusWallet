@@ -140,12 +140,18 @@ class BitcoinReviewViewModel @Inject constructor(
         _state.update { it.copy(isFeeLoading = true) }
 
         val state = _state.value
+        
+        // Detect SegWit from address
+        val isSegwitAddress = state.fromAddress.startsWith("bc1", ignoreCase = true) || 
+                             state.fromAddress.startsWith("tb1", ignoreCase = true)
+
         // Step 1: Get base fee rate (using 1 input as placeholder)
         val baseFeeResult = getBitcoinFeeEstimateUseCase(
             feeLevel = state.feeLevel,
             inputCount = DEFAULT_INPUT_COUNT,
             outputCount = DEFAULT_OUTPUT_COUNT,
-            network = state.network
+            network = state.network,
+            isSegwit = isSegwitAddress
         )
         
         val feePerByte = if (baseFeeResult is Result.Success) baseFeeResult.data.feePerByte else 10.0
@@ -153,15 +159,18 @@ class BitcoinReviewViewModel @Inject constructor(
         // Step 2: Fetch UTXOs
         val utxosResult = bitcoinBlockchainRepository.getUnspentOutputs(state.fromAddress, state.network)
 
-        // Step 3: Determine accurate input count
-        val inputCount = if (utxosResult is Result.Success) {
+        // Step 3: Determine accurate input count and script types
+        val utxos = if (utxosResult is Result.Success) utxosResult.data else emptyList()
+        val hasSegwitUtxo = utxos.any { org.bitcoinj.script.ScriptPattern.isP2WPKH(it.script) } || isSegwitAddress
+
+        val inputCount = if (utxos.isNotEmpty()) {
             val selected = selectBitcoinUtxosUseCase(
-                utxos = utxosResult.data,
+                utxos = utxos,
                 targetSatoshis = state.amountValue.toSatoshis(),
                 feePerByte = feePerByte
             )
             // If selection fails, use total count to trigger correct insufficient balance logic
-            if (selected.isNotEmpty()) selected.size else utxosResult.data.size.coerceAtLeast(DEFAULT_INPUT_COUNT)
+            if (selected.isNotEmpty()) selected.size else utxos.size.coerceAtLeast(DEFAULT_INPUT_COUNT)
         } else {
             DEFAULT_INPUT_COUNT
         }
@@ -171,15 +180,29 @@ class BitcoinReviewViewModel @Inject constructor(
             feeLevel = state.feeLevel,
             inputCount = inputCount,
             outputCount = DEFAULT_OUTPUT_COUNT,
-            network = state.network
+            network = state.network,
+            isSegwit = hasSegwitUtxo
         )) {
             is Result.Success -> {
-                _state.update {
-                    it.copy(
-                        feeEstimate = result.data,
-                        isFeeLoading = false,
-                        isLoading = false
-                    )
+                val feeEstimate = result.data
+                val totalRequired = state.amountValue + BigDecimal(feeEstimate.totalFeeBtc)
+                
+                if (totalRequired > state.balance) {
+                    _state.update {
+                        it.copy(
+                            error = "Insufficient funds for fees.",
+                            isFeeLoading = false,
+                            isLoading = false
+                        )
+                    }
+                } else {
+                    _state.update {
+                        it.copy(
+                            feeEstimate = feeEstimate,
+                            isFeeLoading = false,
+                            isLoading = false
+                        )
+                    }
                 }
             }
 
@@ -202,7 +225,7 @@ class BitcoinReviewViewModel @Inject constructor(
             val state = _state.value
 
             _state.update { it.copy(isLoading = true, step = "Preparing...") }
-
+            
             val result = prepareBitcoinTransactionUseCase(
                 walletId = state.walletId,
                 toAddress = state.toAddress,

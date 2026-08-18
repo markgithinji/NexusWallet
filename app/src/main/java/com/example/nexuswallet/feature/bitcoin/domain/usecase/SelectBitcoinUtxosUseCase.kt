@@ -30,10 +30,20 @@ class SelectBitcoinUtxosUseCase @Inject constructor() {
             selected.add(utxo)
             totalSelected += utxo.value.value
             
-            // Recalculate fee for current input count
-            val estSize = BitcoinConstants.BASE_TX_SIZE + 
-                         (selected.size * BitcoinConstants.BYTES_PER_INPUT) + 
-                         (outputCount * BitcoinConstants.BYTES_PER_OUTPUT)
+            // Recalculate fee for current input count using accurate per-input estimation
+            val totalInputSize = selected.sumOf { item ->
+                when {
+                    org.bitcoinj.script.ScriptPattern.isP2WPKH(item.script) -> BitcoinConstants.BYTES_PER_INPUT_SEGWIT
+                    org.bitcoinj.script.ScriptPattern.isP2SH(item.script) -> BitcoinConstants.BYTES_PER_INPUT_P2SH
+                    else -> BitcoinConstants.BYTES_PER_INPUT
+                }
+            }
+            
+            val hasSegwit = selected.any { org.bitcoinj.script.ScriptPattern.isP2WPKH(it.script) }
+            val baseSize = if (hasSegwit) 11L else BitcoinConstants.BASE_TX_SIZE
+            val outputSize = if (hasSegwit) (outputCount * BitcoinConstants.BYTES_PER_OUTPUT_SEGWIT) else (outputCount * BitcoinConstants.BYTES_PER_OUTPUT)
+            
+            val estSize = baseSize + totalInputSize + outputSize
             val currentFee = (estSize * feePerByte).toLong()
             
             if (totalSelected >= (targetSatoshis + currentFee)) {

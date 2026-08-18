@@ -99,19 +99,30 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
         val feeBtc = if (feeEstimate != null) {
             BigDecimal(feeEstimate.totalFeeBtc)
         } else {
-            BigDecimal("0.00001") // Default fallback for estimation
+            // Use a much safer baseline for estimation validation (avg tx size ~250 bytes * 20 sat/vB)
+            BigDecimal("0.00005") 
         }
 
         val totalRequired = amount + feeBtc
+        
+        logger.d(TAG, "Validating: Balance=$balance, Amount=$amount, Fee=${feeEstimate?.totalFeeBtc ?: "NULL"}, Total=$totalRequired")
 
         // Check against user's actual balance
         if (totalRequired > balance) {
-            logger.w(TAG, "Insufficient balance: have $balance BTC, need $totalRequired BTC")
-            return SendValidationResult(
-                isValid = false,
-                balanceError = "Insufficient balance. You have ${balance.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} BTC but need ${
+            val needed = totalRequired - balance
+            logger.w(TAG, "Insufficient balance: have $balance BTC, need $totalRequired BTC (short by $needed)")
+            
+            val message = if (feeEstimate == null) {
+                "Insufficient balance for transaction and estimated network fees."
+            } else {
+                "Insufficient balance. You have ${balance.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()} BTC but need ${
                     totalRequired.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
                 } BTC (including fees)"
+            }
+
+            return SendValidationResult(
+                isValid = false,
+                balanceError = message
             )
         }
 
