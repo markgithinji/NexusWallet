@@ -115,6 +115,7 @@ import com.example.nexuswallet.feature.wallet.ui.walletcreation.ImportOptionItem
 import com.example.nexuswallet.ui.theme.bitcoinLight
 import com.example.nexuswallet.ui.theme.ethereumLight
 import com.example.nexuswallet.ui.theme.solanaLight
+import com.example.nexuswallet.ui.theme.success
 import com.example.nexuswallet.ui.theme.usdcLight
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -977,7 +978,6 @@ fun AnimatedPortfolioHeader(
         !portfolioChangePercentage.startsWith("-") && portfolioChangePercentage != "0.0%"
     val trendIcon =
         if (isPositive) Icons.AutoMirrored.Outlined.TrendingUp else Icons.AutoMirrored.Outlined.TrendingDown
-    val trendColor = if (isPositive) Color(0xFF4CAF50) else Color(0xFFF44336)
 
     Surface(
         modifier = Modifier
@@ -1016,7 +1016,7 @@ fun AnimatedPortfolioHeader(
                     )
 
                     Surface(
-                        color = trendColor.copy(alpha = 0.2f),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Row(
@@ -1024,17 +1024,19 @@ fun AnimatedPortfolioHeader(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
+                            val displayColor = if (isPositive) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.error
+                            
                             Icon(
                                 imageVector = trendIcon,
                                 contentDescription = null,
                                 modifier = Modifier.size(14.dp),
-                                tint = trendColor
+                                tint = displayColor
                             )
                             Text(
                                 text = portfolioChangePercentage,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = trendColor
+                                color = displayColor
                             )
                         }
                     }

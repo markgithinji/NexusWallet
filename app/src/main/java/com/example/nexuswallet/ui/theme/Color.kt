@@ -5,26 +5,26 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
-val ColorScheme.onSuccessContainer: Color
-    get() = onSuccessContainerLight
-
 val ColorScheme.success: Color
-    get() = successLight
+    get() = if (primary == primaryDark) successDark else successLight
 
 val ColorScheme.warning: Color
-    get() = warningLight
+    get() = if (primary == primaryDark) warningDark else warningLight
 
 val ColorScheme.info: Color
-    get() = infoLight
+    get() = if (primary == primaryDark) infoDark else infoLight
 
 val ColorScheme.successContainer: Color
-    get() = successContainerLight
+    get() = if (primary == primaryDark) successContainerDark else successContainerLight
 
 val ColorScheme.warningContainer: Color
-    get() = warningContainerLight
+    get() = if (primary == primaryDark) warningContainerDark else warningContainerLight
 
 val ColorScheme.infoContainer: Color
-    get() = infoContainerLight
+    get() = if (primary == primaryDark) infoContainerDark else infoContainerLight
+
+val ColorScheme.onSuccessContainer: Color
+    get() = if (primary == primaryDark) onSuccessContainerDark else onSuccessContainerLight
 
 // ================== Nexus Wallet Colors - Light Theme ==================
 val primaryLight = Color(0xFF3B82F6) // Primary blue from buttons and icons
