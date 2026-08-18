@@ -551,6 +551,7 @@ fun AssetCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 1.dp)
+            .clip(RoundedCornerShape(16.dp))
             .clickableSingle { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -1303,6 +1304,7 @@ private fun AssetSelectionRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
             .clickableSingle { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(

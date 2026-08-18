@@ -583,6 +583,7 @@ fun WalletCard(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize()
+            .clip(RoundedCornerShape(24.dp))
             .clickableSingle { onWalletClick() },
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surface,
