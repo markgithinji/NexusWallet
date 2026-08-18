@@ -261,14 +261,6 @@ fun EthereumSendScreen(
                     )
                 }
 
-                // Error Banner
-                if (errorState.activeError != null) {
-                    ErrorMessage(
-                        error = errorState.activeError,
-                        onDismiss = { viewModel.clearError() }
-                    )
-                }
-
                 // Address Input
                 SendAddressInput(
                     toAddress = state.toAddress,

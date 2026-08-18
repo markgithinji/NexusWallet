@@ -195,14 +195,6 @@ fun SolanaSendScreen(
                         isLoading = state.isLoading
                     )
 
-                    // Error Banner
-                    if (state.error != null) {
-                        ErrorMessage(
-                            error = state.error!!,
-                            onDismiss = { viewModel.onEvent(SolanaSendEvent.ClearError) }
-                        )
-                    }
-
                     // Address Input
                     SendAddressInput(
                         toAddress = state.toAddress,
