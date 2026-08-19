@@ -30,5 +30,7 @@ data class BtcSendUiState(
     val isInitialized: Boolean = false,
     val addressBookEntries: List<AddressBookEntry> = emptyList(),
     val error: String? = null,
-    val isFiatMode: Boolean = false
+    val isFiatMode: Boolean = false,
+    val maxAmountSuggestion: BigDecimal? = null,
+    val maxFeeSuggestion: BigDecimal? = null
 )

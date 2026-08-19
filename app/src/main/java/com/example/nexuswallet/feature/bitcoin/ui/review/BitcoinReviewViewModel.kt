@@ -163,12 +163,30 @@ class BitcoinReviewViewModel @Inject constructor(
         val utxos = if (utxosResult is Result.Success) utxosResult.data else emptyList()
         val hasSegwitUtxo = utxos.any { org.bitcoinj.script.ScriptPattern.isP2WPKH(it.script) } || isSegwitAddress
 
-        val inputCount = if (utxos.isNotEmpty()) {
-            val selected = selectBitcoinUtxosUseCase(
+        // Detect if this is a sweep (Max) transaction
+        // First try to select with 2 outputs (regular)
+        val selectedRegular = if (utxos.isNotEmpty()) {
+            selectBitcoinUtxosUseCase(
                 utxos = utxos,
                 targetSatoshis = state.amountValue.toSatoshis(),
-                feePerByte = feePerByte
+                feePerByte = feePerByte,
+                outputCount = 2
             )
+        } else emptyList()
+
+        val isSweep = selectedRegular.isEmpty() && utxos.isNotEmpty()
+        val outputCount = if (isSweep) 1 else 2
+
+        val inputCount = if (utxos.isNotEmpty()) {
+            val selected = if (isSweep) {
+                selectBitcoinUtxosUseCase(
+                    utxos = utxos,
+                    targetSatoshis = state.amountValue.toSatoshis(),
+                    feePerByte = feePerByte,
+                    outputCount = 1
+                )
+            } else selectedRegular
+            
             // If selection fails, use total count to trigger correct insufficient balance logic
             if (selected.isNotEmpty()) selected.size else utxos.size.coerceAtLeast(DEFAULT_INPUT_COUNT)
         } else {
@@ -179,7 +197,7 @@ class BitcoinReviewViewModel @Inject constructor(
         when (val result = getBitcoinFeeEstimateUseCase(
             feeLevel = state.feeLevel,
             inputCount = inputCount,
-            outputCount = DEFAULT_OUTPUT_COUNT,
+            outputCount = outputCount,
             network = state.network,
             isSegwit = hasSegwitUtxo
         )) {

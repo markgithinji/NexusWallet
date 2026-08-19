@@ -303,6 +303,7 @@ fun EthereumSendScreen(
                     symbol = selectedToken?.symbol ?: "ETH",
                     coinColor = coinColor,
                     onMaxClick = {
+                        viewModel.onEvent(EVMSendEvent.UseMax)
                         showMaxDialog = true
                     },
                     errorMessage = errorState.amountErrorMessage,
@@ -351,6 +352,8 @@ fun EthereumSendScreen(
             fiatRate = state.fiatRate,
             tokenSymbol = selectedToken?.symbol ?: "ETH",
             coin = selectedToken ?: coin,
+            maxAmountSuggestion = state.maxAmountSuggestion,
+            maxFeeSuggestion = state.maxFeeSuggestion,
             onDismiss = { showMaxDialog = false },
             onConfirm = { maxAmount ->
                 amountTouched = true

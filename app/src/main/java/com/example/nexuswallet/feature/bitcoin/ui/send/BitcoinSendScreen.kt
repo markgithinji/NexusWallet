@@ -223,6 +223,7 @@ fun BitcoinSendScreen(
                     symbol = coin.symbol,
                     coinColor = bitcoinLight,
                     onMaxClick = {
+                        viewModel.handleEvent(BitcoinSendEvent.UseMax)
                         showMaxDialog = true
                     },
                     errorMessage = errorState.amountErrorMessage,
@@ -275,6 +276,8 @@ fun BitcoinSendScreen(
             fiatRate = state.fiatRate,
             tokenSymbol = coin.symbol,
             coin = coin,
+            maxAmountSuggestion = state.maxAmountSuggestion,
+            maxFeeSuggestion = state.maxFeeSuggestion,
             onDismiss = { showMaxDialog = false },
             onConfirm = { maxAmount ->
                 amountTouched = true

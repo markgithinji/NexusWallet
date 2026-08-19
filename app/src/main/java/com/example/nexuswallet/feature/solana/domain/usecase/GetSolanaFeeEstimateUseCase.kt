@@ -23,18 +23,31 @@ class GetSolanaFeeEstimateUseCase @Inject constructor(
         lamports: Long? = null,
         tokenMint: String? = null
     ): Result<SolanaFeeEstimate> {
-        logger.d(TAG, "Fetching fee estimate on $network (to: $toAddress)")
         val result = solanaBlockchainRepository.getFeeEstimate(
-            feeLevel = feeLevel, 
-            network = network, 
+            feeLevel = feeLevel,
+            network = network,
             fromAddress = fromAddress,
             toAddress = toAddress,
             lamports = lamports,
             tokenMint = tokenMint
         )
-        if (result is Result.Error) {
-            logger.e(TAG, "Failed to get fee estimate on $network: ${result.message}")
+
+        when (result) {
+            is Result.Success -> {
+                val fee = result.data
+                logger.d(
+                    TAG,
+                    "Fee Result: Total=${fee.feeSol} SOL (${fee.feeLamports} lamports) | PriorityRate=${fee.priorityFeeRate} | CU=${fee.computeUnits} | Token=${tokenMint != null}"
+                )
+            }
+
+            is Result.Error -> {
+                logger.e(TAG, "Fee Error: ${result.message} on $network")
+            }
+
+            else -> {}
         }
+
         return result
     }
 

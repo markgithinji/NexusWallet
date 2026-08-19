@@ -321,8 +321,7 @@ fun SendBalanceCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .animateContentSize(),
+            .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -476,8 +475,7 @@ fun SendAddressInput(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .animateContentSize(),
+            .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -673,8 +671,7 @@ fun SendAmountInput(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .animateContentSize(),
+            .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -856,44 +853,30 @@ fun SendAmountInput(
                 }
             }
 
-            Row(
+            // Converter Row
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 4.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable {
-                        haptic.click()
-                        onModeToggle(!isFiatMode)
-                    }
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .height(40.dp)
+                    .padding(horizontal = 8.dp),
+                contentAlignment = Alignment.CenterEnd
             ) {
-                if (errorMessage != null) {
-                    Text(
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-
                 if (equivalentLabel.isNotEmpty()) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable {
+                                haptic.click()
+                                onModeToggle(!isFiatMode)
+                            }
                             .background(
                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
-                                RoundedCornerShape(8.dp)
+                                RoundedCornerShape(12.dp)
                             )
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
-                        // Fixed-height container for Equivalent Label (labelMedium: 16dp)
                         Box(
                             modifier = Modifier.height(16.dp),
                             contentAlignment = Alignment.CenterEnd
@@ -926,6 +909,25 @@ fun SendAmountInput(
                     }
                 }
             }
+
+            // Error Message
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(20.dp)
+                    .padding(horizontal = 8.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
     }
 }
@@ -941,8 +943,7 @@ fun SendFeeSelection(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .animateContentSize(),
+            .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -1188,11 +1189,11 @@ fun SendBottomBar(
         Column(
             modifier = Modifier.padding(bottom = 16.dp, start = 16.dp, end = 16.dp, top = 8.dp)
         ) {
-            // Reserved space for error message to prevent layout shifts
+            // Reserved space for error message
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(28.dp),
+                    .height(42.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (error != null) {
@@ -1201,8 +1202,9 @@ fun SendBottomBar(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 16.sp
                     )
                 }
             }
@@ -1257,10 +1259,15 @@ fun MaxAmountDialog(
     coin: Coin,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
-    isLoading: Boolean = false
+    isLoading: Boolean = false,
+    maxAmountSuggestion: BigDecimal? = null,
+    maxFeeSuggestion: BigDecimal? = null
 ) {
     val haptic = rememberHapticHelper()
-    val fee = when (feeEstimate) {
+    
+    // Use the suggestion from ViewModel if available (it accounts for UTXOs accurately)
+    // Otherwise fallback to simple calculation (legacy behavior for when VM hasn't loaded yet)
+    val fee = maxFeeSuggestion ?: when (feeEstimate) {
         is BitcoinFeeEstimate -> feeEstimate.totalFeeBtc.toBigDecimalOrNull()
             ?: BigDecimal("0.00001")
 
@@ -1281,8 +1288,8 @@ fun MaxAmountDialog(
         else -> false
     }
 
-    // Use higher precision for internal subtraction to avoid leaving dust
-    val maxAmount = if (isNative) {
+    // Use the suggested amount from VM as priority
+    val maxAmount = maxAmountSuggestion ?: if (isNative) {
         (balance - fee).setScale(18, RoundingMode.DOWN)
     } else {
         balance
@@ -1385,7 +1392,8 @@ fun MaxAmountDialog(
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = stringResource(R.string.available_label),
@@ -1411,7 +1419,8 @@ fun MaxAmountDialog(
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = stringResource(R.string.network_fee_label),
@@ -1419,30 +1428,34 @@ fun MaxAmountDialog(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.weight(1f)
                                 )
-                                if (isLoading) {
-                                    Box(
-                                        modifier = Modifier
-                                            .width(80.dp)
-                                            .height(16.dp)
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .shimmer()
-                                    )
-                                } else {
-                                    Text(
-                                        text = if (isNative) {
-                                            "- ${
-                                                fee.stripTrailingZeros().toPlainString()
-                                            } ${coin.symbol}"
-                                        } else {
-                                            "Paid in ${coin.network.nativeSymbol}"
-                                        },
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = if (isNative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.End,
-                                        modifier = Modifier.weight(2f)
-                                    )
+                                Box(
+                                    modifier = Modifier.weight(2f).height(20.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    if (isLoading) {
+                                        Box(
+                                            modifier = Modifier
+                                                .width(80.dp)
+                                                .height(16.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .shimmer()
+                                        )
+                                    } else {
+                                        Text(
+                                            text = if (isNative) {
+                                                "- ${
+                                                    fee.stripTrailingZeros().toPlainString()
+                                                } ${coin.symbol}"
+                                            } else {
+                                                "Paid in ${coin.network.nativeSymbol}"
+                                            },
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = if (isNative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            textAlign = TextAlign.End
+                                        )
+                                    }
                                 }
                             }
 
@@ -1465,13 +1478,13 @@ fun MaxAmountDialog(
                                 )
                                 Column(
                                     horizontalAlignment = Alignment.End,
-                                    modifier = Modifier.weight(2f)
+                                    modifier = Modifier.weight(2f).heightIn(min = 44.dp),                                verticalArrangement = Arrangement.Center
                                 ) {
                                     if (isLoading) {
                                         Box(
                                             modifier = Modifier
                                                 .width(100.dp)
-                                                .height(24.dp) // titleMedium line height is 24.sp
+                                                .height(24.dp)
                                                 .clip(RoundedCornerShape(4.dp))
                                                 .shimmer()
                                         )
@@ -1479,7 +1492,7 @@ fun MaxAmountDialog(
                                         Box(
                                             modifier = Modifier
                                                 .width(60.dp)
-                                                .height(16.dp) // labelSmall line height
+                                                .height(16.dp)
                                                 .clip(RoundedCornerShape(4.dp))
                                                 .shimmer()
                                         )

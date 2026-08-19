@@ -36,5 +36,7 @@ data class SolanaSendUIState(
     val error: String? = null,
     val step: String = "",
     val isValid: Boolean = false,
-    val isFiatMode: Boolean = false
+    val isFiatMode: Boolean = false,
+    val maxAmountSuggestion: BigDecimal? = null,
+    val maxFeeSuggestion: BigDecimal? = null
 )

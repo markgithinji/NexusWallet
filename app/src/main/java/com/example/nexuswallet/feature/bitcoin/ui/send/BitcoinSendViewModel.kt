@@ -3,6 +3,7 @@ package com.example.nexuswallet.feature.bitcoin.ui.send
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nexuswallet.feature.bitcoin.domain.repository.BitcoinBlockchainRepository
+import com.example.nexuswallet.feature.bitcoin.domain.usecase.CalculateBitcoinMaxAmountUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinBalanceUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinFeeEstimateUseCase
 import com.example.nexuswallet.feature.bitcoin.domain.usecase.GetBitcoinWalletUseCase
@@ -40,6 +41,7 @@ class BitcoinSendViewModel @Inject constructor(
     private val getBitcoinFeeEstimateUseCase: GetBitcoinFeeEstimateUseCase,
     private val selectBitcoinUtxosUseCase: SelectBitcoinUtxosUseCase,
     private val validateBitcoinTransactionUseCase: ValidateBitcoinTransactionUseCase,
+    private val calculateMaxAmountUseCase: CalculateBitcoinMaxAmountUseCase,
     private val walletRepository: WalletRepository,
     private val bitcoinBlockchainRepository: BitcoinBlockchainRepository,
     private val marketRepository: MarketRepository,
@@ -201,10 +203,13 @@ class BitcoinSendViewModel @Inject constructor(
             org.bitcoinj.script.ScriptPattern.isP2WPKH(it.script) 
         } ?: isSegwitAddress
 
+        // If the user has put in their full balance (Max/Sweep), there's only 1 output
+        val outputCount = if (state.maxAmountSuggestion != null && state.amountValue == state.maxAmountSuggestion) 1 else 2
+
         when (val result = getBitcoinFeeEstimateUseCase(
             feeLevel = feeLevel,
             inputCount = inputCount,
-            outputCount = DEFAULT_OUTPUT_COUNT,
+            outputCount = outputCount,
             network = state.network,
             isSegwit = hasSegwitUtxo
         )) {
@@ -236,70 +241,30 @@ class BitcoinSendViewModel @Inject constructor(
         _state.update { it.copy(isFeeLoading = true) }
         
         val state = _state.value
-        val utxosResult = bitcoinBlockchainRepository.getUnspentOutputs(state.walletAddress, state.network)
-        
-        if (utxosResult is Result.Success) {
-            val allUtxos = utxosResult.data
-            if (allUtxos.isEmpty()) {
-                _state.update { it.copy(isFeeLoading = false) }
-                validateInputs()
-                return
-            }
+        val result = calculateMaxAmountUseCase(
+            walletAddress = state.walletAddress,
+            network = state.network,
+            feeLevel = state.feeLevel,
+            balance = state.balance
+        )
 
-            // Detect SegWit and calculate mixed input size
-            val totalInputSize = allUtxos.fold(0L) { acc, item ->
-                acc + when {
-                    org.bitcoinj.script.ScriptPattern.isP2WPKH(item.script) -> BitcoinConstants.BYTES_PER_INPUT_SEGWIT
-                    org.bitcoinj.script.ScriptPattern.isP2SH(item.script) -> BitcoinConstants.BYTES_PER_INPUT_P2SH
-                    else -> BitcoinConstants.BYTES_PER_INPUT
+        when (result) {
+            is Result.Success -> {
+                val data = result.data
+                _state.update { 
+                    it.copy(
+                        maxAmountSuggestion = data.amountBtc,
+                        maxFeeSuggestion = data.feeBtc,
+                        isFeeLoading = false
+                    ) 
                 }
             }
-            val hasSegwit = allUtxos.any { org.bitcoinj.script.ScriptPattern.isP2WPKH(it.script) }
-            
-            // Sweep calculation usually has only 1 output (the recipient)
-            val sweepOutputCount = 1
-            val baseSize = if (hasSegwit) 11L else BitcoinConstants.BASE_TX_SIZE
-            val outputSize = if (hasSegwit) (sweepOutputCount * BitcoinConstants.BYTES_PER_OUTPUT_SEGWIT) else (sweepOutputCount * BitcoinConstants.BYTES_PER_OUTPUT)
-            val totalSize = baseSize + totalInputSize + outputSize
-
-            // Get current fee rate
-            val feePerByteResult = bitcoinBlockchainRepository.getFeeEstimate(
-                feeLevel = state.feeLevel,
-                inputCount = 1, // Ballpark call just to get rate
-                outputCount = 2,
-                network = state.network,
-                isSegwit = hasSegwit
-            )
-
-            if (feePerByteResult is Result.Success) {
-                val feePerByte = feePerByteResult.data.feePerByte
-                val totalFeeSatoshis = (totalSize * feePerByte).toLong()
-                val totalFee = BigDecimal(totalFeeSatoshis).divide(BigDecimal(BitcoinConstants.SATOSHIS_PER_BTC), 8, RoundingMode.HALF_UP)
-                
-                // Sweep calculation: Amount = Balance - Fee
-                val maxAmount = (state.balance - totalFee).setScale(8, RoundingMode.DOWN)
-                
-                if (maxAmount > BigDecimal.ZERO) {
-                    _state.update { 
-                        it.copy(
-                            amount = maxAmount.stripTrailingZeros().toPlainString(),
-                            amountValue = maxAmount,
-                            feeEstimate = feePerByteResult.data.copy(
-                                totalFeeBtc = totalFee.toPlainString(),
-                                totalFeeSatoshis = totalFeeSatoshis,
-                                estimatedSize = totalSize
-                            ),
-                            isFeeLoading = false
-                        ) 
-                    }
-                } else {
-                    _state.update { it.copy(isFeeLoading = false) }
-                }
-            } else {
+            is Result.Error -> {
+                _state.update { it.copy(isFeeLoading = false, maxAmountSuggestion = BigDecimal.ZERO) }
+            }
+            else -> {
                 _state.update { it.copy(isFeeLoading = false) }
             }
-        } else {
-            _state.update { it.copy(isFeeLoading = false) }
         }
         validateInputs()
     }

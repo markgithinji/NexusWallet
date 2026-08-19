@@ -374,7 +374,7 @@ class EVMSendViewModel @Inject constructor(
                 val feeEstimate = feeEstimateResult.data
                 val totalFee = BigDecimal(feeEstimate.totalFeeEth)
                 
-                val maxAmount = if (currentToken is com.example.nexuswallet.feature.wallet.domain.model.NativeETH) {
+                val maxAmount = if (currentToken is NativeETH) {
                     (state.ethBalance - totalFee).setScale(18, RoundingMode.DOWN)
                 } else {
                     state.tokenBalance
@@ -383,14 +383,13 @@ class EVMSendViewModel @Inject constructor(
                 if (maxAmount > BigDecimal.ZERO) {
                     _uiState.update { 
                         it.copy(
-                            amount = maxAmount.setScale(18, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString(),
-                            amountValue = maxAmount,
-                            feeEstimate = feeEstimate,
+                            maxAmountSuggestion = maxAmount,
+                            maxFeeSuggestion = totalFee,
                             isFeeLoading = false
                         )
                     }
                 } else {
-                    _uiState.update { it.copy(isFeeLoading = false) }
+                    _uiState.update { it.copy(isFeeLoading = false, maxAmountSuggestion = BigDecimal.ZERO) }
                 }
             } else {
                 _uiState.update { it.copy(isFeeLoading = false) }

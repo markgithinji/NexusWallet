@@ -239,6 +239,7 @@ fun SolanaSendScreen(
                         symbol = state.selectedSplToken?.symbol ?: "SOL",
                         coinColor = solanaLight,
                         onMaxClick = {
+                            viewModel.onEvent(SolanaSendEvent.UseMax)
                             showMaxDialog = true
                         },
                         errorMessage = errorState.amountErrorMessage,
@@ -288,6 +289,8 @@ fun SolanaSendScreen(
             fiatRate = state.fiatRate,
             tokenSymbol = state.selectedSplToken?.symbol ?: "SOL",
             coin = state.coin ?: coin,
+            maxAmountSuggestion = state.maxAmountSuggestion,
+            maxFeeSuggestion = state.maxFeeSuggestion,
             onDismiss = { showMaxDialog = false },
             onConfirm = { maxAmount ->
                 amountTouched = true

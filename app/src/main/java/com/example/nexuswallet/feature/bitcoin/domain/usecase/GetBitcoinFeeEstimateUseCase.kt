@@ -22,17 +22,29 @@ class GetBitcoinFeeEstimateUseCase @Inject constructor(
         network: BitcoinNetwork,
         isSegwit: Boolean = true
     ): Result<BitcoinFeeEstimate> {
-        logger.d(
-            TAG,
-            "Getting fee estimate for $feeLevel ($network) with $inputCount inputs, $outputCount outputs, isSegwit=$isSegwit"
-        )
-        return bitcoinBlockchainRepository.getFeeEstimate(
+        val result = bitcoinBlockchainRepository.getFeeEstimate(
             feeLevel = feeLevel,
             inputCount = inputCount,
             outputCount = outputCount,
             network = network,
             isSegwit = isSegwit
         )
+        
+        when (result) {
+            is Result.Success -> {
+                val fee = result.data
+                logger.d(
+                    TAG,
+                    "Fee Result: Total=${fee.totalFeeBtc} BTC (${fee.totalFeeSatoshis} sats) | Rate=${fee.feePerByte} sat/vB | Size=${fee.estimatedSize} vB | Inputs=$inputCount, Outputs=$outputCount, SegWit=$isSegwit"
+                )
+            }
+            is Result.Error -> {
+                logger.e(TAG, "Fee Error: ${result.message} | Params: Inputs=$inputCount, Outputs=$outputCount")
+            }
+            else -> {}
+        }
+        
+        return result
     }
 
     companion object {

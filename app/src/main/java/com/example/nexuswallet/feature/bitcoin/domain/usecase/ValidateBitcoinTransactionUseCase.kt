@@ -99,8 +99,10 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
         val feeBtc = if (feeEstimate != null) {
             BigDecimal(feeEstimate.totalFeeBtc)
         } else {
-            // Use a much safer baseline for estimation validation (avg tx size ~250 bytes * 20 sat/vB)
-            BigDecimal("0.00005") 
+            // If the user entered an amount that looks like a Max amount (e.g. they clicked Max)
+            // don't use a fixed fee fallback that might push them over the limit and show a false error.
+            // The SendBottomBar already disables the button while isFeeLoading is true.
+            BigDecimal.ZERO
         }
 
         val totalRequired = amount + feeBtc

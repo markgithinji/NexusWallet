@@ -2,11 +2,14 @@ package com.example.nexuswallet.feature.bitcoin.domain.usecase
 
 import com.example.nexuswallet.feature.bitcoin.data.model.UTXO
 import com.example.nexuswallet.feature.bitcoin.util.BitcoinConstants
+import com.example.nexuswallet.feature.logging.Logger
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SelectBitcoinUtxosUseCase @Inject constructor() {
+class SelectBitcoinUtxosUseCase @Inject constructor(
+    private val logger: Logger
+) {
     
     /**
      * Selects UTXOs while accounting for the fee each input adds to the transaction.
@@ -31,8 +34,8 @@ class SelectBitcoinUtxosUseCase @Inject constructor() {
             totalSelected += utxo.value.value
             
             // Recalculate fee for current input count using accurate per-input estimation
-            val totalInputSize = selected.sumOf { item ->
-                when {
+            val totalInputSize = selected.fold(0L) { acc, item ->
+                acc + when {
                     org.bitcoinj.script.ScriptPattern.isP2WPKH(item.script) -> BitcoinConstants.BYTES_PER_INPUT_SEGWIT
                     org.bitcoinj.script.ScriptPattern.isP2SH(item.script) -> BitcoinConstants.BYTES_PER_INPUT_P2SH
                     else -> BitcoinConstants.BYTES_PER_INPUT
@@ -47,11 +50,12 @@ class SelectBitcoinUtxosUseCase @Inject constructor() {
             val currentFee = (estSize * feePerByte).toLong()
             
             if (totalSelected >= (targetSatoshis + currentFee)) {
+                logger.d("SelectUtxos", "Selected ${selected.size} inputs for target $targetSatoshis | Fee: $currentFee sats (Rate: $feePerByte, Size: $estSize vB, Outputs: $outputCount)")
                 return selected
             }
         }
         
-        // If we reach here, we didn't find enough funds to cover amount + fee
+        logger.w("SelectUtxos", "Failed to find sufficient funds for target $targetSatoshis + fee (Total Selected: $totalSelected)")
         return emptyList()
     }
 }

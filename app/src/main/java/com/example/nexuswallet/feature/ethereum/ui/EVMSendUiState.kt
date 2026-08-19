@@ -35,5 +35,7 @@ data class EVMSendUiState(
     val addressBookEntries: List<AddressBookEntry> = emptyList(),
     val error: String? = null,
     val step: String = "",
-    val isFiatMode: Boolean = false
+    val isFiatMode: Boolean = false,
+    val maxAmountSuggestion: BigDecimal? = null,
+    val maxFeeSuggestion: BigDecimal? = null
 )
