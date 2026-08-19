@@ -140,7 +140,9 @@ fun EthereumSendScreen(
         addressTouched = addressTouched,
         amountTouched = amountTouched,
         addressFocused = addressFocused,
-        amountFocused = amountFocused
+        amountFocused = amountFocused,
+        isLoading = state.isLoading,
+        isFeeLoading = state.isFeeLoading
     )
 
     Scaffold(

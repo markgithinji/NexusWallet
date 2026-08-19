@@ -18,10 +18,10 @@ data class BitcoinReviewUiState(
     val balance: BigDecimal = BigDecimal.ZERO,
     val balanceFormatted: String = "0 BTC",
     val feeEstimate: BitcoinFeeEstimate? = null,
-    val isFeeLoading: Boolean = false,
+    val isFeeLoading: Boolean = true,
     val preparedTransaction: PreparedBitcoinTransaction? = null,
     val transactionPrepared: Boolean = false,
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val error: String? = null,
     val step: String = ""
 )

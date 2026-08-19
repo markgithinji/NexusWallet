@@ -2087,7 +2087,9 @@ fun rememberSendErrorState(
     addressTouched: Boolean,
     amountTouched: Boolean,
     addressFocused: Boolean,
-    amountFocused: Boolean
+    amountFocused: Boolean,
+    isLoading: Boolean = false,
+    isFeeLoading: Boolean = false
 ): SendErrorState {
     val showAddressError =
         !addressFocused && addressTouched && validationResult.addressError != null
@@ -2096,13 +2098,14 @@ fun rememberSendErrorState(
 
     // For balance and gas errors, we show them if the amount field has been interacted with 
     // OR if there's no syntax error in the amount itself (i.e. it's a valid non-zero amount).
-    // This ensures that fee-related insufficient balance warnings appear immediately when fees change.
+    // We suppress these errors while the app is loading data to avoid flickers.
     val hasValidAmount = validationResult.amountError == null
+    val canShowBalanceError = !isLoading && !isFeeLoading
 
     val showAmountError = !amountFocused && amountTouched && validationResult.amountError != null
     val showBalanceError =
-        (amountTouched || hasValidAmount) && validationResult.balanceError != null
-    val showGasError = (amountTouched || hasValidAmount) && validationResult.gasError != null
+        canShowBalanceError && (amountTouched || hasValidAmount) && validationResult.balanceError != null
+    val showGasError = canShowBalanceError && (amountTouched || hasValidAmount) && validationResult.gasError != null
 
     val activeError = when {
         showSelfSendError -> validationResult.selfSendError

@@ -74,6 +74,16 @@ class SolanaSendViewModel @Inject constructor(
     }
 
     fun init(walletId: String, coin: SolanaCoin) {
+        if (_state.value.walletId == walletId && _state.value.coin == coin) {
+            // Already initialized, just refresh in background
+            viewModelScope.launch {
+                refreshBalance()
+                loadFiatRate()
+                refreshFeeEstimate(immediate = true)
+            }
+            return
+        }
+
         viewModelScope.launch {
             _state.update {
                 it.copy(

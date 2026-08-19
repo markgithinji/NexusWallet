@@ -80,6 +80,16 @@ class EVMSendViewModel @Inject constructor(
     }
 
     fun initialize(walletId: String, coin: EVMToken? = null) {
+        if (_uiState.value.isInitialized && _uiState.value.walletId == walletId) {
+            // Already initialized, just refresh
+            viewModelScope.launch {
+                loadBalances()
+                refreshFeeEstimate(immediate = true)
+                loadFiatRate(_uiState.value.selectedToken)
+            }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update {
                 it.copy(

@@ -83,6 +83,17 @@ class BitcoinSendViewModel @Inject constructor(
     }
 
     private suspend fun initialize(walletId: String, coin: BitcoinCoin?) {
+        if (_state.value.isInitialized && _state.value.walletId == walletId) {
+            // Already initialized, just refresh data in background without resetting UI state
+            val walletAddress = _state.value.walletAddress
+            val network = _state.value.network
+            val xpub = _state.value.coin?.xpub
+            loadBalance(walletAddress, network, xpub)
+            loadFeeEstimate(_state.value.feeLevel)
+            loadFiatRate()
+            return
+        }
+
         _state.update {
             it.copy(
                 walletId = walletId,

@@ -340,8 +340,8 @@ fun TransactionReviewScreen(
 
     val isPreparing = when (coin) {
         is BitcoinCoin -> bitcoinState.value.isLoading && !bitcoinState.value.transactionPrepared
-        is SolanaCoin -> solanaState.value.isLoading && !solanaState.value.isFeeLoading && !isSending
-        is EVMToken -> ethereumState.value.isLoading && !ethereumState.value.isFeeLoading && !isSending
+        is SolanaCoin -> (solanaState.value.isLoading || solanaState.value.isFeeLoading) && !isSending
+        is EVMToken -> (ethereumState.value.isLoading || ethereumState.value.isFeeLoading) && !isSending
         else -> false
     }
 
@@ -435,6 +435,9 @@ fun TransactionReviewScreen(
                 networkName = fullNetworkName,
                 validationErrors = if (sendError != null) {
                     listOf(sendError)
+                } else if (isFeeLoading || isPreparing) {
+                    // Suppress validation errors while preparing/loading to avoid flickers
+                    emptyList()
                 } else {
                     when (coin) {
                         is SolanaCoin -> listOfNotNull(
