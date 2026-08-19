@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -652,7 +653,8 @@ fun AssetCard(
 
             // USD Value and percentage
             Column(
-                horizontalAlignment = Alignment.End
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier.widthIn(min = 80.dp)
             ) {
                 Text(
                     text = asset.usdValue.formatAsCurrency(
@@ -665,8 +667,13 @@ fun AssetCard(
                     maxLines = 1
                 )
 
-                if (asset.priceChangeFormatted != null) {
-                    PriceChangeIndicator(asset.priceChangeFormatted)
+                Box(
+                    modifier = Modifier.height(20.dp).widthIn(min = 64.dp),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    if (asset.priceChangeFormatted != null) {
+                        PriceChangeIndicator(asset.priceChangeFormatted)
+                    }
                 }
             }
         }

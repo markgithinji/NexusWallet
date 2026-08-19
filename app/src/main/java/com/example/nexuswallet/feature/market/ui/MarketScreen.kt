@@ -624,24 +624,29 @@ fun TokenItem(
                 else
                     MaterialTheme.colorScheme.error
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                Box(
+                    modifier = Modifier.height(20.dp).widthIn(min = 64.dp),
+                    contentAlignment = Alignment.CenterEnd
                 ) {
-                    Icon(
-                        imageVector = if (priceChange >= 0)
-                            Icons.AutoMirrored.Outlined.TrendingUp
-                        else
-                            Icons.AutoMirrored.Outlined.TrendingDown,
-                        contentDescription = "Price trend",
-                        modifier = Modifier.size(12.dp),
-                        tint = changeColor
-                    )
-                    Text(
-                        text = "${if (priceChange >= 0) "+" else ""}${priceChange.formatTwoDecimals()}%",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = changeColor
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (priceChange >= 0)
+                                Icons.AutoMirrored.Outlined.TrendingUp
+                            else
+                                Icons.AutoMirrored.Outlined.TrendingDown,
+                            contentDescription = "Price trend",
+                            modifier = Modifier.size(12.dp),
+                            tint = changeColor
+                        )
+                        Text(
+                            text = "${if (priceChange >= 0) "+" else ""}${priceChange.formatTwoDecimals()}%",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = changeColor
+                        )
+                    }
                 }
             }
         }

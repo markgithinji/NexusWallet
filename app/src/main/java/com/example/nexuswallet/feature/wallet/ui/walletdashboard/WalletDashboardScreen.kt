@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -939,17 +940,25 @@ fun SimpleBalanceRow(
             )
         }
 
-        Text(
-            text = if (isPrivacyModeEnabled) "****" else usdValue.formatAsCurrency(
-                currencyState.usdToRate,
-                currencyState.currency
-            ),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = if (usdValue > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                alpha = 0.5f
+        Box(
+            modifier = Modifier
+                .height(20.dp)
+                .widthIn(min = 80.dp),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            Text(
+                text = if (isPrivacyModeEnabled) "****" else usdValue.formatAsCurrency(
+                    currencyState.usdToRate,
+                    currencyState.currency
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (usdValue > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                    alpha = 0.5f
+                ),
+                maxLines = 1
             )
-        )
+        }
     }
 }
 
