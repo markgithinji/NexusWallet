@@ -22,7 +22,8 @@ class ValidateSolanaSendUseCase @Inject constructor(
         balance: BigDecimal, // Selected asset balance
         solBalance: BigDecimal, // Native SOL balance for fees
         feeEstimate: SolanaFeeEstimate?,
-        selectedToken: SPLToken? = null
+        selectedToken: SPLToken? = null,
+        isFeeLoading: Boolean = false
     ): SendValidationResult {
 
         // Validate address is not empty
@@ -76,10 +77,14 @@ class ValidateSolanaSendUseCase @Inject constructor(
         // 1. Check selected asset balance (SOL or Token)
         val symbol = selectedToken?.symbol ?: "SOL"
         
-        // If fee estimate is null, it's likely still loading. We use 0 as fallback 
-        // to avoid false "Insufficient funds" error while the fee is being calculated.
+        // If fee estimate is null or loading, it's likely still being fetched. 
+        // We use 0 as fallback to avoid false "Insufficient funds" error during calculations.
         // The UI already disables the send button while isFeeLoading is true.
-        val feeSol = feeEstimate?.feeSol?.toBigDecimalOrNull() ?: BigDecimal.ZERO
+        val feeSol = if (feeEstimate != null && !isFeeLoading) {
+            feeEstimate.feeSol.toBigDecimalOrNull() ?: BigDecimal.ZERO
+        } else {
+            BigDecimal.ZERO
+        }
         
         val rentExemptThreshold = BigDecimal(com.example.nexuswallet.feature.solana.util.SolanaConstants.RENT_EXEMPT_MINIMUM_LAMPORTS)
             .divide(BigDecimal(com.example.nexuswallet.feature.solana.util.SolanaConstants.LAMPORTS_PER_SOL), 9, java.math.RoundingMode.HALF_UP)

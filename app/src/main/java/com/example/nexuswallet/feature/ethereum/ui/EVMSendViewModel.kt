@@ -445,7 +445,8 @@ class EVMSendViewModel @Inject constructor(
             tokenBalance = state.tokenBalance,
             ethBalance = state.ethBalance,
             feeEstimate = state.feeEstimate,
-            token = token
+            token = token,
+            isFeeLoading = state.isFeeLoading
         )
 
         _uiState.update {

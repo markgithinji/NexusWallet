@@ -313,7 +313,8 @@ class SolanaSendViewModel @Inject constructor(
             balance = currentState.balance,
             solBalance = currentState.solBalance,
             feeEstimate = currentState.feeEstimate,
-            selectedToken = currentState.selectedSplToken
+            selectedToken = currentState.selectedSplToken,
+            isFeeLoading = currentState.isFeeLoading
         )
 
         _state.update {

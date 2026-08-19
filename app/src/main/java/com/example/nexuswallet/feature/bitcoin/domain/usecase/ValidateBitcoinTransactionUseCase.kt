@@ -25,7 +25,8 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
         amount: BigDecimal,
         network: BitcoinNetwork,
         balance: BigDecimal,
-        feeEstimate: BitcoinFeeEstimate?
+        feeEstimate: BitcoinFeeEstimate?,
+        isFeeLoading: Boolean = false
     ): SendValidationResult {
 
         // Validate wallet exists
@@ -96,12 +97,11 @@ class ValidateBitcoinTransactionUseCase @Inject constructor(
         }
 
         // Calculate total required including fees
-        val feeBtc = if (feeEstimate != null) {
+        val feeBtc = if (feeEstimate != null && !isFeeLoading) {
             BigDecimal(feeEstimate.totalFeeBtc)
         } else {
-            // If the user entered an amount that looks like a Max amount (e.g. they clicked Max)
-            // don't use a fixed fee fallback that might push them over the limit and show a false error.
-            // The SendBottomBar already disables the button while isFeeLoading is true.
+            // If the fee is loading, don't use a stale estimate or a fallback.
+            // The Send screen's BottomBar is already disabled during loading.
             BigDecimal.ZERO
         }
 

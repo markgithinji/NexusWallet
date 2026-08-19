@@ -344,7 +344,8 @@ class BitcoinSendViewModel @Inject constructor(
                 amount = state.amountValue,
                 network = state.network,
                 balance = state.balance,
-                feeEstimate = state.feeEstimate
+                feeEstimate = state.feeEstimate,
+                isFeeLoading = state.isFeeLoading
             )
 
             _state.update { currentState ->

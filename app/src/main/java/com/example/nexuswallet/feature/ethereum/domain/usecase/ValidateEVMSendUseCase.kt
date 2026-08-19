@@ -23,7 +23,8 @@ class ValidateEVMSendUseCase @Inject constructor(
         tokenBalance: BigDecimal,
         ethBalance: BigDecimal,
         feeEstimate: EVMFeeEstimate?,
-        token: EVMToken
+        token: EVMToken,
+        isFeeLoading: Boolean = false
     ): SendValidationResult {
 
         // Validate address is not empty
@@ -62,15 +63,13 @@ class ValidateEVMSendUseCase @Inject constructor(
             )
         }
 
-        // Check if fee estimate is available
-        if (feeEstimate == null) {
-            return SendValidationResult(
-                isValid = false,
-                gasError = "Fee estimate not available"
-            )
+        // Calculate total required including fees
+        val feeEth = if (feeEstimate != null && !isFeeLoading) {
+            feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
+        } else {
+            // If fee is loading, don't block validation with a stale or placeholder fee
+            BigDecimal.ZERO
         }
-
-        val feeEth = feeEstimate.totalFeeEth.toBigDecimalOrNull() ?: BigDecimal("0.001")
 
         // Check if it's a token transfer
         if (token !is NativeETH) {
