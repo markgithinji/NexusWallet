@@ -1,5 +1,6 @@
 package com.example.nexuswallet.feature.market.ui
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,10 +26,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import com.example.nexuswallet.feature.core.util.formatLargeNumber
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 
 @Composable
 fun PriceLineChart(
     pricePoints: List<PricePoint>,
+    currency: SupportedCurrency = SupportedCurrency.USD,
     modifier: Modifier = Modifier
 ) {
     if (pricePoints.isEmpty()) return
@@ -48,9 +51,28 @@ fun PriceLineChart(
 
     val textMeasurer = rememberTextMeasurer()
 
+    val infiniteTransition = rememberInfiniteTransition(label = "live_glow")
+    val glowRadius by infiniteTransition.animateFloat(
+        initialValue = 4f,
+        targetValue = 18f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "glow_radius"
+    )
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "glow_alpha"
+    )
+
     Canvas(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
     ) {
 
         val width = size.width
@@ -58,7 +80,7 @@ fun PriceLineChart(
 
         val paddingBottom = 60f
         val paddingTop = 40f
-        val paddingLeft = 110f
+        val paddingLeft = 120f
 
         val chartBottom = height - paddingBottom
         val chartTop = paddingTop
@@ -121,7 +143,7 @@ fun PriceLineChart(
             )
 
             // Label
-            val label = "$${formatLargeNumber(priceValue)}"
+            val label = "${currency.symbol}${formatLargeNumber(priceValue)}"
 
             val textLayout = textMeasurer.measure(
                 text = label,
@@ -144,7 +166,7 @@ fun PriceLineChart(
         }
 
         // =========================
-        // AREA FILL (SMOOTHED)
+        // AREA FILL
         // =========================
 
         val graphPath = Path().apply {
@@ -187,14 +209,14 @@ fun PriceLineChart(
         )
 
         // =========================
-        // LINE GRAPH (SMOOTHED)
+        // LINE GRAPH
         // =========================
 
         drawPath(
             path = graphPath,
             color = lineColor,
             style = Stroke(
-                width = 3.dp.toPx(),
+                width = 2.dp.toPx(),
                 cap = StrokeCap.Round,
                 join = StrokeJoin.Round
             )
@@ -205,6 +227,13 @@ fun PriceLineChart(
             color = lineColor,
             center = points.first(),
             radius = 5f
+        )
+
+        // Live status glow for latest point
+        drawCircle(
+            color = lineColor.copy(alpha = glowAlpha),
+            center = points.last(),
+            radius = glowRadius
         )
 
         drawCircle(
@@ -293,14 +322,13 @@ fun PriceChartSkeleton(
         modifier = modifier
             .fillMaxWidth()
             .height(200.dp)
-            .clip(RoundedCornerShape(8.dp))
     ) {
         val width = size.width
         val height = size.height
 
         val paddingBottom = 60f
         val paddingTop = 40f
-        val paddingLeft = 110f
+        val paddingLeft = 120f
 
         val chartBottom = height - paddingBottom
         val chartTop = paddingTop
@@ -366,7 +394,7 @@ fun PriceChartSkeleton(
             path = path,
             color = baseColor.copy(alpha = 0.4f), 
             style = Stroke(
-                width = 2.5.dp.toPx(),
+                width = 1.5.dp.toPx(),
                 cap = StrokeCap.Round,
                 join = StrokeJoin.Round
             )

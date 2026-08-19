@@ -575,7 +575,7 @@ fun TokenItem(
 
             // Coin name and symbol
             Column(
-                modifier = Modifier.weight(0.9f)
+                modifier = Modifier.weight(0.7f)
             ) {
                 Text(
                     text = token.name,
@@ -596,8 +596,8 @@ fun TokenItem(
             Box(
                 modifier = Modifier
                     .weight(0.7f)
-                    .height(32.dp)
-                    .padding(horizontal = 8.dp)
+                    .height(36.dp)
+                    .padding(horizontal = 6.dp)
             ) {
                 token.sparklineIn7d?.price?.let { prices ->
                     if (prices.size >= 2) {
@@ -612,7 +612,7 @@ fun TokenItem(
 
             // Price and change
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1.2f),
                 horizontalAlignment = Alignment.End
             ) {
                 val formattedPrice = animatedPrice.toDouble().formatCurrency(currencyState.currency)
@@ -620,7 +620,10 @@ fun TokenItem(
                     text = formattedPrice,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Visible,
+                    softWrap = false
                 )
 
                 val priceChange = token.priceChangePercentage24h
@@ -722,7 +725,7 @@ fun TokenSparkline(
             path = path,
             color = color,
             style = Stroke(
-                width = 2.dp.toPx(),
+                width = 1.dp.toPx(),
                 cap = StrokeCap.Round,
                 join = StrokeJoin.Round
             )

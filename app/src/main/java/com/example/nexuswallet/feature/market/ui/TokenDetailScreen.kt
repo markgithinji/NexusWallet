@@ -408,6 +408,7 @@ fun PriceChart(
 
                                 PriceLineChart(
                                     pricePoints = convertedPrices,
+                                    currency = currencyState.currency,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(200.dp)
