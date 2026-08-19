@@ -61,7 +61,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.LocalCurrency
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.formatAsCurrency
+import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.core.util.formatLargeNumber
 import com.example.nexuswallet.feature.core.util.formatPrice
 import com.example.nexuswallet.feature.core.util.formatSupply
@@ -70,6 +73,7 @@ import com.example.nexuswallet.feature.market.domain.model.ChartData
 import com.example.nexuswallet.feature.market.domain.model.ChartDuration
 import com.example.nexuswallet.feature.market.domain.model.NewsArticle
 import com.example.nexuswallet.feature.market.domain.model.TokenDetail
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.shimmer
 import com.example.nexuswallet.ui.theme.success
@@ -89,6 +93,8 @@ fun TokenDetailScreen(
     val chartState by viewModel.chartState.collectAsStateWithLifecycle()
     val newsState by viewModel.newsState.collectAsStateWithLifecycle()
     val selectedDuration by viewModel.selectedDuration.collectAsStateWithLifecycle()
+    
+    val currencyState = LocalCurrency.current
 
     Scaffold(
         topBar = {
@@ -297,6 +303,8 @@ fun PriceChart(
     onDurationSelected: (ChartDuration) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val currencyState = LocalCurrency.current
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -393,8 +401,13 @@ fun PriceChart(
                             Column(
                                 modifier = Modifier.fillMaxSize()
                             ) {
+                                // Convert price points to selected currency
+                                val convertedPrices = remember(chartData.prices, currencyState.usdToRate) {
+                                    chartData.prices.map { it.copy(price = it.price * currencyState.usdToRate) }
+                                }
+
                                 PriceLineChart(
-                                    pricePoints = chartData.prices,
+                                    pricePoints = convertedPrices,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(200.dp)
@@ -402,10 +415,10 @@ fun PriceChart(
 
                                 Spacer(modifier = Modifier.height(16.dp))
 
-                                val firstPrice = chartData.prices.first().price
-                                val lastPrice = chartData.prices.last().price
+                                val firstPrice = convertedPrices.first().price
+                                val lastPrice = convertedPrices.last().price
                                 val priceChange = lastPrice - firstPrice
-                                val priceChangePercent = (priceChange / firstPrice) * 100
+                                val priceChangePercent = if (firstPrice != 0.0) (priceChange / firstPrice) * 100 else 0.0
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -420,7 +433,7 @@ fun PriceChart(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
-                                            text = "$${firstPrice.formatPrice()}",
+                                            text = firstPrice.formatCurrency(currencyState.currency),
                                             style = MaterialTheme.typography.bodyMedium,
                                             fontWeight = FontWeight.Medium,
                                             color = MaterialTheme.colorScheme.onSurface
@@ -479,7 +492,7 @@ fun PriceChart(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
-                                            text = "$${lastPrice.formatPrice()}",
+                                            text = lastPrice.formatCurrency(currencyState.currency),
                                             style = MaterialTheme.typography.bodyMedium,
                                             fontWeight = FontWeight.Medium,
                                             color = MaterialTheme.colorScheme.onSurface
@@ -738,7 +751,11 @@ fun TokenHeaderCard(token: TokenDetail) {
 }
 
 @Composable
-fun PriceCard(token: TokenDetail) {
+fun PriceCard(
+    token: TokenDetail
+) {
+    val currencyState = LocalCurrency.current
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -759,7 +776,7 @@ fun PriceCard(token: TokenDetail) {
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "$${token.currentPrice.formatPrice()}",
+                text = token.currentPrice.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -807,11 +824,11 @@ fun PriceCard(token: TokenDetail) {
 
                 // 24h range
                 Text(
-                    text = "${stringResource(R.string.low_short)}$${token.low24h.formatPrice()} ${
+                    text = "${stringResource(R.string.low_short)}${token.low24h.formatAsCurrency(currencyState.usdToRate, currencyState.currency)} ${
                         stringResource(
                             R.string.high_short
                         )
-                    }$${token.high24h.formatPrice()}",
+                    }${token.high24h.formatAsCurrency(currencyState.usdToRate, currencyState.currency)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -821,7 +838,11 @@ fun PriceCard(token: TokenDetail) {
 }
 
 @Composable
-fun MarketStatsCard(token: TokenDetail) {
+fun MarketStatsCard(
+    token: TokenDetail
+) {
+    val currencyState = LocalCurrency.current
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -845,7 +866,7 @@ fun MarketStatsCard(token: TokenDetail) {
             // Market Cap
             StatRowWithChange(
                 label = stringResource(R.string.market_cap),
-                value = "$${formatLargeNumber(token.marketCap)}",
+                value = token.marketCap.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
                 change = "${((token.marketCap / token.currentPrice) * 100).toInt()}%${
                     stringResource(
                         R.string.of_supply
@@ -858,7 +879,7 @@ fun MarketStatsCard(token: TokenDetail) {
             token.fullyDilutedValuation?.let { fdv ->
                 StatRowWithChange(
                     label = stringResource(R.string.fdv),
-                    value = "$${formatLargeNumber(fdv)}",
+                    value = fdv.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
                     change = "",
                     changeUp = true
                 )
@@ -867,7 +888,7 @@ fun MarketStatsCard(token: TokenDetail) {
             // 24h Trading Volume
             StatRowWithChange(
                 label = stringResource(R.string.volume_24h),
-                value = "$${formatLargeNumber(token.totalVolume)}",
+                value = token.totalVolume.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
                 change = "${((token.totalVolume / token.marketCap) * 100).toInt()}%${
                     stringResource(
                         R.string.of_market_cap
@@ -998,7 +1019,11 @@ fun SupplyProgressBar(percentage: Float, label: String) {
 }
 
 @Composable
-fun AllTimeCard(token: TokenDetail) {
+fun AllTimeCard(
+    token: TokenDetail
+) {
+    val currencyState = LocalCurrency.current
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -1030,7 +1055,7 @@ fun AllTimeCard(token: TokenDetail) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "$${token.ath.formatPrice()}",
+                        text = token.ath.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -1052,7 +1077,7 @@ fun AllTimeCard(token: TokenDetail) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "$${token.atl.formatPrice()}",
+                        text = token.atl.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface

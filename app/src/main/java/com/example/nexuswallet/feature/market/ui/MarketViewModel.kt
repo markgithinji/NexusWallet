@@ -8,7 +8,7 @@ import com.example.nexuswallet.feature.market.domain.model.Token
 import com.example.nexuswallet.feature.market.domain.model.TokenPriceUpdate
 import com.example.nexuswallet.feature.market.domain.repository.CoinGeckoRepository
 import com.example.nexuswallet.feature.market.domain.repository.WebSocketRepository
-import com.example.nexuswallet.feature.settings.domain.repository.SettingsRepository
+import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -27,8 +27,7 @@ import javax.inject.Inject
 @HiltViewModel
 class MarketViewModel @Inject constructor(
     private val coinGeckoRepository: CoinGeckoRepository,
-    private val webSocketRepository: WebSocketRepository,
-    private val settingsRepository: SettingsRepository
+    private val webSocketRepository: WebSocketRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(MarketUiState(isLoading = true))
@@ -51,21 +50,9 @@ class MarketViewModel @Inject constructor(
     private val searchDebounceTime = 300L
 
     init {
-        observeSelectedCurrency()
+        loadInitialData()
         setupWebSocketObservers()
         setupSearchDebounce()
-    }
-
-    private fun observeSelectedCurrency() {
-        viewModelScope.launch {
-            settingsRepository.observeSelectedCurrency().collect { currency ->
-                val previousCurrency = _uiState.value.selectedCurrency
-                _uiState.update { it.copy(selectedCurrency = currency) }
-                if (previousCurrency != currency || !isInitialDataLoaded) {
-                    loadInitialData()
-                }
-            }
-        }
     }
 
     @OptIn(FlowPreview::class)
@@ -87,10 +74,12 @@ class MarketViewModel @Inject constructor(
             isInitialDataLoaded = false
             allTokensCache = emptyList()
 
+            // ALWAYS fetch in USD to avoid CoinGecko Demo API limitations
+            // and maintain consistency with WebSocket updates
             when (val result = coinGeckoRepository.getTopCryptocurrencies(
                 perPage = perPage,
                 page = 1,
-                currency = _uiState.value.selectedCurrency
+                currency = SupportedCurrency.USD
             )) {
                 is Result.Success -> {
                     val firstPage = result.data
@@ -100,15 +89,10 @@ class MarketViewModel @Inject constructor(
                     
                     currentPage = 2
                     
-                    _uiState.update { 
-                        it.copy(
-                            isLoading = false,
-                            tokens = allTokensCache
-                        )
-                    }
-                    
                     stableTokenIds = allTokensCache.map { it.id }
                     applySearchFilter(_uiState.value.searchQuery)
+                    
+                    _uiState.update { it.copy(isLoading = false) }
 
                     loadRemainingPages()
                 }
@@ -140,10 +124,11 @@ class MarketViewModel @Inject constructor(
     private suspend fun loadPage(page: Int) {
         if (page > 2) return
 
+        // Always fetch in USD
         when (val result = coinGeckoRepository.getTopCryptocurrencies(
             perPage = perPage,
             page = page,
-            currency = _uiState.value.selectedCurrency
+            currency = SupportedCurrency.USD
         )) {
             is Result.Success -> {
                 val tokens = result.data
@@ -160,7 +145,6 @@ class MarketViewModel @Inject constructor(
                         
                         stableTokenIds = allTokensCache.map { it.id }
                         
-                        _uiState.update { it.copy(tokens = allTokensCache) }
                         applySearchFilter(_uiState.value.searchQuery)
                     }
 

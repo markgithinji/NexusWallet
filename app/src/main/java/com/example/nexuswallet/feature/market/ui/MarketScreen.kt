@@ -49,7 +49,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import com.example.nexuswallet.R
+import com.example.nexuswallet.feature.core.ui.LocalCurrency
 import com.example.nexuswallet.feature.core.util.Result
+import com.example.nexuswallet.feature.core.util.formatCurrency
 import com.example.nexuswallet.feature.core.util.formatPrice
 import com.example.nexuswallet.feature.core.util.formatTwoDecimals
 import com.example.nexuswallet.feature.market.domain.model.ConnectionState
@@ -475,8 +477,10 @@ fun TokenItem(
     token: Token,
     onClick: (Token) -> Unit = {}
 ) {
+    val currencyState = LocalCurrency.current
+
     val animatedPrice by animateFloatAsState(
-        targetValue = token.currentPrice.toFloat(),
+        targetValue = (token.currentPrice * currencyState.usdToRate).toFloat(),
         animationSpec = tween(durationMillis = 300),
         label = "priceAnimation"
     )
@@ -611,8 +615,9 @@ fun TokenItem(
                 modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.End
             ) {
+                val formattedPrice = animatedPrice.toDouble().formatCurrency(currencyState.currency)
                 Text(
-                    text = "$${animatedPrice.formatPrice()}",
+                    text = formattedPrice,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -625,7 +630,9 @@ fun TokenItem(
                     MaterialTheme.colorScheme.error
 
                 Box(
-                    modifier = Modifier.height(20.dp).widthIn(min = 64.dp),
+                    modifier = Modifier
+                        .height(20.dp)
+                        .widthIn(min = 64.dp),
                     contentAlignment = Alignment.CenterEnd
                 ) {
                     Row(
