@@ -1,6 +1,7 @@
 package com.example.nexuswallet.feature.wallet.ui.common
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -75,11 +76,20 @@ import com.example.nexuswallet.ui.theme.usdtLight
 @Composable
 fun SyncPulseIndicator(modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "syncPulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
     val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
+        initialValue = 0.4f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000),
+            animation = tween(1200, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "alpha"
@@ -87,8 +97,12 @@ fun SyncPulseIndicator(modifier: Modifier = Modifier) {
 
     Box(
         modifier = modifier
-            .size(8.dp)
-            .graphicsLayer(alpha = alpha)
+            .size(10.dp)
+            .graphicsLayer(
+                scaleX = scale,
+                scaleY = scale,
+                alpha = alpha
+            )
             .background(MaterialTheme.colorScheme.primary, CircleShape)
     )
 }

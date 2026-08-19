@@ -24,5 +24,13 @@ data class TokenDetail(
     val atlChangePercentage: Double,
     val atlDate: String,
     val sparklineIn7d: List<Double>?,
-    val description: String?
+    val description: String?,
+    val categories: List<String> = emptyList(),
+    val sentimentUp: Double? = null,
+    val sentimentDown: Double? = null,
+    val website: String? = null,
+    val twitter: String? = null,
+    val telegram: String? = null,
+    val reddit: String? = null,
+    val github: String? = null
 )

@@ -914,14 +914,18 @@ fun TransactionsContainer(
             // Transaction list or loading state
             if (isLoading && transactions.isEmpty()) {
                 // Show loading skeletons
-                repeat(3) { index ->
-                    TransactionLoadingSkeleton()
-                    if (index < 2) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            thickness = 1.dp,
-                            color = MaterialTheme.colorScheme.outline
-                        )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    repeat(3) { index ->
+                        TransactionLoadingSkeleton()
+                        if (index < 2) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                thickness = 1.dp,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
                     }
                 }
 
@@ -1001,45 +1005,52 @@ fun PriceChangeIndicator(formatted: String) {
 
 @Composable
 fun TransactionLoadingSkeleton() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .shimmer()
-        )
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(
-            modifier = Modifier.weight(1f)
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .height(16.dp)
+                    .size(40.dp)
+                    .clip(CircleShape)
                     .shimmer()
             )
-            Spacer(modifier = Modifier.height(4.dp))
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .height(16.dp)
+                        .shimmer()
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.4f)
+                        .height(12.dp)
+                        .shimmer()
+                )
+            }
+
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.4f)
-                    .height(12.dp)
+                    .width(80.dp)
+                    .height(32.dp)
                     .shimmer()
             )
         }
-
-        Box(
-            modifier = Modifier
-                .width(80.dp)
-                .height(32.dp)
-                .shimmer()
-        )
     }
 }
 

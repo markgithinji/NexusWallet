@@ -124,6 +124,7 @@
     <string name="skip_for_now">Skip for Now</string>
 
     <!-- Token Detail -->
+    <string name="token_details">Token Details</string>
     <string name="loading_token_details">Loading token details&#8230;</string>
     <string name="token_icon">Token icon</string>
     <string name="refresh">Refresh</string>
@@ -160,6 +161,15 @@
     <string name="atl">All Time Low</string>
     <string name="ath_label">ATH: %1$s</string>
     <string name="atl_label">ATL: %1$s</string>
+    <string name="community_sentiment">Community Sentiment</string>
+    <string name="bullish">Bullish</string>
+    <string name="bearish">Bearish</string>
+    <string name="categories">Categories</string>
+    <string name="about_token">About %1$s</string>
+    <string name="read_more">Read More</string>
+    <string name="read_less">Read Less</string>
+    <string name="whitepaper">Whitepaper</string>
+    <string name="official_website">Website</string>
     <string name="news_icon">News icon</string>
     <string name="just_now">just now</string>
     <string name="hours_ago">%1$dh ago</string>

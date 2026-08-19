@@ -1374,13 +1374,11 @@ fun FeeLoadingShimmer() {
             }
 
             // Estimated time section
-            Spacer(modifier = Modifier.height(4.dp))
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 4.dp),
                 thickness = DividerDefaults.Thickness,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
             )
-            Spacer(modifier = Modifier.height(4.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

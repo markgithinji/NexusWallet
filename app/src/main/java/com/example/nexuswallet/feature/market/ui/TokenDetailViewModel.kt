@@ -33,6 +33,9 @@ class TokenDetailViewModel @Inject constructor(
     private val _chartState = MutableStateFlow<Result<ChartData>>(Result.Loading)
     val chartState: StateFlow<Result<ChartData>> = _chartState.asStateFlow()
 
+    // Simple in-memory cache for the current session to make tab switching instant
+    private val chartCache = mutableMapOf<ChartDuration, ChartData>()
+
     private val _selectedDuration = MutableStateFlow(ChartDuration.ONE_WEEK)
     val selectedDuration: StateFlow<ChartDuration> = _selectedDuration.asStateFlow()
 
@@ -50,7 +53,9 @@ class TokenDetailViewModel @Inject constructor(
 
     private fun loadTokenDetails() {
         viewModelScope.launch {
-            _uiState.value = Result.Loading
+            if (_uiState.value !is Result.Success) {
+                _uiState.value = Result.Loading
+            }
 
             // ALWAYS fetch in USD
             when (val result = marketRepository.getTokenDetails(tokenId, SupportedCurrency.USD)) {
@@ -63,7 +68,9 @@ class TokenDetailViewModel @Inject constructor(
                 }
 
                 is Result.Error -> {
-                    _uiState.value = Result.Error(result.message, result.throwable)
+                    if (_uiState.value !is Result.Success) {
+                        _uiState.value = Result.Error(result.message, result.throwable)
+                    }
                 }
 
                 Result.Loading -> {}
@@ -73,17 +80,30 @@ class TokenDetailViewModel @Inject constructor(
 
     fun loadChartData(duration: ChartDuration) {
         viewModelScope.launch {
-            _chartState.value = Result.Loading
             _selectedDuration.value = duration
+            
+            // Check if we have this specific duration cached in this session
+            val cachedData = chartCache[duration]
+            if (cachedData != null) {
+                _chartState.value = Result.Success(cachedData)
+                // We could still fetch in background to update, but no need to show loading
+            } else {
+                // Only show loading if we have absolutely no data for this duration
+                _chartState.value = Result.Loading
+            }
 
             // Always fetch chart in USD
             when (val result = marketRepository.getMarketChart(tokenId, duration, SupportedCurrency.USD)) {
                 is Result.Success -> {
+                    chartCache[duration] = result.data
                     _chartState.value = Result.Success(result.data)
                 }
 
                 is Result.Error -> {
-                    _chartState.value = Result.Error(result.message, result.throwable)
+                    // If we have cached data, don't overwrite with error, just stay on cached
+                    if (_chartState.value !is Result.Success) {
+                        _chartState.value = Result.Error(result.message, result.throwable)
+                    }
                 }
 
                 Result.Loading -> {}
@@ -93,7 +113,9 @@ class TokenDetailViewModel @Inject constructor(
 
     fun loadNews() {
         viewModelScope.launch {
-            _newsState.value = Result.Loading
+            if (_newsState.value !is Result.Success) {
+                _newsState.value = Result.Loading
+            }
 
             // Use tokenId (slug) for news search which works best with CoinStats
             val searchQuery = tokenId
@@ -105,7 +127,9 @@ class TokenDetailViewModel @Inject constructor(
                 }
 
                 is Result.Error -> {
-                    _newsState.value = Result.Error(result.message, result.throwable)
+                    if (_newsState.value !is Result.Success) {
+                        _newsState.value = Result.Error(result.message, result.throwable)
+                    }
                 }
 
                 Result.Loading -> {}
@@ -129,6 +153,7 @@ class TokenDetailViewModel @Inject constructor(
 
     fun refresh() {
         hasLoadedNews = false 
+        chartCache.clear() // Clear cache on manual refresh to force update
         loadTokenDetails()
         loadChartData(_selectedDuration.value)
     }

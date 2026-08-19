@@ -9,8 +9,30 @@ data class TokenDetailDto(
     val symbol: String,
     val name: String,
     val image: ImageUrlsResponse,
+    @SerialName("market_data")
     val market_data: MarketDataDto,
-    val description: Map<String, String>? = null
+    val description: Map<String, String>? = null,
+    val categories: List<String>? = null,
+    @SerialName("sentiment_votes_up_percentage")
+    val sentimentVotesUpPercentage: Double? = null,
+    @SerialName("sentiment_votes_down_percentage")
+    val sentimentVotesDownPercentage: Double? = null,
+    val links: LinksDto? = null
+)
+
+@Serializable
+data class LinksDto(
+    val homepage: List<String>? = null,
+    @SerialName("blockchain_site")
+    val blockchainSite: List<String>? = null,
+    @SerialName("twitter_screen_name")
+    val twitterScreenName: String? = null,
+    @SerialName("telegram_channel_identifier")
+    val telegramChannelIdentifier: String? = null,
+    @SerialName("subreddit_url")
+    val subredditUrl: String? = null,
+    @SerialName("repos_url")
+    val reposUrl: Map<String, List<String>>? = null
 )
 
 @Serializable

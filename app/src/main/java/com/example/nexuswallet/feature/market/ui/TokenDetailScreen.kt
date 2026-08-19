@@ -1,62 +1,44 @@
 package com.example.nexuswallet.feature.market.ui
 
+import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Article
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
-import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.Error
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -64,16 +46,12 @@ import com.example.nexuswallet.R
 import com.example.nexuswallet.feature.core.ui.LocalCurrency
 import com.example.nexuswallet.feature.core.util.Result
 import com.example.nexuswallet.feature.core.util.formatAsCurrency
-import com.example.nexuswallet.feature.core.util.formatCurrency
-import com.example.nexuswallet.feature.core.util.formatLargeNumber
-import com.example.nexuswallet.feature.core.util.formatPrice
 import com.example.nexuswallet.feature.core.util.formatSupply
 import com.example.nexuswallet.feature.core.util.formatTwoDecimals
 import com.example.nexuswallet.feature.market.domain.model.ChartData
 import com.example.nexuswallet.feature.market.domain.model.ChartDuration
 import com.example.nexuswallet.feature.market.domain.model.NewsArticle
 import com.example.nexuswallet.feature.market.domain.model.TokenDetail
-import com.example.nexuswallet.feature.settings.domain.model.SupportedCurrency
 import com.example.nexuswallet.feature.wallet.ui.common.FullScreenLoading
 import com.example.nexuswallet.feature.wallet.ui.common.shimmer
 import com.example.nexuswallet.ui.theme.success
@@ -93,25 +71,41 @@ fun TokenDetailScreen(
     val chartState by viewModel.chartState.collectAsStateWithLifecycle()
     val newsState by viewModel.newsState.collectAsStateWithLifecycle()
     val selectedDuration by viewModel.selectedDuration.collectAsStateWithLifecycle()
-    
-    val currencyState = LocalCurrency.current
+
+    val scrollState = rememberLazyListState()
+    val showTopBarDetails by remember {
+        derivedStateOf {
+            scrollState.firstVisibleItemIndex > 0 || scrollState.firstVisibleItemScrollOffset > 300
+        }
+    }
 
     Scaffold(
         topBar = {
             TokenDetailTopBar(
                 tokenId = tokenId,
+                showDetails = showTopBarDetails,
                 onNavigateUp = onNavigateUp,
                 onRefresh = { viewModel.refresh() }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        when (val state = uiState) {
-            is Result.Loading -> {
-                FullScreenLoading(message = stringResource(R.string.loading_token_details))
+        val state = uiState
+
+        // Use a local state to keep the token alive across Loading states
+        val activeToken = remember { mutableStateOf<TokenDetail?>(null) }
+        LaunchedEffect(state) {
+            if (state is Result.Success) {
+                activeToken.value = state.data
+            }
+        }
+
+        when {
+            state is Result.Loading && activeToken.value == null -> {
+                TokenDetailSkeleton(modifier = Modifier.padding(padding))
             }
 
-            is Result.Error -> {
+            state is Result.Error && activeToken.value == null -> {
                 ErrorScreen(
                     message = state.message,
                     onRetry = { viewModel.retryLoading() },
@@ -119,56 +113,56 @@ fun TokenDetailScreen(
                 )
             }
 
-            is Result.Success -> {
-                val token = state.data
+            else -> {
+                val currentToken = activeToken.value
+                if (currentToken != null) {
+                    LazyColumn(
+                        state = scrollState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding),
+                        contentPadding = PaddingValues(bottom = 32.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item {
+                            TokenHeaderSection(token = currentToken)
+                        }
 
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Header Card
-                    item {
-                        TokenHeaderCard(token = token)
-                    }
+                        item {
+                            PriceAndChartGroup(
+                                token = currentToken,
+                                chartState = chartState,
+                                selectedDuration = selectedDuration,
+                                onDurationSelected = { viewModel.selectDuration(it) }
+                            )
+                        }
 
-                    // Price Card
-                    item {
-                        PriceCard(token = token)
-                    }
+                        if (currentToken.sentimentUp != null) {
+                            item {
+                                SentimentCard(token = currentToken)
+                            }
+                        }
 
-                    // Chart Card with duration selector
-                    item {
-                        PriceChart(
-                            chartState = chartState,
-                            selectedDuration = selectedDuration,
-                            onDurationSelected = { viewModel.selectDuration(it) }
-                        )
-                    }
+                        item {
+                            MarketDataSection(token = currentToken)
+                        }
 
-                    // Market Stats Card
-                    item {
-                        MarketStatsCard(token = token)
-                    }
+                        if (!currentToken.description.isNullOrBlank()) {
+                            item {
+                                AboutSection(token = currentToken)
+                            }
+                        }
 
-                    // Supply Info Card
-                    item {
-                        SupplyCard(token = token)
-                    }
+                        item {
+                            LinksAndTagsSection(token = currentToken)
+                        }
 
-                    // All Time High/Low Card
-                    item {
-                        AllTimeCard(token = token)
-                    }
-
-                    // News Section
-                    item {
-                        NewsSection(
-                            newsState = newsState,
-                            onRetry = { viewModel.loadNews() }
-                        )
+                        item {
+                            NewsSection(
+                                newsState = newsState,
+                                onRetry = { viewModel.loadNews() }
+                            )
+                        }
                     }
                 }
             }
@@ -180,118 +174,685 @@ fun TokenDetailScreen(
 @Composable
 private fun TokenDetailTopBar(
     tokenId: String,
+    showDetails: Boolean,
     onNavigateUp: () -> Unit,
     onRefresh: () -> Unit,
     viewModel: TokenDetailViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val token = (uiState as? Result.Success)?.data
 
     TopAppBar(
         title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Coin icon
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
+            Box {
+                AnimatedVisibility(
+                    visible = !showDetails,
+                    enter = fadeIn(),
+                    exit = fadeOut()
                 ) {
-                    if (token != null) {
-                        AsyncImage(
-                            model = token.image,
-                            contentDescription = token.name,
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                        )
-                    } else {
-                        // Fallback icon while loading
-                        Icon(
-                            imageVector = Icons.Outlined.AccountBalanceWallet,
-                            contentDescription = stringResource(R.string.token_icon),
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.token_details),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
 
-                Text(
-                    text = token?.name ?: tokenId.replaceFirstChar { it.uppercase() },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                AnimatedVisibility(
+                    visible = showDetails && token != null,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    if (token != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            AsyncImage(
+                                model = token.image,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                            )
+                            Text(
+                                text = token.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.padding(top = 2.dp)
+                            ) {
+                                Text(
+                                    text = token.symbol.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
             }
         },
         navigationIcon = {
             IconButton(onClick = onNavigateUp) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.back),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
             }
         },
         actions = {
             IconButton(onClick = onRefresh) {
-                Icon(
-                    imageVector = Icons.Outlined.Refresh,
-                    contentDescription = stringResource(R.string.refresh),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Icon(Icons.Outlined.Refresh, stringResource(R.string.refresh))
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
             scrolledContainerColor = MaterialTheme.colorScheme.surface
         )
     )
 }
 
 @Composable
-private fun ErrorScreen(
-    message: String,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+fun TokenHeaderSection(token: TokenDetail) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = Icons.Outlined.Error,
-            contentDescription = stringResource(R.string.error),
-            modifier = Modifier.size(48.dp),
-            tint = MaterialTheme.colorScheme.error
-        )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            AsyncImage(
+                model = token.image,
+                contentDescription = token.name,
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .padding(4.dp)
+                    .clip(CircleShape)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = token.name,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                    border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Text(
+                        text = token.symbol.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Text(
+                        text = stringResource(R.string.rank_label, token.marketCapRank),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PriceAndChartGroup(
+    token: TokenDetail,
+    chartState: Result<ChartData>,
+    selectedDuration: ChartDuration,
+    onDurationSelected: (ChartDuration) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        PriceSection(token = token)
+        
         Spacer(modifier = Modifier.height(16.dp))
+        
+        PriceChart(
+            chartState = chartState,
+            selectedDuration = selectedDuration,
+            onDurationSelected = onDurationSelected,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+    }
+}
+
+@Composable
+fun PriceSection(token: TokenDetail) {
+    val currencyState = LocalCurrency.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        val initialFontSize = MaterialTheme.typography.displaySmall.fontSize
+        var fontSize by remember { mutableStateOf(initialFontSize) }
+        var readyToDraw by remember { mutableStateOf(false) }
+
         Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = token.currentPrice.formatAsCurrency(
+                currencyState.usdToRate,
+                currencyState.currency
+            ),
+            style = MaterialTheme.typography.displaySmall.copy(
+                fontSize = fontSize,
+                fontWeight = FontWeight.Bold
+            ),
+            maxLines = 1,
+            softWrap = false,
+            onTextLayout = { textLayoutResult ->
+                if (textLayoutResult.didOverflowWidth && fontSize > 24.sp) {
+                    fontSize *= 0.9f
+                } else {
+                    readyToDraw = true
+                }
+            },
+            modifier = Modifier.alpha(if (readyToDraw) 1f else 0f),
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = onRetry,
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(
-                stringResource(R.string.try_again),
-                color = MaterialTheme.colorScheme.onPrimary,
-                style = MaterialTheme.typography.labelLarge
+            val isPositive = token.priceChangePercentage24h >= 0
+            Icon(
+                imageVector = if (isPositive) Icons.AutoMirrored.Outlined.TrendingUp else Icons.AutoMirrored.Outlined.TrendingDown,
+                contentDescription = null,
+                tint = if (isPositive) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(20.dp)
             )
+            Text(
+                text = "${if (isPositive) "+" else ""}${token.priceChangePercentage24h.formatTwoDecimals()}%",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isPositive) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.error
+            )
+            Text(
+                text = stringResource(R.string.label_24h),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun MarketDataSection(token: TokenDetail) {
+    val currencyState = LocalCurrency.current
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = stringResource(R.string.market_stats),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Grid Stats
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatItem(
+                    label = stringResource(R.string.market_cap),
+                    value = token.marketCap.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
+                    modifier = Modifier.weight(1f),
+                    subValue = if (token.totalSupply != null && token.totalSupply > 0) {
+                        "${(token.circulatingSupply / token.totalSupply * 100).toInt()}% ${stringResource(R.string.of_supply)}"
+                    } else null
+                )
+                StatItem(
+                    label = stringResource(R.string.volume_24h),
+                    value = token.totalVolume.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
+                    modifier = Modifier.weight(1f),
+                    subValue = if (token.marketCap > 0) {
+                        "${(token.totalVolume / token.marketCap * 100).formatTwoDecimals()}% ${stringResource(R.string.of_market_cap)}"
+                    } else null
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatItem(
+                    label = "24h High",
+                    value = token.high24h.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Outlined.ArrowUpward,
+                    iconColor = MaterialTheme.colorScheme.success
+                )
+                StatItem(
+                    label = "24h Low",
+                    value = token.low24h.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Outlined.ArrowDownward,
+                    iconColor = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Supply Info
+            Text(
+                text = stringResource(R.string.supply_info),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            StatRow(stringResource(R.string.circulating_supply), formatSupply(token.circulatingSupply))
+            token.totalSupply?.let { StatRow(stringResource(R.string.total_supply), formatSupply(it)) }
+            token.maxSupply?.let { StatRow(stringResource(R.string.max_supply), formatSupply(it)) }
+
+            if (token.totalSupply != null && token.totalSupply > 0) {
+                val percent = (token.circulatingSupply / token.totalSupply * 100).toFloat()
+                Spacer(modifier = Modifier.height(16.dp))
+                SupplyProgressBar(percentage = percent, label = stringResource(R.string.circulating_total))
+            }
+        }
+    }
+}
+
+@Composable
+fun AboutSection(token: TokenDetail) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = stringResource(R.string.about_token, token.name),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            AboutContent(token = token)
+        }
+    }
+}
+
+@Composable
+fun LinksAndTagsSection(token: TokenDetail) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            // Tags Container
+            if (token.categories.isNotEmpty()) {
+                Text(
+                    text = "Project Tags",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        token.categories.take(8).forEach { tag ->
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            ) {
+                                Text(
+                                    text = tag,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // Links Section
+            Text(
+                text = "Official Channels",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                val context = LocalContext.current
+                token.website?.let { url ->
+                    LinkIcon(Icons.Outlined.Language, stringResource(R.string.official_website)) {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                    }
+                }
+                token.twitter?.let { url ->
+                    LinkIcon(Icons.Outlined.Close, "Twitter") {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                    }
+                }
+                token.github?.let { url ->
+                    LinkIcon(Icons.Outlined.Code, "GitHub") {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                    }
+                }
+                token.telegram?.let { url ->
+                    LinkIcon(Icons.AutoMirrored.Outlined.Send, "Telegram") {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AboutContent(token: TokenDetail) {
+    var expanded by remember { mutableStateOf(false) }
+    val cleanDescription = remember(token.description) {
+        token.description?.replace(Regex("<[^>]*>"), "") ?: ""
+    }
+
+    Column(modifier = Modifier.animateContentSize()) {
+        Text(
+            text = cleanDescription,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = if (expanded) Int.MAX_VALUE else 4,
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 18.sp
+        )
+
+        TextButton(
+            onClick = { expanded = !expanded },
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text(if (expanded) stringResource(R.string.read_less) else stringResource(R.string.read_more))
+        }
+    }
+}
+
+@Composable
+fun StatItem(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    iconColor: Color = MaterialTheme.colorScheme.primary,
+    subValue: String? = null
+) {
+    Column(modifier = modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Icon(icon, null, modifier = Modifier.size(12.dp), tint = iconColor)
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontSize = 11.sp
+            )
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Clip
+        )
+        
+        if (subValue != null) {
+            Text(
+                text = subValue,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.alpha(0.7f),
+                maxLines = 1,
+                fontSize = 10.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun SentimentCard(token: TokenDetail) {
+    val up = token.sentimentUp ?: 50.0
+    val down = token.sentimentDown ?: 50.0
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = stringResource(R.string.community_sentiment),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = stringResource(R.string.bullish),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.success
+                )
+                Text(
+                    text = stringResource(R.string.bearish),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(up.toFloat() / 100f)
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.success)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "${up.formatTwoDecimals()}%",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${down.formatTwoDecimals()}%",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun StatRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 11.sp
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp
+            ),
+            maxLines = 1,
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+@Composable
+fun LinkIcon(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .size(48.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = label, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun NewsSection(
+    newsState: Result<List<NewsArticle>>,
+    onRetry: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.Article,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.latest_news),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            when (newsState) {
+                is Result.Loading -> {
+                    repeat(3) { ShimmerNewsItem() }
+                }
+
+                is Result.Error -> {
+                    TextButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.try_again))
+                    }
+                }
+
+                is Result.Success -> {
+                    val articles = newsState.data
+                    if (articles.isEmpty()) {
+                        Text(
+                            stringResource(R.string.no_news_available),
+                            modifier = Modifier.padding(vertical = 16.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        articles.take(3).forEach { article ->
+                            NewsItem(article = article)
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -306,112 +867,83 @@ fun PriceChart(
     val currencyState = LocalCurrency.current
 
     Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
+        modifier = modifier
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            // Header with title
-            Text(
-                text = stringResource(R.string.price_chart),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-
-            // Duration selector chips
-            FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                ChartDuration.entries.filter { it != ChartDuration.MAX }.forEach { duration ->
-                    FilterChip(
-                        selected = selectedDuration == duration,
-                        onClick = { onDurationSelected(duration) },
-                        label = {
+                Text(
+                    text = stringResource(R.string.price_chart),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                // Duration selector
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ChartDuration.entries.filter { it != ChartDuration.MAX }.forEach { duration ->
+                        val isSelected = selectedDuration == duration
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onDurationSelected(duration) },
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        ) {
                             Text(
                                 text = duration.label,
                                 style = MaterialTheme.typography.labelSmall,
-                                fontSize = 12.sp
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
+                        }
+                    }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(280.dp)
+                    .wrapContentHeight()
             ) {
                 when (chartState) {
-                    is Result.Loading -> {
-                        ChartLoadingState()
-                    }
-
-                    is Result.Error -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    MaterialTheme.colorScheme.surfaceVariant,
-                                    RoundedCornerShape(8.dp)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Error,
-                                    contentDescription = stringResource(R.string.error),
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = stringResource(R.string.failed_to_load_chart),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
+                    is Result.Loading -> ChartLoadingState()
+                    is Result.Error -> Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(220.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            stringResource(R.string.failed_to_load_chart),
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
 
                     is Result.Success -> {
                         val chartData = chartState.data
                         if (chartData.prices.isNotEmpty()) {
-                            Column(
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                // Convert price points to selected currency
-                                val convertedPrices = remember(chartData.prices, currencyState.usdToRate) {
+                            val convertedPrices =
+                                remember(chartData.prices, currencyState.usdToRate) {
                                     chartData.prices.map { it.copy(price = it.price * currencyState.usdToRate) }
                                 }
-
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                            ) {
                                 PriceLineChart(
                                     pricePoints = convertedPrices,
                                     currency = currencyState.currency,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(200.dp)
+                                        .height(220.dp)
                                 )
 
                                 Spacer(modifier = Modifier.height(16.dp))
@@ -419,14 +951,14 @@ fun PriceChart(
                                 val firstPrice = convertedPrices.first().price
                                 val lastPrice = convertedPrices.last().price
                                 val priceChange = lastPrice - firstPrice
-                                val priceChangePercent = if (firstPrice != 0.0) (priceChange / firstPrice) * 100 else 0.0
+                                val priceChangePercent =
+                                    if (firstPrice != 0.0) (priceChange / firstPrice) * 100 else 0.0
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Open price
                                     Column {
                                         Text(
                                             text = stringResource(R.string.open),
@@ -434,90 +966,178 @@ fun PriceChart(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
-                                            text = firstPrice.formatCurrency(currencyState.currency),
+                                            text = firstPrice.formatAsCurrency(1.0, currencyState.currency),
                                             style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurface
+                                            fontWeight = FontWeight.Bold
                                         )
                                     }
 
-                                    // Change percentage
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
                                             text = stringResource(R.string.change),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
-
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = if (priceChange >= 0)
-                                                MaterialTheme.colorScheme.success.copy(alpha = 0.1f)
-                                            else
-                                                MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
-                                            modifier = Modifier.size(20.dp)
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
+                                            val isPositive = priceChange >= 0
                                             Icon(
-                                                imageVector = if (priceChange >= 0)
-                                                    Icons.AutoMirrored.Outlined.TrendingUp
-                                                else
-                                                    Icons.AutoMirrored.Outlined.TrendingDown,
-                                                contentDescription = stringResource(R.string.price_trend),
-                                                modifier = Modifier.size(12.dp),
-                                                tint = if (priceChange >= 0)
-                                                    MaterialTheme.colorScheme.success
-                                                else
-                                                    MaterialTheme.colorScheme.error
+                                                imageVector = if (isPositive) Icons.AutoMirrored.Outlined.TrendingUp else Icons.AutoMirrored.Outlined.TrendingDown,
+                                                contentDescription = null,
+                                                tint = if (isPositive) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Text(
+                                                text = "${if (isPositive) "+" else ""}${priceChangePercent.formatTwoDecimals()}%",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isPositive) MaterialTheme.colorScheme.success else MaterialTheme.colorScheme.error
                                             )
                                         }
-
-                                        Text(
-                                            text = "${if (priceChange >= 0) "+" else ""}${priceChangePercent.formatTwoDecimals()}%",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = if (priceChange >= 0)
-                                                MaterialTheme.colorScheme.success
-                                            else
-                                                MaterialTheme.colorScheme.error
-                                        )
                                     }
 
-                                    // Close price
-                                    Column(
-                                        horizontalAlignment = Alignment.End
-                                    ) {
+                                    Column(horizontalAlignment = Alignment.End) {
                                         Text(
                                             text = stringResource(R.string.close),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
-                                            text = lastPrice.formatCurrency(currencyState.currency),
+                                            text = lastPrice.formatAsCurrency(1.0, currencyState.currency),
                                             style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurface
+                                            fontWeight = FontWeight.Bold
                                         )
                                     }
                                 }
                             }
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        MaterialTheme.colorScheme.surfaceVariant,
-                                        RoundedCornerShape(8.dp)
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.no_chart_data),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TokenDetailSkeleton(modifier: Modifier = Modifier) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
+    ) {
+        // Header Skeleton
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(modifier = Modifier.size(72.dp).clip(CircleShape).shimmer())
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(modifier = Modifier.width(160.dp).height(28.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(modifier = Modifier.width(60.dp).height(18.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                        Box(modifier = Modifier.width(60.dp).height(18.dp).clip(RoundedCornerShape(16.dp)).shimmer())
+                    }
+                }
+            }
+        }
+
+        // Price Skeleton
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(62.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(modifier = Modifier.width(200.dp).height(40.dp).clip(RoundedCornerShape(8.dp)).shimmer())
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(modifier = Modifier.width(100.dp).height(20.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+            }
+        }
+
+        // Chart Skeleton
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(332.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(modifier = Modifier.width(80.dp).height(20.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                        Box(modifier = Modifier.width(140.dp).height(32.dp).clip(RoundedCornerShape(8.dp)).shimmer())
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(220.dp).shimmer())
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        repeat(3) { Box(modifier = Modifier.width(80.dp).height(28.dp).clip(RoundedCornerShape(8.dp)).shimmer()) }
+                    }
+                }
+            }
+        }
+
+        // Sentiment Skeleton
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(130.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Box(modifier = Modifier.width(140.dp).height(20.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Box(modifier = Modifier.width(60.dp).height(16.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                        Box(modifier = Modifier.width(60.dp).height(16.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape).shimmer())
+                }
+            }
+        }
+
+        // Market Data Skeleton
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(334.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Box(modifier = Modifier.width(100.dp).height(18.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(modifier = Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(12.dp)).shimmer())
+                        Box(modifier = Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(12.dp)).shimmer())
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
+                    repeat(3) {
+                        Box(modifier = Modifier.fillMaxWidth().height(16.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
             }
@@ -528,223 +1148,27 @@ fun PriceChart(
 @Composable
 private fun ChartLoadingState() {
     Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // Real-world matched chart skeleton
-        PriceChartSkeleton(
-            modifier = Modifier.shimmer()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Open/Change/Close row placeholder
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Open label
-            Column {
-                Box(modifier = Modifier.width(40.dp).height(12.dp).clip(RoundedCornerShape(4.dp)).shimmer())
-                Spacer(modifier = Modifier.height(6.dp))
-                Box(modifier = Modifier.width(80.dp).height(18.dp).clip(RoundedCornerShape(4.dp)).shimmer())
-            }
-            
-            // Change label
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(modifier = Modifier.width(40.dp).height(12.dp).clip(RoundedCornerShape(4.dp)).shimmer())
-                Spacer(modifier = Modifier.height(6.dp))
-                Box(modifier = Modifier.size(32.dp).clip(CircleShape).shimmer())
-            }
-
-            // Close label
-            Column(horizontalAlignment = Alignment.End) {
-                Box(modifier = Modifier.width(40.dp).height(12.dp).clip(RoundedCornerShape(4.dp)).shimmer())
-                Spacer(modifier = Modifier.height(6.dp))
-                Box(modifier = Modifier.width(80.dp).height(18.dp).clip(RoundedCornerShape(4.dp)).shimmer())
-            }
-        }
-    }
-}
-
-@Composable
-private fun NewsSection(
-    newsState: Result<List<NewsArticle>>,
-    onRetry: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.Article,
-                    contentDescription = stringResource(R.string.news_icon),
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.latest_news),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            when (newsState) {
-                is Result.Loading -> {
-                    repeat(3) { index ->
-                        ShimmerNewsItem()
-                        if (index < 2) Spacer(modifier = Modifier.height(8.dp))
-                    }
-                }
-
-                is Result.Error -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = newsState.message.ifBlank { stringResource(R.string.failed_to_load_news) },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            TextButton(onClick = onRetry) {
-                                Text(stringResource(R.string.try_again))
-                            }
-                        }
-                    }
-                }
-
-                is Result.Success -> {
-                    val articles = newsState.data
-                    if (articles.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(R.string.no_news_available),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        // News items
-                        articles.take(3).forEachIndexed { index, article ->
-                            NewsItem(article = article)
-
-                            if (index < articles.size - 1 && index < 2) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(vertical = 8.dp),
-                                    color = MaterialTheme.colorScheme.outline,
-                                    thickness = 1.dp
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ShimmerNewsItem() {
-    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .height(16.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .shimmer()
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.5f)
-                .height(12.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .shimmer()
-        )
-    }
-}
-
-@Composable
-fun TokenHeaderCard(token: TokenDetail) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .height(220.dp)
+                .shimmer()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            AsyncImage(
-                model = token.image,
-                contentDescription = token.name,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = token.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "${token.symbol.uppercase()} • ${
-                        stringResource(
-                            R.string.rank_label,
-                            token.marketCapRank
-                        )
-                    }",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            repeat(3) {
+                Box(
+                    modifier = Modifier
+                        .width(80.dp)
+                        .height(28.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .shimmer()
                 )
             }
         }
@@ -752,223 +1176,53 @@ fun TokenHeaderCard(token: TokenDetail) {
 }
 
 @Composable
-fun PriceCard(
-    token: TokenDetail
-) {
-    val currencyState = LocalCurrency.current
-
+fun ShimmerNewsItem() {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(100.dp)
+            .shimmer(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {}
+    Spacer(modifier = Modifier.height(12.dp))
+}
+
+@Composable
+fun NewsItem(article: NewsArticle) {
+    val context = LocalContext.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { context.startActivity(Intent(Intent.ACTION_VIEW, article.url.toUri())) },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+                alpha = 0.7f
+            )
+        )
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = stringResource(R.string.current_price),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = token.currentPrice.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
-                style = MaterialTheme.typography.headlineMedium,
+                text = article.title,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
-
             Spacer(modifier = Modifier.height(8.dp))
-
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // 24h change
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (token.priceChangePercentage24h >= 0)
-                            Icons.AutoMirrored.Outlined.TrendingUp
-                        else
-                            Icons.AutoMirrored.Outlined.TrendingDown,
-                        contentDescription = stringResource(R.string.trend_24h),
-                        modifier = Modifier.size(16.dp),
-                        tint = if (token.priceChangePercentage24h >= 0)
-                            MaterialTheme.colorScheme.success
-                        else
-                            MaterialTheme.colorScheme.error
-                    )
-                    Text(
-                        text = "${if (token.priceChangePercentage24h >= 0) "+" else ""}${token.priceChangePercentage24h.formatTwoDecimals()}%",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (token.priceChangePercentage24h >= 0)
-                            MaterialTheme.colorScheme.success
-                        else
-                            MaterialTheme.colorScheme.error
-                    )
-                }
-
                 Text(
-                    text = stringResource(R.string.label_24h),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // 24h range
-                Text(
-                    text = "${stringResource(R.string.low_short)}${token.low24h.formatAsCurrency(currencyState.usdToRate, currencyState.currency)} ${
-                        stringResource(
-                            R.string.high_short
-                        )
-                    }${token.high24h.formatAsCurrency(currencyState.usdToRate, currencyState.currency)}",
+                    article.source,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.primary
                 )
-            }
-        }
-    }
-}
-
-@Composable
-fun MarketStatsCard(
-    token: TokenDetail
-) {
-    val currencyState = LocalCurrency.current
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.market_stats),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Market Cap
-            StatRowWithChange(
-                label = stringResource(R.string.market_cap),
-                value = token.marketCap.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
-                change = "${((token.marketCap / token.currentPrice) * 100).toInt()}%${
-                    stringResource(
-                        R.string.of_supply
-                    )
-                }",
-                changeUp = true
-            )
-
-            // Fully Diluted Valuation
-            token.fullyDilutedValuation?.let { fdv ->
-                StatRowWithChange(
-                    label = stringResource(R.string.fdv),
-                    value = fdv.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
-                    change = "",
-                    changeUp = true
-                )
-            }
-
-            // 24h Trading Volume
-            StatRowWithChange(
-                label = stringResource(R.string.volume_24h),
-                value = token.totalVolume.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
-                change = "${((token.totalVolume / token.marketCap) * 100).toInt()}%${
-                    stringResource(
-                        R.string.of_market_cap
-                    )
-                }",
-                changeUp = true
-            )
-
-            // Volume/Market Cap Ratio
-            val volumeRatio = if (token.marketCap > 0) {
-                (token.totalVolume / token.marketCap * 100).toInt()
-            } else 0
-            StatRowWithChange(
-                label = stringResource(R.string.volume_market_cap_ratio),
-                value = "${volumeRatio}%",
-                change = "",
-                changeUp = true
-            )
-        }
-    }
-}
-
-@Composable
-fun SupplyCard(token: TokenDetail) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.supply_info),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Circulating Supply
-            StatRowWithChange(
-                label = stringResource(R.string.circulating_supply),
-                value = formatSupply(token.circulatingSupply),
-                change = token.symbol.uppercase(),
-                changeUp = true
-            )
-
-            // Total Supply
-            token.totalSupply?.let {
-                StatRowWithChange(
-                    label = stringResource(R.string.total_supply),
-                    value = formatSupply(it),
-                    change = token.symbol.uppercase(),
-                    changeUp = true
-                )
-            }
-
-            // Max Supply
-            token.maxSupply?.let {
-                StatRowWithChange(
-                    label = stringResource(R.string.max_supply),
-                    value = formatSupply(it),
-                    change = token.symbol.uppercase(),
-                    changeUp = true
-                )
-            }
-
-            // Supply progress bar
-            if (token.totalSupply != null && token.totalSupply > 0) {
-                val circulatingPercentage =
-                    (token.circulatingSupply / token.totalSupply * 100).toFloat()
-                SupplyProgressBar(
-                    percentage = circulatingPercentage,
-                    label = stringResource(R.string.circulating_total)
+                Text(
+                    formatRelativeTime(article.publishedAt),
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
         }
@@ -977,11 +1231,7 @@ fun SupplyCard(token: TokenDetail) {
 
 @Composable
 fun SupplyProgressBar(percentage: Float, label: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -994,18 +1244,15 @@ fun SupplyProgressBar(percentage: Float, label: String) {
             Text(
                 text = "${percentage.toInt()}%",
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                fontWeight = FontWeight.Bold
             )
         }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
+        Spacer(modifier = Modifier.height(6.dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp)
-                .clip(RoundedCornerShape(3.dp))
+                .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Box(
@@ -1013,224 +1260,11 @@ fun SupplyProgressBar(percentage: Float, label: String) {
                     .fillMaxWidth(percentage / 100f)
                     .fillMaxHeight()
                     .background(MaterialTheme.colorScheme.primary)
-                    .clip(RoundedCornerShape(3.dp))
             )
         }
     }
 }
 
-@Composable
-fun AllTimeCard(
-    token: TokenDetail
-) {
-    val currencyState = LocalCurrency.current
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.ath_atl),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // All Time High
-            Row(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.ath),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = token.ath.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "${if (token.athChangePercentage >= 0) "+" else ""}${token.athChangePercentage.formatTwoDecimals()}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (token.athChangePercentage >= 0)
-                            MaterialTheme.colorScheme.success
-                        else
-                            MaterialTheme.colorScheme.error
-                    )
-                }
-
-                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = stringResource(R.string.atl),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = token.atl.formatAsCurrency(currencyState.usdToRate, currencyState.currency),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "${if (token.atlChangePercentage >= 0) "+" else ""}${token.atlChangePercentage.formatTwoDecimals()}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (token.atlChangePercentage >= 0)
-                            MaterialTheme.colorScheme.success
-                        else
-                            MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Dates
-            Row(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = stringResource(R.string.ath_label, token.athDate),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = stringResource(R.string.atl_label, token.atlDate),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.End
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun StatRowWithChange(
-    label: String,
-    value: String,
-    change: String,
-    changeUp: Boolean
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Column(
-            horizontalAlignment = Alignment.End
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            if (change.isNotEmpty()) {
-                Text(
-                    text = change,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-
-@Composable
-fun NewsItem(
-    article: NewsArticle
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                // TODO: Handle news item click
-            },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            // Content
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = article.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                if (!article.summary.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = article.summary.take(100) + "...",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = article.source,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium
-                    )
-
-                    Text(
-                        text = formatRelativeTime(article.publishedAt),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-// Helper to format relative time
 @Composable
 fun formatRelativeTime(dateString: String): String {
     val result = remember(dateString) {
@@ -1243,18 +1277,40 @@ fun formatRelativeTime(dateString: String): String {
             Triple(false, 0L, null)
         }
     }
-
     if (!result.first) return dateString.take(10)
-
     val hours = result.second
     val published = result.third as Instant
-
     return when {
         hours < 1 -> stringResource(R.string.just_now)
         hours < 24 -> stringResource(R.string.hours_ago, hours)
         hours < 168 -> stringResource(R.string.days_ago, hours / 24)
-        else -> DateTimeFormatter
-            .ofPattern("MMM d")
+        else -> DateTimeFormatter.ofPattern("MMM d")
             .format(published.atZone(ZoneId.systemDefault()))
+    }
+}
+
+@Composable
+private fun ErrorScreen(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            Icons.Outlined.Error,
+            null,
+            modifier = Modifier.size(48.dp),
+            tint = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = message,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(onClick = onRetry) { Text(stringResource(R.string.try_again)) }
     }
 }

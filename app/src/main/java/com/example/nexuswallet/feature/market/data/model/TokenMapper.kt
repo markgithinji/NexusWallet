@@ -85,6 +85,14 @@ fun TokenDetailDto.toTokenDetail(currency: SupportedCurrency = SupportedCurrency
         atlChangePercentage = market_data.atlChangePercentage[currencyCode] ?: 0.0,
         atlDate = market_data.atlDate[currencyCode] ?: "",
         sparklineIn7d = market_data.sparkline7DDto?.price,
-        description = description?.get("en")
+        description = description?.get("en"),
+        categories = categories ?: emptyList(),
+        sentimentUp = sentimentVotesUpPercentage,
+        sentimentDown = sentimentVotesDownPercentage,
+        website = links?.homepage?.firstOrNull { it.isNotBlank() },
+        twitter = links?.twitterScreenName?.let { "https://twitter.com/$it" },
+        telegram = links?.telegramChannelIdentifier?.let { "https://t.me/$it" },
+        reddit = links?.subredditUrl,
+        github = links?.reposUrl?.get("github")?.firstOrNull()
     )
 }
