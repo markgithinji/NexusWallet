@@ -5,7 +5,7 @@ import com.example.nexuswallet.feature.ethereum.domain.model.EVMFeeEstimate
 import com.example.nexuswallet.feature.logging.Logger
 import com.example.nexuswallet.feature.wallet.domain.model.EVMToken
 import com.example.nexuswallet.feature.wallet.domain.model.NativeETH
-import org.web3j.abi.datatypes.Address
+import org.web3j.crypto.WalletUtils
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
@@ -26,9 +26,10 @@ class ValidateEVMSendUseCase @Inject constructor(
         token: EVMToken,
         isFeeLoading: Boolean = false
     ): SendValidationResult {
+        val trimmedAddress = toAddress.trim()
 
         // Validate address is not empty
-        if (toAddress.isBlank()) {
+        if (trimmedAddress.isBlank()) {
             logger.w(TAG, "Address is empty")
             return SendValidationResult(
                 isValid = false,
@@ -37,16 +38,21 @@ class ValidateEVMSendUseCase @Inject constructor(
         }
 
         // Validate address format
-        if (!isValidEthereumAddress(toAddress)) {
-            logger.w(TAG, "Invalid Ethereum address format: $toAddress")
+        if (!isValidEthereumAddress(trimmedAddress)) {
+            logger.w(TAG, "Invalid Ethereum address format: '$trimmedAddress' (length: ${trimmedAddress.length})")
+            val message = when {
+                !trimmedAddress.startsWith("0x") -> "Address must start with 0x"
+                trimmedAddress.length != 42 -> "Invalid address length (expected 42 characters)"
+                else -> "Invalid Ethereum address format"
+            }
             return SendValidationResult(
                 isValid = false,
-                addressError = "Invalid Ethereum address format"
+                addressError = message
             )
         }
 
         // Validate not sending to self
-        if (toAddress.equals(fromAddress, ignoreCase = true)) {
+        if (trimmedAddress.equals(fromAddress, ignoreCase = true)) {
             logger.w(TAG, "Attempted self-send")
             return SendValidationResult(
                 isValid = false,
@@ -110,8 +116,7 @@ class ValidateEVMSendUseCase @Inject constructor(
 
     private fun isValidEthereumAddress(address: String): Boolean {
         return try {
-            Address(address)
-            true
+            WalletUtils.isValidAddress(address)
         } catch (e: Exception) {
             false
         }

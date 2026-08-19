@@ -328,8 +328,8 @@ fun TransactionReviewScreen(
 
     val isFeeLoading = when (coin) {
         is BitcoinCoin -> bitcoinState.value.isFeeLoading
-        is EVMToken -> ethereumState.value.isFeeLoading
-        is SolanaCoin -> solanaState.value.isFeeLoading
+        is EVMToken -> ethereumState.value.isFeeLoading || ethereumState.value.feeEstimate == null
+        is SolanaCoin -> solanaState.value.isFeeLoading || solanaState.value.feeEstimate == null
     }
 
     val isReady = when (coin) {
@@ -340,8 +340,8 @@ fun TransactionReviewScreen(
 
     val isPreparing = when (coin) {
         is BitcoinCoin -> bitcoinState.value.isLoading && !bitcoinState.value.transactionPrepared
-        is SolanaCoin -> (solanaState.value.isLoading || solanaState.value.isFeeLoading) && !isSending
-        is EVMToken -> (ethereumState.value.isLoading || ethereumState.value.isFeeLoading) && !isSending
+        is SolanaCoin -> (solanaState.value.isLoading || isFeeLoading) && !isSending
+        is EVMToken -> (ethereumState.value.isLoading || isFeeLoading) && !isSending
         else -> false
     }
 

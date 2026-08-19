@@ -174,7 +174,8 @@ class EVMSendViewModel @Inject constructor(
                     error = null,
                     validationResult = SendValidationResult(isValid = false),
                     balancesLoaded = false,
-                    tokenBalance = BigDecimal.ZERO
+                    tokenBalance = BigDecimal.ZERO,
+                    isFeeLoading = true
                 )
             }
 
@@ -196,7 +197,8 @@ class EVMSendViewModel @Inject constructor(
                     balancesLoaded = false,
                     tokenBalance = BigDecimal.ZERO,
                     feeEstimate = null,
-                    validationResult = SendValidationResult(isValid = false)
+                    validationResult = SendValidationResult(isValid = false),
+                    isFeeLoading = true
                 )
             }
             loadBalances()

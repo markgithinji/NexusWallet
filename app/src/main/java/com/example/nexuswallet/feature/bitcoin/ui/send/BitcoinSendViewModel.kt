@@ -328,7 +328,8 @@ class BitcoinSendViewModel @Inject constructor(
                 amount = "",
                 amountValue = BigDecimal.ZERO,
                 feeEstimate = null,
-                error = null
+                error = null,
+                isFeeLoading = true
             )
         }
         loadBalance(bitcoinCoin.address, network)

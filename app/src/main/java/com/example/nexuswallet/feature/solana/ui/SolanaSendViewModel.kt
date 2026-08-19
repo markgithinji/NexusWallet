@@ -152,7 +152,8 @@ class SolanaSendViewModel @Inject constructor(
                         isNativeSol = event.token == null,
                         amount = "",
                         amountValue = BigDecimal.ZERO,
-                        feeEstimate = null
+                        feeEstimate = null,
+                        isFeeLoading = true
                     )
                 }
                 validate()
@@ -175,6 +176,7 @@ class SolanaSendViewModel @Inject constructor(
             it.copy(
                 network = network,
                 isLoading = true,
+                isFeeLoading = true,
                 balance = BigDecimal.ZERO,
                 feeEstimate = null
             )
