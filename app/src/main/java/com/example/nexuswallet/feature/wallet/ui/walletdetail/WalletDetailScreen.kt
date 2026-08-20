@@ -496,20 +496,28 @@ private fun WalletDetailContent(
             )
         }
 
-        // All assets from unified list
-        items(
-            items = assets,
-            key = { it.id }
-        ) { asset ->
-            val assetError = syncErrors.find {
-                it.assetSymbol == asset.coin.symbol && it.network == asset.coin.network
+        // Show asset skeletons if assets are still being prepared
+        if (assets.isEmpty()) {
+            val assetCount = wallet.bitcoinCoins.size + wallet.solanaCoins.size + wallet.evmTokens.size
+            items(assetCount.coerceAtLeast(1)) {
+                AssetLoadingSkeleton()
             }
-            AssetCard(
-                asset = asset,
-                hasError = assetError != null,
-                isSyncing = syncingNetworks.contains(asset.coin.network),
-                onClick = { onAssetClick(asset.coin) }
-            )
+        } else {
+            // All assets from unified list
+            items(
+                items = assets,
+                key = { it.id }
+            ) { asset ->
+                val assetError = syncErrors.find {
+                    it.assetSymbol == asset.coin.symbol && it.network == asset.coin.network
+                }
+                AssetCard(
+                    asset = asset,
+                    hasError = assetError != null,
+                    isSyncing = syncingNetworks.contains(asset.coin.network),
+                    onClick = { onAssetClick(asset.coin) }
+                )
+            }
         }
 
         // Transactions Section
@@ -969,6 +977,88 @@ fun TransactionsContainer(
                 }
             } else {
                 EmptyTransactionsView()
+            }
+        }
+    }
+}
+
+@Composable
+fun AssetLoadingSkeleton() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 1.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icon shimmer
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .shimmer()
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Asset info shimmer
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(60.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .shimmer()
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .shimmer()
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .width(80.dp)
+                        .height(14.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .shimmer()
+                )
+            }
+
+            // USD Value shimmer
+            Column(
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier.widthIn(min = 80.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(70.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .shimmer()
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .shimmer()
+                )
             }
         }
     }
