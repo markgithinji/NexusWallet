@@ -20,14 +20,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.LocalGasStation
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Token
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,9 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -85,7 +86,7 @@ import com.example.nexuswallet.ui.theme.usdtLight
 import com.example.nexuswallet.ui.theme.warning
 import java.math.BigDecimal
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun CoinDetailScreen(
     onNavigateUp: () -> Unit,
@@ -99,6 +100,19 @@ fun CoinDetailScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    var isManualRefresh by remember { mutableStateOf(false) }
+    LaunchedEffect(state.isRefreshing) {
+        if (!state.isRefreshing) isManualRefresh = false
+    }
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isManualRefresh && state.isRefreshing,
+        onRefresh = {
+            isManualRefresh = true
+            viewModel.refresh()
+        }
+    )
 
     LaunchedEffect(Unit) {
         viewModel.loadCoinDetails(walletId, coin)
@@ -134,11 +148,7 @@ fun CoinDetailScreen(
                 CoinDetailTopBar(
                     iconRes = iconRes,
                     displayName = displayName,
-                    isLoading = isAnyLoading,
-                    onNavigateUp = onNavigateUp,
-                    onRefresh = {
-                        viewModel.refresh()
-                    }
+                    onNavigateUp = onNavigateUp
                 )
                 Box(
                     modifier = Modifier
@@ -157,32 +167,49 @@ fun CoinDetailScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        CoinDetailContent(
-            state = state,
-            coinColor = coinColor,
-            iconRes = iconRes,
-            displayName = displayName,
-            coin = currentCoin,
-            onCopyAddress = { address ->
-                val clipboard =
-                    context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText(context.getString(R.string.address_label), address)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.address_copied_toast),
-                    Toast.LENGTH_SHORT
-                ).show()
-            },
-            onReceive = { onNavigateToReceive(walletId, currentCoin) },
-            onSend = { onNavigateToSend(walletId, currentCoin) },
-            onViewAllTransactions = { onNavigateToAllTransactions(walletId, currentCoin) },
-            onTransactionClick = { transaction ->
-                onNavigateToTransactionDetail(walletId, transaction.id, transaction.coin)
-            },
-            onSPLTokenClick = { /* Handle SPL token click */ },
-            modifier = Modifier.padding(padding)
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
+        ) {
+            CoinDetailContent(
+                state = state,
+                coinColor = coinColor,
+                iconRes = iconRes,
+                displayName = displayName,
+                coin = currentCoin,
+                onCopyAddress = { address ->
+                    val clipboard =
+                        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clip =
+                        ClipData.newPlainText(context.getString(R.string.address_label), address)
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.address_copied_toast),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                },
+                onReceive = { onNavigateToReceive(walletId, currentCoin) },
+                onSend = { onNavigateToSend(walletId, currentCoin) },
+                onViewAllTransactions = { onNavigateToAllTransactions(walletId, currentCoin) },
+                onTransactionClick = { transaction ->
+                    onNavigateToTransactionDetail(walletId, transaction.id, transaction.coin)
+                },
+                onSPLTokenClick = { /* Handle SPL token click */ },
+                modifier = Modifier.padding(padding)
+            )
+
+            PullRefreshIndicator(
+                refreshing = isManualRefresh && state.isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = padding.calculateTopPadding()),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = coinColor
+            )
+        }
     }
 }
 
@@ -191,9 +218,7 @@ fun CoinDetailScreen(
 private fun CoinDetailTopBar(
     iconRes: Int,
     displayName: String,
-    isLoading: Boolean,
-    onNavigateUp: () -> Unit,
-    onRefresh: () -> Unit
+    onNavigateUp: () -> Unit
 ) {
     TopAppBar(
         title = {
@@ -218,18 +243,6 @@ private fun CoinDetailTopBar(
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
                     stringResource(R.string.back),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        },
-        actions = {
-            IconButton(
-                onClick = onRefresh,
-                enabled = !isLoading
-            ) {
-                Icon(
-                    Icons.Outlined.Refresh,
-                    stringResource(R.string.refresh),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

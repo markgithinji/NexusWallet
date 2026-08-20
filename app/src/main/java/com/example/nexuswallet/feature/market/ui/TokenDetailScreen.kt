@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Article
@@ -20,6 +21,9 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,7 +64,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun TokenDetailScreen(
     onNavigateUp: () -> Unit,
@@ -84,8 +88,7 @@ fun TokenDetailScreen(
             TokenDetailTopBar(
                 tokenId = tokenId,
                 showDetails = showTopBarDetails,
-                onNavigateUp = onNavigateUp,
-                onRefresh = { viewModel.refresh() }
+                onNavigateUp = onNavigateUp
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -100,72 +103,103 @@ fun TokenDetailScreen(
             }
         }
 
-        when {
-            state is Result.Loading && activeToken.value == null -> {
-                TokenDetailSkeleton(modifier = Modifier.padding(padding))
+        // Use a combined refreshing state
+        val isFetching = state is Result.Loading || chartState is Result.Loading || newsState is Result.Loading
+        var isManualRefresh by remember { mutableStateOf(false) }
+        LaunchedEffect(isFetching) {
+            if (!isFetching) isManualRefresh = false
+        }
+
+        val pullRefreshState = rememberPullRefreshState(
+            refreshing = isManualRefresh && isFetching && activeToken.value != null,
+            onRefresh = {
+                isManualRefresh = true
+                viewModel.refresh()
             }
+        )
 
-            state is Result.Error && activeToken.value == null -> {
-                ErrorScreen(
-                    message = state.message,
-                    onRetry = { viewModel.retryLoading() },
-                    modifier = Modifier.padding(padding)
-                )
-            }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
+        ) {
+            when (state) {
+                is Result.Loading if activeToken.value == null -> {
+                    TokenDetailSkeleton(modifier = Modifier.padding(padding))
+                }
 
-            else -> {
-                val currentToken = activeToken.value
-                if (currentToken != null) {
-                    LazyColumn(
-                        state = scrollState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(padding),
-                        contentPadding = PaddingValues(bottom = 32.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        item {
-                            TokenHeaderSection(token = currentToken)
-                        }
+                is Result.Error if activeToken.value == null -> {
+                    ErrorScreen(
+                        message = state.message,
+                        onRetry = { viewModel.retryLoading() },
+                        modifier = Modifier.padding(padding)
+                    )
+                }
 
-                        item {
-                            PriceAndChartGroup(
-                                token = currentToken,
-                                chartState = chartState,
-                                selectedDuration = selectedDuration,
-                                onDurationSelected = { viewModel.selectDuration(it) }
-                            )
-                        }
-
-                        if (currentToken.sentimentUp != null) {
+                else -> {
+                    val currentToken = activeToken.value
+                    if (currentToken != null) {
+                        LazyColumn(
+                            state = scrollState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding),
+                            contentPadding = PaddingValues(bottom = 32.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
                             item {
-                                SentimentCard(token = currentToken)
+                                TokenHeaderSection(token = currentToken)
                             }
-                        }
 
-                        item {
-                            MarketDataSection(token = currentToken)
-                        }
-
-                        if (!currentToken.description.isNullOrBlank()) {
                             item {
-                                AboutSection(token = currentToken)
+                                PriceAndChartGroup(
+                                    token = currentToken,
+                                    chartState = chartState,
+                                    selectedDuration = selectedDuration,
+                                    onDurationSelected = { viewModel.selectDuration(it) }
+                                )
                             }
-                        }
 
-                        item {
-                            LinksAndTagsSection(token = currentToken)
-                        }
+                            if (currentToken.sentimentUp != null) {
+                                item {
+                                    SentimentCard(token = currentToken)
+                                }
+                            }
 
-                        item {
-                            NewsSection(
-                                newsState = newsState,
-                                onRetry = { viewModel.loadNews() }
-                            )
+                            item {
+                                MarketDataSection(token = currentToken)
+                            }
+
+                            if (!currentToken.description.isNullOrBlank()) {
+                                item {
+                                    AboutSection(token = currentToken)
+                                }
+                            }
+
+                            item {
+                                LinksAndTagsSection(token = currentToken)
+                            }
+
+                            item {
+                                NewsSection(
+                                    newsState = newsState,
+                                    onRetry = { viewModel.loadNews() }
+                                )
+                            }
                         }
                     }
                 }
             }
+
+            PullRefreshIndicator(
+                refreshing = isManualRefresh && isFetching && activeToken.value != null,
+                state = pullRefreshState,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = padding.calculateTopPadding()),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
@@ -176,7 +210,6 @@ private fun TokenDetailTopBar(
     tokenId: String,
     showDetails: Boolean,
     onNavigateUp: () -> Unit,
-    onRefresh: () -> Unit,
     viewModel: TokenDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -239,11 +272,6 @@ private fun TokenDetailTopBar(
         navigationIcon = {
             IconButton(onClick = onNavigateUp) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
-            }
-        },
-        actions = {
-            IconButton(onClick = onRefresh) {
-                Icon(Icons.Outlined.Refresh, stringResource(R.string.refresh))
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(

@@ -25,12 +25,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
@@ -39,6 +39,9 @@ import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -108,7 +111,7 @@ import com.example.nexuswallet.ui.theme.usdcLight
 import com.example.nexuswallet.ui.theme.usdtLight
 import com.example.nexuswallet.ui.theme.warning
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun WalletDetailScreen(
     onNavigateUp: () -> Unit,
@@ -128,6 +131,20 @@ fun WalletDetailScreen(
     var selectorPurpose by remember { mutableStateOf(AssetSelectorPurpose.SEND) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showSyncErrorDialog by remember { mutableStateOf(false) }
+
+    val isRefreshing = uiState.isRefreshingBalance || uiState.isRefreshingTransactions
+    var isManualRefresh by remember { mutableStateOf(false) }
+    LaunchedEffect(isRefreshing) {
+        if (!isRefreshing) isManualRefresh = false
+    }
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isManualRefresh && isRefreshing,
+        onRefresh = {
+            isManualRefresh = true
+            walletViewModel.refresh()
+        }
+    )
 
     LaunchedEffect(walletId) {
         walletViewModel.loadWallet(walletId)
@@ -207,18 +224,6 @@ fun WalletDetailScreen(
                                 )
                             }
                         }
-
-                        // Refresh button
-                        IconButton(
-                            onClick = { walletViewModel.refresh() },
-                            enabled = !uiState.isRefreshingBalance && !uiState.isRefreshingTransactions
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Refresh",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
@@ -243,71 +248,87 @@ fun WalletDetailScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        uiState.wallet?.let { currentWallet ->
-            WalletDetailContent(
-                wallet = currentWallet,
-                assets = uiState.assets,
-                transactions = uiState.transactions,
-                syncErrors = uiState.syncErrors,
-                syncingNetworks = uiState.syncingNetworks,
-                totalBalance = uiState.totalBalance,
-                hasSyncError = uiState.hasSyncError,
-                isLoadingBalance = uiState.isLoadingBalance,
-                isLoadingTransactions = uiState.isLoadingTransactions,
-                isRefreshingBalance = uiState.isRefreshingBalance,
-                isRefreshingTransactions = uiState.isRefreshingTransactions,
-                balanceLoadingMessage = when {
-                    uiState.isRefreshingBalance -> stringResource(R.string.updating_balances)
-                    uiState.isLoadingBalance -> stringResource(R.string.loading_balances)
-                    else -> ""
-                },
-                transactionsLoadingMessage = when {
-                    uiState.isRefreshingTransactions -> stringResource(R.string.updating_transactions)
-                    uiState.isLoadingTransactions -> stringResource(R.string.loading_transactions)
-                    else -> ""
-                },
-                onAssetClick = { coin -> onAssetClick(walletId, coin) },
-                onReceiveClick = { coin -> onReceiveClick(walletId, coin) },
-                onSendClick = { coin -> onSendClick(walletId, coin) },
-                onShowAssetSelector = { purpose ->
-                    selectorPurpose = purpose
-                    showAssetSelector = true
-                },
-                onSwapClick = onSwapClick,
-                onMoreClick = onMoreClick,
-                onViewAllTransactionsClick = { onNavigateToAllTransactions(walletId) },
-                onShowSyncError = { showSyncErrorDialog = true },
-                onTransactionClick = { transaction ->
-                    onNavigateToTransactionDetail(
-                        walletId,
-                        transaction.id,
-                        transaction.coin
-                    )
-                },
-                contentPadding = PaddingValues(
-                    top = padding.calculateTopPadding() + 16.dp,
-                    bottom = padding.calculateBottomPadding() + 32.dp
-                )
-            )
-
-            if (showAssetSelector) {
-                AssetSelectionDialog(
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
+        ) {
+            uiState.wallet?.let { currentWallet ->
+                WalletDetailContent(
+                    wallet = currentWallet,
                     assets = uiState.assets,
-                    purpose = selectorPurpose,
-                    onAssetSelected = { coin ->
-                        showAssetSelector = false
-                        if (selectorPurpose == AssetSelectorPurpose.SEND) {
-                            onSendClick(walletId, coin)
-                        } else {
-                            onReceiveClick(walletId, coin)
-                        }
+                    transactions = uiState.transactions,
+                    syncErrors = uiState.syncErrors,
+                    syncingNetworks = uiState.syncingNetworks,
+                    totalBalance = uiState.totalBalance,
+                    hasSyncError = uiState.hasSyncError,
+                    isLoadingBalance = uiState.isLoadingBalance,
+                    isLoadingTransactions = uiState.isLoadingTransactions,
+                    isRefreshingBalance = uiState.isRefreshingBalance,
+                    isRefreshingTransactions = uiState.isRefreshingTransactions,
+                    balanceLoadingMessage = when {
+                        uiState.isRefreshingBalance -> stringResource(R.string.updating_balances)
+                        uiState.isLoadingBalance -> stringResource(R.string.loading_balances)
+                        else -> ""
                     },
-                    onDismiss = { showAssetSelector = false }
+                    transactionsLoadingMessage = when {
+                        uiState.isRefreshingTransactions -> stringResource(R.string.updating_transactions)
+                        uiState.isLoadingTransactions -> stringResource(R.string.loading_transactions)
+                        else -> ""
+                    },
+                    onAssetClick = { coin -> onAssetClick(walletId, coin) },
+                    onReceiveClick = { coin -> onReceiveClick(walletId, coin) },
+                    onSendClick = { coin -> onSendClick(walletId, coin) },
+                    onShowAssetSelector = { purpose ->
+                        selectorPurpose = purpose
+                        showAssetSelector = true
+                    },
+                    onSwapClick = onSwapClick,
+                    onMoreClick = onMoreClick,
+                    onViewAllTransactionsClick = { onNavigateToAllTransactions(walletId) },
+                    onShowSyncError = { showSyncErrorDialog = true },
+                    onTransactionClick = { transaction ->
+                        onNavigateToTransactionDetail(
+                            walletId,
+                            transaction.id,
+                            transaction.coin
+                        )
+                    },
+                    contentPadding = PaddingValues(
+                        top = padding.calculateTopPadding() + 16.dp,
+                        bottom = padding.calculateBottomPadding() + 32.dp
+                    )
+                )
+
+                if (showAssetSelector) {
+                    AssetSelectionDialog(
+                        assets = uiState.assets,
+                        purpose = selectorPurpose,
+                        onAssetSelected = { coin ->
+                            showAssetSelector = false
+                            if (selectorPurpose == AssetSelectorPurpose.SEND) {
+                                onSendClick(walletId, coin)
+                            } else {
+                                onReceiveClick(walletId, coin)
+                            }
+                        },
+                        onDismiss = { showAssetSelector = false }
+                    )
+                }
+            } ?: run {
+                EmptyWalletView(
+                    onBack = onNavigateUp
                 )
             }
-        } ?: run {
-            EmptyWalletView(
-                onBack = onNavigateUp
+
+            PullRefreshIndicator(
+                refreshing = isManualRefresh && isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = padding.calculateTopPadding()),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
             )
         }
     }

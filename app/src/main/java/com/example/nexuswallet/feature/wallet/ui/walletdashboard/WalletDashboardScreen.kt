@@ -34,6 +34,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
@@ -46,6 +47,9 @@ import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -123,7 +127,9 @@ import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class,
+    ExperimentalMaterialApi::class
+)
 @Composable
 fun WalletDashboardScreen(
     onNavigateToWalletDetail: (String) -> Unit,
@@ -142,6 +148,19 @@ fun WalletDashboardScreen(
     val operationError by viewModel.operationError.collectAsStateWithLifecycle()
     val isPrivacyModeEnabled by viewModel.isPrivacyModeEnabled.collectAsStateWithLifecycle()
     val syncingNetworks by viewModel.syncingNetworks.collectAsStateWithLifecycle()
+
+    var isManualRefresh by remember { mutableStateOf(false) }
+    LaunchedEffect(isRefreshingState) {
+        if (!isRefreshingState) isManualRefresh = false
+    }
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isManualRefresh && isRefreshingState,
+        onRefresh = {
+            isManualRefresh = true
+            viewModel.refresh()
+        }
+    )
 
     var showRenameDialog by remember { mutableStateOf<Wallet?>(null) }
     var showAddOptions by remember { mutableStateOf(false) }
@@ -247,6 +266,7 @@ fun WalletDashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = padding.calculateBottomPadding())
+                .pullRefresh(pullRefreshState)
         ) {
             when (val state = uiState) {
                 is Result.Loading -> {
@@ -306,6 +326,16 @@ fun WalletDashboardScreen(
                     }
                 }
             }
+
+            PullRefreshIndicator(
+                refreshing = isManualRefresh && isRefreshingState,
+                state = pullRefreshState,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = scaffoldPadding.calculateTopPadding()),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
 
             if (isOperationLoading && uiState is Result.Success && (uiState as Result.Success).data.isNotEmpty()) {
                 Box(
