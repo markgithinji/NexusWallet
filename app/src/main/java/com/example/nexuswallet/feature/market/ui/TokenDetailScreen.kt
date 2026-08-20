@@ -2,9 +2,17 @@ package com.example.nexuswallet.feature.market.ui
 
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -79,7 +87,7 @@ fun TokenDetailScreen(
     val scrollState = rememberLazyListState()
     val showTopBarDetails by remember {
         derivedStateOf {
-            scrollState.firstVisibleItemIndex > 0 || scrollState.firstVisibleItemScrollOffset > 300
+            scrollState.firstVisibleItemIndex > 0 || scrollState.firstVisibleItemScrollOffset > 200
         }
     }
 
@@ -217,55 +225,61 @@ private fun TokenDetailTopBar(
 
     TopAppBar(
         title = {
-            Box {
-                AnimatedVisibility(
-                    visible = !showDetails,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
+            AnimatedContent(
+                targetState = showDetails && token != null,
+                transitionSpec = {
+                    if (targetState) {
+                        // Scrolling down: Details enter from bottom, title exits to top
+                        (slideInVertically { height -> height } + fadeIn(animationSpec = tween(300, delayMillis = 100)))
+                            .togetherWith(slideOutVertically { height -> -height } + fadeOut(animationSpec = tween(300)))
+                    } else {
+                        // Scrolling up: Title enters from top, details exit to bottom
+                        (slideInVertically { height -> -height } + fadeIn(animationSpec = tween(300, delayMillis = 100)))
+                            .togetherWith(slideOutVertically { height -> height } + fadeOut(animationSpec = tween(300)))
+                    }.using(
+                        SizeTransform(clip = false)
+                    )
+                },
+                label = "ToolbarTitleTransition"
+            ) { isDetailsVisible ->
+                if (isDetailsVisible && token != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AsyncImage(
+                            model = token.image,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                        )
+                        Text(
+                            text = token.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            Text(
+                                text = token.symbol.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
                     Text(
                         text = stringResource(R.string.token_details),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                }
-
-                AnimatedVisibility(
-                    visible = showDetails && token != null,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    if (token != null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            AsyncImage(
-                                model = token.image,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(CircleShape)
-                            )
-                            Text(
-                                text = token.name,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier.padding(top = 2.dp)
-                            ) {
-                                Text(
-                                    text = token.symbol.uppercase(),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
                 }
             }
         },
@@ -275,7 +289,7 @@ private fun TokenDetailTopBar(
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            containerColor = MaterialTheme.colorScheme.surface,
             scrolledContainerColor = MaterialTheme.colorScheme.surface
         )
     )
