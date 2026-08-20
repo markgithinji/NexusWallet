@@ -488,6 +488,7 @@ fun TokenItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
             .clickable { onClick(token) },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -588,7 +589,9 @@ fun TokenItem(
                 Text(
                     text = token.symbol.uppercase(),
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
