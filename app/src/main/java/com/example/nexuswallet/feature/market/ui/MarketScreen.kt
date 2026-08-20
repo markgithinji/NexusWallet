@@ -137,7 +137,7 @@ fun MarketScreen(
                         end = 16.dp
                     )
 
-                    if (!uiState.isLoading && uiState.error == null) {
+                    if (tokens.isNotEmpty() || (!uiState.isLoading && uiState.error == null)) {
                         // Only show empty result state if we have a search query
                         if (tokens.isEmpty() && !isLoadingMore && searchQuery.isNotBlank()) {
                             EmptySearchResult()

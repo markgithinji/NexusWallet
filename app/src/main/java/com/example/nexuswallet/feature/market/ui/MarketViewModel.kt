@@ -70,9 +70,13 @@ class MarketViewModel @Inject constructor(
 
     private fun loadInitialData() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            isInitialDataLoaded = false
-            allTokensCache = emptyList()
+            val isRefresh = allTokensCache.isNotEmpty()
+            _uiState.update { it.copy(isLoading = true, error = if (isRefresh) it.error else null) }
+            
+            if (!isRefresh) {
+                isInitialDataLoaded = false
+                allTokensCache = emptyList()
+            }
 
             // ALWAYS fetch in USD to avoid CoinGecko Demo API limitations
             // and maintain consistency with WebSocket updates
@@ -92,7 +96,7 @@ class MarketViewModel @Inject constructor(
                     stableTokenIds = allTokensCache.map { it.id }
                     applySearchFilter(_uiState.value.searchQuery)
                     
-                    _uiState.update { it.copy(isLoading = false) }
+                    _uiState.update { it.copy(isLoading = false, error = null) }
 
                     loadRemainingPages()
                 }
@@ -101,7 +105,7 @@ class MarketViewModel @Inject constructor(
                     _uiState.update { 
                         it.copy(
                             isLoading = false, 
-                            error = result.message
+                            error = if (isRefresh) it.error else result.message
                         ) 
                     }
                 }
